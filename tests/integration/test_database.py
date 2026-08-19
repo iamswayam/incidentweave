@@ -4,15 +4,16 @@ import os
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.models import Chunk, Repository
-from app.db.session import AsyncSessionLocal
 
 pytestmark = pytest.mark.integration
 
 
 def _database_url() -> str:
+    """Return the PostgreSQL URL used by the integration tests."""
+
     return os.environ.get(
         "DATABASE_URL",
         "postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave",
@@ -51,7 +52,14 @@ async def test_pgvector_extension_and_vector_column() -> None:
 async def test_repository_and_chunk_persistence() -> None:
     """Verify SQLAlchemy can persist and read a repository and chunk."""
 
-    async with AsyncSessionLocal() as session:
+    engine = create_async_engine(_database_url())
+    session_factory = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async with session_factory() as session:
         repository = Repository(name="phase2-test-repository")
         session.add(repository)
         await session.flush()
@@ -75,3 +83,5 @@ async def test_repository_and_chunk_persistence() -> None:
 
         await session.delete(repository)
         await session.commit()
+
+    await engine.dispose()
