@@ -39,6 +39,13 @@ jobs:
       - name: Ruff
         run: ruff check .
 
+      - name: Verify PostgreSQL
+        env:
+          PGPASSWORD: incidentweave
+        run: |
+          pg_isready -h localhost -p 5432 -U incidentweave -d incidentweave
+          python -c "import socket; s=socket.create_connection(('localhost', 5432), 5); print('PostgreSQL TCP connection OK'); s.close()"
+
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
