@@ -8,6 +8,21 @@ jobs:
   checks:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: incidentweave
+          POSTGRES_PASSWORD: incidentweave
+          POSTGRES_DB: incidentweave
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U incidentweave -d incidentweave"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -24,7 +39,21 @@ jobs:
       - name: Ruff
         run: ruff check .
 
+      - name: Verify PostgreSQL
+        env:
+          PGPASSWORD: incidentweave
+        run: |
+          pg_isready -h localhost -p 5432 -U incidentweave -d incidentweave
+          python -c "import socket; s=socket.create_connection(('localhost', 5432), 5); print('PostgreSQL TCP connection OK'); s.close()"
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
+        run: alembic upgrade head
+
       - name: Pytest
+        env:
+          DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
         run: pytest
 
       - name: Build Docker image
