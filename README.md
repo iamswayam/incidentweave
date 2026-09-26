@@ -16,9 +16,9 @@ IncidentWeave is currently under active V1 development.
 |---|---|---|
 | Phase 1 | Project Setup | ✅ Complete |
 | Phase 2 | Database & Persistence | ✅ Complete |
-| Phase 3 | Repository Ingestion & Chunking | 🔜 Next |
-| Phase 4 | Embeddings & Retrieval | Planned |
-| Phase 5 | Investigation Engine | Planned |
+| Phase 3 | Repository Ingestion & Chunking | ✅ Complete |
+| Phase 4 | Embeddings & Retrieval | ✅ Complete |
+| Phase 5 | Investigation Engine | 🔜 Next |
 | Phase 6 | Grounding & Confidence | Planned |
 | Phase 7 | Controlled Tools & Audit | Planned |
 | Phase 8 | Evaluation | Planned |
@@ -50,7 +50,26 @@ Established the application persistence foundation:
 - PostgreSQL integration tests
 - CI database integration
 
-**Current milestone: Phase 2 complete.**
+### Phase 3 - Repository Ingestion & Chunking
+
+Established the repository ingestion foundation:
+
+- Local Python repository ingestion script
+- Fixed-size line-window chunking with overlap
+- Idempotent re-ingestion for existing repositories
+- Exclusion of tool, cache, migration, and virtual-environment directories
+
+### Phase 4 - Embeddings & Retrieval
+
+Established the embedding and retrieval foundation:
+
+- Gemini embeddings with confirmed 768-dimensional output
+- Vector similarity search using pgvector cosine distance
+- PostgreSQL full-text search over chunk content
+- Reciprocal Rank Fusion hybrid search
+- Real ingestion, embedding, and hybrid retrieval verification
+
+**Current milestone: Phase 4 complete.**
 
 ---
 
@@ -113,15 +132,16 @@ The architecture is intentionally developed incrementally to avoid introducing i
 - Ruff
 - GitHub Actions
 
-### Planned AI & Retrieval
-
-Later phases will introduce the approved AI and retrieval components, including:
+### AI & Retrieval (implemented)
 
 - Gemini
 - Gemini Embeddings
 - Vector retrieval
 - PostgreSQL Full-Text Search
 - Hybrid retrieval / Reciprocal Rank Fusion (RRF)
+
+### Planned AI & Retrieval
+
 - Investigation orchestration
 - Grounding
 - Confidence scoring
@@ -158,8 +178,6 @@ Database persistence and schema behavior are covered by integration tests.
 ```text
 incidentweave/
 ├── app/
-│   ├── api/
-│   ├── core/
 │   ├── db/
 │   │   ├── models/
 │   │   │   ├── audit.py
@@ -168,10 +186,15 @@ incidentweave/
 │   │   │   └── repository.py
 │   │   ├── base.py
 │   │   └── session.py
-│   ├── ingestion/
 │   ├── retrieval/
-│   ├── investigation/
+│   │   ├── vector_search.py
+│   │   ├── fulltext_search.py
+│   │   └── hybrid_search.py
 │   └── main.py
+│
+├── scripts/
+│   ├── ingest_repo.py
+│   └── embed_chunks.py
 │
 ├── migrations/
 │   └── versions/
@@ -190,6 +213,7 @@ incidentweave/
 ```
 
 Components are introduced as their respective implementation phases begin.
+Repository ingestion is currently implemented as standalone scripts in `scripts/`, rather than as an `app/ingestion/` module.
 
 ---
 
@@ -413,15 +437,15 @@ These boundaries help keep the V1 implementation focused and maintainable.
 09  Production CLI / API
 ```
 
-**Completed:** Phases 1 and 2
+**Completed:** Phases 1 through 4
 
-**Next:** Phase 3 - Repository Ingestion & Chunking
+**Next:** Phase 5 - Investigation Engine
 
 ---
 
 ## Current Verification
 
-Phase 2 has been verified locally and through GitHub Actions.
+Phases 2, 3, and 4 have been verified locally, with Phase 2 also verified through GitHub Actions.
 
 ```text
 Ruff                     PASS
@@ -430,7 +454,10 @@ pgvector                 PASS
 Alembic migration        PASS
 VECTOR(768)              PASS
 SQLAlchemy persistence   PASS
-Test suite               8 passed
+Test suite               12 passed
+Real ingestion run       PASS (23 files, 31 chunks; .kilo excluded)
+Real Gemini embedding    PASS (31 chunks embedded; 768-dimensional vectors)
+Real hybrid search       PASS (matched RRF arithmetic)
 GitHub Actions           PASS
 ```
 
