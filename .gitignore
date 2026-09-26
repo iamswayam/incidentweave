@@ -11,6 +11,10 @@ venv/
 # Test / lint caches
 .pytest_cache/
 .ruff_cache/
+.coverage
+
+# Tool worktrees
+.kilo/
 
 # Build artifacts
 build/
