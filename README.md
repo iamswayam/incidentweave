@@ -1,175 +1,170 @@
+<div align="center">
+
 # IncidentWeave
 
 **Repository-aware AI incident investigation platform for backend systems.**
 
-IncidentWeave is a backend/AI engineering project designed to investigate production incidents by combining repository context, operational evidence, retrieval, and AI-assisted investigation.
+[![CI](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml/badge.svg)](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![PostgreSQL](https://img.shields.io/badge/postgres-pgvector-336791)
+![Status](https://img.shields.io/badge/status-active%20development-brightgreen)
 
-The system is being built incrementally with a focus on reliable retrieval, evidence grounding, controlled investigation, and auditable results.
+IncidentWeave investigates production incidents by combining repository context, operational evidence, hybrid retrieval, and evidence-grounded AI investigation — built incrementally, with every phase verified against a real database and a real Gemini API before moving on.
+
+[Architecture](#architecture) • [Tech Stack](#technology-stack) • [Getting Started](#local-development) • [Engineering Log](#engineering-documentation) • [Roadmap](#roadmap)
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Project Status](#project-status)
+- [Why This Project](#why-this-project)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Database](#database)
+- [Project Structure](#project-structure)
+- [Local Development](#local-development)
+- [Testing](#testing)
+- [Continuous Integration](#continuous-integration)
+- [Engineering Principles](#engineering-principles)
+- [V1 Scope Discipline](#v1-scope-discipline)
+- [Engineering Documentation](#engineering-documentation)
+- [Roadmap](#roadmap)
+- [Current Verification](#current-verification)
 
 ---
 
 ## Project Status
 
-IncidentWeave is currently under active V1 development.
-
 | Phase | Description | Status |
 |---|---|---|
-| Phase 1 | Project Setup | ✅ Complete |
-| Phase 2 | Database & Persistence | ✅ Complete |
-| Phase 3 | Repository Ingestion & Chunking | ✅ Complete |
-| Phase 4 | Embeddings & Retrieval | ✅ Complete |
-| Phase 5 | Investigation Engine | 🔜 Next |
-| Phase 6 | Grounding & Confidence | Planned |
-| Phase 7 | Controlled Tools & Audit | Planned |
-| Phase 8 | Evaluation | Planned |
-| Phase 9 | Production CLI / API | Planned |
+| 1 | Project Setup | ✅ Complete |
+| 2 | Database & Persistence | ✅ Complete |
+| 3 | Repository Ingestion & Chunking | ✅ Complete |
+| 4 | Embeddings & Retrieval | ✅ Complete |
+| 5 | Investigation Engine | ✅ Complete |
+| 6 | Grounding & Confidence | 🔜 Next |
+| 7 | Controlled Tools & Audit | Planned |
+| 8 | Evaluation | Planned |
+| 9 | Production CLI / API | Planned |
 
-### Phase 1 - Project Setup
+**Current milestone: Phase 5 complete.**
 
-Established the development and application foundation:
+<details>
+<summary><strong>Phase 1 — Project Setup</strong></summary>
+<br>
 
-- FastAPI application
-- Docker Compose environment
-- PostgreSQL + pgvector
-- Environment configuration
-- pytest and Ruff
+- FastAPI application with a health endpoint
+- Docker Compose environment (PostgreSQL + pgvector)
+- Environment configuration via Pydantic Settings
+- pytest and Ruff tooling
 - GitHub Actions CI
 
-### Phase 2 - Database & Persistence
+</details>
 
-Established the application persistence foundation:
+<details>
+<summary><strong>Phase 2 — Database & Persistence</strong></summary>
+<br>
 
 - SQLAlchemy 2.x async integration
-- PostgreSQL database integration
-- Alembic migrations
-- Centralized ORM models
-- Repository, chunk, investigation, and audit persistence models
-- pgvector support
-- `VECTOR(768)` embedding storage
-- Database indexes and relationships
-- PostgreSQL integration tests
-- CI database integration
+- Alembic migrations, version-controlled from the first commit
+- Centralized ORM models: `Repository`, `Chunk`, `Investigation`, `Audit`
+- `VECTOR(768)` embedding storage via pgvector
+- Real PostgreSQL integration tests — no mocked database layer
 
-### Phase 3 - Repository Ingestion & Chunking
+</details>
 
-Established the repository ingestion foundation:
+<details>
+<summary><strong>Phase 3 — Repository Ingestion & Chunking</strong></summary>
+<br>
 
-- Local Python repository ingestion script
-- Fixed-size line-window chunking with overlap
-- Idempotent re-ingestion for existing repositories
-- Exclusion of tool, cache, migration, and virtual-environment directories
+- Local repository ingestion script with fixed-size, overlapping line-window chunking
+- Idempotent re-ingestion (safe to re-run against the same repository)
+- Tool/cache/VCS directory exclusion, tuned after catching real corpus pollution during development
 
-### Phase 4 - Embeddings & Retrieval
+</details>
 
-Established the embedding and retrieval foundation:
+<details>
+<summary><strong>Phase 4 — Embeddings & Retrieval</strong></summary>
+<br>
 
-- Gemini embeddings with confirmed 768-dimensional output
-- Vector similarity search using pgvector cosine distance
+- Gemini embeddings (`gemini-embedding-001`), explicit 768-dimensional output
+- Vector similarity search via pgvector cosine distance
 - PostgreSQL full-text search over chunk content
-- Reciprocal Rank Fusion hybrid search
-- Real ingestion, embedding, and hybrid retrieval verification
+- Hybrid retrieval via Reciprocal Rank Fusion (RRF), verified against hand-computed arithmetic on real queries
 
-**Current milestone: Phase 4 complete.**
+</details>
+
+<details>
+<summary><strong>Phase 5 — Investigation Engine</strong></summary>
+<br>
+
+- Evidence-grounded prompt construction from hybrid retrieval results
+- Gemini text generation (`gemini-3.5-flash-lite`) with timeout, bounded retry/backoff, and fail-loud error handling
+- Response parsing: categorical confidence extraction, citation matching against retrieved evidence
+- **Evidence-sufficiency guard**: a query is only sent to Gemini if retrieval clears both an RRF threshold *and* a raw vector-distance threshold — a single-signal check was found to produce false positives on unrelated queries during testing, and was hardened accordingly
+- Full persistence: one `Investigation` row plus one `Audit` row per query, carrying retrieval scores and evidence IDs
+- End-to-end CLI (`scripts/investigate.py`), verified against a real repository with a diagnosis independently cross-checked line-by-line against the actual retrieved source code
+
+</details>
+
+---
+
+## Why This Project
+
+Most RAG demos stop at "retrieval works." IncidentWeave is built around a stricter standard: **evidence before generation, always**.
+
+- The system will not call the LLM at all if retrieval evidence is weak — this guard was tightened after a real false positive was caught during manual testing, not assumed to be correct from design alone.
+- Every investigation is fully auditable: retrieval scores, cited evidence, and the raw model response are persisted together.
+- Every phase in this README was verified against a live PostgreSQL database and a live Gemini API call before being marked complete — not just unit-tested in isolation. The full debugging history, including real bugs found and fixed, is kept in [`docs/`](#engineering-documentation) rather than smoothed over.
 
 ---
 
 ## Architecture
 
-IncidentWeave follows a phased architecture in which each subsystem is introduced when required by the implementation roadmap.
-
-```text
-Repository & Operational Evidence
-                │
-                ▼
-     Repository Ingestion
-        & Chunking
-                │
-                ▼
-      PostgreSQL + pgvector
-                │
-                ▼
-      Retrieval & Ranking
-                │
-                ▼
-    AI-Assisted Investigation
-                │
-                ▼
-   Grounding & Confidence
-                │
-                ▼
-       Tools & Audit
-                │
-                ▼
-      Evaluation & API
+```mermaid
+flowchart TD
+    A[Repository & Operational Evidence] --> B[Ingestion & Chunking]
+    B --> C[(PostgreSQL + pgvector)]
+    C --> D[Hybrid Retrieval<br/>Vector + Full-Text + RRF]
+    D --> E{Evidence<br/>Sufficient?}
+    E -->|No| F[Insufficient Evidence<br/>— no LLM call made]
+    E -->|Yes| G[Grounded Prompt Construction]
+    G --> H[Gemini Investigation Engine]
+    H --> I[Parsing & Confidence Extraction]
+    I --> J[Persistence: Investigation + Audit]
 ```
 
-The architecture is intentionally developed incrementally to avoid introducing infrastructure or abstractions before they are required.
+Each subsystem is introduced only when the roadmap requires it — see [V1 Scope Discipline](#v1-scope-discipline).
 
 ---
 
 ## Technology Stack
 
-### Backend
-
-- Python
-- FastAPI
-- Pydantic Settings
-- Uvicorn
-
-### Persistence
-
-- PostgreSQL
-- pgvector
-- SQLAlchemy 2.x
-- Psycopg 3
-- Alembic
-
-### Development & Quality
-
-- Docker
-- Docker Compose
-- pytest
-- Ruff
-- GitHub Actions
-
-### AI & Retrieval (implemented)
-
-- Gemini
-- Gemini Embeddings
-- Vector retrieval
-- PostgreSQL Full-Text Search
-- Hybrid retrieval / Reciprocal Rank Fusion (RRF)
-
-### Planned AI & Retrieval
-
-- Investigation orchestration
-- Grounding
-- Confidence scoring
-- Controlled investigation tools
-- Evaluation
+| Category | Technologies |
+|---|---|
+| **Backend** | Python 3.12+, FastAPI, Pydantic Settings, Uvicorn |
+| **Persistence** | PostgreSQL, pgvector, SQLAlchemy 2.x (async), Psycopg 3, Alembic |
+| **AI & Retrieval** | Gemini Embeddings, Gemini Generation, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
+| **Development & Quality** | Docker, Docker Compose, pytest, Ruff, GitHub Actions |
+| **Planned** | Grounding refinements, controlled investigation tools, evaluation harness |
 
 ---
 
 ## Database
 
-The application persistence layer uses PostgreSQL with pgvector.
+Four core models back the persistence layer:
 
-The current persistence model includes:
+| Model | Purpose |
+|---|---|
+| `Repository` | One row per ingested codebase |
+| `Chunk` | Code/log/runbook evidence, `VECTOR(768)` embedding column |
+| `Investigation` | One row per query: response, model, latency, token usage, confidence |
+| `Audit` | One row per investigation: retrieval scores, cited evidence, full tool-call trace |
 
-- `Repository`
-- `Chunk`
-- `Investigation`
-- `Audit`
-
-Chunks support source metadata such as repository association, file paths, line ranges, and chunk content. The schema also provides a 768-dimensional vector column for the later embedding and retrieval phases.
-
-```text
-embedding VECTOR(768)
-```
-
-The PostgreSQL `vector` extension is enabled through the version-controlled Alembic migration system.
-
-Database persistence and schema behavior are covered by integration tests.
+The `vector` extension and full schema are managed through version-controlled Alembic migrations — no manual database changes.
 
 ---
 
@@ -190,11 +185,19 @@ incidentweave/
 │   │   ├── vector_search.py
 │   │   ├── fulltext_search.py
 │   │   └── hybrid_search.py
+│   ├── investigation/
+│   │   ├── prompt.py
+│   │   ├── generation.py
+│   │   ├── parsing.py
+│   │   ├── guard.py
+│   │   └── persistence.py
 │   └── main.py
 │
 ├── scripts/
 │   ├── ingest_repo.py
-│   └── embed_chunks.py
+│   ├── embed_chunks.py
+│   ├── search_repo.py
+│   └── investigate.py
 │
 ├── migrations/
 │   └── versions/
@@ -203,268 +206,149 @@ incidentweave/
 │   ├── integration/
 │   └── unit/
 │
-├── .github/
-│   └── workflows/
+├── docs/
+│   ├── phase1-project-setup.md ... phase5-investigation-engine.md
+│   └── learning/
 │
+├── .github/workflows/
 ├── alembic.ini
 ├── docker-compose.yml
 ├── pyproject.toml
 └── README.md
 ```
 
-Components are introduced as their respective implementation phases begin.
-Repository ingestion is currently implemented as standalone scripts in `scripts/`, rather than as an `app/ingestion/` module.
+Repository ingestion is implemented as standalone scripts in `scripts/`, not as an `app/ingestion/` module — a deliberate deviation from the original planned structure.
 
 ---
 
 ## Local Development
 
-### 1. Create a virtual environment
-
 ```bash
+# 1. Create and activate a virtual environment
 python -m venv .venv
-```
+.venv\Scripts\Activate.ps1   # Windows
 
-Activate the virtual environment.
-
-On Windows:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-### 2. Install the project
-
-```bash
+# 2. Install the project
 pip install -e ".[dev]"
-```
 
-### 3. Configure environment variables
+# 3. Configure environment variables
+Copy-Item .env.example .env   # then fill in real values — never commit .env
 
-Copy the example environment file:
+# 4. Start Postgres + pgvector
+docker compose up -d db
 
-```powershell
-Copy-Item .env.example .env
-```
-
-Update the values in `.env` for your local environment.
-
-Do not commit `.env` or any credentials.
-
-### 4. Start the development environment
-
-```bash
-docker compose up --build
-```
-
-This starts the application and PostgreSQL + pgvector services.
-
-### 5. Run database migrations
-
-```bash
+# 5. Apply migrations
 alembic upgrade head
-```
 
-### 6. Run the API locally
-
-```bash
+# 6. Run the API
 uvicorn app.main:app --reload
 ```
 
-The current health endpoint is:
-
-```text
-GET /health
-```
+Health check: `GET /health`
 
 ---
 
 ## Testing
 
-IncidentWeave uses both unit and integration tests.
-
-### Run the complete test suite
-
 ```bash
-pytest
+pytest                    # full suite
+pytest tests/unit         # unit tests only
+pytest tests/integration  # requires a running PostgreSQL + pgvector instance
+ruff check .              # static analysis
 ```
 
-### Run unit tests
-
-```bash
-pytest tests/unit
-```
-
-### Run integration tests
-
-Integration tests require a running PostgreSQL + pgvector database.
-
-```bash
-pytest tests/integration
-```
-
-### Static analysis
-
-Run Ruff with:
-
-```bash
-ruff check .
-```
-
-The integration tests validate the actual PostgreSQL persistence layer, including:
-
-- PostgreSQL connectivity
-- pgvector extension availability
-- `VECTOR(768)` schema support
-- SQLAlchemy persistence
-- Repository/chunk relationships
-
----
-
-## Database Migrations
-
-Alembic manages database schema changes.
-
-Apply the latest migrations:
-
-```bash
-alembic upgrade head
-```
-
-Show the current migration revision:
-
-```bash
-alembic current
-```
-
-Show migration history:
-
-```bash
-alembic history
-```
-
-Schema changes should be introduced through version-controlled migrations rather than manual database modifications.
+Integration tests validate real PostgreSQL connectivity, the `vector` extension, `VECTOR(768)` support, and ORM relationships — nothing is mocked at the database layer.
 
 ---
 
 ## Continuous Integration
 
-GitHub Actions validates the project on pushes and pull requests.
+GitHub Actions runs on every push and pull request:
 
-The CI pipeline currently performs:
-
-1. Python environment setup
-2. Dependency installation
+1. Python 3.12 setup
+2. Dependency install (`pip install -e ".[dev]"`)
 3. Ruff checks
-4. PostgreSQL + pgvector startup
-5. PostgreSQL health verification
-6. Alembic migrations
-7. Unit and integration tests
-8. Docker image build
+4. PostgreSQL + pgvector service startup and health verification
+5. `alembic upgrade head`
+6. Full test suite
+7. Docker image build
 
-Integration tests therefore run against a real PostgreSQL + pgvector service in CI.
+All checks run against a real Postgres+pgvector service container — not a mock.
 
 ---
 
 ## Engineering Principles
 
-IncidentWeave is developed with the following engineering principles:
-
 - Incremental, phase-based implementation
-- Explicit and maintainable Python
-- Thin API and CLI boundaries
-- Business logic kept outside transport layers
-- Infrastructure concerns kept isolated
-- Database migrations tracked in version control
-- Evidence-first investigation
-- Retrieval before generation
-- Explicit grounding and confidence
-- Automated verification before phase completion
+- Evidence-first investigation — retrieval before generation, always
+- Explicit grounding and confidence, never a silent guess
+- Automated verification before any phase is marked complete
+- Thin API/CLI boundaries; business logic stays out of transport layers
 - No premature infrastructure or abstraction
-
-The project intentionally avoids introducing technologies or architectural layers before they are required by the approved implementation plan.
 
 ---
 
 ## V1 Scope Discipline
 
-IncidentWeave V1 is intentionally developed without prematurely introducing deferred technologies or infrastructure.
+V1 deliberately excludes: LangGraph, Redis/Celery, MCP, S3, Vision AI, Kubernetes, Elasticsearch, Pinecone, Weaviate, and authentication — introduced only when a later phase actually requires them, not in anticipation of needing them.
 
-Examples of technologies outside the current implementation scope include:
+---
 
-- LangGraph
-- Redis / Celery
-- MCP
-- S3
-- Vision AI
-- Kubernetes
-- Elasticsearch
-- Pinecone
-- Weaviate
-- Authentication
+## Engineering Documentation
 
-These boundaries help keep the V1 implementation focused and maintainable.
+Every phase has two levels of documentation, kept deliberately separate:
+
+- **[`docs/phaseN-*.md`](docs/)** — the full build log: task specs, real bugs found, real fixes, real command output. This is the working history, warts included.
+- **[`docs/learning/`](docs/learning/)** — condensed, interview-ready writeups: what was built, why, and the key concept explained plainly.
+
+Nothing in either is retrofitted after the fact — every entry was written from real, verified output at the time the work happened.
 
 ---
 
 ## Roadmap
 
-```text
-01  Project Setup
-        │
-        ▼
-02  Database & Persistence
-        │
-        ▼
-03  Repository Ingestion & Chunking
-        │
-        ▼
-04  Embeddings & Retrieval
-        │
-        ▼
-05  Investigation Engine
-        │
-        ▼
-06  Grounding & Confidence
-        │
-        ▼
-07  Controlled Tools & Audit
-        │
-        ▼
-08  Evaluation
-        │
-        ▼
-09  Production CLI / API
+```mermaid
+flowchart LR
+    P1[01 Setup] --> P2[02 Database] --> P3[03 Ingestion] --> P4[04 Retrieval] --> P5[05 Investigation] --> P6[06 Grounding] --> P7[07 Tools & Audit] --> P8[08 Evaluation] --> P9[09 Production API]
+
+    style P1 fill:#2ea44f,color:#fff
+    style P2 fill:#2ea44f,color:#fff
+    style P3 fill:#2ea44f,color:#fff
+    style P4 fill:#2ea44f,color:#fff
+    style P5 fill:#2ea44f,color:#fff
 ```
 
-**Completed:** Phases 1 through 4
-
-**Next:** Phase 5 - Investigation Engine
+**Completed:** Phases 1 through 5
+**Next:** Phase 6 — Grounding & Confidence
 
 ---
 
 ## Current Verification
 
-Phases 2, 3, and 4 have been verified locally, with Phase 2 also verified through GitHub Actions.
-
 ```text
-Ruff                     PASS
-PostgreSQL               PASS
-pgvector                 PASS
-Alembic migration        PASS
-VECTOR(768)              PASS
-SQLAlchemy persistence   PASS
-Test suite               12 passed
-Real ingestion run       PASS (23 files, 31 chunks; .kilo excluded)
-Real Gemini embedding    PASS (31 chunks embedded; 768-dimensional vectors)
-Real hybrid search       PASS (matched RRF arithmetic)
-GitHub Actions           PASS
+Ruff                      PASS
+PostgreSQL                PASS
+pgvector                  PASS
+Alembic migration         PASS
+VECTOR(768)               PASS
+SQLAlchemy persistence    PASS
+Test suite                16 passed
+Real ingestion run        PASS (23 files, 31 chunks; tool/cache dirs excluded)
+Real Gemini embedding     PASS (31 chunks embedded; 768-dim vectors confirmed)
+Real hybrid search        PASS (RRF arithmetic independently verified)
+Real investigation run    PASS (diagnosis cross-checked line-by-line against
+                           retrieved source; evidence guard verified against
+                           both a real answerable and a real nonsense query)
+GitHub Actions            PASS
 ```
 
-The test environment currently reports one non-blocking FastAPI/Starlette `httpx` deprecation warning.
+One non-blocking FastAPI/Starlette `httpx` deprecation warning is present in the test output.
 
 ---
 
-## License
+<div align="center">
 
-This project is currently maintained as a personal backend/AI engineering portfolio project.
+*A personal backend/AI engineering portfolio project.*
+**[@iamswayam](https://github.com/iamswayam)**
+
+</div>
