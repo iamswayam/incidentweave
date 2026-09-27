@@ -17,12 +17,13 @@ async def persist_investigation(
     model: str,
     latency_ms: int,
     token_usage: int | None = None,
+    final_confidence: str | None = None,
 ) -> Investigation:
     """Create one Investigation row and one Audit row from a Gemini response."""
 
     parsed = parse_investigation_response(response_payload, retrieval_results)
     diagnosis = str(parsed.get("diagnosis") or "INSUFFICIENT_EVIDENCE")
-    confidence = parsed.get("confidence")
+    confidence = final_confidence or parsed.get("confidence")
     retrieved_chunk_ids = [
         int(result["id"])
         for result in retrieval_results

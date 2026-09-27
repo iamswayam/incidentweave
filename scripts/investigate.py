@@ -18,15 +18,10 @@ from sqlalchemy import select  # noqa: E402
 
 from app.db.models import Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
-from app.investigation.generation import (  # noqa: E402
-    GEMINI_GENERATION_MODEL,
-    generate_investigation,
-)
-from app.investigation.guard import evaluate_evidence_sufficiency  # noqa: E402
-from app.investigation.parsing import parse_investigation_response  # noqa: E402
+from app.investigation.confidence import calibrate_confidence  # noqa: E402
+from app.investigation.generation import GEMINI_GENERATION_MODEL  # noqa: E402
+from app.investigation.graph import create_investigation_graph  # noqa: E402
 from app.investigation.persistence import persist_investigation  # noqa: E402
-from app.investigation.prompt import build_grounded_prompt  # noqa: E402
-from app.retrieval.hybrid_search import hybrid_search  # noqa: E402
 from scripts.embed_chunks import embed_text  # noqa: E402
 
 
@@ -66,41 +61,58 @@ async def investigate_repository(
         )
         if repository is None:
             raise ValueError(f"Repository not found: {repo_name}")
+        repository_id = repository.id
 
-        query_embedding = embed_text(query_text)
-        retrieval_results = await hybrid_search(
-            session,
-            repository.id,
-            query_text,
-            query_embedding,
-            limit=limit,
-        )
+    query_embedding = embed_text(query_text)
+    graph = create_investigation_graph(calibrate_confidence)
+    result = await graph.ainvoke(
+        {
+            "repository_id": repository_id,
+            "query": query_text,
+            "query_embedding": query_embedding,
+            "search_limit": limit,
+            "retry_limit": limit * 2,
+            "retry_count": 0,
+            "retry_used": False,
+            "retrieval_results": [],
+            "evidence_check": {},
+            "diagnosis": "",
+            "confidence": "",
+            "cited_chunk_ids": [],
+            "model": GEMINI_GENERATION_MODEL,
+            "latency_ms": None,
+            "calibration_note": "",
+            "confidence_calibrated": False,
+        }
+    )
 
-        evidence_check = evaluate_evidence_sufficiency(retrieval_results)
-        if not evidence_check["is_sufficient"]:
-            return {
-                "repository": repo_name,
-                "query": query_text,
-                "diagnosis": "INSUFFICIENT_EVIDENCE",
-                "confidence": "low",
-                "cited_chunk_ids": [],
-                "retrieval_results": retrieval_results,
-                "evidence_check": evidence_check,
-                "model": GEMINI_GENERATION_MODEL,
-                "latency_ms": None,
-            }
+    if not result["evidence_check"]["is_sufficient"]:
+        return {
+            "repository": repo_name,
+            "query": query_text,
+            "diagnosis": result["diagnosis"],
+            "confidence": result["confidence"],
+            "cited_chunk_ids": result["cited_chunk_ids"],
+            "retrieval_results": result["retrieval_results"],
+            "evidence_check": result["evidence_check"],
+            "model": result["model"],
+            "latency_ms": result["latency_ms"],
+            "retry_used": result["retry_used"],
+            "confidence_calibrated": result["confidence_calibrated"],
+            "calibration_note": result["calibration_note"],
+        }
 
-        prompt = build_grounded_prompt(query_text, retrieval_results)
-        response_payload, latency_ms = generate_investigation(prompt)
-        parsed = parse_investigation_response(response_payload, retrieval_results)
+    response_payload = result["response_payload"]
+    async with AsyncSessionLocal() as session:
         investigation = await persist_investigation(
             session=session,
-            repository_id=repository.id,
+            repository_id=repository_id,
             query=query_text,
             response_payload=response_payload,
-            retrieval_results=retrieval_results,
+            retrieval_results=result["retrieval_results"],
             model=GEMINI_GENERATION_MODEL,
-            latency_ms=latency_ms,
+            latency_ms=result["latency_ms"],
+            final_confidence=result["confidence"],
             token_usage=(
                 response_payload.get("usageMetadata", {}).get("totalTokenCount")
                 if isinstance(response_payload.get("usageMetadata"), dict)
@@ -108,17 +120,20 @@ async def investigate_repository(
             ),
         )
 
-        return {
-            "repository": repo_name,
-            "query": query_text,
-            "diagnosis": parsed.get("diagnosis") or investigation.response,
-            "confidence": parsed.get("confidence") or investigation.confidence,
-            "cited_chunk_ids": parsed.get("cited_chunk_ids", []),
-            "retrieval_results": retrieval_results,
-            "evidence_check": evidence_check,
-            "model": GEMINI_GENERATION_MODEL,
-            "latency_ms": latency_ms,
-        }
+    return {
+        "repository": repo_name,
+        "query": query_text,
+        "diagnosis": result["diagnosis"] or investigation.response,
+        "confidence": result["confidence"] or investigation.confidence,
+        "cited_chunk_ids": result["cited_chunk_ids"],
+        "retrieval_results": result["retrieval_results"],
+        "evidence_check": result["evidence_check"],
+        "model": GEMINI_GENERATION_MODEL,
+        "latency_ms": result["latency_ms"],
+        "retry_used": result["retry_used"],
+        "confidence_calibrated": result["confidence_calibrated"],
+        "calibration_note": result["calibration_note"],
+    }
 
 
 def main() -> None:
@@ -139,6 +154,11 @@ def main() -> None:
     print(f"Cited chunks: {result['cited_chunk_ids']}")
     print(f"Model: {result['model']}")
     print(f"Latency ms: {result['latency_ms']}")
+    print(
+        "Retry used: "
+        f"{result['retry_used']}; confidence calibrated: "
+        f"{result['confidence_calibrated']}"
+    )
 
 
 if __name__ == "__main__":
