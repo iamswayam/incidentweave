@@ -45,12 +45,12 @@ IncidentWeave investigates production incidents by combining repository context,
 | 3 | Repository Ingestion & Chunking | ✅ Complete |
 | 4 | Embeddings & Retrieval | ✅ Complete |
 | 5 | Investigation Engine | ✅ Complete |
-| 6 | Grounding & Confidence | 🔜 Next |
-| 7 | Controlled Tools & Audit | Planned |
+| 6 | Grounding & Confidence | ✅ Complete |
+| 7 | Controlled Tools & Audit | 🔜 Next |
 | 8 | Evaluation | Planned |
 | 9 | Production CLI / API | Planned |
 
-**Current milestone: Phase 5 complete.**
+**Current milestone: Phase 6 complete.**
 
 <details>
 <summary><strong>Phase 1 — Project Setup</strong></summary>
@@ -110,6 +110,17 @@ IncidentWeave investigates production incidents by combining repository context,
 
 </details>
 
+<details>
+<summary><strong>Phase 6 — Grounding & Confidence</strong></summary>
+<br>
+
+- LangGraph orchestration with one bounded retry: insufficient initial evidence widens the search limit once (default 5 to 10), then returns insufficient evidence if the guard still fails
+- Confidence calibration cross-checks the model's self-report against RRF and cosine-distance margins, downgrading borderline `high` confidence to `medium`
+- Calibrated confidence is persisted consistently with the investigation and its single audit row
+- Retry and calibration behavior covered by mocked graph tests; live retrieval and confidence outcomes recorded in the phase log
+
+</details>
+
 ---
 
 ## Why This Project
@@ -147,7 +158,7 @@ Each subsystem is introduced only when the roadmap requires it — see [V1 Scope
 |---|---|
 | **Backend** | Python 3.12+, FastAPI, Pydantic Settings, Uvicorn |
 | **Persistence** | PostgreSQL, pgvector, SQLAlchemy 2.x (async), Psycopg 3, Alembic |
-| **AI & Retrieval** | Gemini Embeddings, Gemini Generation, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
+| **AI & Retrieval** | Gemini Embeddings, Gemini Generation, LangGraph, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
 | **Development & Quality** | Docker, Docker Compose, pytest, Ruff, GitHub Actions |
 | **Planned** | Grounding refinements, controlled investigation tools, evaluation harness |
 
@@ -190,6 +201,8 @@ incidentweave/
 │   │   ├── generation.py
 │   │   ├── parsing.py
 │   │   ├── guard.py
+│   │   ├── confidence.py
+│   │   ├── graph.py
 │   │   └── persistence.py
 │   └── main.py
 │
@@ -207,7 +220,7 @@ incidentweave/
 │   └── unit/
 │
 ├── docs/
-│   ├── phase1-project-setup.md ... phase5-investigation-engine.md
+│   ├── phase1-project-setup.md ... phase6-grounding-confidence.md
 │   └── learning/
 │
 ├── .github/workflows/
@@ -290,7 +303,7 @@ All checks run against a real Postgres+pgvector service container — not a mock
 
 ## V1 Scope Discipline
 
-V1 deliberately excludes: LangGraph, Redis/Celery, MCP, S3, Vision AI, Kubernetes, Elasticsearch, Pinecone, Weaviate, and authentication — introduced only when a later phase actually requires them, not in anticipation of needing them.
+V1 deliberately excludes: Redis/Celery, MCP, S3, Vision AI, Kubernetes, Elasticsearch, Pinecone, Weaviate, and authentication — introduced only when a later phase actually requires them, not in anticipation of needing them. LangGraph was deliberately adopted in Phase 6 specifically to express the bounded retrieval-retry branch, not introduced prematurely.
 
 ---
 
@@ -316,10 +329,11 @@ flowchart LR
     style P3 fill:#2ea44f,color:#fff
     style P4 fill:#2ea44f,color:#fff
     style P5 fill:#2ea44f,color:#fff
+    style P6 fill:#2ea44f,color:#fff
 ```
 
-**Completed:** Phases 1 through 5
-**Next:** Phase 6 — Grounding & Confidence
+**Completed:** Phases 1 through 6
+**Next:** Phase 7 — Controlled Tools & Audit
 
 ---
 
@@ -332,7 +346,7 @@ pgvector                  PASS
 Alembic migration         PASS
 VECTOR(768)               PASS
 SQLAlchemy persistence    PASS
-Test suite                16 passed
+Test suite                19 passed
 Real ingestion run        PASS (23 files, 31 chunks; tool/cache dirs excluded)
 Real Gemini embedding     PASS (31 chunks embedded; 768-dim vectors confirmed)
 Real hybrid search        PASS (RRF arithmetic independently verified)

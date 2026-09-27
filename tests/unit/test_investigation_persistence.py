@@ -79,6 +79,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
         model="gemini-3.5-flash-lite",
         latency_ms=2400,
         token_usage=128,
+        final_confidence="medium",
     )
 
     assert investigation.query == "how are async sessions configured?"
@@ -86,7 +87,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert investigation.model == "gemini-3.5-flash-lite"
     assert investigation.latency_ms == 2400
     assert investigation.token_usage == 128
-    assert investigation.confidence == "high"
+    assert investigation.confidence == "medium"
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
     assert len(audit_rows) == 1
     assert audit_rows[0].retrieved_chunk_ids == [105, 106]
@@ -94,3 +95,4 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit_rows[0].fts_scores == [0.5]
     assert audit_rows[0].rrf_scores == [0.032786885, 0.016]
     assert audit_rows[0].tool_calls["cited_chunk_ids"] == ["105"]
+    assert audit_rows[0].confidence == "medium"
