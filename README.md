@@ -46,11 +46,11 @@ IncidentWeave investigates production incidents by combining repository context,
 | 4 | Embeddings & Retrieval | ✅ Complete |
 | 5 | Investigation Engine | ✅ Complete |
 | 6 | Grounding & Confidence | ✅ Complete |
-| 7 | Controlled Tools & Audit | 🔜 Next |
-| 8 | Evaluation | Planned |
+| 7 | Controlled Tools & Audit | ✅ Complete |
+| 8 | Evaluation | 🔜 Next |
 | 9 | Production CLI / API | Planned |
 
-**Current milestone: Phase 6 complete.**
+**Current milestone: Phase 7 complete.**
 
 <details>
 <summary><strong>Phase 1 — Project Setup</strong></summary>
@@ -121,6 +121,17 @@ IncidentWeave investigates production incidents by combining repository context,
 
 </details>
 
+<details>
+<summary><strong>Phase 7 — Controlled Tools & Audit</strong></summary>
+<br>
+
+- Added a local stdio MCP server exposing the existing `hybrid_search` plus literal `grep_search` over raw Python source using the ingestion file exclusions
+- Added deterministic escalation: initial hybrid retrieval, one widened-limit retry, then MCP grep fallback; the model does not choose tools
+- Persisted ordered tool parameters and outcomes in `Audit.tool_calls`, retaining one Audit row per investigation
+- Verified the full fallback path against a real fixture and database audit record; no human approval gate was added
+
+</details>
+
 ---
 
 ## Why This Project
@@ -158,7 +169,7 @@ Each subsystem is introduced only when the roadmap requires it — see [V1 Scope
 |---|---|
 | **Backend** | Python 3.12+, FastAPI, Pydantic Settings, Uvicorn |
 | **Persistence** | PostgreSQL, pgvector, SQLAlchemy 2.x (async), Psycopg 3, Alembic |
-| **AI & Retrieval** | Gemini Embeddings, Gemini Generation, LangGraph, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
+| **AI & Retrieval** | Gemini Embeddings, Gemini Generation, LangGraph, MCP, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
 | **Development & Quality** | Docker, Docker Compose, pytest, Ruff, GitHub Actions |
 | **Planned** | Grounding refinements, controlled investigation tools, evaluation harness |
 
@@ -203,6 +214,7 @@ incidentweave/
 │   │   ├── guard.py
 │   │   ├── confidence.py
 │   │   ├── graph.py
+│   │   ├── mcp_server.py
 │   │   └── persistence.py
 │   └── main.py
 │
@@ -220,7 +232,7 @@ incidentweave/
 │   └── unit/
 │
 ├── docs/
-│   ├── phase1-project-setup.md ... phase6-grounding-confidence.md
+│   ├── phase1-project-setup.md ... phase7-controlled-tools-audit.md
 │   └── learning/
 │
 ├── .github/workflows/
@@ -303,7 +315,7 @@ All checks run against a real Postgres+pgvector service container — not a mock
 
 ## V1 Scope Discipline
 
-V1 deliberately excludes: Redis/Celery, MCP, S3, Vision AI, Kubernetes, Elasticsearch, Pinecone, Weaviate, and authentication — introduced only when a later phase actually requires them, not in anticipation of needing them. LangGraph was deliberately adopted in Phase 6 specifically to express the bounded retrieval-retry branch, not introduced prematurely.
+V1 deliberately excludes: Redis/Celery, S3, Vision AI, Kubernetes, Elasticsearch, Pinecone, Weaviate, and authentication — introduced only when a later phase actually requires them, not in anticipation of needing them. LangGraph was deliberately adopted in Phase 6 for bounded retry branching. MCP was deliberately adopted in Phase 7 to exercise a real stdio client/server boundary and tool schema; a direct function call would be simpler for this single process, so MCP is used here specifically for protocol integration experience, not because it is required by the application architecture.
 
 ---
 
@@ -330,10 +342,11 @@ flowchart LR
     style P4 fill:#2ea44f,color:#fff
     style P5 fill:#2ea44f,color:#fff
     style P6 fill:#2ea44f,color:#fff
+    style P7 fill:#2ea44f,color:#fff
 ```
 
-**Completed:** Phases 1 through 6
-**Next:** Phase 7 — Controlled Tools & Audit
+**Completed:** Phases 1 through 7
+**Next:** Phase 8 — Evaluation
 
 ---
 
@@ -346,7 +359,7 @@ pgvector                  PASS
 Alembic migration         PASS
 VECTOR(768)               PASS
 SQLAlchemy persistence    PASS
-Test suite                19 passed
+Test suite                22 passed
 Real ingestion run        PASS (23 files, 31 chunks; tool/cache dirs excluded)
 Real Gemini embedding     PASS (31 chunks embedded; 768-dim vectors confirmed)
 Real hybrid search        PASS (RRF arithmetic independently verified)

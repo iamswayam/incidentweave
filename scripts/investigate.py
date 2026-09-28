@@ -42,6 +42,11 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="Maximum hybrid-search results to consider",
     )
+    parser.add_argument(
+        "--repo-path",
+        default=str(REPO_ROOT),
+        help="Local repository root used by the literal grep fallback",
+    )
     return parser.parse_args()
 
 
@@ -49,6 +54,7 @@ async def investigate_repository(
     repo_name: str,
     query_text: str,
     limit: int = 5,
+    repo_path: str = str(REPO_ROOT),
 ) -> dict[str, object]:
     """Perform the end-to-end grounded investigation flow for one query."""
 
@@ -68,6 +74,8 @@ async def investigate_repository(
     result = await graph.ainvoke(
         {
             "repository_id": repository_id,
+            "repository_name": repo_name,
+            "repository_path": str(Path(repo_path).resolve()),
             "query": query_text,
             "query_embedding": query_embedding,
             "search_limit": limit,
@@ -83,6 +91,8 @@ async def investigate_repository(
             "latency_ms": None,
             "calibration_note": "",
             "confidence_calibrated": False,
+            "evidence_source": "hybrid",
+            "tool_calls": [],
         }
     )
 
@@ -100,6 +110,7 @@ async def investigate_repository(
             "retry_used": result["retry_used"],
             "confidence_calibrated": result["confidence_calibrated"],
             "calibration_note": result["calibration_note"],
+            "tool_calls": result["tool_calls"],
         }
 
     response_payload = result["response_payload"]
@@ -118,6 +129,7 @@ async def investigate_repository(
                 if isinstance(response_payload.get("usageMetadata"), dict)
                 else None
             ),
+            tool_call_trace=result["tool_calls"],
         )
 
     return {
@@ -133,6 +145,7 @@ async def investigate_repository(
         "retry_used": result["retry_used"],
         "confidence_calibrated": result["confidence_calibrated"],
         "calibration_note": result["calibration_note"],
+        "tool_calls": result["tool_calls"],
     }
 
 
@@ -142,7 +155,14 @@ def main() -> None:
     args = parse_args()
 
     try:
-        result = asyncio.run(investigate_repository(args.repo_name, args.query, limit=args.limit))
+        result = asyncio.run(
+            investigate_repository(
+                args.repo_name,
+                args.query,
+                limit=args.limit,
+                repo_path=args.repo_path,
+            )
+        )
     except (RuntimeError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
@@ -159,6 +179,7 @@ def main() -> None:
         f"{result['retry_used']}; confidence calibrated: "
         f"{result['confidence_calibrated']}"
     )
+    print(f"Tool attempts: {len(result['tool_calls'])}")
 
 
 if __name__ == "__main__":

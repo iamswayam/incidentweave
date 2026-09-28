@@ -21,6 +21,8 @@ class FakeSessionContext:
 def initial_state() -> dict[str, Any]:
     return {
         "repository_id": 4,
+        "repository_name": "incidentweave-local",
+        "repository_path": ".",
         "query": "how are async sessions configured?",
         "query_embedding": [0.1, 0.2],
         "search_limit": 5,
@@ -36,6 +38,8 @@ def initial_state() -> dict[str, Any]:
         "latency_ms": None,
         "calibration_note": "",
         "confidence_calibrated": False,
+        "evidence_source": "hybrid",
+        "tool_calls": [],
     }
 
 
@@ -122,9 +126,18 @@ async def test_graph_stops_after_one_insufficient_retry(
     def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         raise AssertionError("Generation must not run after insufficient evidence")
 
+    async def fake_grep_search_mcp(
+        repository_name: str,
+        repository_path: str,
+        keyword: str,
+        limit: int,
+    ) -> tuple[list[dict[str, object]], None]:
+        return [], None
+
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
     monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
     monkeypatch.setattr(graph_module, "generate_investigation", unexpected_generation)
+    monkeypatch.setattr(graph_module, "call_grep_search_mcp", fake_grep_search_mcp)
 
     result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
 

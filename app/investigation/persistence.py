@@ -18,17 +18,20 @@ async def persist_investigation(
     latency_ms: int,
     token_usage: int | None = None,
     final_confidence: str | None = None,
+    tool_call_trace: Sequence[Mapping[str, object]] | None = None,
 ) -> Investigation:
     """Create one Investigation row and one Audit row from a Gemini response."""
 
     parsed = parse_investigation_response(response_payload, retrieval_results)
     diagnosis = str(parsed.get("diagnosis") or "INSUFFICIENT_EVIDENCE")
     confidence = final_confidence or parsed.get("confidence")
-    retrieved_chunk_ids = [
-        int(result["id"])
-        for result in retrieval_results
-        if result.get("id") is not None
-    ]
+    retrieved_chunk_ids: list[int] = []
+    for result in retrieval_results:
+        chunk_id = result.get("id")
+        if isinstance(chunk_id, int):
+            retrieved_chunk_ids.append(chunk_id)
+        elif isinstance(chunk_id, str) and chunk_id.isdigit():
+            retrieved_chunk_ids.append(int(chunk_id))
     cited_chunk_ids = [str(chunk_id) for chunk_id in parsed.get("cited_chunk_ids", [])]
 
     investigation = Investigation(
@@ -64,6 +67,7 @@ async def persist_investigation(
             if isinstance(item.get("rrf_score"), (int, float))
         ],
         tool_calls={
+            "attempts": [dict(item) for item in (tool_call_trace or [])],
             "cited_chunk_ids": cited_chunk_ids,
             "retrieval_results": [
                 {

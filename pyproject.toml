@@ -16,6 +16,7 @@ dependencies = [
     "pgvector>=0.3,<1.0",
     "alembic>=1.15,<2.0",
     "langgraph>=1.2,<2.0",
+    "mcp>=1.30,<2.0",
 ]
 
 [project.optional-dependencies]

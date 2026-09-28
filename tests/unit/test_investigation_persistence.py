@@ -69,6 +69,26 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
             }
         ]
     }
+    tool_call_trace = [
+        {
+            "tool": "hybrid_search",
+            "stage": "initial",
+            "parameters": {"limit": 5},
+            "outcome": {"result_count": 5, "sufficient": False},
+        },
+        {
+            "tool": "hybrid_search",
+            "stage": "widened_retry",
+            "parameters": {"limit": 10},
+            "outcome": {"result_count": 10, "sufficient": False},
+        },
+        {
+            "tool": "grep_search",
+            "stage": "literal_fallback",
+            "parameters": {"keyword": "async_sessionmaker"},
+            "outcome": {"match_count": 1, "sufficient": True},
+        },
+    ]
 
     investigation = await persist_investigation(
         session=session,
@@ -80,6 +100,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
         latency_ms=2400,
         token_usage=128,
         final_confidence="medium",
+        tool_call_trace=tool_call_trace,
     )
 
     assert investigation.query == "how are async sessions configured?"
@@ -95,4 +116,5 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit_rows[0].fts_scores == [0.5]
     assert audit_rows[0].rrf_scores == [0.032786885, 0.016]
     assert audit_rows[0].tool_calls["cited_chunk_ids"] == ["105"]
+    assert audit_rows[0].tool_calls["attempts"] == tool_call_trace
     assert audit_rows[0].confidence == "medium"

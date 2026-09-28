@@ -10,8 +10,10 @@ MAX_ACCEPTABLE_VECTOR_DISTANCE = 0.5
 
 def evaluate_evidence_sufficiency(
     retrieval_results: Sequence[Mapping[str, object]],
+    *,
+    evidence_source: str = "hybrid",
 ) -> dict[str, object]:
-    """Return whether the retrieved evidence is strong enough for a Gemini call."""
+    """Evaluate hybrid scores or explicit literal-source matches."""
 
     if not retrieval_results:
         return {
@@ -26,6 +28,14 @@ def evaluate_evidence_sufficiency(
         return {
             "is_sufficient": False,
             "reason": "No repository evidence was retrieved.",
+            "best_rrf_score": None,
+            "best_vector_score": None,
+        }
+
+    if evidence_source == "literal":
+        return {
+            "is_sufficient": True,
+            "reason": "Literal source matches were found.",
             "best_rrf_score": None,
             "best_vector_score": None,
         }
