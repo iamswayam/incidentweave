@@ -146,8 +146,10 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
                     "tool": "hybrid_search",
                     "stage": "widened_retry" if state["retry_count"] else "initial",
                     "parameters": {
+                        "repository_id": state["repository_id"],
                         "repository_name": state["repository_name"],
                         "query": state["query"],
+                        "query_embedding": state["query_embedding"],
                         "limit": state["search_limit"],
                     },
                     "outcome": {
