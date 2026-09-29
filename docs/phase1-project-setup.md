@@ -1,5 +1,7 @@
 # Phase 1 — Project Setup
 
+Note: this log was reconstructed after the phase was completed, from the repository state and verified history; it was not written step-by-step during development.
+
 **Status:** Complete
 **Depends on:** nothing — this is the foundation phase.
 

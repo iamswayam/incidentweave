@@ -9,7 +9,7 @@
 ![PostgreSQL](https://img.shields.io/badge/postgres-pgvector-336791)
 ![Status](https://img.shields.io/badge/status-active%20development-brightgreen)
 
-IncidentWeave investigates production incidents by combining repository context, operational evidence, hybrid retrieval, and evidence-grounded AI investigation — built incrementally, with every phase verified against a real database and a real Gemini API before moving on.
+IncidentWeave investigates production incidents by combining repository context, operational evidence, hybrid retrieval, and evidence-grounded AI investigation — built incrementally, with database verification throughout and live Gemini verification beginning when embeddings and investigation generation are introduced.
 
 [Architecture](#architecture) • [Tech Stack](#technology-stack) • [Getting Started](#local-development) • [Engineering Log](#engineering-documentation) • [Roadmap](#roadmap)
 
@@ -47,10 +47,10 @@ IncidentWeave investigates production incidents by combining repository context,
 | 5 | Investigation Engine | ✅ Complete |
 | 6 | Grounding & Confidence | ✅ Complete |
 | 7 | Controlled Tools & Audit | ✅ Complete |
-| 8 | Evaluation | 🔜 Next |
-| 9 | Production CLI / API | Planned |
+| 8 | Evaluation | ✅ Complete |
+| 9 | Production CLI / API | 🔜 Next |
 
-**Current milestone: Phase 7 complete.**
+**Current milestone: Phase 8 complete.**
 
 <details>
 <summary><strong>Phase 1 — Project Setup</strong></summary>
@@ -125,10 +125,26 @@ IncidentWeave investigates production incidents by combining repository context,
 <summary><strong>Phase 7 — Controlled Tools & Audit</strong></summary>
 <br>
 
-- Added a local stdio MCP server exposing the existing `hybrid_search` plus literal `grep_search` over raw Python source using the ingestion file exclusions
-- Added deterministic escalation: initial hybrid retrieval, one widened-limit retry, then MCP grep fallback; the model does not choose tools
+- Added a local stdio MCP server exposing both `hybrid_search` and literal `grep_search` over raw Python source using the ingestion file exclusions; the graph calls `hybrid_search` in-process and calls only `grep_search` through MCP
+- Added deterministic escalation: initial hybrid retrieval, one widened-limit retry, then MCP grep fallback; grep receives the full query as a case-insensitive literal string, and the model does not choose tools
 - Persisted ordered tool parameters and outcomes in `Audit.tool_calls`, retaining one Audit row per investigation
 - Verified the full fallback path against a real fixture and database audit record; no human approval gate was added
+
+</details>
+
+<details>
+<summary><strong>Phase 8 — Evaluation</strong></summary>
+<br>
+
+- Measured vector-only, full-text-only, hybrid retrieval, guard decisions, and two end-to-end runs against a pinned 70-chunk source snapshot.
+- The 24-question set has 8 direct, 8 paraphrased, 4 unanswerable-far, and 4 unanswerable-near questions. Source labels are checked against snapshot files and reachable indexed chunks; the set remains pending maintainer review.
+- Reproduce with the command shown by `--help`: `\.venv\Scripts\python.exe scripts\run_eval.py`.
+- Retrieval (16 answerable questions): vector and hybrid each hit `8/16` at 1, `11/16` at 3, and `11/16` at 5; full-text was empty for `14/16`.
+- Guard (24 questions): `16` true accepts, `0` false refusals, `4` true refusals, and `4` false accepts. No tested vector cutoff separated the answerable and unanswerable groups.
+- End to end (24 questions per run): run 1 had `15` correct, `1` wrong-or-incomplete, `4` refused, and `4` falsely answered; run 2 had `14`, `2`, `4`, and `4`. One outcome changed between runs; there were `40` generation HTTP calls, `0` HTTP 429 responses, and `0` errors.
+- Tests: `32 passed`.
+
+**Limits:** This 24-question evaluation covers one pinned source snapshot and is diagnostic for that corpus, not a benchmark for other repositories. The labels remain pending maintainer review and were drafted from the indexed source. Keyword checks can accept an incorrect answer or reject a correct paraphrase, and no LLM judge was used.
 
 </details>
 
@@ -140,7 +156,7 @@ Most RAG demos stop at "retrieval works." IncidentWeave is built around a strict
 
 - The system will not call the LLM at all if retrieval evidence is weak — this guard was tightened after a real false positive was caught during manual testing, not assumed to be correct from design alone.
 - Every investigation is fully auditable: retrieval scores, cited evidence, and the raw model response are persisted together.
-- Every phase in this README was verified against a live PostgreSQL database and a live Gemini API call before being marked complete — not just unit-tested in isolation. The full debugging history, including real bugs found and fixed, is kept in [`docs/`](#engineering-documentation) rather than smoothed over.
+- Phases 4-7 were verified with live PostgreSQL retrieval/investigation data and live Gemini calls where those phases require them; Phases 1-3 used the verification appropriate to setup, schema, ingestion, and CI. The full debugging history, including real bugs found and fixed, is kept in [`docs/`](#engineering-documentation) rather than smoothed over.
 
 ---
 
@@ -171,7 +187,7 @@ Each subsystem is introduced only when the roadmap requires it — see [V1 Scope
 | **Persistence** | PostgreSQL, pgvector, SQLAlchemy 2.x (async), Psycopg 3, Alembic |
 | **AI & Retrieval** | Gemini Embeddings, Gemini Generation, LangGraph, MCP, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
 | **Development & Quality** | Docker, Docker Compose, pytest, Ruff, GitHub Actions |
-| **Planned** | Grounding refinements, controlled investigation tools, evaluation harness |
+| **Planned** | Human-in-the-loop approval, production API |
 
 ---
 
@@ -222,18 +238,32 @@ incidentweave/
 │   ├── ingest_repo.py
 │   ├── embed_chunks.py
 │   ├── search_repo.py
-│   └── investigate.py
+│   ├── investigate.py
+│   └── run_eval.py
+
+├── evaluation/
+│   ├── golden_set.json
+│   ├── golden.py
+│   ├── corpus.py
+│   ├── metrics.py
+│   └── runner.py
 │
 ├── migrations/
 │   └── versions/
 │
 ├── tests/
 │   ├── integration/
+│   ├── fixtures/
 │   └── unit/
 │
 ├── docs/
-│   ├── phase1-project-setup.md ... phase7-controlled-tools-audit.md
+│   ├── README.md
+│   ├── phase1-project-setup.md ... phase8-evaluation.md
+│   ├── later-optimizations.md
 │   └── learning/
+│       ├── README.md
+│       ├── 00-template.md
+│       └── 01-project-setup.md ... 07-mcp-integration.md
 │
 ├── .github/workflows/
 ├── alembic.ini
@@ -257,7 +287,12 @@ python -m venv .venv
 pip install -e ".[dev]"
 
 # 3. Configure environment variables
-Copy-Item .env.example .env   # then fill in real values — never commit .env
+Copy-Item .env.example .env   # then set GEMINI_API_KEY; never commit .env
+
+# GEMINI_API_KEY is required by embedding and investigation generation.
+# scripts/embed_chunks.py and app/investigation/generation.py read it from
+# the process environment with os.getenv; those paths do not load .env
+# themselves, so set the variable before running the commands below.
 
 # 4. Start Postgres + pgvector
 docker compose up -d db
@@ -270,6 +305,19 @@ uvicorn app.main:app --reload
 ```
 
 Health check: `GET /health`
+
+## Usage
+
+```powershell
+python scripts\ingest_repo.py <repo_path> <repo_name>
+python scripts\embed_chunks.py <repo_name>
+python scripts\investigate.py <repo_name> "<query>" --limit 5 --repo-path <repo_path>
+```
+
+The ingestion command stores Python source chunks. The embedding command
+requires `GEMINI_API_KEY` in the process environment. The investigation
+command uses the same key for Gemini generation and accepts `--limit` and
+`--repo-path` for retrieval breadth and the literal grep fallback.
 
 ---
 
@@ -298,7 +346,8 @@ GitHub Actions runs on every push and pull request:
 6. Full test suite
 7. Docker image build
 
-All checks run against a real Postgres+pgvector service container — not a mock.
+The integration checks run against a real Postgres+pgvector service container;
+unit tests use fakes or mocks where appropriate.
 
 ---
 
@@ -326,7 +375,8 @@ Every phase has two levels of documentation, kept deliberately separate:
 - **[`docs/phaseN-*.md`](docs/)** — the full build log: task specs, real bugs found, real fixes, real command output. This is the working history, warts included.
 - **[`docs/learning/`](docs/learning/)** — condensed, interview-ready writeups: what was built, why, and the key concept explained plainly.
 
-Nothing in either is retrofitted after the fact — every entry was written from real, verified output at the time the work happened.
+Phase 4-7 logs were written during development; Phase 1-3 logs and the
+learning writeups were reconstructed afterward and are marked as such.
 
 ---
 
@@ -343,10 +393,11 @@ flowchart LR
     style P5 fill:#2ea44f,color:#fff
     style P6 fill:#2ea44f,color:#fff
     style P7 fill:#2ea44f,color:#fff
+    style P8 fill:#2ea44f,color:#fff
 ```
 
-**Completed:** Phases 1 through 7
-**Next:** Phase 8 — Evaluation
+**Completed:** Phases 1 through 8
+**Next:** Phase 9 — Production CLI / API
 
 ---
 
@@ -359,9 +410,9 @@ pgvector                  PASS
 Alembic migration         PASS
 VECTOR(768)               PASS
 SQLAlchemy persistence    PASS
-Test suite                22 passed
-Real ingestion run        PASS (23 files, 31 chunks; tool/cache dirs excluded)
-Real Gemini embedding     PASS (31 chunks embedded; 768-dim vectors confirmed)
+Test suite                32 passed
+Real ingestion run        PASS (Phase 4 baseline: 23 files, 31 chunks; tool/cache dirs excluded)
+Real Gemini embedding     PASS (Phase 4 baseline: 31 chunks embedded; 768-dim vectors confirmed)
 Real hybrid search        PASS (RRF arithmetic independently verified)
 Real investigation run    PASS (diagnosis cross-checked line-by-line against
                            retrieved source; evidence guard verified against
