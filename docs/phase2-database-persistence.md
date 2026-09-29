@@ -1,5 +1,7 @@
 # Phase 2 — Database & Persistence
 
+Note: this log was reconstructed after the phase was completed, from the repository state and verified history; it was not written step-by-step during development.
+
 **Status:** Complete
 **Depends on:** Phase 1 (app skeleton, Docker Compose, CI) — confirmed working.
 

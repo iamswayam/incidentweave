@@ -55,6 +55,7 @@ async def investigate_repository(
     query_text: str,
     limit: int = 5,
     repo_path: str = str(REPO_ROOT),
+    persist: bool = True,
 ) -> dict[str, object]:
     """Perform the end-to-end grounded investigation flow for one query."""
 
@@ -113,30 +114,35 @@ async def investigate_repository(
             "tool_calls": result["tool_calls"],
         }
 
-    response_payload = result["response_payload"]
-    async with AsyncSessionLocal() as session:
-        investigation = await persist_investigation(
-            session=session,
-            repository_id=repository_id,
-            query=query_text,
-            response_payload=response_payload,
-            retrieval_results=result["retrieval_results"],
-            model=GEMINI_GENERATION_MODEL,
-            latency_ms=result["latency_ms"],
-            final_confidence=result["confidence"],
-            token_usage=(
-                response_payload.get("usageMetadata", {}).get("totalTokenCount")
-                if isinstance(response_payload.get("usageMetadata"), dict)
-                else None
-            ),
-            tool_call_trace=result["tool_calls"],
-        )
+    investigation_response = result["diagnosis"]
+    investigation_confidence = result["confidence"]
+    if persist:
+        response_payload = result["response_payload"]
+        async with AsyncSessionLocal() as session:
+            investigation = await persist_investigation(
+                session=session,
+                repository_id=repository_id,
+                query=query_text,
+                response_payload=response_payload,
+                retrieval_results=result["retrieval_results"],
+                model=GEMINI_GENERATION_MODEL,
+                latency_ms=result["latency_ms"],
+                final_confidence=result["confidence"],
+                token_usage=(
+                    response_payload.get("usageMetadata", {}).get("totalTokenCount")
+                    if isinstance(response_payload.get("usageMetadata"), dict)
+                    else None
+                ),
+                tool_call_trace=result["tool_calls"],
+            )
+        investigation_response = investigation.response
+        investigation_confidence = investigation.confidence
 
     return {
         "repository": repo_name,
         "query": query_text,
-        "diagnosis": result["diagnosis"] or investigation.response,
-        "confidence": result["confidence"] or investigation.confidence,
+        "diagnosis": result["diagnosis"] or investigation_response,
+        "confidence": result["confidence"] or investigation_confidence,
         "cited_chunk_ids": result["cited_chunk_ids"],
         "retrieval_results": result["retrieval_results"],
         "evidence_check": result["evidence_check"],

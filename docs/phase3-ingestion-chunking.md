@@ -1,5 +1,7 @@
 # Phase 3 — Repository Ingestion & Chunking
 
+Note: this log was reconstructed after the phase was completed, from the repository state and verified history; it was not written step-by-step during development.
+
 **Status:** Complete
 **Depends on:** Phase 2 schema (Repository, Chunk models + migration) — confirmed working.
 

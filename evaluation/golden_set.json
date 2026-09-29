@@ -1,0 +1,196 @@
+{
+  "pinned_sha": "62d0e58593bb22d187ec7930274b0457afd3be74",
+  "review_status": "pending maintainer review",
+  "counts": {
+    "direct": 8,
+    "paraphrased": 8,
+    "unanswerable_far": 4,
+    "unanswerable_near": 4
+  },
+  "questions": [
+    {
+      "id": "direct-01",
+      "category": "direct",
+      "question": "How is AsyncSessionLocal configured?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/db/session.py", "substring": "AsyncSessionLocal = async_sessionmaker"}],
+      "must_mention": [["async_sessionmaker"], ["expire_on_commit"]]
+    },
+    {
+      "id": "direct-02",
+      "category": "direct",
+      "question": "What chunk size does ingest_repo.py use?",
+      "seen_before": false,
+      "relevant": [{"file_path": "scripts/ingest_repo.py", "substring": "CHUNK_SIZE = 60"}],
+      "must_mention": [["60"], ["chunk"]]
+    },
+    {
+      "id": "direct-03",
+      "category": "direct",
+      "question": "Which Gemini embedding model is configured?",
+      "seen_before": false,
+      "relevant": [{"file_path": "scripts/embed_chunks.py", "substring": "models/gemini-embedding-001"}],
+      "must_mention": [["gemini-embedding-001"]]
+    },
+    {
+      "id": "direct-04",
+      "category": "direct",
+      "question": "What constant controls the minimum RRF score?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/guard.py", "substring": "MIN_ACCEPTABLE_RRF_SCORE = 0.016"}],
+      "must_mention": [["0.016"]]
+    },
+    {
+      "id": "direct-05",
+      "category": "direct",
+      "question": "What constant controls the maximum vector distance?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/guard.py", "substring": "MAX_ACCEPTABLE_VECTOR_DISTANCE = 0.5"}],
+      "must_mention": [["0.5"]]
+    },
+    {
+      "id": "direct-06",
+      "category": "direct",
+      "question": "What is the high-confidence RRF calibration margin?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/confidence.py", "substring": "MIN_CLEAR_RRF_SCORE = 0.032"}],
+      "must_mention": [["0.032"]]
+    },
+    {
+      "id": "direct-07",
+      "category": "direct",
+      "question": "Which MCP server class is instantiated?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/mcp_server.py", "substring": "server = FastMCP"}],
+      "must_mention": [["FastMCP"]]
+    },
+    {
+      "id": "direct-08",
+      "category": "direct",
+      "question": "Where is the final confidence passed into persistence?",
+      "seen_before": false,
+      "relevant": [{"file_path": "scripts/investigate.py", "substring": "final_confidence=result[\"confidence\"]"}],
+      "must_mention": [["final_confidence"], ["confidence"]]
+    },
+    {
+      "id": "paraphrased-01",
+      "category": "paraphrased",
+      "question": "How does the database layer establish non-blocking connections and create request-scoped objects?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/db/session.py", "substring": "create_async_engine"}],
+      "must_mention": [["async"], ["engine"]]
+    },
+    {
+      "id": "paraphrased-02",
+      "category": "paraphrased",
+      "question": "How are source files divided into overlapping pieces for indexing?",
+      "seen_before": false,
+      "relevant": [{"file_path": "scripts/ingest_repo.py", "substring": "OVERLAP_SIZE = 10"}],
+      "must_mention": [["overlap"], ["10"]]
+    },
+    {
+      "id": "paraphrased-03",
+      "category": "paraphrased",
+      "question": "How does the project turn text into numeric vectors before storage?",
+      "seen_before": false,
+      "relevant": [{"file_path": "scripts/embed_chunks.py", "substring": "outputDimensionality"}],
+      "must_mention": [["768"], ["embedding"]]
+    },
+    {
+      "id": "paraphrased-04",
+      "category": "paraphrased",
+      "question": "How are two independent search rankings combined into one ordered result?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/retrieval/hybrid_search.py", "substring": "rrf_score += 1 / (60 +"}],
+      "must_mention": [["rank"], ["RRF"]]
+    },
+    {
+      "id": "paraphrased-05",
+      "category": "paraphrased",
+      "question": "What stops a weak search result from reaching the language model?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/guard.py", "substring": "is_sufficient ="}],
+      "must_mention": [["evidence"], ["insufficient"]]
+    },
+    {
+      "id": "paraphrased-06",
+      "category": "paraphrased",
+      "question": "How is a model's certainty adjusted when the supporting search evidence is borderline?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/confidence.py", "substring": "return \"medium\""}],
+      "must_mention": [["medium"], ["high"]]
+    },
+    {
+      "id": "paraphrased-07",
+      "category": "paraphrased",
+      "question": "How can the application find an exact phrase in its local source tree?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/mcp_server.py", "substring": "casefold()"}],
+      "must_mention": [["literal"], ["source"]]
+    },
+    {
+      "id": "paraphrased-08",
+      "category": "paraphrased",
+      "question": "What record keeps the retrieved evidence and response metadata together?",
+      "seen_before": false,
+      "relevant": [{"file_path": "app/investigation/persistence.py", "substring": "tool_calls"}],
+      "must_mention": [["audit"], ["retrieved"]]
+    },
+    {
+      "id": "unanswerable_far-01",
+      "category": "unanswerable_far",
+      "question": "How do I bake sourdough bread at high altitude?",
+      "seen_before": false,
+      "absent_terms": ["sourdough", "bread"]
+    },
+    {
+      "id": "unanswerable_far-02",
+      "category": "unanswerable_far",
+      "question": "Which telescope can observe the rings of Saturn?",
+      "seen_before": false,
+      "absent_terms": ["telescope", "Saturn"]
+    },
+    {
+      "id": "unanswerable_far-03",
+      "category": "unanswerable_far",
+      "question": "How should a wooden canoe be repaired?",
+      "seen_before": false,
+      "absent_terms": ["canoe", "wooden"]
+    },
+    {
+      "id": "unanswerable_far-04",
+      "category": "unanswerable_far",
+      "question": "Why do coral reefs bleach during marine heatwaves?",
+      "seen_before": false,
+      "absent_terms": ["coral", "reef", "marine"]
+    },
+    {
+      "id": "unanswerable_near-01",
+      "category": "unanswerable_near",
+      "question": "How is Redis configured for this application?",
+      "seen_before": false,
+      "absent_terms": ["redis"]
+    },
+    {
+      "id": "unanswerable_near-02",
+      "category": "unanswerable_near",
+      "question": "How does the message queue retry failed jobs?",
+      "seen_before": false,
+      "absent_terms": ["rabbitmq", "kafka", "celery"]
+    },
+    {
+      "id": "unanswerable_near-03",
+      "category": "unanswerable_near",
+      "question": "Where is user login and authentication implemented?",
+      "seen_before": false,
+      "absent_terms": ["authentication", "login"]
+    },
+    {
+      "id": "unanswerable_near-04",
+      "category": "unanswerable_near",
+      "question": "Which Kubernetes deployment target does this service use?",
+      "seen_before": false,
+      "absent_terms": ["kubernetes", "deployment"]
+    }
+  ]
+}

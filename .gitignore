@@ -13,6 +13,12 @@ venv/
 .ruff_cache/
 .coverage
 
+# Evaluation caches and non-baseline reports
+evaluation/cache/
+evaluation/_snapshot/
+evaluation/results/run-*.json
+evaluation/results/evaluation_report.json
+
 # Tool worktrees
 .kilo/
 
