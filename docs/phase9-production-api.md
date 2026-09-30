@@ -1,6 +1,6 @@
 # Phase 9 — Production CLI / API
 
-**Status:** Implementation complete; live DB-backed HTTP checks passed through the permanent `scripts/serve.py` launcher. Bare Uvicorn selects Windows ProactorEventLoop before app import, which psycopg rejects.
+**Status:** Complete; live DB-backed HTTP checks passed through the permanent `scripts/serve.py` launcher. Bare Uvicorn selects Windows ProactorEventLoop before app import, which psycopg rejects.
 **Depends on:** Phase 8 (evaluation, merged to main) — confirmed.
 
 Same pattern as Phases 3-8: this document is the task spec AND the running

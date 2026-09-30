@@ -17,7 +17,8 @@ Fill in a new file using `00-template.md` after each major upgrade, not after ev
 | 5 | Investigation engine (Gemini grounding) | [05-investigation-engine.md](./05-investigation-engine.md) | Complete |
 | 6 | Grounding, confidence & LangGraph orchestration | [06-langgraph-agent.md](./06-langgraph-agent.md) | Complete |
 | 7 | MCP integration | [07-mcp-integration.md](./07-mcp-integration.md) | Drafted - author sections pending |
-| 8 | Human-in-the-loop gate | [08-human-in-the-loop.md](./08-human-in-the-loop.md) | Not started -- feature not yet built |
+| 8 | Evaluation | [08-evaluation.md](./08-evaluation.md) | Drafted - author sections pending |
+| 9 | Production CLI / API | [09-production-api.md](./09-production-api.md) | Drafted - author sections pending |
 
 ## When to update
 
