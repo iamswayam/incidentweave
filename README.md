@@ -15,6 +15,8 @@ IncidentWeave investigates production incidents by combining repository context,
 
 [Architecture](#architecture) • [Tech Stack](#technology-stack) • [Getting Started](#local-development) • [Engineering Log](#engineering-documentation) • [Roadmap](#roadmap)
 
+![IncidentWeave social preview](docs/incidentweave-social-preview.png)
+
 </div>
 
 ---
