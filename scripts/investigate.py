@@ -62,6 +62,8 @@ async def investigate_repository(
     if limit <= 0:
         raise ValueError("--limit must be greater than zero")
 
+    investigation_id: int | None = None
+
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
             select(Repository).where(Repository.name == repo_name)
@@ -100,6 +102,7 @@ async def investigate_repository(
     if not result["evidence_check"]["is_sufficient"]:
         return {
             "repository": repo_name,
+            "investigation_id": None,
             "query": query_text,
             "diagnosis": result["diagnosis"],
             "confidence": result["confidence"],
@@ -137,9 +140,11 @@ async def investigate_repository(
             )
         investigation_response = investigation.response
         investigation_confidence = investigation.confidence
+        investigation_id = investigation.id
 
     return {
         "repository": repo_name,
+        "investigation_id": investigation_id,
         "query": query_text,
         "diagnosis": result["diagnosis"] or investigation_response,
         "confidence": result["confidence"] or investigation_confidence,

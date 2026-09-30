@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = "postgresql://incidentweave:incidentweave@localhost:5432/incidentweave"
     gemini_api_key: str | None = None
+    api_protection_secret: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -271,3 +271,8 @@ When a problem is caused by noisy data, generated dependencies, or repo quality 
 **Possible later work:** Obtain maintainer review, add a held-out corpus, and consider a separately scoped answer-judging method.
 
 This file is intentionally a holding area for improvement work that should be revisited later once the core implementation is complete and verified.
+
+## Phase 9 API follow-ups
+
+- Invalid-secret requests are rejected before rate limiting, so unauthenticated traffic is not bounded by the per-IP limiter.
+- The 502 mapping has unit coverage, but a live failing-provider response has not been exercised.

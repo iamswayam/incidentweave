@@ -48,9 +48,9 @@ IncidentWeave investigates production incidents by combining repository context,
 | 6 | Grounding & Confidence | ✅ Complete |
 | 7 | Controlled Tools & Audit | ✅ Complete |
 | 8 | Evaluation | ✅ Complete |
-| 9 | Production CLI / API | 🔜 Next |
+| 9 | Production CLI / API | ✅ Complete |
 
-**Current milestone: Phase 8 complete.**
+**Current milestone: Phase 9 complete.** This is the last phase on the current roadmap.
 
 <details>
 <summary><strong>Phase 1 — Project Setup</strong></summary>
@@ -148,6 +148,20 @@ IncidentWeave investigates production incidents by combining repository context,
 
 </details>
 
+<details>
+<summary><strong>Phase 9 — Production CLI / API</strong></summary>
+<br>
+
+- Added `POST /investigations` for synchronous persisted investigations, `GET /investigations/{id}` for stored investigation/audit data, and `GET /repositories` for total and embedded chunk counts. `/health` remains open.
+- Investigation responses include evidence scores and a fixed note describing Phase 8's measured uncertainty instead of hiding it. Historical GET responses report `raw_confidence: null` because the existing database schema does not store the raw label.
+- On Windows, use the permanent `scripts/serve.py` launcher. It supplies a `SelectorEventLoop` before Uvicorn starts; Uvicorn's default Windows `ProactorEventLoop` is selected before importing the app and is unsupported by psycopg's async driver.
+- API protection limitation: “This is NOT production-grade authentication (no user accounts, no key rotation, no per-user quotas); real auth remains deferred.”
+- Rate-limit limitation: “The limiter is in memory: its counters reset on restart and are not shared across multiple workers or instances.”
+- Updated the Docker image to include `scripts/`, `alembic.ini`, and `migrations/`, resolving the missing-runtime-files gap recorded in Phase 1.
+- Automated test suite: `41 passed` in the fresh full run against the healthy PostgreSQL service.
+
+</details>
+
 ---
 
 ## Why This Project
@@ -187,7 +201,7 @@ Each subsystem is introduced only when the roadmap requires it — see [V1 Scope
 | **Persistence** | PostgreSQL, pgvector, SQLAlchemy 2.x (async), Psycopg 3, Alembic |
 | **AI & Retrieval** | Gemini Embeddings, Gemini Generation, LangGraph, MCP, pgvector cosine search, PostgreSQL Full-Text Search, Reciprocal Rank Fusion |
 | **Development & Quality** | Docker, Docker Compose, pytest, Ruff, GitHub Actions |
-| **Planned** | Human-in-the-loop approval, production API |
+| **API** | FastAPI endpoints, shared-secret header, in-memory per-IP rate limit |
 
 ---
 
@@ -232,6 +246,8 @@ incidentweave/
 │   │   ├── graph.py
 │   │   ├── mcp_server.py
 │   │   └── persistence.py
+│   ├── api.py
+│   ├── api_security.py
 │   └── main.py
 │
 ├── scripts/
@@ -239,6 +255,7 @@ incidentweave/
 │   ├── embed_chunks.py
 │   ├── search_repo.py
 │   ├── investigate.py
+│   ├── serve.py
 │   └── run_eval.py
 
 ├── evaluation/
@@ -258,7 +275,7 @@ incidentweave/
 │
 ├── docs/
 │   ├── README.md
-│   ├── phase1-project-setup.md ... phase8-evaluation.md
+│   ├── phase1-project-setup.md ... phase9-production-api.md
 │   ├── later-optimizations.md
 │   └── learning/
 │       ├── README.md
@@ -300,11 +317,97 @@ docker compose up -d db
 # 5. Apply migrations
 alembic upgrade head
 
-# 6. Run the API
+# 6. Run the API on Linux/macOS
 uvicorn app.main:app --reload
 ```
 
+On Windows, run `python scripts\serve.py` instead. Uvicorn chooses its
+Windows `ProactorEventLoop` before importing the app, and psycopg's async
+driver does not support that loop; this launcher selects a `SelectorEventLoop`.
+
 Health check: `GET /health`
+
+## API Usage
+
+Set `API_PROTECTION_SECRET` in the server environment and send it in the
+`X-API-Secret` header. The examples below use the actual Checkpoint 9
+`incidentweave-local` request and saved investigation ID 23; the POST body
+and response are from the real live request. The POST was issued by Python
+`urllib` during the live check, so its equivalent `curl.exe` command is shown
+without claiming that command itself produced the response. GET bodies are
+from actual `curl.exe` requests. No secret value is included here.
+
+```powershell
+$env:API_PROTECTION_SECRET = "<your shared secret>"
+curl.exe --include -X POST "http://127.0.0.1:8000/investigations" `
+    -H "Content-Type: application/json" `
+    -H "X-API-Secret: $env:API_PROTECTION_SECRET" `
+    --data-raw '{"repository_name":"incidentweave-local","query":"What chunk size does repository ingestion use?","limit":5}'
+```
+
+Actual POST response body:
+
+```json
+{
+    "investigation_id": 23,
+    "repository_name": "incidentweave-local",
+    "query": "What chunk size does repository ingestion use?",
+    "diagnosis": "Repository ingestion uses a chunk size of 60 lines (`CHUNK_SIZE = 60`) with an overlap size of 10 lines (`OVERLAP_SIZE = 10`), as defined in `scripts/ingest_repo.py`.",
+    "confidence": "medium",
+    "raw_confidence": "high",
+    "cited_chunk_ids": ["1334", "1333", "1335"],
+    "evidence_check": {
+        "is_sufficient": true,
+        "reason": "Evidence strength meets the RRF and vector-distance requirements.",
+        "best_rrf_score": 0.01639344262295082,
+        "best_vector_score": 0.319359047097336
+    },
+    "retry_used": false,
+    "tool_calls": [
+        {
+            "tool": "hybrid_search",
+            "stage": "initial",
+            "parameters": {
+                "repository_name": "incidentweave-local",
+                "query": "What chunk size does repository ingestion use?",
+                "limit": 5
+            },
+            "outcome": {
+                "result_count": 5,
+                "sufficient": true,
+                "reason": "Evidence strength meets the RRF and vector-distance requirements.",
+                "best_rrf_score": 0.01639344262295082,
+                "best_vector_score": 0.319359047097336
+            }
+        }
+    ],
+    "model": "gemini-3.5-flash-lite",
+    "latency_ms": 1341,
+    "evaluation_note": "Phase 8 evaluated 24 questions on one source snapshot: hybrid tied vector-only (hit@1 8/16, hit@3 and hit@5 11/16, MRR 0.573), the guard had 4 false accepts, and no tested vector-distance cutoff separated the groups. These results are diagnostic, not a benchmark; see docs/phase8-evaluation.md for limits."
+}
+```
+
+```powershell
+curl.exe --include -H "X-API-Secret: $env:API_PROTECTION_SECRET" `
+    http://127.0.0.1:8000/investigations/23
+```
+
+Actual GET response body:
+
+```json
+{"investigation_id":23,"repository_name":"incidentweave-local","query":"What chunk size does repository ingestion use?","diagnosis":"Repository ingestion uses a chunk size of 60 lines (`CHUNK_SIZE = 60`) with an overlap size of 10 lines (`OVERLAP_SIZE = 10`), as defined in `scripts/ingest_repo.py`.","confidence":"medium","raw_confidence":null,"cited_chunk_ids":["1334","1333","1335"],"evidence_check":{"is_sufficient":true,"reason":"Evidence strength meets the RRF and vector-distance requirements.","best_rrf_score":0.01639344262295082,"best_vector_score":0.319359047097336},"retry_used":false,"tool_calls":[{"tool":"hybrid_search","stage":"initial","outcome":{"reason":"Evidence strength meets the RRF and vector-distance requirements.","sufficient":true,"result_count":5,"best_rrf_score":0.01639344262295082,"best_vector_score":0.319359047097336},"parameters":{"limit":5,"query":"What chunk size does repository ingestion use?","repository_name":"incidentweave-local"}}],"model":"gemini-3.5-flash-lite","latency_ms":1341,"evaluation_note":"Phase 8 evaluated 24 questions on one source snapshot: hybrid tied vector-only (hit@1 8/16, hit@3 and hit@5 11/16, MRR 0.573), the guard had 4 false accepts, and no tested vector-distance cutoff separated the groups. These results are diagnostic, not a benchmark; see docs/phase8-evaluation.md for limits."}
+```
+
+```powershell
+curl.exe --include -H "X-API-Secret: $env:API_PROTECTION_SECRET" `
+    http://127.0.0.1:8000/repositories
+```
+
+Actual repository response body:
+
+```json
+[{"name":"dexterai","chunk_count":774,"embedded_chunk_count":0},{"name":"incidentweave","chunk_count":48,"embedded_chunk_count":0},{"name":"incidentweave-eval","chunk_count":70,"embedded_chunk_count":70},{"name":"incidentweave-local","chunk_count":72,"embedded_chunk_count":70}]
+```
 
 ## Usage
 
@@ -396,8 +499,8 @@ flowchart LR
     style P8 fill:#2ea44f,color:#fff
 ```
 
-**Completed:** Phases 1 through 8
-**Next:** Phase 9 — Production CLI / API
+**Completed:** Phases 1 through 9
+**Next:** None. Phase 9 is the last phase on the current roadmap.
 
 ---
 
@@ -410,7 +513,7 @@ pgvector                  PASS
 Alembic migration         PASS
 VECTOR(768)               PASS
 SQLAlchemy persistence    PASS
-Test suite                32 passed
+Test suite                41 passed (fresh full run against healthy PostgreSQL)
 Real ingestion run        PASS (Phase 4 baseline: 23 files, 31 chunks; tool/cache dirs excluded)
 Real Gemini embedding     PASS (Phase 4 baseline: 31 chunks embedded; 768-dim vectors confirmed)
 Real hybrid search        PASS (RRF arithmetic independently verified)
