@@ -182,7 +182,7 @@ flowchart TD
     E -->|Yes| G[Grounded Prompt Construction]
     G --> H[Gemini Investigation Engine]
     H --> I[Parsing & Confidence Extraction]
-    I --> J[Persistence: Investigation + Audit]
+    I --> J["Persistence: Investigation + Audit"]
 ```
 
 Each subsystem is introduced only when the roadmap requires it — see [V1 Scope Discipline](#v1-scope-discipline).
