@@ -4,6 +4,8 @@
 
 **Repository-aware AI incident investigation platform for backend systems.**
 
+**Phases: 9/9 complete · Tests: 41 passing · Endpoints: 4 routes (3 API + health) · Real bugs found & fixed across development: 6+**
+
 [![CI](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml/badge.svg)](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![PostgreSQL](https://img.shields.io/badge/postgres-pgvector-336791)
@@ -53,8 +55,10 @@ IncidentWeave investigates production incidents by combining repository context,
 **Current milestone: Phase 9 complete.** This is the last phase on the current roadmap.
 
 <details>
-<summary><strong>Phase 1 — Project Setup</strong></summary>
+<summary><strong>Phases 1-3 — Foundation (Setup, Database, Ingestion)</strong></summary>
 <br>
+
+### Phase 1 — Project Setup
 
 - FastAPI application with a health endpoint
 - Docker Compose environment (PostgreSQL + pgvector)
@@ -62,11 +66,7 @@ IncidentWeave investigates production incidents by combining repository context,
 - pytest and Ruff tooling
 - GitHub Actions CI
 
-</details>
-
-<details>
-<summary><strong>Phase 2 — Database & Persistence</strong></summary>
-<br>
+### Phase 2 — Database & Persistence
 
 - SQLAlchemy 2.x async integration
 - Alembic migrations, version-controlled from the first commit
@@ -74,11 +74,7 @@ IncidentWeave investigates production incidents by combining repository context,
 - `VECTOR(768)` embedding storage via pgvector
 - Real PostgreSQL integration tests — no mocked database layer
 
-</details>
-
-<details>
-<summary><strong>Phase 3 — Repository Ingestion & Chunking</strong></summary>
-<br>
+### Phase 3 — Repository Ingestion & Chunking
 
 - Local repository ingestion script with fixed-size, overlapping line-window chunking
 - Idempotent re-ingestion (safe to re-run against the same repository)
@@ -170,7 +166,7 @@ Most RAG demos stop at "retrieval works." IncidentWeave is built around a strict
 
 - The system will not call the LLM at all if retrieval evidence is weak — this guard was tightened after a real false positive was caught during manual testing, not assumed to be correct from design alone.
 - Every investigation is fully auditable: retrieval scores, cited evidence, and the raw model response are persisted together.
-- Phases 4-7 were verified with live PostgreSQL retrieval/investigation data and live Gemini calls where those phases require them; Phases 1-3 used the verification appropriate to setup, schema, ingestion, and CI. The full debugging history, including real bugs found and fixed, is kept in [`docs/`](#engineering-documentation) rather than smoothed over.
+- Phases 4-9 were verified with live PostgreSQL retrieval/investigation data and live Gemini calls where those phases require them; Phases 1-3 used the verification appropriate to setup, schema, ingestion, and CI. The full debugging history, including real bugs found and fixed, is kept in [`docs/`](#engineering-documentation) rather than smoothed over.
 
 ---
 
@@ -280,7 +276,7 @@ incidentweave/
 │   └── learning/
 │       ├── README.md
 │       ├── 00-template.md
-│       └── 01-project-setup.md ... 07-mcp-integration.md
+│       └── 01-project-setup.md ... 09-production-api.md
 │
 ├── .github/workflows/
 ├── alembic.ini
@@ -478,7 +474,7 @@ Every phase has two levels of documentation, kept deliberately separate:
 - **[`docs/phaseN-*.md`](docs/)** — the full build log: task specs, real bugs found, real fixes, real command output. This is the working history, warts included.
 - **[`docs/learning/`](docs/learning/)** — condensed, interview-ready writeups: what was built, why, and the key concept explained plainly.
 
-Phase 4-7 logs were written during development; Phase 1-3 logs and the
+Phase 4-9 logs were written during development; Phase 1-3 logs and the
 learning writeups were reconstructed afterward and are marked as such.
 
 ---
@@ -497,6 +493,7 @@ flowchart LR
     style P6 fill:#2ea44f,color:#fff
     style P7 fill:#2ea44f,color:#fff
     style P8 fill:#2ea44f,color:#fff
+    style P9 fill:#2ea44f,color:#fff
 ```
 
 **Completed:** Phases 1 through 9

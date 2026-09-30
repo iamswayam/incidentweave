@@ -1,6 +1,6 @@
 # Phase 8 — Evaluation
 
-**Status:** Not started
+**Status:** Complete
 **Depends on:** Phase 7 (controlled tools & audit, merged to main) — confirmed.
 
 Same pattern as Phases 3-7: this document is the task spec AND the running
