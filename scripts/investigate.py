@@ -21,6 +21,7 @@ from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.investigation.confidence import calibrate_confidence  # noqa: E402
 from app.investigation.generation import GEMINI_GENERATION_MODEL  # noqa: E402
 from app.investigation.graph import create_investigation_graph  # noqa: E402
+from app.investigation.parsing import extract_generation_trace  # noqa: E402
 from app.investigation.persistence import persist_investigation  # noqa: E402
 from scripts.embed_chunks import embed_text  # noqa: E402
 
@@ -115,6 +116,9 @@ async def investigate_repository(
             "confidence_calibrated": result["confidence_calibrated"],
             "calibration_note": result["calibration_note"],
             "tool_calls": result["tool_calls"],
+            "generation_trace": extract_generation_trace(
+                result.get("prompt"), result.get("response_payload")
+            ),
         }
 
     investigation_response = result["diagnosis"]
@@ -157,6 +161,9 @@ async def investigate_repository(
         "confidence_calibrated": result["confidence_calibrated"],
         "calibration_note": result["calibration_note"],
         "tool_calls": result["tool_calls"],
+        "generation_trace": extract_generation_trace(
+            result.get("prompt"), result.get("response_payload")
+        ),
     }
 
 

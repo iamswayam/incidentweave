@@ -16,7 +16,8 @@ venv/
 # Evaluation caches and non-baseline reports
 evaluation/cache/
 evaluation/_snapshot/
-evaluation/results/run-*.json
+evaluation/results/runs/*
+!evaluation/results/runs/.gitkeep
 evaluation/results/evaluation_report.json
 
 # Tool worktrees

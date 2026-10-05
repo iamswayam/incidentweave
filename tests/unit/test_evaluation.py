@@ -1,21 +1,28 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 from pathlib import Path
 
 import pytest
 
+from app.investigation.parsing import extract_generation_trace
 from evaluation.corpus import export_snapshot
 from evaluation.golden import load_golden_set, validate_golden_set, validate_index_labels
 from evaluation.metrics import (
+    abstention_kind,
     answer_screen,
+    citation_summary,
+    classify_outcome_v2,
     distance_sweep,
     guard_confusion,
+    guard_diagnostics,
     hit_at_k,
     is_refused,
     is_relevant,
     mean_reciprocal_rank,
     retrieval_summary,
+    value_distribution,
 )
 from evaluation.runner import resolve_corpus_sha
 from scripts.ingest_repo import chunk_lines, iter_python_files
@@ -60,6 +67,136 @@ def test_pinned_snapshot_exports_and_validates_with_expected_counts() -> None:
             if content.strip():
                 chunks += 1
     assert chunks == 70
+
+
+def test_extract_generation_trace_handles_payload_and_missing_usage() -> None:
+    payload = {
+        "candidates": [{
+            "finishReason": "STOP",
+            "content": {"parts": [{"text": "diagnosis: INSUFFICIENT_EVIDENCE"}]},
+        }],
+        "usageMetadata": {"totalTokenCount": 42, "promptTokenCount": 10, "candidateTokenCount": 32},
+    }
+    trace = extract_generation_trace("sample prompt", payload)
+    assert trace is not None
+    assert trace["prompt_sha256"] == hashlib.sha256(b"sample prompt").hexdigest()
+    assert trace["prompt_chars"] == len("sample prompt")
+    assert trace["finish_reason"] == "STOP"
+    assert trace["usage"] == payload["usageMetadata"]
+    assert trace["total_tokens"] == 42
+
+    empty_usage = {
+        "candidates": [
+            {"content": {"parts": [{"text": "diagnosis: insufficient evidence"}]}}
+        ]
+    }
+    trace2 = extract_generation_trace("sample prompt", empty_usage)
+    assert trace2 is not None
+    assert trace2["usage"] == {}
+    assert trace2["total_tokens"] is None
+
+    assert extract_generation_trace(None, None) is None
+
+
+def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
+    assert (
+        abstention_kind("INSUFFICIENT_EVIDENCE", True, "INSUFFICIENT_EVIDENCE")
+        == "explicit"
+    )
+    assert (
+        abstention_kind(
+            "INSUFFICIENT_EVIDENCE",
+            True,
+            "diagnosis: insufficient evidence",
+        )
+        == "parse_fallback"
+    )
+    assert abstention_kind("INSUFFICIENT_EVIDENCE", False, "INSUFFICIENT_EVIDENCE") is None
+
+    cases = [
+        ("answerable", None, False, False, True, True, "correct_labeled_context"),
+        ("answerable", None, False, False, False, True, "correct_unlabeled_context"),
+        ("answerable", None, False, False, True, False, "incomplete_or_wrong"),
+        ("answerable", None, False, True, False, None, "retrieval_miss_abstained"),
+        ("answerable", None, False, True, True, None, "model_false_abstention"),
+        ("answerable", None, True, False, None, None, "guard_false_refusal"),
+        ("unanswerable", None, True, False, None, None, "guard_true_refusal"),
+        ("unanswerable", None, False, True, None, None, "model_abstained"),
+        ("unanswerable", None, False, False, None, None, "answered_unanswerable"),
+        ("answerable", "error", False, False, True, True, "error"),
+    ]
+    for category, error, guard_refused, abstained, labeled_in_context, screen_pass, expected in cases:
+        assert classify_outcome_v2(
+            category,
+            error,
+            guard_refused,
+            abstained,
+            labeled_in_context,
+            screen_pass,
+        ) == expected
+
+    assert value_distribution([3, 5, 1, None, 9]) == {
+        "min": 1,
+        "median": 5,
+        "max": 9,
+        "count": 4,
+    }
+    assert value_distribution([None, None]) == {
+        "min": None,
+        "median": None,
+        "max": None,
+        "count": 0,
+    }
+    assert value_distribution([]) == {
+        "min": None,
+        "median": None,
+        "max": None,
+        "count": 0,
+    }
+
+    answerable_legacy = [
+        {"legacy": "correct", "v2": "correct_labeled_context"},
+        {"legacy": "correct", "v2": "correct_unlabeled_context"},
+    ]
+    assert sum(1 for row in answerable_legacy if row["legacy"] == "correct") == sum(
+        1 for row in answerable_legacy if row["v2"] in {"correct_labeled_context", "correct_unlabeled_context"}
+    )
+    refused_legacy = [{"legacy": "refused", "v2": "guard_true_refusal"}]
+    assert sum(1 for row in refused_legacy if row["legacy"] == "refused") == sum(
+        1 for row in refused_legacy if row["v2"] == "guard_true_refusal"
+    )
+    false_answer_legacy = [{"legacy": "falsely answered", "v2": "model_abstained"}, {"legacy": "falsely answered", "v2": "answered_unanswerable"}]
+    assert sum(1 for row in false_answer_legacy if row["legacy"] == "falsely answered") == sum(
+        1 for row in false_answer_legacy if row["v2"] in {"model_abstained", "answered_unanswerable"}
+    )
+
+
+def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
+    checks = [
+        {"reason": "RRF threshold below minimum"},
+        {"reason": "vector distance too large"},
+    ]
+    assert guard_diagnostics(checks, 0.016)["rrf_gate_can_reject_nonempty_vector_results"] is False
+    assert guard_diagnostics(checks, 0.02)["rrf_gate_can_reject_nonempty_vector_results"] is True
+
+    records = [{
+        "category": "direct",
+        "diagnosis": "answer",
+        "cited_chunk_ids": ["a", "b"],
+        "cited_chunk_relevance": [{"relevant": True}, {"relevant": False}],
+    }, {
+        "category": "direct",
+        "diagnosis": "answer",
+        "cited_chunk_ids": ["c"],
+        "cited_chunk_relevance": [{"relevant": False}],
+    }, {
+        "category": "unanswerable_far",
+        "diagnosis": "INSUFFICIENT_EVIDENCE",
+        "cited_chunk_ids": [],
+        "cited_chunk_relevance": [],
+    }]
+    summary = citation_summary(records)
+    assert summary == {"cited_total": 3, "cited_relevant": 1, "answers_with_zero_citations": 0}
 
 
 def test_retrieval_metrics_handle_hits_ties_and_no_hit() -> None:
@@ -255,3 +392,77 @@ def test_index_validation_requires_a_reachable_chunk() -> None:
     assert validate_index_labels(questions, [result("source.py", "no target")]) == [
         "direct-1: no indexed chunk matches a relevance label"
     ]
+
+
+def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes() -> None:
+    from evaluation.compare import compare_reports
+    from evaluation.runner import build_run_metadata
+
+    a = build_run_metadata(
+        run_id="20260101T000000Z-abc1234",
+        started_at="2026-01-01T00:00:00+00:00",
+        finished_at="2026-01-01T00:01:00+00:00",
+        corpus_sha="deadbeef",
+        code_sha="code123",
+        code_dirty=False,
+        models={"embedding": "m1", "generation": "g1"},
+        limit=5,
+        passes=2,
+    )
+    b = build_run_metadata(
+        run_id="20260101T000001Z-abc1234",
+        started_at="2026-01-01T00:00:01+00:00",
+        finished_at="2026-01-01T00:01:01+00:00",
+        corpus_sha="deadbeef",
+        code_sha="code123",
+        code_dirty=False,
+        models={"embedding": "m1", "generation": "g1"},
+        limit=5,
+        passes=2,
+    )
+    assert a["config_sha256"] == b["config_sha256"]
+
+    report_a = {
+        "pinned_sha": "deadbeef",
+        "run_id": "a",
+        "config_sha256": a["config_sha256"],
+        "outcome_v2_counts": {"correct_labeled_context": 2, "model_abstained": 1},
+        "guard_counts": {"true_accept": 2, "false_refusal": 1},
+        "retrieval_tables": {"vector": {"hit_at_1": 2, "hit_at_3": 3}},
+        "latency_summary": {"pass_1": {"generation_ms": {"median": 100}}},
+        "token_summary": {"pass_1": {"total_tokens": {"median": 120}}},
+        "records": [[
+            {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ]],
+    }
+    report_b = {
+        "pinned_sha": "deadbeef",
+        "run_id": "b",
+        "config_sha256": a["config_sha256"],
+        "outcome_v2_counts": {"correct_labeled_context": 1, "model_abstained": 2},
+        "guard_counts": {"true_accept": 1, "false_refusal": 2},
+        "retrieval_tables": {"vector": {"hit_at_1": 1, "hit_at_3": 2}},
+        "latency_summary": {"pass_1": {"generation_ms": {"median": 200}}},
+        "token_summary": {"pass_1": {"total_tokens": {"median": 180}}},
+        "records": [[
+            {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ]],
+    }
+
+    diff = compare_reports(report_a, report_b)
+    assert diff["outcome_v2_counts_delta"]["correct_labeled_context"] == -1
+    assert diff["question_flips"]["q1"]["outcome_v2"] == {
+        "from": "correct_labeled_context",
+        "to": "incomplete_or_wrong",
+    }
+    assert diff["question_flips"]["q1"]["labeled_rank"] == {"from": 1, "to": 3}
+    assert diff["generation_latency_delta"]["median_generation_ms"] == 100
+    assert diff["total_token_delta"]["median_total_tokens"] == 60
+
+    legacy = {
+        "run_id": "legacy",
+        "records": [{"id": "q1", "outcome_v2": "correct_labeled_context"}],
+    }
+    assert compare_reports(legacy, report_a)["legacy_report"] is True

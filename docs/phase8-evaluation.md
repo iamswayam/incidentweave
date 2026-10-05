@@ -411,3 +411,18 @@ reviewed with the maintainer. Finish with a report containing: (1) every
 golden set question in a table, for the maintainer's review; (2) the list of
 non-correct outcomes and the questions that flipped between runs; (3)
 anything that could not be verified.
+
+---
+
+## Phase 8b addendum (measurement fix)
+
+This addendum records the follow-up measurement work done after the original
+Phase 8 run. The goal was to fix evaluation validity without changing the
+underlying production behavior or the rule set under test.
+
+- Verification run: `20261005T143011Z-abe7796`
+- Report: `evaluation/results/runs/20261005T143011Z-abe7796/report.json`
+- Snapshot: `62d0e58593bb22d187ec7930274b0457afd3be74`; `snapshot_files` 40, `snapshot_chunks` 70.
+- Added fields: `code_sha`, `code_dirty`, `generation_trace`, `guard_refused`, `generation_ran`, `abstention_kind`, `labeled_rank`, `labeled_chunk_in_context`, `screen_pass`, `outcome_v2`, `run_id`, `config_sha256`, and per-pass summary keys for citation, latency, and token metrics.
+- The fix preserves legacy `outcome` for continuity and stores the new additive taxonomy under `outcome_v2`.
+- No `GEMINI_API_KEY` value is stored in the repository or the generated report.

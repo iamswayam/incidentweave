@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Mapping, Sequence
 
@@ -68,6 +69,50 @@ def _matches_retrieved_citation(response_text: str, result: Mapping[str, object]
         rf"{re.escape(str(line_start))}\s*[-–]\s*{re.escape(str(line_end))}"
     )
     return bool(re.search(pattern, response_text, re.IGNORECASE | re.DOTALL))
+
+
+def extract_generation_trace(
+    prompt: str | None,
+    response_payload: Mapping[str, object] | None,
+) -> dict[str, object] | None:
+    """Return a compact fingerprint and metadata for one generation call."""
+
+    if response_payload is None:
+        return None
+    if not isinstance(response_payload, Mapping):
+        return None
+
+    candidates = response_payload.get("candidates")
+    candidate: Mapping[str, object] | None = None
+    if isinstance(candidates, list) and candidates:
+        first_candidate = candidates[0]
+        if isinstance(first_candidate, Mapping):
+            candidate = first_candidate
+
+    usage = response_payload.get("usageMetadata")
+    usage_dict: dict[str, object] = (
+        dict(usage) if isinstance(usage, Mapping) else {}
+    )
+    total_tokens = (
+        usage_dict.get("totalTokenCount")
+        if isinstance(usage_dict.get("totalTokenCount"), int)
+        else None
+    )
+    raw_text = _response_text(response_payload)
+    prompt_text = prompt if isinstance(prompt, str) else ""
+
+    return {
+        "prompt_sha256": hashlib.sha256(prompt_text.encode("utf-8")).hexdigest(),
+        "prompt_chars": len(prompt_text),
+        "raw_text": raw_text,
+        "finish_reason": (
+            candidate.get("finishReason")
+            if candidate and isinstance(candidate.get("finishReason"), str)
+            else None
+        ),
+        "usage": usage_dict,
+        "total_tokens": total_tokens,
+    }
 
 
 def parse_investigation_response(
