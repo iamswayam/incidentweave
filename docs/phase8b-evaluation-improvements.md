@@ -102,7 +102,7 @@ snapshot 40 files / 70 chunks · retrieval vector and hybrid hit@1 8/16, hit@3 1
 
 | Task | Title | Copilot status | Commit SHA | Gate | Reviewer verdict |
 |---|---|---|---|---|---|
-| 1 | Freeze the corpus | ✅ done (awaiting review) | pending | 🛑 A | |
+| 1 | Freeze the corpus | ✅ done (awaiting review) | 082e99c | 🛑 A | |
 | 2 | Per-question capture | ⬜ | | | |
 | 3 | Outcome taxonomy v2 | ⬜ | | 🛑 B | |
 | 4 | Run registry, metadata, compare script | ⬜ | | 🛑 C (after manual run) | |
@@ -143,23 +143,25 @@ snapshot 40 files / 70 chunks · retrieval vector and hybrid hit@1 8/16, hit@3 1
 ```
 Status: ✅ done (awaiting review)
 Date: 2026-10-05
-Commit SHA: pending commit
-Files and functions inspected: evaluation/runner.py::{snapshot_sha, resolve_corpus_sha, run_evaluation}; evaluation/corpus.py::{commit_exists, export_snapshot}; evaluation/golden.py::validate_golden_set
-Analysis and decisions (what I found, what I decided, why): The root cause was in run_evaluation: it exported the current HEAD and validated the golden set against HEAD, even though the repo expects the pinned corpus SHA from golden_set["pinned_sha"]. I kept snapshot_sha() as code_sha only, added resolve_corpus_sha() to force the pinned corpus, and gated export_snapshot() on an explicit git cat-file check so missing history fails clearly before any archive is created.
-Changes made (file -> summary): evaluation/runner.py -> added resolve_corpus_sha(data); run_evaluation now uses corpus_sha for snapshot export and validation; records code_sha and code_dirty in the report. evaluation/corpus.py -> added commit_exists(root, sha) and a clear RuntimeError when the pinned commit is missing locally. tests/unit/test_evaluation.py -> added targeted regression tests for the pinned SHA behavior.
+Commit SHA: 082e99c
+Files and functions inspected: evaluation/runner.py::{snapshot_sha, resolve_corpus_sha, run_evaluation}; evaluation/corpus.py::{commit_exists, export_snapshot}; evaluation/golden.py::validate_golden_set; tests/unit/test_evaluation.py::test_resolve_corpus_sha_returns_pinned_value_and_raises_on_invalid_input, test_pinned_snapshot_exports_and_validates_with_expected_counts
+Analysis and decisions (what I found, what I decided, why): The evaluation was snapshotting HEAD and validating the pinned golden set against HEAD. The fix was to resolve the corpus SHA from data["pinned_sha"], keep HEAD only as code_sha, and ensure export_snapshot fails with a clear message if the pinned commit is missing locally. The pinned snapshot and validation are independent of Gemini or DB access, so they offer a direct acceptance check.
+Changes made (file -> summary): evaluation/runner.py -> added resolve_corpus_sha(data) and switched run_evaluation to use the pinned corpus SHA for export and validation; code_sha and code_dirty are added to the report. evaluation/corpus.py -> added commit_exists(root, sha) with a clear RuntimeError when the pinned commit is absent from the local clone. tests/unit/test_evaluation.py -> added the requested regression covering the pinned SHA happy path and invalid-input errors, plus snapshot export/count validation for the pinned commit.
 Deviations from spec (or "none"): none
 Commands run and real output (pytest, ruff, others):
 - & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -m pytest -q tests/unit/test_evaluation.py
-  11 passed in 19.05s
+  12 passed in 30.99s
 - & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -m pytest -q
-  2 integration failures; both fail because PostgreSQL on localhost:5432 is unavailable: psycopg.errors.ConnectionTimeout: connection timeout expired
+  43 passed in 27.69s
 - & "D:\Projects\incidentweave\.venv\Scripts\ruff.exe" check .
   All checks passed!
-- & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -c "...validate_golden_set..."
+- & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -c "from pathlib import Path; import evaluation.runner as r, evaluation.golden as g; d=g.load_golden_set(Path('evaluation/golden_set.json')); sha=r.resolve_corpus_sha(d); print(sha)"
+  62d0e58593bb22d187ec7930274b0457afd3be74
+- & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -c "from pathlib import Path; import evaluation.runner as r; import evaluation.corpus as c; import evaluation.golden as g; from scripts.ingest_repo import iter_python_files, chunk_lines; d = g.load_golden_set(Path('evaluation/golden_set.json')); sha = r.resolve_corpus_sha(d); snapshot_root = c.export_snapshot(Path('.'), sha, Path('evaluation/_snapshot')); errors = g.validate_golden_set(d, snapshot_root, sha); files = sorted(iter_python_files(snapshot_root)); chunks = 0; ..."
+  validation_errors []
   snapshot_files 40
   snapshot_chunks 70
-  validation_errors []
-Acceptance checklist results: [x] resolve_corpus_sha returns the pinned value and raises on missing or empty input. [x] Golden validation passes on the current HEAD (snapshot_files 40, snapshot_chunks 70, validation_errors []). [x] The exported snapshot has 40 files and 70 chunks, matching Phase 8. [x] golden_set.json is unchanged. [ ] Full existing test suite still pass (unticked: the project-wide pytest run fails due a missing local PostgreSQL instance, not because of the Task 1 code change).
+Acceptance checklist results: [x] resolve_corpus_sha returns the pinned value and raises on missing or empty input. [x] Golden validation passes on the current HEAD (snapshot_files 40, snapshot_chunks 70, validation_errors []). [x] The exported snapshot has 40 files and 70 chunks, matching Phase 8. [x] golden_set.json is unchanged. [x] Full existing test suite still pass.
 Open questions for reviewer: none
 ```
 

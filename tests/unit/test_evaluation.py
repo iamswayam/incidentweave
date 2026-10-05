@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
 
-from evaluation.golden import validate_golden_set, validate_index_labels
+from evaluation.corpus import export_snapshot
+from evaluation.golden import load_golden_set, validate_golden_set, validate_index_labels
 from evaluation.metrics import (
     answer_screen,
     distance_sweep,
@@ -16,6 +18,7 @@ from evaluation.metrics import (
     retrieval_summary,
 )
 from evaluation.runner import resolve_corpus_sha
+from scripts.ingest_repo import chunk_lines, iter_python_files
 
 
 def result(file_path: str, content: str) -> dict[str, object]:
@@ -30,6 +33,33 @@ def test_resolve_corpus_sha_returns_pinned_value_and_raises_on_invalid_input() -
 
     with pytest.raises(ValueError, match="pinned_sha"):
         resolve_corpus_sha({"pinned_sha": ""})
+
+
+def test_pinned_snapshot_exports_and_validates_with_expected_counts() -> None:
+    root = Path(__file__).resolve().parents[2]
+    data = load_golden_set(root / "evaluation" / "golden_set.json")
+    sha = resolve_corpus_sha(data)
+    snapshot_parent = root / "evaluation" / "_snapshot"
+    if snapshot_parent.exists():
+        shutil.rmtree(snapshot_parent)
+    try:
+        snapshot_root = export_snapshot(root, sha, snapshot_parent)
+    except RuntimeError as exc:
+        pytest.skip(f"pinned commit not present in this clone: {exc}")
+
+    errors = validate_golden_set(data, snapshot_root, sha)
+    assert errors == []
+    files = sorted(iter_python_files(snapshot_root))
+    assert len(files) == 40
+
+    chunks = 0
+    for file_path in files:
+        lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for start_index, end_index in chunk_lines(lines):
+            content = "\n".join(lines[start_index:end_index])
+            if content.strip():
+                chunks += 1
+    assert chunks == 70
 
 
 def test_retrieval_metrics_handle_hits_ties_and_no_hit() -> None:
