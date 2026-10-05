@@ -103,11 +103,11 @@ snapshot 40 files / 70 chunks · retrieval vector and hybrid hit@1 8/16, hit@3 1
 | Task | Title | Copilot status | Commit SHA | Gate | Reviewer verdict |
 |---|---|---|---|---|---|
 | 1 | Freeze the corpus | 🟢 approved | 082e99c | 🛑 A | Approved |
-| 2 | Per-question capture | ✅ done (awaiting review) | working tree | | |
-| 3 | Outcome taxonomy v2 | ✅ done (awaiting review) | working tree | 🛑 B | |
-| 4 | Run registry, metadata, compare script | ✅ done (awaiting review) | working tree | 🛑 C (after manual run) | |
-| 5 | Report diagnostics | ✅ done (awaiting review) | working tree | | |
-| 6 | Docs addendum | ✅ done (awaiting review) | working tree | 🛑 D (final) | |
+| 2 | Per-question capture | ✅ done (awaiting review) | fea9d8d | | |
+| 3 | Outcome taxonomy v2 | ✅ done (awaiting review) | fea9d8d, 2a6c658 | 🛑 B | |
+| 4 | Run registry, metadata, compare script | ✅ done (awaiting review) | fea9d8d | 🛑 C (after manual run) | |
+| 5 | Report diagnostics | ✅ done (awaiting review) | fea9d8d | | |
+| 6 | Docs addendum | ✅ done (awaiting review) | fea9d8d | 🛑 D (final) | |
 
 ---
 
@@ -224,7 +224,7 @@ Required follow-ups: none for Task 1.
 ```
 Status: ✅ done (awaiting review)
 Date: 2026-10-05
-Commit SHA: working tree (not committed)
+Commit SHA: fea9d8d
 Files and functions inspected: app/investigation/parsing.py::extract_generation_trace; scripts/investigate.py::investigate_repository; evaluation/runner.py::run_pipeline_once; tests/unit/test_evaluation.py::test_extract_generation_trace_handles_payload_and_missing_usage; tests/unit/test_api.py; tests/unit/test_investigation_graph.py
 Analysis and decisions (what I found, what I decided, why): The runtime path already carried `prompt` and `response_payload` through the graph state, so the fix was to add a compact, non-secret trace object at the boundary without changing any existing API contract or graph routing. The critical detail was to keep the raw text and usage metadata only, never the full payload.
 Changes made (file -> summary): app/investigation/parsing.py -> added pure `extract_generation_trace` that hashes the prompt, copies usageMetadata, records `finishReason`, `raw_text`, and `total_tokens` while dropping the full payload. scripts/investigate.py -> adds `generation_trace` to both the success and insufficient-evidence return dicts without altering the existing keys. evaluation/runner.py -> records per-question `wall_ms`, `throttle_wait_ms`, `generation_ms`, `generation_http_calls`, and `generation_trace` for the success path and `None` values on errors.
@@ -310,10 +310,10 @@ Required follow-ups:
 ```
 Status: ✅ done (awaiting review)
 Date: 2026-10-05
-Commit SHA: working tree (not committed)
+Commit SHA: fea9d8d; 2a6c658 (runner regression test and Ruff cleanup)
 Files and functions inspected: evaluation/metrics.py::{abstention_kind, classify_outcome_v2, value_distribution}; evaluation/runner.py::{classify_outcome_v2_for_records, summarize_run, run_pipeline_once}; tests/unit/test_evaluation.py::test_abstention_kind_and_outcome_v2_and_value_distribution
-Analysis and decisions (what I found, what I decided, why): The legacy outcomes conflated three distinct states: guard refusal, model abstention, and retrieval miss. The fix was to keep the legacy `outcome` field untouched while adding `outcome_v2` as a pure additive taxonomy and to compute `abstention_kind` only for real generation runs. This separates answerable vs. unanswerable logic without changing the old report semantics.
-Changes made (file -> summary): evaluation/metrics.py -> added `abstention_kind`, `classify_outcome_v2`, and `value_distribution` with the required table-driven logic and empty-value handling. evaluation/runner.py -> added `guard_refused`, `generation_ran`, `abstention_kind`, `labeled_rank`, `labeled_chunk_in_context`, `screen_pass`, and `outcome_v2` per record, and `run_summaries[i]` now includes `outcome_v2_counts`.
+Analysis and decisions (what I found, what I decided, why): The legacy outcomes conflated three distinct states: guard refusal, model abstention, and retrieval miss. The fix was to keep the legacy `outcome` field untouched while adding `outcome_v2` as a pure additive taxonomy and to compute `abstention_kind` only for real generation runs. The final review found that an explicit abstention could still pass the keyword screen; `screen_pass` is now left unset for abstentions, while legacy outcome semantics remain unchanged.
+Changes made (file -> summary): evaluation/metrics.py -> added `abstention_kind`, `classify_outcome_v2`, and `value_distribution` with the required table-driven logic and empty-value handling. evaluation/runner.py -> added `guard_refused`, `generation_ran`, `abstention_kind`, `labeled_rank`, `labeled_chunk_in_context`, `screen_pass`, and `outcome_v2` per record, and `run_summaries[i]` now includes `outcome_v2_counts`; answer screening is gated on non-abstention. tests/unit/test_evaluation.py -> added a runner-level regression reproducing the explicit-abstention mismatch.
 Deviations from spec (or "none"): none
 Commands run and real output (pytest, ruff, others):
 - & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -m pytest -q
@@ -398,7 +398,7 @@ Run `.\.venv\Scripts\python.exe scripts\run_eval.py`, then check:
 ```
 Status: ✅ done (awaiting review)
 Date: 2026-10-05
-Commit SHA: working tree (not committed)
+Commit SHA: fea9d8d
 Files and functions inspected: evaluation/runner.py::{build_run_metadata, run_evaluation, write_json}; scripts/run_eval.py; evaluation/compare.py; scripts/compare_runs.py; .gitignore; evaluation/results/runs/.gitkeep; app/investigation/guard.py, confidence.py, prompt.py
 Analysis and decisions (what I found, what I decided, why): The real issue was run overwriting and missing configuration metadata. The fix was to give every report a unique run ID, persist all reports under `evaluation/results/runs/<run_id>/report.json`, and add a metadata fingerprint plus a diff utility that tolerates legacy report structure. This measurement fix requires real generation calls to confirm the live output, so the run was executed against the pinned evaluation repo after the code changes.
 Changes made (file -> summary): evaluation/runner.py -> added `build_run_metadata`, unique `run_id`, `code_sha`/`code_dirty`, and stable `config_sha256` generation. scripts/run_eval.py -> prints the run ID and path and preserves the snapshot cleanup. evaluation/compare.py -> added stable comparison logic with legacy-safe handling. scripts/compare_runs.py -> adds readable CLI diff output. .gitignore -> ignores run directories while keeping `.gitkeep` tracked.
@@ -469,7 +469,7 @@ Required follow-ups:
 ```
 Status: ✅ done (awaiting review)
 Date: 2026-10-05
-Commit SHA: working tree (not committed)
+Commit SHA: fea9d8d
 Files and functions inspected: evaluation/metrics.py::{citation_summary, guard_diagnostics, latency_summary, token_summary}; evaluation/runner.py::run_evaluation; evaluation/results/runs/20261005T143011Z-abe7796/report.json
 Analysis and decisions (what I found, what I decided, why): The measurement issue was not just per-record data; the report also needed summary-level diagnostics so the measured guard behavior and citation quality were visible without inventing new pipeline logic. The fix is additive-only: compute summary tables from existing records and keep them in the report header.
 Changes made (file -> summary): evaluation/metrics.py -> added summary functions for citation quality, guard diagnostics, latency, and tokens. evaluation/runner.py -> includes these keys at the top level for each pass (`citation_summary`, `guard_diagnostics`, `latency_summary`, `token_summary`) and keeps the existing Phase 8 report structure stable.
@@ -512,7 +512,7 @@ Required follow-ups:
 ```
 Status: ✅ done (awaiting review)
 Date: 2026-10-05
-Commit SHA: working tree (not committed)
+Commit SHA: fea9d8d
 Files and functions inspected: docs/phase8-evaluation.md; docs/README.md; README.md; docs/later-optimizations.md; evaluation/results/runs/20261005T143011Z-abe7796/report.json
 Analysis and decisions (what I found, what I decided, why): The final phase of the measurement fix was to record the real run and the updated taxonomy in the documentation. The wording needed to stay faithful to the actual run and avoid reusing the legacy false-answer framing. The docs therefore use the additive `outcome_v2` counts, not the old combined outcome labels.
 Changes made (file -> summary): docs/README.md -> added the Phase 8b work log link; README.md -> replaced the legacy Phase 8 wording with the verified `outcome_v2` split; docs/phase8-evaluation.md -> added a short Phase 8b addendum noting the run ID and the new metadata fields; docs/later-optimizations.md -> added a deferred Phase 8b follow-up point.
@@ -559,7 +559,7 @@ Langfuse spike go / no-go:
 
 | Date | Task | What changed | Why | Reviewer decision |
 |---|---|---|---|---|
-| | | | | |
+| 2026-10-05 | 4 / final verification | Final run observed one existing investigation and audit row for `incidentweave-eval`, both dated 2026-09-29; `paraphrased-03` and `paraphrased-08` also varied from the expected outcomes. | Preserve pre-existing database state; record actual model-dependent results without deleting data or changing labels. | |
 
 ---
 
@@ -580,6 +580,7 @@ Langfuse spike go / no-go:
 | 2026-10-05 | Langfuse deferred until the evaluation validity fixes are done | Maintainer, with Claude | Langfuse would sit on top of a corpus that drifts with HEAD and an outcome taxonomy that mislabels abstentions; it fixes neither |
 | 2026-10-05 | Keep legacy `outcome` and add `outcome_v2` | Claude | Preserves continuity with Phase 8 docs and the committed `baseline.json` |
 | 2026-10-05 | Do not change guard thresholds, retrieval or prompts in this phase | Claude | Phase 8 rule: no tuning against a 24-question set without a held-out set |
+| 2026-10-05 | Preserve pre-existing evaluation investigation/audit rows | Copilot | Both rows predate the final run; deleting persisted data is outside this verification and not authorized |
 
 ---
 
@@ -591,3 +592,19 @@ Langfuse spike go / no-go:
 - [ ] Deviations table and Open questions table are resolved.
 - [ ] `git diff` against the Phase 9 commit shows no change to the do-not-change files listed in section 1.
 - [ ] No secrets in the repository, logs or reports.
+
+## 15. Final evidence bundle (Copilot)
+
+**Status:** Self-validation complete; awaiting reviewer. No reviewer approval is claimed.
+
+**Commits:** `fea9d8d` (`Phase 8b: Tasks 2-6`); `2a6c658` (`Test explicit abstention outcome mismatch`). The latter adds the runner-level regression test and resolves Ruff line-length findings.
+
+**Pass-1 mismatch fix:** The prior report `20261005T143011Z-abe7796` had `paraphrased-05` classified as legacy `correct` while `outcome_v2` was `retrieval_miss_abstained`; it was explicitly abstaining, had no labeled chunk in context, but `screen_pass` was true. `run_pipeline_once` now skips `answer_screen` for abstentions. `test_explicit_abstention_cannot_pass_answer_screen` reproduces that condition and asserts `screen_pass is None`, legacy `outcome == "correct"`, and `outcome_v2 == "retrieval_miss_abstained"`.
+
+**Automated checks:** `pytest -q` -> `48 passed in 38.58s`; `ruff check .` -> `All checks passed!`. The isolated mismatch regression also passed (`1 passed in 17.99s`).
+
+**Final manual run:** `20261005T152746Z-2a6c658`, report `evaluation/results/runs/20261005T152746Z-2a6c658/report.json`. Report metadata: pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, code SHA `2a6c658636e9f0e8d77933f3d899cff1b37e3d03`, `code_dirty: true` (untracked files were present at run start). Snapshot: 40 files / 70 chunks. Guard counts: 16 true accepts, 0 false refusals, 4 true refusals, 4 false accepts. Vector and hybrid retrieval each had hit@1 8, hit@3 11, hit@5 11, MRR 0.5729. Generation: 40 HTTP calls, 0 HTTP 429s, 0 generation errors. The four `unanswerable_near` records were `model_abstained` with explicit abstention in both passes; the four `unanswerable_far` records were `guard_true_refusal`; `answered_unanswerable` was zero.
+
+**Observed model variance:** Pass 1 classified `paraphrased-03` as `incomplete_or_wrong` and `paraphrased-08` as `incomplete_or_wrong`; pass 2 classified `paraphrased-03` as `correct_unlabeled_context`, while `paraphrased-08` remained `incomplete_or_wrong`. `paraphrased-05` and `-07` were `correct_unlabeled_context` in both passes. In this final run `paraphrased-05` generated an answer, so it does not reproduce the earlier explicit-abstention case; the deterministic regression test covers that case. These run-to-run differences are reported, not treated as code changes.
+
+**Side-effect and secret checks:** Repository chunk inventories before and after the run were identical: `dexterai` 774, `incidentweave` 48, `incidentweave-eval` 70, `incidentweave-local` 72. The evaluation repository had one investigation and one audit row, both timestamped `2026-09-29T05:41:23Z`, before this run began at `2026-10-05T15:27:46Z`; they were left untouched. The current `GEMINI_API_KEY` value was not found in any of the four saved run reports checked. `compare_runs.py` completed against two real reports and showed config differences with zero retrieval/guard deltas.
