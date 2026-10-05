@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import shutil
 from pathlib import Path
@@ -24,7 +25,12 @@ from evaluation.metrics import (
     retrieval_summary,
     value_distribution,
 )
-from evaluation.runner import resolve_corpus_sha
+from evaluation.runner import (
+    classify_outcome_v2_for_records,
+    classify_outcomes,
+    resolve_corpus_sha,
+    run_pipeline_once,
+)
 from scripts.ingest_repo import chunk_lines, iter_python_files
 
 
@@ -125,7 +131,15 @@ def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
         ("unanswerable", None, False, False, None, None, "answered_unanswerable"),
         ("answerable", "error", False, False, True, True, "error"),
     ]
-    for category, error, guard_refused, abstained, labeled_in_context, screen_pass, expected in cases:
+    for (
+        category,
+        error,
+        guard_refused,
+        abstained,
+        labeled_in_context,
+        screen_pass,
+        expected,
+    ) in cases:
         assert classify_outcome_v2(
             category,
             error,
@@ -159,16 +173,63 @@ def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
         {"legacy": "correct", "v2": "correct_unlabeled_context"},
     ]
     assert sum(1 for row in answerable_legacy if row["legacy"] == "correct") == sum(
-        1 for row in answerable_legacy if row["v2"] in {"correct_labeled_context", "correct_unlabeled_context"}
+        1
+        for row in answerable_legacy
+        if row["v2"]
+        in {"correct_labeled_context", "correct_unlabeled_context"}
     )
     refused_legacy = [{"legacy": "refused", "v2": "guard_true_refusal"}]
     assert sum(1 for row in refused_legacy if row["legacy"] == "refused") == sum(
         1 for row in refused_legacy if row["v2"] == "guard_true_refusal"
     )
-    false_answer_legacy = [{"legacy": "falsely answered", "v2": "model_abstained"}, {"legacy": "falsely answered", "v2": "answered_unanswerable"}]
+    false_answer_legacy = [
+        {"legacy": "falsely answered", "v2": "model_abstained"},
+        {"legacy": "falsely answered", "v2": "answered_unanswerable"},
+    ]
     assert sum(1 for row in false_answer_legacy if row["legacy"] == "falsely answered") == sum(
-        1 for row in false_answer_legacy if row["v2"] in {"model_abstained", "answered_unanswerable"}
+        1
+        for row in false_answer_legacy
+        if row["v2"] in {"model_abstained", "answered_unanswerable"}
     )
+
+
+def test_explicit_abstention_cannot_pass_answer_screen(monkeypatch, tmp_path: Path) -> None:
+    from evaluation import runner
+
+    question = {
+        "id": "paraphrased-05",
+        "category": "paraphrased",
+        "question": "What is the answer?",
+        "relevant": [{"file_path": "missing.py", "substring": "target"}],
+        "must_mention": [["INSUFFICIENT_EVIDENCE"]],
+    }
+
+    async def fake_investigate_repository(*args, **kwargs):
+        return {
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "latency_ms": 75,
+            "generation_trace": {"raw_text": "INSUFFICIENT_EVIDENCE"},
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate, "investigate_repository", fake_investigate_repository
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    records, _ = asyncio.run(
+        run_pipeline_once(
+            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
+        )
+    )
+    record = records[0]
+    classify_outcomes(records, [question])
+    classify_outcome_v2_for_records(records)
+
+    assert record["screen_pass"] is None
+    assert record["outcome"] == "correct"
+    assert record["outcome_v2"] == "retrieval_miss_abstained"
 
 
 def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
