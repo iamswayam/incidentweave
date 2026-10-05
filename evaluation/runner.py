@@ -100,6 +100,15 @@ def snapshot_sha() -> str:
     ).strip()
 
 
+def resolve_corpus_sha(data: dict[str, Any]) -> str:
+    """Return the golden-set pinned corpus SHA, rejecting missing or empty values."""
+
+    pinned_sha = data.get("pinned_sha")
+    if not isinstance(pinned_sha, str) or not pinned_sha:
+        raise ValueError("pinned_sha must be a non-empty string")
+    return pinned_sha
+
+
 async def inventory() -> dict[str, int]:
     from sqlalchemy import func, select
 
@@ -428,12 +437,22 @@ def write_json(path: Path, value: object) -> None:
 async def run_evaluation() -> dict[str, Any]:
     load_key_without_logging()
     data = load_golden_set(EVALUATION_ROOT / "golden_set.json")
-    sha = snapshot_sha()
+    corpus_sha = resolve_corpus_sha(data)
+    code_sha = snapshot_sha()
+    code_dirty = bool(
+        subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+    )
     snapshot_parent = EVALUATION_ROOT / "_snapshot"
     if snapshot_parent.exists():
         shutil.rmtree(snapshot_parent)
-    snapshot_root = export_snapshot(ROOT, sha, snapshot_parent)
-    errors = validate_golden_set(data, snapshot_root, sha)
+    snapshot_root = export_snapshot(ROOT, corpus_sha, snapshot_parent)
+    errors = validate_golden_set(data, snapshot_root, corpus_sha)
     if errors:
         raise ValueError("Golden set validation failed: " + "; ".join(errors))
 
@@ -516,7 +535,9 @@ async def run_evaluation() -> dict[str, Any]:
         if first["outcome"] != second["outcome"]
     ]
     return {
-        "pinned_sha": sha,
+        "pinned_sha": corpus_sha,
+        "code_sha": code_sha,
+        "code_dirty": code_dirty,
         "date": datetime.now(UTC).isoformat(),
         "repository": EVAL_REPOSITORY_NAME,
         "snapshot_files": files,

@@ -15,10 +15,21 @@ from evaluation.metrics import (
     mean_reciprocal_rank,
     retrieval_summary,
 )
+from evaluation.runner import resolve_corpus_sha
 
 
 def result(file_path: str, content: str) -> dict[str, object]:
     return {"file_path": file_path, "content": content}
+
+
+def test_resolve_corpus_sha_returns_pinned_value_and_raises_on_invalid_input() -> None:
+    assert resolve_corpus_sha({"pinned_sha": "abc123"}) == "abc123"
+
+    with pytest.raises(ValueError, match="pinned_sha"):
+        resolve_corpus_sha({})
+
+    with pytest.raises(ValueError, match="pinned_sha"):
+        resolve_corpus_sha({"pinned_sha": ""})
 
 
 def test_retrieval_metrics_handle_hits_ties_and_no_hit() -> None:
