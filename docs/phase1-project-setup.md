@@ -71,13 +71,10 @@ and production will use.
   `app/`, runs `pip install --no-cache-dir .` (production deps only, no dev
   extras), exposes port 8000, and runs `uvicorn app.main:app`.
 - **Found while documenting this phase, not during original development:**
-  the image does not copy `scripts/`, `alembic.ini`, or `migrations/`. The
-  built image can currently serve `/health` and nothing else — running the
-  ingestion/embedding scripts or a migration *inside* the container would
-  fail, since those files aren't present in it. CI's Docker step only
-  verifies the image *builds*, not that anything runs inside it, so this
-  gap exists without failing any check. Flagged as a known limitation, not
-  yet fixed — revisit before any real deployment.
+  the Phase 1 image did not copy `scripts/`, `alembic.ini`, or `migrations/`.
+  This gap was fixed in Phase 9 Checkpoint 3 by adding those copies; real
+  `docker run` checks then verified Alembic and the investigation CLI inside
+  the image. CI's Docker build alone did not catch the original gap.
 
 ---
 

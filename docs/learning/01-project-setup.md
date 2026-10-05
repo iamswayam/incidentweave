@@ -39,14 +39,13 @@ and a raw socket connection check) → `alembic upgrade head` → `pytest` →
 
 ## What I found, not from reading the code but from actually tracing it
 
-The Dockerfile only `COPY`s `pyproject.toml` and `app/` — it does not copy
-`scripts/`, `alembic.ini`, or `migrations/`, and installs `.` rather than
-`.[dev]`. The built image can currently serve `/health` and nothing else;
-running the ingestion/embedding scripts or a migration inside the container
-would fail. CI's Docker step only checks that the image *builds*, not that
-anything runs inside it, so this gap exists without failing any check. Not
-fixed yet — flagged as a real, known limitation rather than something to
-silently work around later.
+The Docker image gap was found while documenting Phase 1, not during its
+original development: the image copied only `pyproject.toml` and `app/`,
+omitting `scripts/`, `alembic.ini`, and `migrations/`. It was fixed in Phase 9
+Checkpoint 3 by copying those paths into the image; real `docker run` checks
+then verified Alembic and the investigation CLI inside the container. The
+original CI Docker step checked that the image built, not that those runtime
+commands worked.
 
 ## Interview-ready summary (3-4 sentences)
 

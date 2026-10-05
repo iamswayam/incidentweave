@@ -21,6 +21,7 @@ from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.investigation.confidence import calibrate_confidence  # noqa: E402
 from app.investigation.generation import GEMINI_GENERATION_MODEL  # noqa: E402
 from app.investigation.graph import create_investigation_graph  # noqa: E402
+from app.investigation.parsing import extract_generation_trace  # noqa: E402
 from app.investigation.persistence import persist_investigation  # noqa: E402
 from scripts.embed_chunks import embed_text  # noqa: E402
 
@@ -62,6 +63,8 @@ async def investigate_repository(
     if limit <= 0:
         raise ValueError("--limit must be greater than zero")
 
+    investigation_id: int | None = None
+
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
             select(Repository).where(Repository.name == repo_name)
@@ -100,6 +103,7 @@ async def investigate_repository(
     if not result["evidence_check"]["is_sufficient"]:
         return {
             "repository": repo_name,
+            "investigation_id": None,
             "query": query_text,
             "diagnosis": result["diagnosis"],
             "confidence": result["confidence"],
@@ -112,6 +116,9 @@ async def investigate_repository(
             "confidence_calibrated": result["confidence_calibrated"],
             "calibration_note": result["calibration_note"],
             "tool_calls": result["tool_calls"],
+            "generation_trace": extract_generation_trace(
+                result.get("prompt"), result.get("response_payload")
+            ),
         }
 
     investigation_response = result["diagnosis"]
@@ -137,9 +144,11 @@ async def investigate_repository(
             )
         investigation_response = investigation.response
         investigation_confidence = investigation.confidence
+        investigation_id = investigation.id
 
     return {
         "repository": repo_name,
+        "investigation_id": investigation_id,
         "query": query_text,
         "diagnosis": result["diagnosis"] or investigation_response,
         "confidence": result["confidence"] or investigation_confidence,
@@ -152,6 +161,9 @@ async def investigate_repository(
         "confidence_calibrated": result["confidence_calibrated"],
         "calibration_note": result["calibration_note"],
         "tool_calls": result["tool_calls"],
+        "generation_trace": extract_generation_trace(
+            result.get("prompt"), result.get("response_payload")
+        ),
     }
 
 

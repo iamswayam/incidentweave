@@ -10,6 +10,8 @@
 - [phase6-grounding-confidence.md](./phase6-grounding-confidence.md) — Phase 6 Grounding & Confidence task specification and verification log.
 - [phase7-controlled-tools-audit.md](./phase7-controlled-tools-audit.md) — Phase 7 Controlled Tools & Audit task specification and verification log.
 - [phase8-evaluation.md](./phase8-evaluation.md) — Phase 8 evaluation task specification, measurements, and verification log.
+- [phase8b-evaluation-improvements.md](./phase8b-evaluation-improvements.md) — Phase 8b measurement-validation fixes, run registry, and evidence bundle.
+- [phase9-production-api.md](./phase9-production-api.md) — Phase 9 production CLI/API task specification and verification log.
 
 ## Learning writeups
 
@@ -22,8 +24,11 @@
 - [learning/05-investigation-engine.md](./learning/05-investigation-engine.md) — Investigation Engine learning writeup.
 - [learning/06-langgraph-agent.md](./learning/06-langgraph-agent.md) — Grounding & Confidence with LangGraph learning writeup.
 - [learning/07-mcp-integration.md](./learning/07-mcp-integration.md) — Controlled Tools & Audit learning writeup.
+- [learning/08-evaluation.md](./learning/08-evaluation.md) — Evaluation learning writeup.
+- [learning/09-production-api.md](./learning/09-production-api.md) — Production CLI/API learning writeup.
 
 ## Notes
 
+- [manual-verification-and-improvements.md](./manual-verification-and-improvements.md) — Human-verified behavior and improvement scope grounded in manual tests.
 - [later-optimizations.md](./later-optimizations.md) — Deferred optimization and follow-up notes.
 - [README.md](./README.md) — This documentation index.

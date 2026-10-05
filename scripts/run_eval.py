@@ -24,19 +24,28 @@ def parse_args() -> argparse.Namespace:
         ),
         epilog="Example: .\\.venv\\Scripts\\python.exe scripts\\run_eval.py",
     )
+    parser.add_argument(
+        "--passes",
+        type=int,
+        default=2,
+        help="Number of generation passes to run (default: 2)",
+    )
     return parser.parse_args()
 
 
 async def main() -> None:
-    parse_args()
-    report = await run_evaluation()
-    report_path = EVALUATION_ROOT / "results" / "evaluation_report.json"
-    report_path.parent.mkdir(parents=True, exist_ok=True)
+    args = parse_args()
+    report = await run_evaluation(passes=args.passes)
+    run_dir = EVALUATION_ROOT / "results" / "runs" / report["run_id"]
+    run_dir.mkdir(parents=True, exist_ok=True)
+    report_path = run_dir / "report.json"
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     snapshot_path = EVALUATION_ROOT / "_snapshot"
     if snapshot_path.exists():
         shutil.rmtree(snapshot_path)
     print("Evaluation complete")
+    print(f"Run ID: {report['run_id']}")
+    print(f"Report path: {report_path}")
     print(f"Questions: {len(report['records'][0])}")
     print(f"Snapshot chunks: {report['snapshot_chunks']}")
     print(f"Run summaries: {report['run_summaries']}")

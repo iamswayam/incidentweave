@@ -270,4 +270,17 @@ When a problem is caused by noisy data, generated dependencies, or repo quality 
 
 **Possible later work:** Obtain maintainer review, add a held-out corpus, and consider a separately scoped answer-judging method.
 
+### 8) Phase 8b follow-up: measurement validity and run comparability
+
+**Observed:** The original Phase 8 evaluation compared the live checkout against a pinned corpus and overwrote results from prior runs, which made the metrics hard to interpret. The Phase 8b fix pinned the snapshot, added `outcome_v2`, captured per-question generation metadata, and stored run metadata under unique run IDs.
+
+**Impact:** The new run registry and additive taxonomy provide a consistent measurement baseline, but the underlying evaluation still uses a small known corpus and keyword labels rather than a review-grade benchmark.
+
+**Possible later work:** Expand the set, review the labels, and compare run-level deltas on a larger held-out evaluation before making any guard or retrieval changes.
+
 This file is intentionally a holding area for improvement work that should be revisited later once the core implementation is complete and verified.
+
+## Phase 9 API follow-ups
+
+- Invalid-secret requests are rejected before rate limiting, so unauthenticated traffic is not bounded by the per-IP limiter.
+- The 502 mapping has unit coverage, but a live failing-provider response has not been exercised.
