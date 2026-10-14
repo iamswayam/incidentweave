@@ -600,6 +600,7 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
             corpus_sha="deadbeef",
             code_sha="code123",
             code_dirty=False,
+            code_untracked_files=1,
             models={"embedding": "m1", "generation": "g1"},
             limit=5,
             passes=2,
@@ -608,6 +609,7 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
     a = build_metadata()
     b = build_metadata()
     assert a["config_sha256"] == b["config_sha256"]
+    assert a["code_untracked_files"] == 1
 
     with monkeypatch.context() as patch:
         patch.setattr(

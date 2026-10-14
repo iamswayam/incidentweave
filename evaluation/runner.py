@@ -65,6 +65,7 @@ def build_run_metadata(
     corpus_sha: str,
     code_sha: str,
     code_dirty: bool,
+    code_untracked_files: int,
     golden_set_path: Path | str = EVALUATION_ROOT / "golden_set.json",
     models: dict[str, str] | None = None,
     limit: int = LIMIT,
@@ -81,6 +82,7 @@ def build_run_metadata(
         "pinned_sha": corpus_sha,
         "code_sha": code_sha,
         "code_dirty": code_dirty,
+        "code_untracked_files": code_untracked_files,
         "golden_set_sha256": golden_set_sha256,
         "golden_review_status": golden_data.get("review_status"),
         "models": models or {
@@ -106,6 +108,7 @@ def build_run_metadata(
         "pinned_sha": corpus_sha,
         "code_sha": code_sha,
         "code_dirty": code_dirty,
+        "code_untracked_files": code_untracked_files,
         "golden_set_sha256": golden_set_sha256,
         "golden_review_status": golden_data.get("review_status"),
         "models": payload["models"],
@@ -599,13 +602,21 @@ async def run_evaluation(passes: int = 2) -> dict[str, Any]:
     code_sha = snapshot_sha()
     code_dirty = bool(
         subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--untracked-files=no"],
             cwd=ROOT,
             text=True,
             capture_output=True,
             check=True,
         ).stdout.strip()
     )
+    untracked_output = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    code_untracked_files = sum(bool(path) for path in untracked_output.split("\0"))
     snapshot_parent = EVALUATION_ROOT / "_snapshot"
     if snapshot_parent.exists():
         shutil.rmtree(snapshot_parent)
@@ -701,6 +712,7 @@ async def run_evaluation(passes: int = 2) -> dict[str, Any]:
         corpus_sha=corpus_sha,
         code_sha=code_sha,
         code_dirty=code_dirty,
+        code_untracked_files=code_untracked_files,
         models={
             "embedding": embed_chunks.GEMINI_MODEL,
             "generation": GEMINI_GENERATION_MODEL,
