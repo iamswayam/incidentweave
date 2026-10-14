@@ -569,7 +569,7 @@ Langfuse spike go / no-go:
 
 | # | Date | Task | Question | Answer (from Claude) |
 |---|---|---|---|---|
-| | | | | |
+| 1 | 2026-10-14 | Round 2 checkpoint | `pytest -q` failed because PostgreSQL connections to `localhost:5432` timed out for the two integration tests (`test_pgvector_extension_and_vector_column`, `test_repository_and_chunk_persistence`). Exact terminal error: `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. | Not a code failure established; full-suite checkpoint remains blocked by unavailable PostgreSQL. |
 
 ---
 
@@ -608,3 +608,171 @@ Langfuse spike go / no-go:
 **Observed model variance:** Pass 1 classified `paraphrased-03` as `incomplete_or_wrong` and `paraphrased-08` as `incomplete_or_wrong`; pass 2 classified `paraphrased-03` as `correct_unlabeled_context`, while `paraphrased-08` remained `incomplete_or_wrong`. `paraphrased-05` and `-07` were `correct_unlabeled_context` in both passes. In this final run `paraphrased-05` generated an answer, so it does not reproduce the earlier explicit-abstention case; the deterministic regression test covers that case. These run-to-run differences are reported, not treated as code changes.
 
 **Side-effect and secret checks:** Repository chunk inventories before and after the run were identical: `dexterai` 774, `incidentweave` 48, `incidentweave-eval` 70, `incidentweave-local` 72. The evaluation repository had one investigation and one audit row, both timestamped `2026-09-29T05:41:23Z`, before this run began at `2026-10-05T15:27:46Z`; they were left untouched. The current `GEMINI_API_KEY` value was not found in any of the four saved run reports checked. `compare_runs.py` completed against two real reports and showed config differences with zero retrieval/guard deltas.
+
+### Round 2 progress audit
+
+#### Initial audit (2026-10-14)
+
+**a) Git history and worktree**
+
+```text
+$ git --no-pager log --oneline 082e99c^..HEAD
+ba93d38 Merge branch 'main' into phase-8/evaluation
+823e32c docs: add manual verification log
+389f40b Document final Phase 8b evidence
+2a6c658 Test explicit abstention outcome mismatch
+fea9d8d Phase 8b: Tasks 2-6
+abe7796 Phase 8b: Task 1 follow-ups
+082e99c Task 1: freeze evaluation corpus
+
+$ git status --short --untracked-files=all
+?? evaluation/results/run-2.json
+```
+
+The first attempt ran from the wrong working directory and failed; see Open question 1. The commands above were rerun successfully from `D:\Projects\incidentweave`.
+
+**b) Step 1 exact-match abstention code**
+
+`evaluation/metrics.py::abstention_kind` currently uses:
+
+```python
+if not generation_ran:
+    return None
+if diagnosis.strip() != "INSUFFICIENT_EVIDENCE":
+    return None
+if not raw_text:
+    return "parse_fallback"
+if "INSUFFICIENT_EVIDENCE" in raw_text:
+    return "explicit"
+return "parse_fallback"
+```
+
+`evaluation/runner.py::run_pipeline_once` derives `abstained` from this helper and calls `answer_screen` only when the question is answerable and `not abstained`. Thus a diagnosis that only mentions the marker is treated as an answer. The same exact-match check is present in commit `2a6c658`; no Step 1 code change is needed.
+
+**c) Test collection and coverage inventory**
+
+Command: `.\.venv\Scripts\python.exe -m pytest --collect-only -q`
+
+```text
+48 tests collected in 16.04s
+```
+
+Collected evaluation tests include `test_extract_generation_trace_handles_payload_and_missing_usage`, `test_abstention_kind_and_outcome_v2_and_value_distribution`, `test_explicit_abstention_cannot_pass_answer_screen`, `test_guard_diagnostics_and_citation_summary_arithmetic`, and `test_build_run_metadata_stable_hash_and_compare_reports_detect_changes`.
+
+| Requested case | Initial audit |
+|---|---|
+| Real answer mentioning the marker, using baseline `paraphrased-05` diagnosis | Missing |
+| Exact abstention | Present in `test_abstention_kind_and_outcome_v2_and_value_distribution`; old regression test still exists |
+| Unanswerable answered with long text mentioning the marker | Missing |
+| Legacy/v2 mixed invariants over records using both classifiers | Missing; existing counter assertions use hand-built rows |
+| `classify_outcome_v2` all 10 branches | Present |
+| `abstention_kind` explicit / parse_fallback / not-generated | Present |
+| `extract_generation_trace` payload / missing usage / no payload | Present |
+| `build_run_metadata` stable hash | Present |
+| `build_run_metadata` threshold and prompt sensitivity | Missing |
+| `compare_reports` outcome flip / labeled-rank change | Present |
+| `compare_reports` legacy bare-list report | Present |
+| `guard_diagnostics` at 0.016 and 0.02 | Present |
+| Citation-summary arithmetic | Present |
+| Old `test_explicit_abstention_cannot_pass_answer_screen` replaced | No; it still exists |
+
+The baseline fixture text for `paraphrased-05` is:
+
+```text
+A weak search result is evaluated for evidence sufficiency by `evaluate_evidence_sufficiency`. If it is deemed insufficient, `route_after_guard` handles the routing based on the evidence source and retry count (retrying with a widened search or falling back to grep search). If the evidence remains insufficient after retries/fallback, generation is prevented and the graph returns `INSUFFICIENT_EVIDENCE`.
+```
+
+**d) Step 3 runner implementation**
+
+`evaluation/runner.py::run_evaluation` uses `["git", "status", "--porcelain"]`. It does not pass `--untracked-files=no`, and `code_untracked_files` is not reported.
+
+**e) Step 4 offline recompute**
+
+No offline recompute of `outcome_v2` for `20261005T152746Z-2a6c658` is logged in section 15.
+
+**f) Step 5 existing reports**
+
+`Get-ChildItem evaluation\results\runs -Directory | Sort-Object Name -Descending`:
+
+```text
+20261005T152746Z-2a6c658
+20261005T151632Z-fea9d8d
+20261005T150844Z-fea9d8d
+20261005T143011Z-abe7796
+```
+
+Newest report metadata:
+
+```text
+run_id     : 20261005T152746Z-2a6c658
+code_sha   : 2a6c658636e9f0e8d77933f3d899cff1b37e3d03
+code_dirty : True
+```
+
+Commit `2a6c658` contains the exact-match abstention code, but this is not a valid fresh run because `code_dirty` is `True`.
+
+**g) Step 6 section 15 evidence inventory**
+
+| Evidence item | Initial state |
+|---|---|
+| Git log | Partial: commit names only; no command output |
+| Unfiltered `git diff --stat` | Missing |
+| Forbidden-file check output | Missing |
+| Final pytest and Ruff output | Present for the earlier state (`48 passed in 38.58s`; `All checks passed!`) |
+| Report header | Partial: narrative metadata, not the full header |
+| Per-pass legacy `outcome_counts` beside `outcome_v2_counts` | Missing from section 15; an earlier Task 4 log has prior-run summaries |
+| 24-row pass-1 table | Missing |
+| `compare_runs` output vs previous run and baseline | Partial: narrative only; no output |
+| New-run DB inventory before/after and secret-not-in-report check | Partial: narrative only; no raw check output |
+| Full `README.md` and `docs/later-optimizations.md` diffs | Missing |
+| Deviations row for squashed Tasks 2-6 commit | Missing |
+| Decision-log row for collapsed gates | Missing |
+| Tracker SHAs | Partial: historical task SHAs exist; Round 2 SHAs do not |
+
+Actual `git --no-pager diff --stat 06ab9957147d32b4c733d6837c5dd8fcec260b2d..HEAD`:
+
+```text
+ .gitignore                                   |   3 +-
+ README.md                                    |   2 +-
+ app/investigation/parsing.py                 |  45 ++
+ docs/README.md                               |   2 +
+ docs/later-optimizations.md                  |   8 +
+ docs/manual-verification-and-improvements.md |  43 ++
+ docs/phase8-evaluation.md                    |  15 +
+ docs/phase8b-evaluation-improvements.md      | 610 +++++++++++++++++++++++++++
+ evaluation/compare.py                        | 170 ++++++++
+ evaluation/corpus.py                         |  21 +
+ evaluation/metrics.py                        | 158 ++++++-
+ evaluation/results/runs/.gitkeep             |   0
+ evaluation/runner.py                         | 244 ++++++++++-
+ scripts/compare_runs.py                      |  33 +
+ scripts/investigate.py                       |   7 +
+ scripts/run_eval.py                          |  17 +-
+ tests/unit/test_evaluation.py                | 315 +++++++++++++-
+ 17 files changed, 1667 insertions(+), 26 deletions(-)
+```
+
+Base SHA: `06ab9957147d32b4c733d6837c5dd8fcec260b2d`. The forbidden-file `git diff --name-only` command returned no paths.
+
+**h) Step 7 patch destination**
+
+```text
+Test-Path D:\phase8b-code.patch
+False
+```
+
+#### Initial status table
+
+| Step | Done / Partial / Not started | Evidence |
+|---|---|---|
+| 1 | Blocked | Implementation is present in `2a6c658`; full `pytest -q` checkpoint blocked by the PostgreSQL connection timeouts recorded in Open question 1. |
+| 2 | Partial | 48 collected; marker-answer and unanswerable-answer tests and real mixed invariants are missing; old regression test remains. |
+| 3 | Not started | `code_dirty` uses default porcelain status; no `code_untracked_files`. |
+| 4 | Not started | Offline recompute is not logged. |
+| 5 | Partial | Newest historical report is `20261005T152746Z-2a6c658`, but `code_dirty: True`. |
+| 6 | Partial | Several evidence-bundle items listed above are absent or narrative-only. |
+| 7 | Not started | `D:\phase8b-code.patch` does not exist. |
+
+#### Checkpoint entries
+
+- Step 1 — implementation commit `2a6c658`; Blocked for full-suite verification by the PostgreSQL errors above. `pytest -q`: `2 failed, 46 passed in 545.97s`; the two failures were the integration tests named above. `ruff check .`: `All checks passed!`.
