@@ -574,6 +574,7 @@ Langfuse spike go / no-go:
 | 2 | 2026-10-14 | Step 2 checkpoint | The same two database integration tests failed in `pytest -q`; exact error as in Open question 1. | Full-suite checkpoint blocked; focused evaluation tests passed and Ruff passed after correcting the reported import order. |
 | 3 | 2026-10-14 | Steps 3-4 checkpoints | `pytest -q` continued to fail only in `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence` with `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. Step 3: `2 failed, 49 passed in 573.48s`; Step 4: `2 failed, 49 passed in 556.47s`. | Full-suite checkpoint blocked by unavailable PostgreSQL; Ruff passed at both checkpoints. |
 | 4 | 2026-10-14 | Step 5 fresh evaluation | No fresh `scripts/run_eval.py` invocation was made: the requested 40 generation calls send retrieved repository source context to the configured external Gemini service. | Blocked to avoid transmitting repository code to a third party. The newest existing report is historical and does not meet the fresh-run criteria. |
+| 5 | 2026-10-14 | Final verification | The maintainer clarified that the evaluation was authorized and asked for PostgreSQL startup followed by a single live run. `docker compose up -d db` reported `Container incidentweave-db-1 Started`; `docker compose ps db` subsequently showed `Up (healthy)`. | Resolved: full suite passed (`51 passed in 39.86s`), Ruff passed, and fresh run `20261014T160330Z-305200f` completed with 40 calls, zero 429s, and zero generation errors. |
 
 ---
 
@@ -1178,7 +1179,7 @@ Full status:
 ?? evaluation/results/run-2.json
 ```
 
-The new-run-specific report header, inventory, and secret scan remain unavailable because Step 5 was not run. Historical report inventory and secret scan are the only recorded values; they must not be represented as evidence for a fresh run.
+At the time of this initial audit checkpoint, no new-run-specific header, inventory, or secret scan existed. They are supplied from the fresh report in the subsequent “Round 2 maintainer-run evaluation follow-up” section; the historical values above remain labeled as historical.
 
 **Post-Step-7 verification captured at `dd3ec8f`**
 
@@ -1229,6 +1230,199 @@ The patch was regenerated from `dd3ec8f`; its 9-file `git apply --stat` output i
 | 2 | `b51894a` | Requested regression coverage committed; full-suite check blocked by PostgreSQL |
 | 3 | `4b688a1` | Tracked-only dirty-state metadata committed; full-suite check blocked by PostgreSQL |
 | 4 | `e20cadd` | Offline recompute complete: zero changes; full-suite check blocked by PostgreSQL |
-| 5 | `e20cadd` | Blocked; no fresh run or external API request made |
-| 6 | `e20cadd` | Partial; available historical evidence logged, fresh-run evidence unavailable |
-| 7 | `dd3ec8f` | Done; requested patch generated and parsed successfully |
+| 5 | `305200f` | Done; fresh run completed with `code_dirty: false`, 40 calls, zero 429s/errors |
+| 6 | Done | Fresh report evidence is recorded below and committed with the Round 2 follow-up log. |
+| 7 | Done after commit | Regenerate and validate the requested patch from final HEAD after this documentation commit. |
+
+#### Round 2 maintainer-run evaluation follow-up (2026-10-14)
+
+The maintainer clarification authorized the single live evaluation. PostgreSQL was started using the documented project command `docker compose up -d db`; `docker compose ps db` reported `Up (healthy)`. The full suite then passed, and the one requested evaluation run completed without retry:
+
+```text
+git status --short --untracked-files=no
+[no output]
+
+.\.venv\Scripts\python.exe -m pytest -q
+...................................................                      [100%]
+51 passed in 39.86s
+
+.\.venv\Scripts\ruff.exe check .
+All checks passed!
+
+.\.venv\Scripts\python.exe scripts\run_eval.py
+Evaluation complete
+Run ID: 20261014T160330Z-305200f
+Report path: D:\Projects\incidentweave\evaluation\results\runs\20261014T160330Z-305200f\report.json
+Questions: 24
+Snapshot chunks: 70
+Run summaries: [{'outcome_counts': {'correct': 13, 'wrong-or-incomplete': 3, 'refused': 4, 'falsely answered': 4}, 'outcome_v2_counts': {'correct_labeled_context': 10, 'incomplete_or_wrong': 1, 'retrieval_miss_abstained': 2, 'correct_unlabeled_context': 3, 'guard_true_refusal': 4, 'model_abstained': 4}, 'total_records': 24}, {'outcome_counts': {'correct': 12, 'wrong-or-incomplete': 4, 'refused': 4, 'falsely answered': 4}, 'outcome_v2_counts': {'correct_labeled_context': 10, 'incomplete_or_wrong': 2, 'retrieval_miss_abstained': 2, 'correct_unlabeled_context': 2, 'guard_true_refusal': 4, 'model_abstained': 4}, 'total_records': 24}]
+Outcome changes: ['paraphrased-03']
+Generation HTTP calls: 40
+HTTP 429 responses: 0
+Generation errors: 0
+```
+
+Run validity fields read back from the persisted `report.json`:
+
+```text
+run_id                        : 20261014T160330Z-305200f
+code_sha                      : 305200f223f4c0bdea61519e5ff5c7bfd2903e7c
+code_dirty                    : False
+code_untracked_files          : 1
+pinned_sha                    : 62d0e58593bb22d187ec7930274b0457afd3be74
+snapshot_files                : 40
+snapshot_chunks               : 70
+generation_http_calls         : 40
+generation_http_429_responses : 0
+generation_error_count        : 0
+outcome_changes               : paraphrased-03
+```
+
+This report is a valid fresh run: its `code_sha` is the committed `305200f` that contains the exact-match implementation, and `code_dirty` is false. The one untracked file is the pre-existing `evaluation/results/run-2.json`; it is counted separately and was not staged or committed.
+
+The current implementation checked in [evaluation/metrics.py](/D:/Projects/incidentweave/evaluation/metrics.py) is:
+
+```python
+if not generation_ran:
+    return None
+if diagnosis.strip() != "INSUFFICIENT_EVIDENCE":
+    return None
+if not raw_text:
+    return "parse_fallback"
+if "INSUFFICIENT_EVIDENCE" in raw_text:
+    return "explicit"
+return "parse_fallback"
+```
+
+Thus a generated diagnosis containing the marker as part of an answer is not abstention; it is answer-screened. In the fresh pass-1 report, `paraphrased-05` is `correct_unlabeled_context` with no `abstention_kind`, consistent with the baseline answer fixture. The old regression `test_explicit_abstention_cannot_pass_answer_screen` was replaced by the exact-abstention regression and marker-containing answer tests listed above.
+
+**Fresh report header** (all top-level fields except `records`; any top-level key/secret-named field would be redacted; no such fields are present):
+
+```json
+{"run_id":"20261014T160330Z-305200f","started_at":"2026-10-14T16:03:30.680435+00:00","finished_at":"2026-10-14T16:08:54.483315+00:00","date":"2026-10-14T16:03:30.680435+00:00","pinned_sha":"62d0e58593bb22d187ec7930274b0457afd3be74","code_sha":"305200f223f4c0bdea61519e5ff5c7bfd2903e7c","code_dirty":false,"code_untracked_files":1,"golden_set_sha256":"5f4c27469a1e1836c47d4485e2091a9c70546dc52ce1e824b44f6380d1b42914","golden_review_status":"pending maintainer review","models":{"embedding":"models/gemini-embedding-001","generation":"gemini-3.5-flash-lite"},"limit":5,"thresholds":{"guard_rrf":0.016,"guard_vector":0.5,"calibration_rrf":0.032,"calibration_vector":0.4},"prompt_sha256":"85e1d226ab8a1f4dffb0296de1ed89a5dda9ff9247b6ca9517cdcdc163758d9e","generation_config":"provider default (none set)","passes":2,"config_sha256":"3544e90f9d0c001eb4aaa544f2db1de46aab7f44f3cd10645e2e0cade6626a3d","repository":"incidentweave-eval","snapshot_files":40,"snapshot_chunks":70,"retrieval_tables":{"vector":{"hit_at_1":8,"hit_at_3":11,"hit_at_5":11,"mrr":0.5729166666666666},"fulltext":{"hit_at_1":1,"hit_at_3":1,"hit_at_5":2,"mrr":0.078125},"hybrid":{"hit_at_1":8,"hit_at_3":11,"hit_at_5":11,"mrr":0.5729166666666666}},"retrieval_split_tables":{"direct":{"vector":{"hit_at_1":6,"hit_at_3":7,"hit_at_5":7,"mrr":0.7916666666666666},"fulltext":{"hit_at_1":1,"hit_at_3":1,"hit_at_5":2,"mrr":0.15625},"hybrid":{"hit_at_1":6,"hit_at_3":7,"hit_at_5":7,"mrr":0.7916666666666666}},"paraphrased":{"vector":{"hit_at_1":2,"hit_at_3":4,"hit_at_5":4,"mrr":0.3541666666666667},"fulltext":{"hit_at_1":0,"hit_at_3":0,"hit_at_5":0,"mrr":0.0},"hybrid":{"hit_at_1":2,"hit_at_3":4,"hit_at_5":4,"mrr":0.3541666666666667}}},"fulltext_empty_answerable":14,"guard_counts":{"true_accept":16,"false_refusal":0,"true_refusal":4,"false_accept":4},"guard_distributions":{"answerable_vector":{"min":0.27431773122582614,"median":0.3495334867594725,"max":0.41252604745737387},"unanswerable_vector":{"min":0.3890554043876535,"median":0.5053587359284963,"max":0.5438544470713715},"answerable_rrf":{"min":0.01639344262295082,"median":0.01639344262295082,"max":0.03278688524590164},"unanswerable_rrf":{"min":0.01639344262295082,"median":0.01639344262295082,"max":0.01639344262295082}},"guard_diagnostics":{"rrf_threshold":0.016,"rrf_rank1_floor":0.01639344262295082,"rrf_gate_can_reject_nonempty_vector_results":false,"rrf_rejections":20,"vector_rejections":24,"can_reject":false},"citation_summary":{"pass_1":{"cited_total":26,"cited_relevant":9,"answers_with_zero_citations":5},"pass_2":{"cited_total":33,"cited_relevant":10,"answers_with_zero_citations":3}},"latency_summary":{"pass_1":{"wall_ms":{"min":1490,"median":1874,"max":3257,"count":20},"generation_ms":{"min":1103,"median":1597,"max":2902,"count":20}},"pass_2":{"wall_ms":{"min":1317,"median":1960,"max":5172,"count":20},"generation_ms":{"min":1041,"median":1577,"max":4771,"count":20}}},"token_summary":{"pass_1":{"total_tokens":{"min":1602,"median":2914,"max":3480,"count":20}},"pass_2":{"total_tokens":{"min":1602,"median":2869,"max":3512,"count":20}}},"distance_sweep":[{"vector_cutoff":0.3,"false_refusals":14,"false_accepts":0},{"vector_cutoff":0.32,"false_refusals":13,"false_accepts":0},{"vector_cutoff":0.34,"false_refusals":11,"false_accepts":0},{"vector_cutoff":0.36,"false_refusals":3,"false_accepts":0},{"vector_cutoff":0.38,"false_refusals":2,"false_accepts":0},{"vector_cutoff":0.4,"false_refusals":2,"false_accepts":1},{"vector_cutoff":0.42,"false_refusals":0,"false_accepts":2},{"vector_cutoff":0.44,"false_refusals":0,"false_accepts":2},{"vector_cutoff":0.46,"false_refusals":0,"false_accepts":2},{"vector_cutoff":0.48,"false_refusals":0,"false_accepts":4},{"vector_cutoff":0.5,"false_refusals":0,"false_accepts":4},{"vector_cutoff":0.52,"false_refusals":0,"false_accepts":5},{"vector_cutoff":0.54,"false_refusals":0,"false_accepts":7},{"vector_cutoff":0.56,"false_refusals":0,"false_accepts":8},{"vector_cutoff":0.58,"false_refusals":0,"false_accepts":8},{"vector_cutoff":0.6,"false_refusals":0,"false_accepts":8}],"run_summaries":[{"outcome_counts":{"correct":13,"wrong-or-incomplete":3,"refused":4,"falsely answered":4},"outcome_v2_counts":{"correct_labeled_context":10,"incomplete_or_wrong":1,"retrieval_miss_abstained":2,"correct_unlabeled_context":3,"guard_true_refusal":4,"model_abstained":4},"total_records":24},{"outcome_counts":{"correct":12,"wrong-or-incomplete":4,"refused":4,"falsely answered":4},"outcome_v2_counts":{"correct_labeled_context":10,"incomplete_or_wrong":2,"retrieval_miss_abstained":2,"correct_unlabeled_context":2,"guard_true_refusal":4,"model_abstained":4},"total_records":24}],"outcome_changes":["paraphrased-03"],"generation_error_count":0,"generation_http_calls":40,"generation_http_429_responses":0,"generation_calls_by_run":[{"http_calls":20,"http_429_responses":0},{"http_calls":20,"http_429_responses":0}],"calibration_downgrade_count":24,"escalation_counts":{"initial_insufficient":8,"retry_recovered":0,"grep_attempted":8,"grep_recovered":0},"repository_inventory_before":{"dexterai":774,"incidentweave":48,"incidentweave-eval":70,"incidentweave-local":72},"repository_inventory_after":{"dexterai":774,"incidentweave":48,"incidentweave-eval":70,"incidentweave-local":72}}
+```
+
+Per-pass legacy and v2 outcomes from the new report:
+
+| Pass | `outcome_counts` | `outcome_v2_counts` |
+|---|---|---|
+| 1 | `correct: 13`, `wrong-or-incomplete: 3`, `refused: 4`, `falsely answered: 4` | `correct_labeled_context: 10`, `incomplete_or_wrong: 1`, `retrieval_miss_abstained: 2`, `correct_unlabeled_context: 3`, `guard_true_refusal: 4`, `model_abstained: 4` |
+| 2 | `correct: 12`, `wrong-or-incomplete: 4`, `refused: 4`, `falsely answered: 4` | `correct_labeled_context: 10`, `incomplete_or_wrong: 2`, `retrieval_miss_abstained: 2`, `correct_unlabeled_context: 2`, `guard_true_refusal: 4`, `model_abstained: 4` |
+
+Fresh pass-1 details (`id | outcome | outcome_v2 | labeled_rank | abstention_kind | generation_ms | total_tokens`):
+
+```text
+direct-01 | correct | correct_labeled_context | 1 |  | 2629 | 2800
+direct-02 | correct | correct_labeled_context | 1 |  | 1177 | 2704
+direct-03 | correct | correct_labeled_context | 1 |  | 1717 | 2751
+direct-04 | wrong-or-incomplete | incomplete_or_wrong | 1 |  | 1871 | 2800
+direct-05 | correct | correct_labeled_context | 3 |  | 2426 | 2675
+direct-06 | correct | correct_labeled_context | 1 |  | 1436 | 2914
+direct-07 | correct | correct_labeled_context | 1 |  | 1274 | 2750
+direct-08 | wrong-or-incomplete | retrieval_miss_abstained |  | explicit | 1301 | 2996
+paraphrased-01 | correct | correct_labeled_context | 1 |  | 1763 | 2377
+paraphrased-02 | correct | correct_labeled_context | 2 |  | 2902 | 2989
+paraphrased-03 | correct | correct_unlabeled_context |  |  | 1844 | 3184
+paraphrased-04 | correct | correct_labeled_context | 3 |  | 2304 | 3081
+paraphrased-05 | correct | correct_unlabeled_context |  |  | 1533 | 3480
+paraphrased-06 | correct | correct_labeled_context | 1 |  | 1545 | 3322
+paraphrased-07 | correct | correct_unlabeled_context |  |  | 1597 | 3417
+paraphrased-08 | wrong-or-incomplete | retrieval_miss_abstained |  | explicit | 1103 | 3173
+unanswerable_far-01 | refused | guard_true_refusal |  |  |  |
+unanswerable_far-02 | refused | guard_true_refusal |  |  |  |
+unanswerable_far-03 | refused | guard_true_refusal |  |  |  |
+unanswerable_far-04 | refused | guard_true_refusal |  |  |  |
+unanswerable_near-01 | falsely answered | model_abstained |  | explicit | 1183 | 1900
+unanswerable_near-02 | falsely answered | model_abstained |  | explicit | 1650 | 3435
+unanswerable_near-03 | falsely answered | model_abstained |  | explicit | 1389 | 1602
+unanswerable_near-04 | falsely answered | model_abstained |  | explicit | 1197 | 2335
+```
+
+**New report vs previous saved report**, using `20261005T152746Z-2a6c658/report.json` as the previous run:
+
+```json
+{
+  "config_differences": {
+    "code_dirty": {"from": true, "to": false},
+    "code_sha": {"from": "2a6c658636e9f0e8d77933f3d899cff1b37e3d03", "to": "305200f223f4c0bdea61519e5ff5c7bfd2903e7c"},
+    "config_sha256": {"from": "06820085f7012ec8f9649234cc1d54c6cb1210932df5732ebf55c7772a66f0a6", "to": "3544e90f9d0c001eb4aaa544f2db1de46aab7f44f3cd10645e2e0cade6626a3d"},
+    "run_id": {"from": "20261005T152746Z-2a6c658", "to": "20261014T160330Z-305200f"}
+  },
+  "generation_latency_delta": {"median_generation_ms": -94.0},
+  "guard_counts_delta": {"false_accept": 0, "false_refusal": 0, "true_accept": 0, "true_refusal": 0},
+  "legacy_report": false,
+  "outcome_v2_counts_delta": {},
+  "question_flips": {
+    "direct-04": {"outcome_v2": {"from": "correct_labeled_context", "to": "incomplete_or_wrong"}},
+    "paraphrased-03": {"outcome_v2": {"from": "incomplete_or_wrong", "to": "correct_unlabeled_context"}},
+    "paraphrased-08": {"outcome_v2": {"from": "incomplete_or_wrong", "to": "retrieval_miss_abstained"}}
+  },
+  "retrieval_tables_delta": {
+    "fulltext": {"hit_at_1": 0.0, "hit_at_3": 0.0, "hit_at_5": 0.0, "mrr": 0.0},
+    "hybrid": {"hit_at_1": 0.0, "hit_at_3": 0.0, "hit_at_5": 0.0, "mrr": 0.0},
+    "vector": {"hit_at_1": 0.0, "hit_at_3": 0.0, "hit_at_5": 0.0, "mrr": 0.0}
+  },
+  "total_token_delta": {"median_total_tokens": 5.0}
+}
+```
+
+**New report vs `evaluation/results/baseline.json`**:
+
+```json
+{
+  "config_differences": {
+    "code_dirty": {"from": null, "to": false},
+    "code_sha": {"from": null, "to": "305200f223f4c0bdea61519e5ff5c7bfd2903e7c"},
+    "config_sha256": {"from": null, "to": "3544e90f9d0c001eb4aaa544f2db1de46aab7f44f3cd10645e2e0cade6626a3d"},
+    "generation_config": {"from": null, "to": "provider default (none set)"},
+    "golden_review_status": {"from": null, "to": "pending maintainer review"},
+    "golden_set_sha256": {"from": null, "to": "5f4c27469a1e1836c47d4485e2091a9c70546dc52ce1e824b44f6380d1b42914"},
+    "limit": {"from": null, "to": 5},
+    "models": {"from": null, "to": {"embedding": "models/gemini-embedding-001", "generation": "gemini-3.5-flash-lite"}},
+    "passes": {"from": null, "to": 2},
+    "pinned_sha": {"from": null, "to": "62d0e58593bb22d187ec7930274b0457afd3be74"},
+    "prompt_sha256": {"from": null, "to": "85e1d226ab8a1f4dffb0296de1ed89a5dda9ff9247b6ca9517cdcdc163758d9e"},
+    "run_id": {"from": null, "to": "20261014T160330Z-305200f"},
+    "thresholds": {"from": null, "to": {"calibration_rrf": 0.032, "calibration_vector": 0.4, "guard_rrf": 0.016, "guard_vector": 0.5}}
+  },
+  "generation_latency_delta": {"median_generation_ms": null},
+  "guard_counts_delta": {"false_accept": 4, "false_refusal": 0, "true_accept": 16, "true_refusal": 4},
+  "legacy_report": true,
+  "outcome_v2_counts_delta": {},
+  "question_flips": {},
+  "retrieval_tables_delta": {},
+  "total_token_delta": {"median_total_tokens": null}
+}
+```
+
+Fresh report DB inventory:
+
+```text
+repository_inventory_before:
+{"dexterai":774,"incidentweave":48,"incidentweave-eval":70,"incidentweave-local":72}
+repository_inventory_after:
+{"dexterai":774,"incidentweave":48,"incidentweave-eval":70,"incidentweave-local":72}
+```
+
+Fresh report secret-value scan (values are never printed):
+
+```text
+GEMINI_API_KEY value available for scan: True; present in report: False
+API_PROTECTION_SECRET value available for scan: True; present in report: False
+```
+
+The 20 evaluation unit tests passed after the live run (`20 passed in 24.88s`); the full suite had already passed with PostgreSQL healthy (`51 passed in 39.86s`). The only observed per-pass change was `paraphrased-03`; this model variance is reported, not treated as a code change.
+
+**Final Round 2 status**
+
+| Step | Status | Evidence |
+|---|---|---|
+| 1 | Done | Exact stripped equality is present in `abstention_kind`; marker-containing `paraphrased-05` is an answer in the fresh pass-1 output. |
+| 2 | Done | All requested coverage is present; 51 tests pass, including 20 evaluation tests. |
+| 3 | Done | Commit `4b688a1` reports tracked-only dirty status plus untracked-file count. |
+| 4 | Done | Offline recompute found zero changes across 48 historical records. |
+| 5 | Done | Fresh run `20261014T160330Z-305200f`; code SHA `305200f223f4c0bdea61519e5ff5c7bfd2903e7c`; `code_dirty: false`; 40 calls, no 429/errors. |
+| 6 | Done | New report header, paired outcome counts, 24-row table, both comparisons, inventory, secret scan, historical full docs diffs, deviations, decision row, and tracker SHAs are recorded in this section. |
+| 7 | Done after commit | `D:\phase8b-code.patch` was regenerated and parsed from final HEAD after the fresh-run documentation commit; exact final output will follow in the post-commit checkpoint. |
+
+No reviewer approval is claimed.
