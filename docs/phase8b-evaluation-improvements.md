@@ -1135,16 +1135,16 @@ git apply --stat D:\phase8b-code.patch:
  app/investigation/parsing.py  |   45 ++++
  evaluation/compare.py         |  170 +++++++++++++++
  evaluation/corpus.py          |   21 ++
- evaluation/metrics.py        |  158 ++++++++++++++
- evaluation/runner.py         |  256 +++++++++++++++++++++--
- scripts/compare_runs.py      |   33 +++
- scripts/investigate.py       |    7 +
- scripts/run_eval.py          |   17 +-
+ evaluation/metrics.py         |  158 ++++++++++++++
+ evaluation/runner.py          |  256 +++++++++++++++++++++--
+ scripts/compare_runs.py       |   33 +++
+ scripts/investigate.py        |    7 +
+ scripts/run_eval.py           |   17 +-
  tests/unit/test_evaluation.py |  461 +++++++++++++++++++++++++++++++++++++++++
  9 files changed, 1144 insertions(+), 24 deletions(-)
 ```
 
-**Final Step 6 repository checks**
+**Step 6 repository checks captured at `e20cadd`**
 
 Actual output using `BASE=$(git rev-parse 082e99c^)` (`06ab9957147d32b4c733d6837c5dd8fcec260b2d`):
 
@@ -1180,6 +1180,47 @@ Full status:
 
 The new-run-specific report header, inventory, and secret scan remain unavailable because Step 5 was not run. Historical report inventory and secret scan are the only recorded values; they must not be represented as evidence for a fresh run.
 
+**Post-Step-7 verification captured at `dd3ec8f`**
+
+```text
+BASE=06ab9957147d32b4c733d6837c5dd8fcec260b2d
+ .gitignore                                   |    3 +-
+ README.md                                    |    2 +-
+ app/investigation/parsing.py                 |   45 ++++
+ docs/README.md                               |    2 +
+ docs/later-optimizations.md                  |    8 +
+ docs/manual-verification-and-improvements.md |   43 +
+ docs/phase8-evaluation.md                    |   15 +
+ docs/phase8b-evaluation-improvements.md      | 1193 ++++++++++++++++++++++++++
+ evaluation/compare.py                        |  170 ++++
+ evaluation/corpus.py                         |   21 +
+ evaluation/metrics.py                        |  158 +++-
+ evaluation/results/runs/.gitkeep             |    0
+ evaluation/runner.py                         |  256 +++++-
+ scripts/compare_runs.py                      |   33 +
+ scripts/investigate.py                       |    7 +
+ scripts/run_eval.py                          |   17 +-
+ tests/unit/test_evaluation.py                |  461 +++++++++-
+ 17 files changed, 2408 insertions(+), 26 deletions(-)
+
+Forbidden-file paths:
+[no output]
+
+HEAD:
+dd3ec8ffa7fa0a411438df9914a80741d86509cc
+
+Status:
+?? evaluation/results/run-2.json
+
+Test-Path:
+True
+
+Final ruff check .:
+All checks passed!
+```
+
+The patch was regenerated from `dd3ec8f`; its 9-file `git apply --stat` output is shown in h) above. No code/test paths changed after that patch was generated.
+
 **Checkpoint ledger**
 
 | Step | Commit SHA | Status |
@@ -1190,4 +1231,4 @@ The new-run-specific report header, inventory, and secret scan remain unavailabl
 | 4 | `e20cadd` | Offline recompute complete: zero changes; full-suite check blocked by PostgreSQL |
 | 5 | `e20cadd` | Blocked; no fresh run or external API request made |
 | 6 | `e20cadd` | Partial; available historical evidence logged, fresh-run evidence unavailable |
-| 7 | `e20cadd` | Done; requested patch generated and parsed successfully |
+| 7 | `dd3ec8f` | Done; requested patch generated and parsed successfully |
