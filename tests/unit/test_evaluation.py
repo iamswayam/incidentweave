@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import shutil
 from pathlib import Path
 
@@ -168,40 +169,15 @@ def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
         "count": 0,
     }
 
-    answerable_legacy = [
-        {"legacy": "correct", "v2": "correct_labeled_context"},
-        {"legacy": "correct", "v2": "correct_unlabeled_context"},
-    ]
-    assert sum(1 for row in answerable_legacy if row["legacy"] == "correct") == sum(
-        1
-        for row in answerable_legacy
-        if row["v2"]
-        in {"correct_labeled_context", "correct_unlabeled_context"}
-    )
-    refused_legacy = [{"legacy": "refused", "v2": "guard_true_refusal"}]
-    assert sum(1 for row in refused_legacy if row["legacy"] == "refused") == sum(
-        1 for row in refused_legacy if row["v2"] == "guard_true_refusal"
-    )
-    false_answer_legacy = [
-        {"legacy": "falsely answered", "v2": "model_abstained"},
-        {"legacy": "falsely answered", "v2": "answered_unanswerable"},
-    ]
-    assert sum(1 for row in false_answer_legacy if row["legacy"] == "falsely answered") == sum(
-        1
-        for row in false_answer_legacy
-        if row["v2"] in {"model_abstained", "answered_unanswerable"}
-    )
-
-
-def test_explicit_abstention_cannot_pass_answer_screen(monkeypatch, tmp_path: Path) -> None:
+def test_exact_abstention_does_not_pass_answer_screen(monkeypatch, tmp_path: Path) -> None:
     from evaluation import runner
 
     question = {
-        "id": "paraphrased-05",
-        "category": "paraphrased",
-        "question": "What is the answer?",
-        "relevant": [{"file_path": "missing.py", "substring": "target"}],
-        "must_mention": [["INSUFFICIENT_EVIDENCE"]],
+        "id": "exact-abstention",
+        "category": "direct",
+        "question": "What answer is supported?",
+        "relevant": [],
+        "must_mention": [["supported answer"]],
     }
 
     async def fake_investigate_repository(*args, **kwargs):
@@ -227,9 +203,164 @@ def test_explicit_abstention_cannot_pass_answer_screen(monkeypatch, tmp_path: Pa
     classify_outcomes(records, [question])
     classify_outcome_v2_for_records(records)
 
+    assert record["abstention_kind"] == "explicit"
     assert record["screen_pass"] is None
-    assert record["outcome"] == "correct"
     assert record["outcome_v2"] == "retrieval_miss_abstained"
+
+
+def test_baseline_answer_mentioning_marker_is_screened_as_answer(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    root = Path(__file__).resolve().parents[2]
+    baseline = json.loads((root / "evaluation" / "results" / "baseline.json").read_text(
+        encoding="utf-8"
+    ))
+    question = next(item for item in baseline if item["id"] == "paraphrased-05")
+    diagnosis = question["diagnosis"]
+
+    async def fake_investigate_repository(*args, **kwargs):
+        return {
+            "diagnosis": diagnosis,
+            "latency_ms": 75,
+            "generation_trace": {"raw_text": diagnosis},
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate, "investigate_repository", fake_investigate_repository
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    records, _ = asyncio.run(
+        run_pipeline_once(
+            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
+        )
+    )
+    record = records[0]
+    classify_outcomes(records, [question])
+    classify_outcome_v2_for_records(records)
+
+    assert "INSUFFICIENT_EVIDENCE" in diagnosis
+    assert record["abstention_kind"] is None
+    assert record["screen_pass"] is True
+    assert record["outcome"] == "correct"
+    assert record["outcome_v2"] == "correct_unlabeled_context"
+
+
+def test_unanswerable_answer_mentioning_marker_is_answered(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    root = Path(__file__).resolve().parents[2]
+    baseline = json.loads((root / "evaluation" / "results" / "baseline.json").read_text(
+        encoding="utf-8"
+    ))
+    diagnosis = next(
+        item["diagnosis"] for item in baseline if item["id"] == "paraphrased-05"
+    )
+    question = {
+        "id": "unanswerable-marker-answer",
+        "category": "unanswerable_near",
+        "question": "An unanswerable test question",
+        "relevant": [],
+        "must_mention": [],
+    }
+
+    async def fake_investigate_repository(*args, **kwargs):
+        return {
+            "diagnosis": diagnosis,
+            "latency_ms": 75,
+            "generation_trace": {"raw_text": diagnosis},
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate, "investigate_repository", fake_investigate_repository
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    records, _ = asyncio.run(
+        run_pipeline_once(
+            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
+        )
+    )
+    record = records[0]
+    classify_outcomes(records, [question])
+    classify_outcome_v2_for_records(records)
+
+    assert record["abstention_kind"] is None
+    assert record["outcome"] == "falsely answered"
+    assert record["outcome_v2"] == "answered_unanswerable"
+
+
+def test_legacy_and_v2_outcome_count_invariants() -> None:
+    questions = [
+        {"id": "labeled", "category": "direct", "must_mention": [["answer"]]},
+        {"id": "unlabeled", "category": "paraphrased", "must_mention": [["answer"]]},
+        {"id": "false-refusal", "category": "direct", "must_mention": []},
+        {"id": "true-refusal", "category": "unanswerable_far", "must_mention": []},
+        {"id": "model-abstention", "category": "unanswerable_near", "must_mention": []},
+        {"id": "answered-unanswerable", "category": "unanswerable_near", "must_mention": []},
+    ]
+    records = [
+        {
+            "id": "labeled", "category": "direct", "diagnosis": "answer", "error": None,
+            "refused": False, "abstention_kind": None, "labeled_chunk_in_context": True,
+            "screen_pass": True,
+        },
+        {
+            "id": "unlabeled", "category": "paraphrased", "diagnosis": "answer",
+            "error": None, "refused": False, "abstention_kind": None,
+            "labeled_chunk_in_context": False, "screen_pass": True,
+        },
+        {
+            "id": "false-refusal", "category": "direct",
+            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": True,
+            "abstention_kind": None, "labeled_chunk_in_context": False,
+            "screen_pass": None,
+        },
+        {
+            "id": "true-refusal", "category": "unanswerable_far",
+            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": True,
+            "abstention_kind": None, "labeled_chunk_in_context": None, "screen_pass": None,
+        },
+        {
+            "id": "model-abstention", "category": "unanswerable_near",
+            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": False,
+            "abstention_kind": "explicit", "labeled_chunk_in_context": None,
+            "screen_pass": None,
+        },
+        {
+            "id": "answered-unanswerable", "category": "unanswerable_near",
+            "diagnosis": "an answer", "error": None, "refused": False,
+            "abstention_kind": None, "labeled_chunk_in_context": None, "screen_pass": None,
+        },
+    ]
+
+    classify_outcomes(records, questions)
+    classify_outcome_v2_for_records(records)
+    answerable = [
+        record for record in records if not record["category"].startswith("unanswerable")
+    ]
+
+    assert sum(record["outcome"] == "correct" for record in answerable) == sum(
+        record["outcome_v2"] in {"correct_labeled_context", "correct_unlabeled_context"}
+        for record in answerable
+    )
+    assert sum(record["outcome"] == "refused" for record in records) == sum(
+        record["outcome_v2"] == "guard_true_refusal" for record in records
+    )
+    assert sum(record["outcome"] == "falsely answered" for record in records) == sum(
+        record["outcome_v2"] in {"model_abstained", "answered_unanswerable"}
+        for record in records
+    )
 
 
 def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
@@ -455,37 +586,45 @@ def test_index_validation_requires_a_reachable_chunk() -> None:
     ]
 
 
-def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes() -> None:
+def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from evaluation import runner
     from evaluation.compare import compare_reports
-    from evaluation.runner import build_run_metadata
 
-    a = build_run_metadata(
-        run_id="20260101T000000Z-abc1234",
-        started_at="2026-01-01T00:00:00+00:00",
-        finished_at="2026-01-01T00:01:00+00:00",
-        corpus_sha="deadbeef",
-        code_sha="code123",
-        code_dirty=False,
-        models={"embedding": "m1", "generation": "g1"},
-        limit=5,
-        passes=2,
-    )
-    b = build_run_metadata(
-        run_id="20260101T000001Z-abc1234",
-        started_at="2026-01-01T00:00:01+00:00",
-        finished_at="2026-01-01T00:01:01+00:00",
-        corpus_sha="deadbeef",
-        code_sha="code123",
-        code_dirty=False,
-        models={"embedding": "m1", "generation": "g1"},
-        limit=5,
-        passes=2,
-    )
+    def build_metadata() -> dict[str, object]:
+        return runner.build_run_metadata(
+            run_id="20260101T000000Z-abc1234",
+            started_at="2026-01-01T00:00:00+00:00",
+            finished_at="2026-01-01T00:01:00+00:00",
+            corpus_sha="deadbeef",
+            code_sha="code123",
+            code_dirty=False,
+            models={"embedding": "m1", "generation": "g1"},
+            limit=5,
+            passes=2,
+        )
+
+    a = build_metadata()
+    b = build_metadata()
     assert a["config_sha256"] == b["config_sha256"]
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            runner,
+            "MIN_ACCEPTABLE_RRF_SCORE",
+            runner.MIN_ACCEPTABLE_RRF_SCORE + 0.001,
+        )
+        assert build_metadata()["config_sha256"] != a["config_sha256"]
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runner, "SYSTEM_INSTRUCTION", runner.SYSTEM_INSTRUCTION + " changed")
+        assert build_metadata()["config_sha256"] != a["config_sha256"]
 
     report_a = {
         "pinned_sha": "deadbeef",
         "run_id": "a",
+        "code_sha": "old-code",
         "config_sha256": a["config_sha256"],
         "outcome_v2_counts": {"correct_labeled_context": 2, "model_abstained": 1},
         "guard_counts": {"true_accept": 2, "false_refusal": 1},
@@ -500,6 +639,7 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes() -> 
     report_b = {
         "pinned_sha": "deadbeef",
         "run_id": "b",
+        "code_sha": "new-code",
         "config_sha256": a["config_sha256"],
         "outcome_v2_counts": {"correct_labeled_context": 1, "model_abstained": 2},
         "guard_counts": {"true_accept": 1, "false_refusal": 2},
@@ -513,6 +653,10 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes() -> 
     }
 
     diff = compare_reports(report_a, report_b)
+    assert diff["config_differences"]["code_sha"] == {
+        "from": "old-code",
+        "to": "new-code",
+    }
     assert diff["outcome_v2_counts_delta"]["correct_labeled_context"] == -1
     assert diff["question_flips"]["q1"]["outcome_v2"] == {
         "from": "correct_labeled_context",
