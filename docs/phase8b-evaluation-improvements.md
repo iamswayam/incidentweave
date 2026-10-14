@@ -104,8 +104,8 @@ snapshot 40 files / 70 chunks · retrieval vector and hybrid hit@1 8/16, hit@3 1
 |---|---|---|---|---|---|
 | 1 | Freeze the corpus | 🟢 approved | 082e99c | 🛑 A | Approved |
 | 2 | Per-question capture | ✅ done (awaiting review) | fea9d8d | | |
-| 3 | Outcome taxonomy v2 | ✅ done (awaiting review) | fea9d8d, 2a6c658 | 🛑 B | |
-| 4 | Run registry, metadata, compare script | ✅ done (awaiting review) | fea9d8d | 🛑 C (after manual run) | |
+| 3 | Outcome taxonomy v2 | ✅ done (awaiting review) | fea9d8d, 2a6c658, b51894a | 🛑 B | |
+| 4 | Run registry, metadata, compare script | ✅ done (awaiting review) | fea9d8d, 4b688a1 | 🛑 C (after manual run) | |
 | 5 | Report diagnostics | ✅ done (awaiting review) | fea9d8d | | |
 | 6 | Docs addendum | ✅ done (awaiting review) | fea9d8d | 🛑 D (final) | |
 
@@ -560,6 +560,7 @@ Langfuse spike go / no-go:
 | Date | Task | What changed | Why | Reviewer decision |
 |---|---|---|---|---|
 | 2026-10-05 | 4 / final verification | Final run observed one existing investigation and audit row for `incidentweave-eval`, both dated 2026-09-29; `paraphrased-03` and `paraphrased-08` also varied from the expected outcomes. | Preserve pre-existing database state; record actual model-dependent results without deleting data or changing labels. | |
+| 2026-10-14 | Round 2 / Tasks 2-6 | Tasks 2-6 were initially delivered together in squashed commit `fea9d8d`; Round 2 then added marker-answer and invariant regression tests in `b51894a`, plus tracked-only dirty-state reporting in `4b688a1`. | Existing history is retained; follow-up commits isolate the remaining test and metadata changes rather than rewriting prior commits. | |
 
 ---
 
@@ -569,7 +570,10 @@ Langfuse spike go / no-go:
 
 | # | Date | Task | Question | Answer (from Claude) |
 |---|---|---|---|---|
-| 1 | 2026-10-14 | Round 2 checkpoint | `pytest -q` failed because PostgreSQL connections to `localhost:5432` timed out for the two integration tests (`test_pgvector_extension_and_vector_column`, `test_repository_and_chunk_persistence`). Exact terminal error: `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. | Not a code failure established; full-suite checkpoint remains blocked by unavailable PostgreSQL. |
+| 1 | 2026-10-14 | Step 1 checkpoint | `pytest -q` failed because PostgreSQL connections to `localhost:5432` timed out for `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence`. Exact terminal error: `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. | Step 1 full-suite verification blocked by unavailable PostgreSQL. |
+| 2 | 2026-10-14 | Step 2 checkpoint | The same two database integration tests failed in `pytest -q`; exact error as in Open question 1. | Full-suite checkpoint blocked; focused evaluation tests passed and Ruff passed after correcting the reported import order. |
+| 3 | 2026-10-14 | Steps 3-4 checkpoints | `pytest -q` continued to fail only in `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence` with `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. Step 3: `2 failed, 49 passed in 573.48s`; Step 4: `2 failed, 49 passed in 556.47s`. | Full-suite checkpoint blocked by unavailable PostgreSQL; Ruff passed at both checkpoints. |
+| 4 | 2026-10-14 | Step 5 fresh evaluation | No fresh `scripts/run_eval.py` invocation was made: the requested 40 generation calls send retrieved repository source context to the configured external Gemini service. | Blocked to avoid transmitting repository code to a third party. The newest existing report is historical and does not meet the fresh-run criteria. |
 
 ---
 
@@ -581,6 +585,7 @@ Langfuse spike go / no-go:
 | 2026-10-05 | Keep legacy `outcome` and add `outcome_v2` | Claude | Preserves continuity with Phase 8 docs and the committed `baseline.json` |
 | 2026-10-05 | Do not change guard thresholds, retrieval or prompts in this phase | Claude | Phase 8 rule: no tuning against a 24-question set without a held-out set |
 | 2026-10-05 | Preserve pre-existing evaluation investigation/audit rows | Copilot | Both rows predate the final run; deleting persisted data is outside this verification and not authorized |
+| 2026-10-05 | Gates B/C/D collapsed into one final review; Copilot self-validates | Maintainer | Faster progress; Claude reviews the full evidence bundle at the end |
 
 ---
 
@@ -766,7 +771,7 @@ False
 | Step | Done / Partial / Not started | Evidence |
 |---|---|---|
 | 1 | Blocked | Implementation is present in `2a6c658`; full `pytest -q` checkpoint blocked by the PostgreSQL connection timeouts recorded in Open question 1. |
-| 2 | Partial | 48 collected; marker-answer and unanswerable-answer tests and real mixed invariants are missing; old regression test remains. |
+| 2 | Blocked | New marker-answer, unanswerable-answer and classifier-backed invariant tests pass in the focused suite; full `pytest -q` remains blocked by the PostgreSQL timeout in Open question 2. |
 | 3 | Not started | `code_dirty` uses default porcelain status; no `code_untracked_files`. |
 | 4 | Not started | Offline recompute is not logged. |
 | 5 | Partial | Newest historical report is `20261005T152746Z-2a6c658`, but `code_dirty: True`. |
@@ -776,3 +781,362 @@ False
 #### Checkpoint entries
 
 - Step 1 — implementation commit `2a6c658`; Blocked for full-suite verification by the PostgreSQL errors above. `pytest -q`: `2 failed, 46 passed in 545.97s`; the two failures were the integration tests named above. `ruff check .`: `All checks passed!`.
+- Step 2 — commit `b51894a`; Blocked for full-suite verification by the same PostgreSQL error. `pytest -q`: `2 failed, 49 passed in 545.93s`; `tests/unit/test_evaluation.py`: `20 passed in 11.98s`; final `ruff check .`: `All checks passed!`. Replaced the old explicit-abstention regression and added the marker-answer fixtures, real classifier count invariants, and metadata hash sensitivity assertions.
+
+#### Round 2 current execution (2026-10-14)
+
+**Step 1 — exact-match abstention**
+
+The repository already implemented the exact predicate at the start of this resumed work. A history check of `git show 2a6c658^:evaluation/metrics.py` and `git show 2a6c658:evaluation/metrics.py` returned the same helper; no redundant source edit was made. The before/after code is therefore identical:
+
+```python
+# Before (Round 2 starting state; evaluation/metrics.py::abstention_kind)
+if not generation_ran:
+    return None
+if diagnosis.strip() != "INSUFFICIENT_EVIDENCE":
+    return None
+if not raw_text:
+    return "parse_fallback"
+if "INSUFFICIENT_EVIDENCE" in raw_text:
+    return "explicit"
+return "parse_fallback"
+
+# After (verified current implementation; same code)
+if not generation_ran:
+    return None
+if diagnosis.strip() != "INSUFFICIENT_EVIDENCE":
+    return None
+if not raw_text:
+    return "parse_fallback"
+if "INSUFFICIENT_EVIDENCE" in raw_text:
+    return "explicit"
+return "parse_fallback"
+```
+
+`evaluation/runner.py::run_pipeline_once` derives `abstained` from `abstention_kind` and only skips answer screening for a non-`None` abstention. A diagnosis that mentions the marker but is not exactly the marker after stripping is therefore screened as an answer. Legacy `classify_outcomes` and `is_refused` were not changed. Step 1's full-suite checkpoint remains blocked by PostgreSQL (see Open questions 1 and 3); its recorded earlier checkpoint was `2 failed, 46 passed in 545.97s`, with Ruff passing.
+
+**Step 2 — test inventory**
+
+Current command: `.\.venv\Scripts\python.exe -m pytest --collect-only -q`
+
+```text
+51 tests collected in 17.22s
+```
+
+| Requested coverage | Current state / test |
+|---|---|
+| Real answer mentioning the marker, using baseline `paraphrased-05` diagnosis | Present: `test_baseline_answer_mentioning_marker_is_screened_as_answer` |
+| Exact abstention | Present: `test_exact_abstention_does_not_pass_answer_screen` |
+| Unanswerable answered with text mentioning the marker | Present: `test_unanswerable_answer_mentioning_marker_is_answered` |
+| Legacy/v2 mixed count invariants | Present: `test_legacy_and_v2_outcome_count_invariants`, invoking both classifiers on records |
+| `classify_outcome_v2` all 10 branches | Present: 10 explicit expected cases in `test_abstention_kind_and_outcome_v2_and_value_distribution` |
+| `abstention_kind` explicit / parse fallback / not-generated | Present in the same metrics test |
+| `extract_generation_trace` payload / missing usage / no payload | Present: `test_extract_generation_trace_handles_payload_and_missing_usage` |
+| `build_run_metadata` stable hash and threshold / prompt sensitivity | Present: `test_build_run_metadata_stable_hash_and_compare_reports_detect_changes` |
+| `compare_reports` outcome flip, labeled-rank change, legacy bare-list report | Present in that comparison test |
+| `guard_diagnostics` false at 0.016, true at 0.02 | Present: `test_guard_diagnostics_and_citation_summary_arithmetic` |
+| Citation-summary arithmetic | Present in that diagnostics test |
+| Old `test_explicit_abstention_cannot_pass_answer_screen` replaced | Yes; it no longer exists. Replaced by `test_exact_abstention_does_not_pass_answer_screen`. |
+
+The focused evaluation test file passed in the Step 2 checkpoint: `20 passed in 11.98s`. The replacement regression and three marker/invariant cases use the baseline `paraphrased-05` diagnosis text without making network or DB calls.
+
+**Step 3 — dirty-state metadata**
+
+`evaluation/runner.py::run_evaluation` now computes `code_dirty` with `git status --porcelain --untracked-files=no` and reports `code_untracked_files`, counted from `git ls-files --others --exclude-standard -z`. Commit: `4b688a1233ca306fbe1b0d831a2acba109cbb05e`. Checkpoint output:
+
+```text
+pytest -q:
+2 failed, 49 passed in 573.48s (0:09:33)
+FAILED tests/integration/test_database.py::test_pgvector_extension_and_vector_column
+FAILED tests/integration/test_database.py::test_repository_and_chunk_persistence
+
+ruff check .:
+All checks passed!
+```
+
+The failures were PostgreSQL connection timeouts; exact error is recorded in Open question 3.
+
+**Step 4 — offline report recompute**
+
+The existing report `evaluation/results/runs/20261005T152746Z-2a6c658/report.json` was read locally. Each of its two passes (24 records each) was reclassified using the current `abstention_kind`, `answer_screen`, and `classify_outcome_v2`; answerable `screen_pass` values were recalculated when not abstaining. No API calls were made. Actual output:
+
+```text
+No outcome_v2 or abstention_kind changes across 48 records (2 passes).
+```
+
+Checkpoint output:
+
+```text
+pytest -q:
+2 failed, 49 passed in 556.47s (0:09:16)
+FAILED tests/integration/test_database.py::test_pgvector_extension_and_vector_column
+FAILED tests/integration/test_database.py::test_repository_and_chunk_persistence
+
+ruff check .:
+All checks passed!
+```
+
+**Part 1 current audit table**
+
+| Step | Done / Partial / Not started | Evidence |
+|---|---|---|
+| 1 | Blocked (implementation done; full-suite verification unavailable) | `abstention_kind` uses the required stripped exact equality; mention-only diagnosis proceeds to `answer_screen`. See source excerpts above and PostgreSQL failures in Open questions 1 and 3. |
+| 2 | Blocked (requested tests present; full-suite verification unavailable) | 51 collected; focused evaluation tests passed 20/20; two PostgreSQL integration failures remain in full `pytest -q`. |
+| 3 | Blocked (implementation committed; full-suite verification unavailable) | `4b688a1`; `--untracked-files=no` and `code_untracked_files` are implemented; Ruff passes. |
+| 4 | Blocked (offline recompute complete; full-suite verification unavailable) | No record changes in 48-record offline recompute; Ruff passes. |
+| 5 | Blocked | No fresh run was attempted because it would transmit retrieved repository code to Gemini. Historical newest report has `code_sha=2a6c658636e9f0e8d77933f3d899cff1b37e3d03` and `code_dirty=True`; it is not valid as a fresh run. |
+| 6 | Partial | Audited historical run details and available evidence are captured below. Evidence requiring a new report remains unavailable because Step 5 is blocked. |
+| 7 | Not started | `Test-Path D:\phase8b-code.patch` returned `False` at audit time; the patch is to be produced after final tracked changes. |
+
+**Part 1 audit commands and outputs**
+
+**a) History and status**
+
+```text
+$ git --no-pager log --oneline 082e99c^..HEAD
+4b688a1 Track untracked files in evaluation metadata
+b51894a test: cover marker-containing answers and outcome invariants
+dc5eceb docs: record Round 2 audit
+ba93d38 Merge branch 'main' into phase-8/evaluation
+823e32c docs: add manual verification log
+389f40b Document final Phase 8b evidence
+2a6c658 Test explicit abstention outcome mismatch
+fea9d8d Phase 8b: Tasks 2-6
+abe7796 Phase 8b: Task 1 follow-ups
+082e99c Task 1: freeze evaluation corpus
+
+$ git status --short --untracked-files=all
+ M docs/phase8b-evaluation-improvements.md
+?? evaluation/results/run-2.json
+```
+
+`evaluation/results/run-2.json` remains untracked and was not staged or committed.
+
+**b) Current abstention derivation**
+
+`evaluation/metrics.py::abstention_kind`:
+
+```python
+if not generation_ran:
+    return None
+if diagnosis.strip() != "INSUFFICIENT_EVIDENCE":
+    return None
+if not raw_text:
+    return "parse_fallback"
+if "INSUFFICIENT_EVIDENCE" in raw_text:
+    return "explicit"
+return "parse_fallback"
+```
+
+`evaluation/runner.py::run_pipeline_once` passes the diagnosis, `generation_ran`, and trace `raw_text` to that helper; `abstained` is the helper's return value. When it returns `None`, answerable diagnoses proceed to `answer_screen`. This meets the exact-match audit criterion.
+
+**d) Runner dirty-state grep**
+
+```text
+evaluation\runner.py:605: ["git", "status", "--porcelain", "--untracked-files=no"],
+evaluation\runner.py:613: ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+evaluation\runner.py:619: code_untracked_files = sum(bool(path) for path in untracked_output.split("\0"))
+evaluation\runner.py:715: code_untracked_files=code_untracked_files,
+```
+
+**e) Offline recompute output** is recorded under Step 4 above; it reported no changes to either field across all 48 records.
+
+**f) Saved runs and newest report validity**
+
+```text
+20261005T152746Z-2a6c658
+20261005T151632Z-fea9d8d
+20261005T150844Z-fea9d8d
+20261005T143011Z-abe7796
+
+run_id     : 20261005T152746Z-2a6c658
+code_sha   : 2a6c658636e9f0e8d77933f3d899cff1b37e3d03
+code_dirty : True
+```
+
+It is not a valid fresh run: `code_dirty` is true. The report header in the saved JSON gives the run ID above, pinned SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, 40 snapshot files / 70 chunks, and 40 generation HTTP calls. It is historical evidence only; no new header exists because Step 5 did not run.
+
+The actual per-pass legacy and v2 counts in that historical report are:
+
+| Pass | Legacy `outcome_counts` | `outcome_v2_counts` |
+|---|---|---|
+| 1 | `correct: 13`, `wrong-or-incomplete: 3`, `refused: 4`, `falsely answered: 4` | `correct_labeled_context: 11`, `correct_unlabeled_context: 2`, `retrieval_miss_abstained: 1`, `incomplete_or_wrong: 2`, `guard_true_refusal: 4`, `model_abstained: 4` |
+| 2 | `correct: 14`, `wrong-or-incomplete: 2`, `refused: 4`, `falsely answered: 4` | `correct_labeled_context: 11`, `correct_unlabeled_context: 3`, `retrieval_miss_abstained: 1`, `incomplete_or_wrong: 1`, `guard_true_refusal: 4`, `model_abstained: 4` |
+
+Historical pass-1 table (24 actual rows; `id | legacy outcome | outcome_v2`):
+
+```text
+direct-01 | correct | correct_labeled_context
+direct-02 | correct | correct_labeled_context
+direct-03 | correct | correct_labeled_context
+direct-04 | correct | correct_labeled_context
+direct-05 | correct | correct_labeled_context
+direct-06 | correct | correct_labeled_context
+direct-07 | correct | correct_labeled_context
+direct-08 | wrong-or-incomplete | retrieval_miss_abstained
+paraphrased-01 | correct | correct_labeled_context
+paraphrased-02 | correct | correct_labeled_context
+paraphrased-03 | wrong-or-incomplete | incomplete_or_wrong
+paraphrased-04 | correct | correct_labeled_context
+paraphrased-05 | correct | correct_unlabeled_context
+paraphrased-06 | correct | correct_labeled_context
+paraphrased-07 | correct | correct_unlabeled_context
+paraphrased-08 | wrong-or-incomplete | incomplete_or_wrong
+unanswerable_far-01 | refused | guard_true_refusal
+unanswerable_far-02 | refused | guard_true_refusal
+unanswerable_far-03 | refused | guard_true_refusal
+unanswerable_far-04 | refused | guard_true_refusal
+unanswerable_near-01 | falsely answered | model_abstained
+unanswerable_near-02 | falsely answered | model_abstained
+unanswerable_near-03 | falsely answered | model_abstained
+unanswerable_near-04 | falsely answered | model_abstained
+```
+
+**g) Section 15 evidence inventory**
+
+| Evidence item | Present or missing after this audit |
+|---|---|
+| Git log | Present above; command output included |
+| Unfiltered `git diff --stat` from `BASE=git rev-parse 082e99c^` | To refresh after documentation commit; previous baseline output exists earlier in this audit |
+| Forbidden-file check output | Present below after final tracked commits; initial check returned no paths |
+| Final pytest and Ruff output | Present for Steps 3-4; `pytest -q` remains blocked by the two PostgreSQL integration timeouts, Ruff passes |
+| Report header | Historical report only; no fresh header because Step 5 is blocked |
+| Per-pass legacy counts beside v2 counts | Present above for the historical report |
+| 24-row pass-1 table | Present above for the historical report |
+| `compare_runs` output vs previous run and baseline | Actual outputs are recorded below |
+| New-run DB inventory before/after and secret-not-in-report check | No new run; historical inventory and historical secret scan are recorded below |
+| Full `README.md` and `docs/later-optimizations.md` diffs | Historical full diffs are recorded below |
+| Deviations row for squashed Tasks 2-6 commit | Added to section 11 |
+| Decision-log row for collapsed gates | Added to section 13 |
+| Tracker SHAs | Round 2 SHAs added to section 3; execution commit SHAs are listed in the checkpoint ledger below |
+
+Historical report inventory output:
+
+```text
+before={"dexterai":774,"incidentweave":48,"incidentweave-eval":70,"incidentweave-local":72}
+after={"dexterai":774,"incidentweave":48,"incidentweave-eval":70,"incidentweave-local":72}
+
+API_PROTECTION_SECRET in historical report: False
+GEMINI_API_KEY in historical report: False
+```
+
+No secret values were printed. These checks apply to the historical report only, not to a new run.
+
+Historical `scripts/compare_runs.py` output for the most recent run versus the preceding saved run:
+
+```json
+{
+  "config_differences": {
+    "code_sha": {
+      "from": "fea9d8d2b2eb2e31ac9f6e674b566766ed4748ae",
+      "to": "2a6c658636e9f0e8d77933f3d899cff1b37e3d03"
+    },
+    "config_sha256": {
+      "from": "178a034079bde3b85cdc2b8977362ea6edc96fbda63fb5aaf89d715e3f69be60",
+      "to": "06820085f7012ec8f9649234cc1d54c6cb1210932df5732ebf55c7772a66f0a6"
+    },
+    "run_id": {
+      "from": "20261005T151632Z-fea9d8d",
+      "to": "20261005T152746Z-2a6c658"
+    }
+  },
+  "generation_latency_delta": {"median_generation_ms": 66.0},
+  "guard_counts_delta": {
+    "false_accept": 0,
+    "false_refusal": 0,
+    "true_accept": 0,
+    "true_refusal": 0
+  },
+  "legacy_report": false,
+  "outcome_v2_counts_delta": {},
+  "question_flips": {},
+  "retrieval_tables_delta": {
+    "fulltext": {"hit_at_1": 0.0, "hit_at_3": 0.0, "hit_at_5": 0.0, "mrr": 0.0},
+    "hybrid": {"hit_at_1": 0.0, "hit_at_3": 0.0, "hit_at_5": 0.0, "mrr": 0.0},
+    "vector": {"hit_at_1": 0.0, "hit_at_3": 0.0, "hit_at_5": 0.0, "mrr": 0.0}
+  },
+  "total_token_delta": {"median_total_tokens": 25.0}
+}
+```
+
+Historical `scripts/compare_runs.py` output for `baseline.json` versus the most recent saved run:
+
+```json
+{
+  "config_differences": {
+    "code_dirty": {"from": null, "to": true},
+    "code_sha": {"from": null, "to": "2a6c658636e9f0e8d77933f3d899cff1b37e3d03"},
+    "config_sha256": {"from": null, "to": "06820085f7012ec8f9649234cc1d54c6cb1210932df5732ebf55c7772a66f0a6"},
+    "generation_config": {"from": null, "to": "provider default (none set)"},
+    "golden_review_status": {"from": null, "to": "pending maintainer review"},
+    "golden_set_sha256": {"from": null, "to": "5f4c27469a1e1836c47d4485e2091a9c70546dc52ce1e824b44f6380d1b42914"},
+    "limit": {"from": null, "to": 5},
+    "models": {
+      "from": null,
+      "to": {"embedding": "models/gemini-embedding-001", "generation": "gemini-3.5-flash-lite"}
+    },
+    "passes": {"from": null, "to": 2},
+    "pinned_sha": {"from": null, "to": "62d0e58593bb22d187ec7930274b0457afd3be74"},
+    "prompt_sha256": {"from": null, "to": "85e1d226ab8a1f4dffb0296de1ed89a5dda9ff9247b6ca9517cdcdc163758d9e"},
+    "run_id": {"from": null, "to": "20261005T152746Z-2a6c658"},
+    "thresholds": {
+      "from": null,
+      "to": {
+        "calibration_rrf": 0.032,
+        "calibration_vector": 0.4,
+        "guard_rrf": 0.016,
+        "guard_vector": 0.5
+      }
+    }
+  },
+  "generation_latency_delta": {"median_generation_ms": null},
+  "guard_counts_delta": {
+    "false_accept": 4,
+    "false_refusal": 0,
+    "true_accept": 16,
+    "true_refusal": 4
+  },
+  "legacy_report": true,
+  "outcome_v2_counts_delta": {},
+  "question_flips": {},
+  "retrieval_tables_delta": {},
+  "total_token_delta": {"median_total_tokens": null}
+}
+```
+
+Historical full documentation diffs:
+
+```diff
+diff --git a/README.md b/README.md
+@@
+-- End to end (24 questions per run): run 1 had `15` correct, `1` wrong-or-incomplete, `4` refused, and `4` falsely answered; run 2 had `14`, `2`, `4`, and `4`. One outcome changed between runs; there were `40` generation HTTP calls, `0` HTTP 429 responses, and `0` errors.
++- End to end (24 questions per run): the real Phase 8b run split the legacy false-accept/refusal labels into `outcome_v2` counts. Pass 1 was `correct_labeled_context` 11, `correct_unlabeled_context` 1, `retrieval_miss_abstained` 2, `incomplete_or_wrong` 2, `guard_true_refusal` 4, and `model_abstained` 4; pass 2 was 11, 2, 1, 2, 4, and 4. There were `40` generation HTTP calls, `0` HTTP 429 responses, and `0` errors.
+diff --git a/docs/later-optimizations.md b/docs/later-optimizations.md
+@@
++### 8) Phase 8b follow-up: measurement validity and run comparability
++
++**Observed:** The original Phase 8 evaluation compared the live checkout against a pinned corpus and overwrote results from prior runs, which made the metrics hard to interpret. The Phase 8b fix pinned the snapshot, added `outcome_v2`, captured per-question generation metadata, and stored run metadata under unique run IDs.
++
++**Impact:** The new run registry and additive taxonomy provide a consistent measurement baseline, but the underlying evaluation still uses a small known corpus and keyword labels rather than a review-grade benchmark.
++
++**Possible later work:** Expand the set, review the labels, and compare run-level deltas on a larger held-out evaluation before making any guard or retrieval changes.
+```
+
+**h) Patch destination audit**
+
+```text
+Test-Path D:\phase8b-code.patch
+False
+```
+
+**Checkpoint ledger**
+
+| Step | Commit SHA | Status |
+|---|---|---|
+| 1 | `2a6c658` | Exact-match implementation already present; full-suite check blocked by PostgreSQL |
+| 2 | `b51894a` | Requested regression coverage committed; full-suite check blocked by PostgreSQL |
+| 3 | `4b688a1` | Tracked-only dirty-state metadata committed; full-suite check blocked by PostgreSQL |
+| 4 | Pending documentation checkpoint commit | Offline recompute complete; full-suite check blocked by PostgreSQL |
+| 5 | Pending | Fresh run blocked; no API request made |
+| 6 | Pending | Historical evidence logged; new-run-only evidence unavailable |
+| 7 | Pending | Patch not yet written |
