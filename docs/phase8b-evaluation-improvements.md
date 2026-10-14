@@ -886,7 +886,7 @@ All checks passed!
 | 4 | Blocked (offline recompute complete; full-suite verification unavailable) | No record changes in 48-record offline recompute; Ruff passes. |
 | 5 | Blocked | No fresh run was attempted because it would transmit retrieved repository code to Gemini. Historical newest report has `code_sha=2a6c658636e9f0e8d77933f3d899cff1b37e3d03` and `code_dirty=True`; it is not valid as a fresh run. |
 | 6 | Partial | Audited historical run details and available evidence are captured below. Evidence requiring a new report remains unavailable because Step 5 is blocked. |
-| 7 | Not started | `Test-Path D:\phase8b-code.patch` returned `False` at audit time; the patch is to be produced after final tracked changes. |
+| 7 | Done | Generated `D:\phase8b-code.patch` from `082e99c^..HEAD` using the requested pathspec; `git apply --stat` parsed it and `Test-Path` returned `True`. |
 
 **Part 1 audit commands and outputs**
 
@@ -1126,8 +1126,59 @@ diff --git a/docs/later-optimizations.md b/docs/later-optimizations.md
 
 ```text
 Test-Path D:\phase8b-code.patch
-False
+True
+
+Command:
+git diff 082e99c^..HEAD -- app scripts evaluation tests ":(exclude)evaluation/results" > D:\phase8b-code.patch
+
+git apply --stat D:\phase8b-code.patch:
+ app/investigation/parsing.py  |   45 ++++
+ evaluation/compare.py         |  170 +++++++++++++++
+ evaluation/corpus.py          |   21 ++
+ evaluation/metrics.py        |  158 ++++++++++++++
+ evaluation/runner.py         |  256 +++++++++++++++++++++--
+ scripts/compare_runs.py      |   33 +++
+ scripts/investigate.py       |    7 +
+ scripts/run_eval.py          |   17 +-
+ tests/unit/test_evaluation.py |  461 +++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 1144 insertions(+), 24 deletions(-)
 ```
+
+**Final Step 6 repository checks**
+
+Actual output using `BASE=$(git rev-parse 082e99c^)` (`06ab9957147d32b4c733d6837c5dd8fcec260b2d`):
+
+```text
+ .gitignore                                   |    3 +-
+ README.md                                    |    2 +-
+ app/investigation/parsing.py                 |   45 ++++
+ docs/README.md                               |    2 +
+ docs/later-optimizations.md                  |    8 +
+ docs/manual-verification-and-improvements.md |   43 +
+ docs/phase8-evaluation.md                    |   15 +
+ docs/phase8b-evaluation-improvements.md      | 1142 ++++++++++++++++++++++++++
+ evaluation/compare.py                        |  170 ++++
+ evaluation/corpus.py                         |   21 +
+ evaluation/metrics.py                        |  158 +++-
+ evaluation/results/runs/.gitkeep             |    0
+ evaluation/runner.py                         |  256 +++++-
+ scripts/compare_runs.py                      |   33 +
+ scripts/investigate.py                       |    7 +
+ scripts/run_eval.py                          |   17 +-
+ tests/unit/test_evaluation.py                |  461 ++++++++++-
+ 17 files changed, 2357 insertions(+), 26 deletions(-)
+
+Forbidden-file paths:
+[no output]
+
+Tracked status:
+[no output]
+
+Full status:
+?? evaluation/results/run-2.json
+```
+
+The new-run-specific report header, inventory, and secret scan remain unavailable because Step 5 was not run. Historical report inventory and secret scan are the only recorded values; they must not be represented as evidence for a fresh run.
 
 **Checkpoint ledger**
 
@@ -1136,7 +1187,7 @@ False
 | 1 | `2a6c658` | Exact-match implementation already present; full-suite check blocked by PostgreSQL |
 | 2 | `b51894a` | Requested regression coverage committed; full-suite check blocked by PostgreSQL |
 | 3 | `4b688a1` | Tracked-only dirty-state metadata committed; full-suite check blocked by PostgreSQL |
-| 4 | Pending documentation checkpoint commit | Offline recompute complete; full-suite check blocked by PostgreSQL |
-| 5 | Pending | Fresh run blocked; no API request made |
-| 6 | Pending | Historical evidence logged; new-run-only evidence unavailable |
-| 7 | Pending | Patch not yet written |
+| 4 | `e20cadd` | Offline recompute complete: zero changes; full-suite check blocked by PostgreSQL |
+| 5 | `e20cadd` | Blocked; no fresh run or external API request made |
+| 6 | `e20cadd` | Partial; available historical evidence logged, fresh-run evidence unavailable |
+| 7 | `e20cadd` | Done; requested patch generated and parsed successfully |
