@@ -107,7 +107,7 @@ snapshot 40 files / 70 chunks · retrieval vector and hybrid hit@1 8/16, hit@3 1
 | 3 | Outcome taxonomy v2 | ✅ done (awaiting review) | fea9d8d, 2a6c658, b51894a, c203e0e | 🛑 B | |
 | 4 | Run registry, metadata, compare script | ✅ done (awaiting review) | fea9d8d, 4b688a1, c203e0e | 🛑 C (after manual run) | |
 | 5 | Report diagnostics | ✅ done (awaiting review) | fea9d8d, c203e0e | | |
-| 6 | Docs addendum | ✅ done (awaiting review) | fea9d8d, docs commit recorded in Round 3 audit | 🛑 D (final) | |
+| 6 | Docs addendum | ✅ done (awaiting review) | fea9d8d, 4ace734 | 🛑 D (final) | |
 
 ---
 
@@ -1675,6 +1675,80 @@ The Phase 8 addendum was also updated to the same final run and its measured cou
 | B | Done | The new report and offline pass-1 tool outcome calculation both show 0 RRF, 4 vector, and 0 other rejections. |
 | C | Done | True median restored; report answerable-vector median `0.34887027228830086`; value-distribution regression asserts `4.0`. |
 | D | Done | All five associated behavior changes are committed and covered by the 53-test suite. |
-| E | In progress | Code/test commit and one clean-code evaluation are complete; docs and final patch/audit evidence are being committed separately. |
+| E | Done | Code/test commit `c203e0e`, docs commit `4ace734`, clean-code final run `20261015T151657Z-c203e0e`, and validated code patch are recorded below. |
 
 No reviewer approval is claimed.
+
+#### Final history and scope checks
+
+Captured after the substantive Round 3 documentation commit `4ace734` and before this evidence-only audit amendment:
+
+```text
+BASE=06ab9957147d32b4c733d6837c5dd8fcec260b2d
+
+$ git --no-pager log --oneline 082e99c^..HEAD
+4ace734 docs: record Round 3 evaluation evidence
+c203e0e fix: correct Phase 8b evaluation reports
+259055f docs: record fresh Round 2 evaluation
+305200f docs: record final audit verification
+dd3ec8f docs: finalize Round 2 audit evidence
+e20cadd docs: record Round 2 audit and blockers
+4b688a1 Track untracked files in evaluation metadata
+b51894a test: cover marker-containing answers and outcome invariants
+dc5eceb docs: record Round 2 audit
+ba93d38 Merge branch 'main' into phase-8/evaluation
+823e32c docs: add manual verification log
+389f40b Document final Phase 8b evidence
+2a6c658 Test explicit abstention outcome mismatch
+fea9d8d Phase 8b: Tasks 2-6
+abe7796 Phase 8b: Task 1 follow-ups
+082e99c Task 1: freeze evaluation corpus
+
+$ git diff --stat 082e99c^..HEAD
+ .gitignore                                   |    3 +-
+ README.md                                    |    4 +-
+ app/investigation/parsing.py                 |   45 +
+ docs/README.md                               |    2 +
+ docs/later-optimizations.md                  |    8 +
+ docs/manual-verification-and-improvements.md |   43 +
+ docs/phase8-evaluation.md                    |   16 +
+ docs/phase8b-evaluation-improvements.md      | 1680 ++++++++++++++++++++++++++
+ evaluation/compare.py                        |  221 ++++
+ evaluation/corpus.py                          |   21 +
+ evaluation/metrics.py                         |  159 +++
+ evaluation/results/runs/.gitkeep             |    0
+ evaluation/runner.py                          |  249 +++-
+ scripts/compare_runs.py                       |   33 +
+ scripts/investigate.py                        |    7 +
+ scripts/run_eval.py                           |   19 +-
+ tests/unit/test_evaluation.py                 |  593 ++++++++-
+ 17 files changed, 3076 insertions(+), 27 deletions(-)
+
+$ git diff --name-only 082e99c^..HEAD -- app/investigation/guard.py app/investigation/confidence.py app/investigation/prompt.py app/investigation/generation.py app/investigation/graph.py app/retrieval evaluation/golden_set.json
+[no output]
+
+$ git status --short --untracked-files=no
+[no output]
+
+$ git status --short --untracked-files=all
+?? evaluation/results/run-2.json
+```
+
+The requested code patch was generated from this committed code state (the final regenerated copy is produced after this audit amendment):
+
+```text
+git diff 082e99c^..HEAD -- app scripts evaluation tests ":(exclude)evaluation/results" > D:\phase8b-code.patch
+PATCH_EXISTS=True
+PATCH_BYTES=60780
+git apply --stat D:\phase8b-code.patch
+ app/investigation/parsing.py  |   45 +++
+ evaluation/compare.py         |  221 +++++++++++++++
+ evaluation/corpus.py          |   21 +
+ evaluation/metrics.py         |  159 +++++++++++
+ evaluation/runner.py          |  249 ++++++++++++++++-
+ scripts/compare_runs.py       |   33 ++
+ scripts/investigate.py        |    7
+ scripts/run_eval.py           |   19 +
+ tests/unit/test_evaluation.py |  593 +++++++++++++++++++++++++++++++++++++++++
+ 9 files changed, 1323 insertions(+), 24 deletions(-)
+```
