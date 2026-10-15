@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from statistics import median_high
+from statistics import median
 
 
 def is_relevant(
@@ -108,7 +108,7 @@ def best_score_distribution(
     values = [float(check[key]) for check in evidence_checks if check.get(key) is not None]
     if not values:
         return {"min": None, "median": None, "max": None}
-    return {"min": min(values), "median": median_high(values), "max": max(values)}
+    return {"min": min(values), "median": median(values), "max": max(values)}
 
 
 def distance_sweep(
@@ -174,7 +174,9 @@ def citation_summary(records: Sequence[Mapping[str, object]]) -> dict[str, int]:
     answers_with_zero_citations = sum(
         1
         for record in answerable
-        if record.get("diagnosis") and not record.get("cited_chunk_ids")
+        if record.get("diagnosis")
+        and record.get("diagnosis") != "INSUFFICIENT_EVIDENCE"
+        and not record.get("cited_chunk_ids")
     )
     return {
         "cited_total": cited_total,
@@ -189,7 +191,9 @@ def guard_diagnostics(
 ) -> dict[str, float | int | bool]:
     """Summarize whether the RRF guard can reject nonempty vector results."""
 
-    reasons = [str(check.get("reason") or "").lower() for check in evidence_checks]
+    rejected = [check for check in evidence_checks if check.get("is_sufficient") is False]
+    rrf_reason = "Best retrieved evidence score is below the minimum threshold."
+    vector_reason = "Best vector cosine distance is above the maximum threshold."
     rrf_rank1_floor = 1 / (60 + 1)
     return {
         "rrf_threshold": rrf_threshold,
@@ -197,13 +201,14 @@ def guard_diagnostics(
         "rrf_gate_can_reject_nonempty_vector_results": (
             rrf_threshold > rrf_rank1_floor
         ),
-        "rrf_rejections": sum(
-            "rrf" in reason or "minimum threshold" in reason for reason in reasons
-        ),
+        "rrf_rejections": sum(check.get("reason") == rrf_reason for check in rejected),
         "vector_rejections": sum(
-            "vector" in reason or "distance" in reason for reason in reasons
+            check.get("reason") == vector_reason for check in rejected
         ),
-        "can_reject": rrf_threshold > rrf_rank1_floor,
+        "other_rejections": sum(
+            check.get("reason") not in {rrf_reason, vector_reason}
+            for check in rejected
+        ),
     }
 
 
@@ -298,7 +303,7 @@ def value_distribution(values: Sequence[float | int | None]) -> dict[str, float 
     if not filtered:
         return {"min": None, "median": None, "max": None, "count": 0}
     sorted_values = sorted(filtered, key=float)
-    median_value = median_high(sorted_values)
+    median_value = median(sorted_values)
     return {
         "min": sorted_values[0],
         "median": median_value,

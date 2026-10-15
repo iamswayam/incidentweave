@@ -9,6 +9,12 @@ def _as_dict(value: object) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _normalize_report(report: dict[str, Any] | list[Any]) -> dict[str, Any]:
+    if isinstance(report, list):
+        return {"records": [report]}
+    return report
+
+
 def _extract_pass_records(report: dict[str, Any]) -> list[dict[str, Any]]:
     records = report.get("records")
     if isinstance(records, list) and records and isinstance(records[0], list):
@@ -16,6 +22,31 @@ def _extract_pass_records(report: dict[str, Any]) -> list[dict[str, Any]]:
     if isinstance(records, list):
         return [item for item in records if isinstance(item, dict)]
     return []
+
+
+def _has_outcome_v2_counts(report: dict[str, Any], pass_index: int) -> bool:
+    summaries = report.get("run_summaries")
+    return (
+        isinstance(summaries, list)
+        and len(summaries) > pass_index
+        and isinstance(summaries[pass_index], dict)
+        and isinstance(summaries[pass_index].get("outcome_v2_counts"), dict)
+    )
+
+
+def _outcome_v2_counts(report: dict[str, Any], pass_index: int) -> dict[str, Any]:
+    if "run_summaries" in report:
+        summaries = report.get("run_summaries")
+        if (
+            isinstance(summaries, list)
+            and len(summaries) > pass_index
+            and isinstance(summaries[pass_index], dict)
+        ):
+            return _as_dict(summaries[pass_index].get("outcome_v2_counts"))
+        return {}
+    if pass_index == 0:
+        return _as_dict(report.get("outcome_v2_counts"))
+    return {}
 
 
 def _value_or_none(value: object) -> object:
@@ -44,19 +75,32 @@ def _numeric_delta(left: object, right: object) -> dict[str, float | int | None]
     return {"delta": right_value - left_value}
 
 
-def compare_reports(report_a: dict[str, Any], report_b: dict[str, Any]) -> dict[str, Any]:
+def compare_reports(
+    report_a: dict[str, Any] | list[Any],
+    report_b: dict[str, Any] | list[Any],
+) -> dict[str, Any]:
     """Return a stable difference summary between two evaluation reports.
 
     Missing fields are treated as None; legacy reports without the Phase 8b metadata
     are still compared without crashing.
     """
 
-    a = report_a if isinstance(report_a, dict) else {}
-    b = report_b if isinstance(report_b, dict) else {}
+    a = _normalize_report(report_a)
+    b = _normalize_report(report_b)
     legacy_report = bool(
         not (
-            ("outcome_v2_counts" in a or "guard_counts" in a or "retrieval_tables" in a)
-            and ("outcome_v2_counts" in b or "guard_counts" in b or "retrieval_tables" in b)
+            (
+                _has_outcome_v2_counts(a, 0)
+                or "outcome_v2_counts" in a
+                or "guard_counts" in a
+                or "retrieval_tables" in a
+            )
+            and (
+                _has_outcome_v2_counts(b, 0)
+                or "outcome_v2_counts" in b
+                or "guard_counts" in b
+                or "retrieval_tables" in b
+            )
         )
     )
 
@@ -133,13 +177,14 @@ def compare_reports(report_a: dict[str, Any], report_b: dict[str, Any]) -> dict[
     median_total_tokens_a = total_tokens_a.get("median")
     median_total_tokens_b = total_tokens_b.get("median")
 
-    return {
+    outcome_v2_counts_delta = _diff_counts(
+        _outcome_v2_counts(a, 0),
+        _outcome_v2_counts(b, 0),
+    )
+    result = {
         "legacy_report": legacy_report,
         "config_differences": config_differences,
-        "outcome_v2_counts_delta": _diff_counts(
-            a.get("outcome_v2_counts"),
-            b.get("outcome_v2_counts"),
-        ),
+        "outcome_v2_counts_delta": outcome_v2_counts_delta,
         "guard_counts_delta": _diff_counts(a.get("guard_counts"), b.get("guard_counts")),
         "retrieval_tables_delta": {
             method: {
@@ -168,3 +213,9 @@ def compare_reports(report_a: dict[str, Any], report_b: dict[str, Any]) -> dict[
             )
         },
     }
+    if _has_outcome_v2_counts(a, 1) and _has_outcome_v2_counts(b, 1):
+        result["outcome_v2_counts_delta_pass_2"] = _diff_counts(
+            _outcome_v2_counts(a, 1),
+            _outcome_v2_counts(b, 1),
+        )
+    return result

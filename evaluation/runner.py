@@ -80,9 +80,6 @@ def build_run_metadata(
     golden_set_sha256 = hashlib.sha256(golden_path.read_bytes()).hexdigest()
     payload = {
         "pinned_sha": corpus_sha,
-        "code_sha": code_sha,
-        "code_dirty": code_dirty,
-        "code_untracked_files": code_untracked_files,
         "golden_set_sha256": golden_set_sha256,
         "golden_review_status": golden_data.get("review_status"),
         "models": models or {
@@ -731,11 +728,7 @@ async def run_evaluation(passes: int = 2) -> dict[str, Any]:
         "guard_counts": guard_counts,
         "guard_distributions": distributions,
         "guard_diagnostics": guard_diagnostics(
-            [
-                {"reason": check.get("reason")}
-                for check in hybrid_checks
-                if isinstance(check, dict)
-            ],
+            [check for check in hybrid_checks if isinstance(check, dict)],
             float(MIN_ACCEPTABLE_RRF_SCORE),
         ),
         "citation_summary": {

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -14,6 +13,7 @@ from evaluation.golden import load_golden_set, validate_golden_set, validate_ind
 from evaluation.metrics import (
     abstention_kind,
     answer_screen,
+    best_score_distribution,
     citation_summary,
     classify_outcome_v2,
     distance_sweep,
@@ -49,13 +49,13 @@ def test_resolve_corpus_sha_returns_pinned_value_and_raises_on_invalid_input() -
         resolve_corpus_sha({"pinned_sha": ""})
 
 
-def test_pinned_snapshot_exports_and_validates_with_expected_counts() -> None:
+def test_pinned_snapshot_exports_and_validates_with_expected_counts(
+    tmp_path: Path,
+) -> None:
     root = Path(__file__).resolve().parents[2]
     data = load_golden_set(root / "evaluation" / "golden_set.json")
     sha = resolve_corpus_sha(data)
-    snapshot_parent = root / "evaluation" / "_snapshot"
-    if snapshot_parent.exists():
-        shutil.rmtree(snapshot_parent)
+    snapshot_parent = tmp_path / "snapshot"
     try:
         snapshot_root = export_snapshot(root, sha, snapshot_parent)
     except RuntimeError as exc:
@@ -152,7 +152,7 @@ def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
 
     assert value_distribution([3, 5, 1, None, 9]) == {
         "min": 1,
-        "median": 5,
+        "median": 4.0,
         "max": 9,
         "count": 4,
     }
@@ -365,11 +365,50 @@ def test_legacy_and_v2_outcome_count_invariants() -> None:
 
 def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
     checks = [
-        {"reason": "RRF threshold below minimum"},
-        {"reason": "vector distance too large"},
+        {
+            "is_sufficient": False,
+            "reason": "Best retrieved evidence score is below the minimum threshold.",
+        },
+        {
+            "is_sufficient": False,
+            "reason": "Best vector cosine distance is above the maximum threshold.",
+        },
+        {
+            "is_sufficient": False,
+            "reason": "No repository evidence was retrieved.",
+        },
+        {
+            "is_sufficient": True,
+            "reason": "Evidence strength meets the RRF and vector-distance requirements.",
+        },
+        {
+            "is_sufficient": True,
+            "reason": "Best retrieved evidence score is below the minimum threshold.",
+        },
+        {
+            "is_sufficient": True,
+            "reason": "Best vector cosine distance is above the maximum threshold.",
+        },
     ]
-    assert guard_diagnostics(checks, 0.016)["rrf_gate_can_reject_nonempty_vector_results"] is False
-    assert guard_diagnostics(checks, 0.02)["rrf_gate_can_reject_nonempty_vector_results"] is True
+    diagnostics = guard_diagnostics(checks, 0.016)
+    assert diagnostics == {
+        "rrf_threshold": 0.016,
+        "rrf_rank1_floor": 1 / 61,
+        "rrf_gate_can_reject_nonempty_vector_results": False,
+        "rrf_rejections": 1,
+        "vector_rejections": 1,
+        "other_rejections": 1,
+    }
+    assert "can_reject" not in diagnostics
+    assert (
+        guard_diagnostics(checks, 0.02)[
+            "rrf_gate_can_reject_nonempty_vector_results"
+        ]
+        is True
+    )
+    assert best_score_distribution(
+        [{"score": 0.3}, {"score": 0.4}], "score"
+    ) == {"min": 0.3, "median": 0.35, "max": 0.4}
 
     records = [{
         "category": "direct",
@@ -383,6 +422,11 @@ def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
         "cited_chunk_relevance": [{"relevant": False}],
     }, {
         "category": "unanswerable_far",
+        "diagnosis": "INSUFFICIENT_EVIDENCE",
+        "cited_chunk_ids": [],
+        "cited_chunk_relevance": [],
+    }, {
+        "category": "direct",
         "diagnosis": "INSUFFICIENT_EVIDENCE",
         "cited_chunk_ids": [],
         "cited_chunk_relevance": [],
@@ -592,15 +636,20 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
     from evaluation import runner
     from evaluation.compare import compare_reports
 
-    def build_metadata() -> dict[str, object]:
+    def build_metadata(
+        *,
+        code_sha: str = "code123",
+        code_dirty: bool = False,
+        code_untracked_files: int = 1,
+    ) -> dict[str, object]:
         return runner.build_run_metadata(
             run_id="20260101T000000Z-abc1234",
             started_at="2026-01-01T00:00:00+00:00",
             finished_at="2026-01-01T00:01:00+00:00",
             corpus_sha="deadbeef",
-            code_sha="code123",
-            code_dirty=False,
-            code_untracked_files=1,
+            code_sha=code_sha,
+            code_dirty=code_dirty,
+            code_untracked_files=code_untracked_files,
             models={"embedding": "m1", "generation": "g1"},
             limit=5,
             passes=2,
@@ -610,6 +659,15 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
     b = build_metadata()
     assert a["config_sha256"] == b["config_sha256"]
     assert a["code_untracked_files"] == 1
+    code_metadata_changed = build_metadata(
+        code_sha="other-code",
+        code_dirty=True,
+        code_untracked_files=9,
+    )
+    assert code_metadata_changed["code_sha"] == "other-code"
+    assert code_metadata_changed["code_dirty"] is True
+    assert code_metadata_changed["code_untracked_files"] == 9
+    assert code_metadata_changed["config_sha256"] == a["config_sha256"]
 
     with monkeypatch.context() as patch:
         patch.setattr(
@@ -628,12 +686,30 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
         "run_id": "a",
         "code_sha": "old-code",
         "config_sha256": a["config_sha256"],
-        "outcome_v2_counts": {"correct_labeled_context": 2, "model_abstained": 1},
         "guard_counts": {"true_accept": 2, "false_refusal": 1},
         "retrieval_tables": {"vector": {"hit_at_1": 2, "hit_at_3": 3}},
         "latency_summary": {"pass_1": {"generation_ms": {"median": 100}}},
         "token_summary": {"pass_1": {"total_tokens": {"median": 120}}},
+        "run_summaries": [
+            {
+                "outcome_counts": {"correct": 2, "falsely answered": 1},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 2,
+                    "model_abstained": 1,
+                },
+            },
+            {
+                "outcome_counts": {"correct": 2, "falsely answered": 1},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 2,
+                    "model_abstained": 1,
+                },
+            },
+        ],
         "records": [[
+            {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ], [
             {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
             {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
         ]],
@@ -643,12 +719,30 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
         "run_id": "b",
         "code_sha": "new-code",
         "config_sha256": a["config_sha256"],
-        "outcome_v2_counts": {"correct_labeled_context": 1, "model_abstained": 2},
         "guard_counts": {"true_accept": 1, "false_refusal": 2},
         "retrieval_tables": {"vector": {"hit_at_1": 1, "hit_at_3": 2}},
         "latency_summary": {"pass_1": {"generation_ms": {"median": 200}}},
         "token_summary": {"pass_1": {"total_tokens": {"median": 180}}},
+        "run_summaries": [
+            {
+                "outcome_counts": {"correct": 1, "falsely answered": 2},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 1,
+                    "model_abstained": 2,
+                },
+            },
+            {
+                "outcome_counts": {"correct": 1, "falsely answered": 2},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 1,
+                    "model_abstained": 2,
+                },
+            },
+        ],
         "records": [[
+            {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ], [
             {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
             {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
         ]],
@@ -660,6 +754,11 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
         "to": "new-code",
     }
     assert diff["outcome_v2_counts_delta"]["correct_labeled_context"] == -1
+    assert diff["outcome_v2_counts_delta"]["model_abstained"] == 1
+    assert diff["outcome_v2_counts_delta_pass_2"] == {
+        "correct_labeled_context": -1,
+        "model_abstained": 1,
+    }
     assert diff["question_flips"]["q1"]["outcome_v2"] == {
         "from": "correct_labeled_context",
         "to": "incomplete_or_wrong",
@@ -668,8 +767,41 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
     assert diff["generation_latency_delta"]["median_generation_ms"] == 100
     assert diff["total_token_delta"]["median_total_tokens"] == 60
 
-    legacy = {
-        "run_id": "legacy",
-        "records": [{"id": "q1", "outcome_v2": "correct_labeled_context"}],
+    legacy_records = [
+        {"id": "q1", "outcome": "correct", "labeled_rank": None},
+        {"id": "q2", "outcome": "refused", "labeled_rank": None},
+    ]
+    legacy_diff = compare_reports(legacy_records, report_a)
+    assert legacy_diff["legacy_report"] is True
+    assert legacy_diff["question_flips"]["q1"]["outcome_v2"] == {
+        "from": None,
+        "to": "correct_labeled_context",
     }
-    assert compare_reports(legacy, report_a)["legacy_report"] is True
+    assert legacy_diff["question_flips"]["q2"]["outcome_v2"] == {
+        "from": None,
+        "to": "model_abstained",
+    }
+    assert "outcome_v2_counts_delta_pass_2" not in legacy_diff
+
+
+def test_compare_reports_uses_top_level_counts_only_without_run_summaries() -> None:
+    from evaluation.compare import compare_reports
+
+    report_a = {"outcome_v2_counts": {"correct_labeled_context": 3}}
+    report_b = {"outcome_v2_counts": {"correct_labeled_context": 5}}
+
+    assert compare_reports(report_a, report_b)["outcome_v2_counts_delta"] == {
+        "correct_labeled_context": 2
+    }
+
+
+def test_run_eval_accepts_only_two_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.run_eval import parse_args
+
+    monkeypatch.setattr("sys.argv", ["run_eval.py"])
+    assert parse_args().passes == 2
+
+    for pass_count in ("1", "3"):
+        monkeypatch.setattr("sys.argv", ["run_eval.py", "--passes", pass_count])
+        with pytest.raises(SystemExit):
+            parse_args()
