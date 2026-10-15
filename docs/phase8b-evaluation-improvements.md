@@ -402,6 +402,8 @@ Analysis and decisions (what I found, what I decided, why): The real issue was r
 Changes made (file -> summary): evaluation/runner.py -> added `build_run_metadata`, unique `run_id`, `code_sha`/`code_dirty`, and stable `config_sha256` generation. scripts/run_eval.py -> prints the run ID and path and preserves the snapshot cleanup. evaluation/compare.py -> added stable comparison logic with legacy-safe handling. scripts/compare_runs.py -> adds readable CLI diff output. .gitignore -> ignores run directories while keeping `.gitkeep` tracked.
 Deviations from spec (or "none"): none
 Commands run and real output (pytest, ruff, run_eval.py summary):
+- & "D:\Projects\incidentweave\.venv\Scripts\python.exe" -m pytest -q
+  46 passed in 82.96s
 - & "D:\Projects\incidentweave\.venv\Scripts\ruff.exe" check .
   All checks passed!
 - & "D:\Projects\incidentweave\.venv\Scripts\python.exe" scripts\run_eval.py
@@ -1665,7 +1667,7 @@ index 7c6fd7d..d3eeb23 100644
 +**Observed:** The final Phase 8b run `20261015T151657Z-c203e0e` used the pinned 40-file / 70-chunk snapshot and stored per-question generation metadata under a unique run ID. Each of its two 24-question passes recorded `correct_labeled_context` 10, `correct_unlabeled_context` 2, `retrieval_miss_abstained` 2, `incomplete_or_wrong` 2, `guard_true_refusal` 4, and `model_abstained` 4. It made 40 generation HTTP calls with 0 HTTP 429 responses and 0 errors; the corrected diagnostics counted 0 RRF, 4 vector, and 0 other rejections.
 ```
 
-The Phase 8 addendum was also updated to the same final run and its measured counts. Task 3's log now states that the prior mismatch's root cause is not conclusively known; it does not assert that an exact stripped abstention passed the keyword screen. The duplicated `46 passed in 82.96s` entries were removed from Tasks 3-6 logs rather than presented as verification for a different commit state.
+The Phase 8 addendum was also updated to the same final run and its measured counts. Task 3's log now states that the prior mismatch's root cause is not conclusively known; it does not assert that an exact stripped abstention passed the keyword screen. The duplicate `46 passed in 82.96s` copies were removed from Tasks 3, 5, and 6; the single recorded result remains under Task 4's `fea9d8d` commit.
 
 #### Round 3 status
 
