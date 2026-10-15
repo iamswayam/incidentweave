@@ -272,7 +272,7 @@ When a problem is caused by noisy data, generated dependencies, or repo quality 
 
 ### 8) Phase 8b follow-up: measurement validity and run comparability
 
-**Observed:** The original Phase 8 evaluation compared the live checkout against a pinned corpus and overwrote results from prior runs, which made the metrics hard to interpret. The Phase 8b fix pinned the snapshot, added `outcome_v2`, captured per-question generation metadata, and stored run metadata under unique run IDs.
+**Observed:** The final Phase 8b run `20261015T151657Z-c203e0e` used the pinned 40-file / 70-chunk snapshot and stored per-question generation metadata under a unique run ID. Each of its two 24-question passes recorded `correct_labeled_context` 10, `correct_unlabeled_context` 2, `retrieval_miss_abstained` 2, `incomplete_or_wrong` 2, `guard_true_refusal` 4, and `model_abstained` 4. It made 40 generation HTTP calls with 0 HTTP 429 responses and 0 errors; the corrected diagnostics counted 0 RRF, 4 vector, and 0 other rejections.
 
 **Impact:** The new run registry and additive taxonomy provide a consistent measurement baseline, but the underlying evaluation still uses a small known corpus and keyword labels rather than a review-grade benchmark.
 
