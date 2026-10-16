@@ -1,6 +1,6 @@
 # Phase 8b — Evaluation Improvements
 
-**Status:** ✅ done (awaiting review)
+**Status:** 🟢 Approved (2026-10-15)
 **Depends on:** Phase 9 (merged). Phase 8 evaluation (`evaluation/`, `scripts/run_eval.py`) exists.
 **Document type:** Task spec AND running log, same pattern as `phase5` to `phase9`. This file is the single shared record of the whole Claude / Copilot / maintainer conversation about this work.
 
@@ -103,11 +103,11 @@ snapshot 40 files / 70 chunks · retrieval vector and hybrid hit@1 8/16, hit@3 1
 | Task | Title | Copilot status | Commit SHA | Gate | Reviewer verdict |
 |---|---|---|---|---|---|
 | 1 | Freeze the corpus | 🟢 approved | 082e99c | 🛑 A | Approved |
-| 2 | Per-question capture | ✅ done (awaiting review) | fea9d8d | | |
-| 3 | Outcome taxonomy v2 | ✅ done (awaiting review) | fea9d8d, 2a6c658, b51894a, c203e0e | 🛑 B | |
-| 4 | Run registry, metadata, compare script | ✅ done (awaiting review) | fea9d8d, 4b688a1, c203e0e | 🛑 C (after manual run) | |
-| 5 | Report diagnostics | ✅ done (awaiting review) | fea9d8d, c203e0e | | |
-| 6 | Docs addendum | ✅ done (awaiting review) | fea9d8d, 4ace734 | 🛑 D (final) | |
+| 2 | Per-question capture | 🟢 approved | fea9d8d | | Approved |
+| 3 | Outcome taxonomy v2 | 🟢 approved | fea9d8d, 2a6c658, b51894a, c203e0e | 🛑 B | Approved |
+| 4 | Run registry, metadata, compare script | 🟢 approved | fea9d8d, 4b688a1, c203e0e | 🛑 C (after manual run) | Approved |
+| 5 | Report diagnostics | 🟢 approved | fea9d8d, c203e0e | | Approved |
+| 6 | Docs addendum | 🟢 approved | fea9d8d, 4ace734 | 🛑 D (final) | Approved |
 
 ---
 
@@ -241,10 +241,10 @@ Open questions for reviewer: none
 ### Reviewer verdict: Task 2
 
 ```
-Verdict: 
-Reviewed on: 
-Notes: 
-Required follow-ups: 
+Verdict: Approved
+Reviewed on: 2026-10-15
+Notes: extract_generation_trace is pure and bounded; generation_trace added without changing existing keys or the API shape; per-question timing, throttle wait and HTTP-call counts are recorded.
+Required follow-ups: none
 ```
 
 *(No separate gate. Tasks 2 and 3 are reviewed together at Gate B. Copilot may start Task 3 once Task 2 is committed and logged.)*
@@ -325,10 +325,10 @@ Open questions for reviewer: none
 ### Reviewer verdict: Task 3 (and Task 2)
 
 ```
-Verdict: 
-Reviewed on: 
-Notes: 
-Required follow-ups: 
+Verdict: Approved
+Reviewed on: 2026-10-15
+Notes: Abstention detection is exact-match. Legacy and v2 outcome counts reconcile in both passes of run 20261015T151657Z-c203e0e. Replacement and invariant tests exist. The root cause of the earlier pass-1 mismatch is not conclusively known (documented).
+Required follow-ups: none
 ```
 
 > ### 🛑 PAUSE: Gate B
@@ -425,10 +425,10 @@ Open questions for reviewer: none
 ### Reviewer verdict: Task 4
 
 ```
-Verdict: 
-Reviewed on: 
-Notes: 
-Required follow-ups: 
+Verdict: Approved
+Reviewed on: 2026-10-15
+Notes: Run registry, metadata and compare script verified: bare-list reports, per-pass outcome_v2 deltas and per-question flips work on real reports. config_sha256 no longer includes code state.
+Required follow-ups: none
 ```
 
 > ### 🛑 PAUSE: Gate C
@@ -484,10 +484,10 @@ Open questions for reviewer: none
 ### Reviewer verdict: Task 5
 
 ```
-Verdict: 
-Reviewed on: 
-Notes: 
-Required follow-ups: 
+Verdict: Approved
+Reviewed on: 2026-10-15
+Notes: guard_diagnostics corrected (real report: 0 RRF, 4 vector, 0 other rejections); citation, latency and token summaries present; true median restored.
+Required follow-ups: none
 ```
 
 *(No separate gate. Task 5 is reviewed together with Task 6 at Gate D.)*
@@ -525,11 +525,11 @@ Open questions for reviewer: none
 ### Reviewer verdict: Task 6 and overall
 
 ```
-Verdict: 
-Reviewed on: 
-Notes: 
-Required follow-ups: 
-Langfuse spike go / no-go: 
+Verdict: Approved
+Reviewed on: 2026-10-15
+Notes: README, Phase 8 addendum and later-optimizations cite only the final run 20261015T151657Z-c203e0e.
+Required follow-ups: none
+Langfuse spike go / no-go: No-go for now; revisit after the citation parser, full-text query and held-out set work.
 ```
 
 > ### 🛑 PAUSE: Gate D (final)
@@ -553,10 +553,10 @@ Langfuse spike go / no-go:
 
 | Date | Task | What changed | Why | Reviewer decision |
 |---|---|---|---|---|
-| 2026-10-05 | 4 / final verification | Final run observed one existing investigation and audit row for `incidentweave-eval`, both dated 2026-09-29; `paraphrased-03` and `paraphrased-08` also varied from the expected outcomes. | Preserve pre-existing database state; record actual model-dependent results without deleting data or changing labels. | |
-| 2026-10-14 | Round 2 / Tasks 2-6 | Tasks 2-6 were initially delivered together in squashed commit `fea9d8d`; Round 2 then added marker-answer and invariant regression tests in `b51894a`, plus tracked-only dirty-state reporting in `4b688a1`. | Existing history is retained; follow-up commits isolate the remaining test and metadata changes rather than rewriting prior commits. | |
-| 2026-10-15 | Round 3 / median semantics | Restored `statistics.median` in both score and value distributions after an accidental switch to `median_high`. | Preserve Phase 8 median semantics; verify the answerable-vector median is `0.34887027228830086` and `[3, 5, 1, None, 9]` has median `4.0`. | |
-| 2026-10-15 | Round 3 / config fingerprint | Excluded `code_sha`, `code_dirty`, and `code_untracked_files` from the `config_sha256` payload while retaining them as separate metadata fields. | Approved Round 3 adjustment: make the config fingerprint depend on evaluation inputs, not checkout state. | |
+| 2026-10-05 | 4 / final verification | Final run observed one existing investigation and audit row for `incidentweave-eval`, both dated 2026-09-29; `paraphrased-03` and `paraphrased-08` also varied from the expected outcomes. | Preserve pre-existing database state; record actual model-dependent results without deleting data or changing labels. | Accepted (Claude, 2026-10-15) |
+| 2026-10-14 | Round 2 / Tasks 2-6 | Tasks 2-6 were initially delivered together in squashed commit `fea9d8d`; Round 2 then added marker-answer and invariant regression tests in `b51894a`, plus tracked-only dirty-state reporting in `4b688a1`. | Existing history is retained; follow-up commits isolate the remaining test and metadata changes rather than rewriting prior commits. | Accepted (Claude, 2026-10-15) |
+| 2026-10-15 | Round 3 / median semantics | Restored `statistics.median` in both score and value distributions after an accidental switch to `median_high`. | Preserve Phase 8 median semantics; verify the answerable-vector median is `0.34887027228830086` and `[3, 5, 1, None, 9]` has median `4.0`. | Accepted (Claude, 2026-10-15) |
+| 2026-10-15 | Round 3 / config fingerprint | Excluded `code_sha`, `code_dirty`, and `code_untracked_files` from the `config_sha256` payload while retaining them as separate metadata fields. | Approved Round 3 adjustment: make the config fingerprint depend on evaluation inputs, not checkout state. | Accepted (Claude, 2026-10-15) |
 
 ---
 
@@ -566,10 +566,10 @@ Langfuse spike go / no-go:
 
 | # | Date | Task | Question | Answer (from Claude) |
 |---|---|---|---|---|
-| 1 | 2026-10-14 | Step 1 checkpoint | `pytest -q` failed because PostgreSQL connections to `localhost:5432` timed out for `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence`. Exact terminal error: `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. | Step 1 full-suite verification blocked by unavailable PostgreSQL. |
-| 2 | 2026-10-14 | Step 2 checkpoint | The same two database integration tests failed in `pytest -q`; exact error as in Open question 1. | Full-suite checkpoint blocked; focused evaluation tests passed and Ruff passed after correcting the reported import order. |
-| 3 | 2026-10-14 | Steps 3-4 checkpoints | `pytest -q` continued to fail only in `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence` with `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. Step 3: `2 failed, 49 passed in 573.48s`; Step 4: `2 failed, 49 passed in 556.47s`. | Full-suite checkpoint blocked by unavailable PostgreSQL; Ruff passed at both checkpoints. |
-| 4 | 2026-10-14 | Step 5 fresh evaluation | No fresh `scripts/run_eval.py` invocation was made: the requested 40 generation calls send retrieved repository source context to the configured external Gemini service. | Blocked to avoid transmitting repository code to a third party. The newest existing report is historical and does not meet the fresh-run criteria. |
+| 1 | 2026-10-14 | Step 1 checkpoint | `pytest -q` failed because PostgreSQL connections to `localhost:5432` timed out for `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence`. Exact terminal error: `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. | Step 1 full-suite verification blocked by unavailable PostgreSQL. Resolved 2026-10-15. |
+| 2 | 2026-10-14 | Step 2 checkpoint | The same two database integration tests failed in `pytest -q`; exact error as in Open question 1. | Full-suite checkpoint blocked; focused evaluation tests passed and Ruff passed after correcting the reported import order. Resolved 2026-10-15. |
+| 3 | 2026-10-14 | Steps 3-4 checkpoints | `pytest -q` continued to fail only in `test_pgvector_extension_and_vector_column` and `test_repository_and_chunk_persistence` with `psycopg.errors.ConnectionTimeout: connection timeout expired; Multiple connection attempts failed; host 'localhost', port 5432, hostaddr '::1' and '127.0.0.1'`. Step 3: `2 failed, 49 passed in 573.48s`; Step 4: `2 failed, 49 passed in 556.47s`. | Full-suite checkpoint blocked by unavailable PostgreSQL; Ruff passed at both checkpoints. Resolved 2026-10-15. |
+| 4 | 2026-10-14 | Step 5 fresh evaluation | No fresh `scripts/run_eval.py` invocation was made: the requested 40 generation calls send retrieved repository source context to the configured external Gemini service. | Blocked to avoid transmitting repository code to a third party. The newest existing report is historical and does not meet the fresh-run criteria. Resolved 2026-10-15. |
 | 5 | 2026-10-14 | Final verification | The maintainer clarified that the evaluation was authorized and asked for PostgreSQL startup followed by a single live run. `docker compose up -d db` reported `Container incidentweave-db-1 Started`; `docker compose ps db` subsequently showed `Up (healthy)`. | Resolved: full suite passed (`51 passed in 39.86s`), Ruff passed, and fresh run `20261014T160330Z-305200f` completed with 40 calls, zero 429s, and zero generation errors. |
 
 ---
@@ -588,12 +588,12 @@ Langfuse spike go / no-go:
 
 ## 14. Final hand-off checklist (before Gate D)
 
-- [ ] All six tasks have a filled log and a reviewer verdict of Approved.
-- [ ] `pytest -q` and `ruff check .` pass on the final commit.
-- [ ] One real evaluation run exists in `evaluation/results/runs/` and is referenced in the docs.
-- [ ] Deviations table and Open questions table are resolved.
-- [ ] `git diff` against the Phase 9 commit shows no change to the do-not-change files listed in section 1.
-- [ ] No secrets in the repository, logs or reports.
+- [x] All six tasks have a filled log and a reviewer verdict of Approved. Evidence: tracker lists Tasks 1-6 as approved; Task 1's existing verdict and the reviewer verdicts for Tasks 2-6 are filled above.
+- [x] `pytest -q` and `ruff check .` pass on the final code commit. Evidence: `53 passed in 41.35s`; `All checks passed!` (rerun output recorded in section 15.z).
+- [x] One real evaluation run exists in `evaluation/results/runs/` and is referenced in the docs. Evidence: `20261015T151657Z-c203e0e` is cited in README, Phase 8 addendum, and later-optimizations.
+- [x] Deviations table and Open questions table are resolved. Evidence: all four deviations have reviewer decisions; questions 1-4 carry a resolution date and question 5 records the final verification.
+- [x] `git diff` against the Phase 9 commit shows no change to the do-not-change files listed in section 1. Evidence: the forbidden-file diff printed no paths.
+- [x] No secrets in the repository, logs or reports. Evidence: API secrets have no tracked matches or matching commits; report checks and the accepted local-development database default are recorded in section 15.z.
 
 ## 15. Final evidence bundle (Copilot)
 
@@ -1754,3 +1754,39 @@ git apply --stat D:\phase8b-code.patch
  tests/unit/test_evaluation.py |  593 +++++++++++++++++++++++++++++++++++++++++
  9 files changed, 1323 insertions(+), 24 deletions(-)
 ```
+
+ ### 15.z Closure (2026-10-15)
+
+ Verification rerun on 2026-10-16 before the approval commit:
+
+ ```text
+ docker compose ps db
+ NAME                 IMAGE                    COMMAND                  SERVICE   CREATED       STATUS                    PORTS
+ incidentweave-db-1   pgvector/pgvector:pg17   "docker-entrypoint.s…"   db        8 weeks ago   Up 32 seconds (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+
+ .\.venv\Scripts\python.exe -m pytest -q
+ .....................................................                    [100%]
+ 53 passed in 23.46s
+
+ .\.venv\Scripts\ruff.exe check .
+ All checks passed!
+ ```
+
+ Secret and tracked-artifact checks (booleans and counts only; no values printed):
+
+ ```text
+ GEMINI_API_KEY: configured=True; git_grep_found=False; matching_commit_count=0; clean=True
+ API_PROTECTION_SECRET: configured=True; git_grep_found=False; matching_commit_count=0; clean=True
+ DATABASE_URL_EQUALS_SETTINGS_DEFAULT=True
+ DATABASE_URL_USERNAME_EQUALS_DEV_DEFAULT=True
+ DATABASE_URL_PASSWORD_EQUALS_USERNAME=True
+ DATABASE_URL_PASSWORD_EQUALS_DEV_DEFAULT=True
+ SECRET_GATE_PASS=True
+ TRACKED_FORBIDDEN_PATHS=[evaluation/results/runs/.gitkeep]
+ GEMINI_API_KEY_PRESENT_IN_EVALUATION_REPORTS=False; report_count=21
+ API_PROTECTION_SECRET_PRESENT_IN_EVALUATION_REPORTS=False; report_count=21
+ ```
+
+ DATABASE_URL password is the committed dev default (verified by script); accepted by maintainer 2026-10-15.
+
+ Final worktree status after the approval commit and branch inventory are recorded in the following closure amendment. The existing `evaluation/results/run-2.json` remains untracked and untouched.
