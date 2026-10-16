@@ -1789,4 +1789,33 @@ git apply --stat D:\phase8b-code.patch
 
  DATABASE_URL password is the committed dev default (verified by script); accepted by maintainer 2026-10-15.
 
- Final worktree status after the approval commit and branch inventory are recorded in the following closure amendment. The existing `evaluation/results/run-2.json` remains untracked and untouched.
+ Final status after the approval commit:
+
+ ```text
+ $ git status --short --untracked-files=no
+ [no output]
+
+ $ git status --short --untracked-files=all
+ ?? evaluation/results/run-2.json
+ ```
+
+ Branch inventory after `git fetch origin`; blank upstream/track fields from the command output are shown as `(empty)` here to avoid trailing whitespace:
+
+ ```text
+ backup-before-sourcery-fix | upstream=(empty) | track=(empty)
+ backup-main-before-sourcery-fix | upstream=(empty) | track=(empty)
+ docs/audit-phases-1-7 | upstream=(empty) | track=(empty)
+ docs/learning-audit-phases-1-9 | upstream=origin/docs/learning-audit-phases-1-9 | track=(empty)
+ main | upstream=origin/main | [ahead 5]
+ phase-2/database-foundation | upstream=origin/phase-2/database-foundation | track=(empty)
+ phase-3/repository-ingestion | upstream=origin/phase-3/repository-ingestion | [ahead 1]
+ phase-5/investigation-engine | upstream=(empty) | track=(empty)
+ phase-6/grounding-confidence | upstream=origin/phase-6/grounding-confidence | track=(empty)
+ phase-7/controlled-tools-audit | upstream=origin/phase-7/controlled-tools-audit | track=(empty)
+ phase-8/evaluation | upstream=origin/phase-8/evaluation | [ahead 25]
+ phase-9/production-cli-api | upstream=origin/phase-9/production-cli-api | track=(empty)
+ ```
+
+ Local branches ahead of their upstream or without an upstream at fetch time: `backup-before-sourcery-fix`, `backup-main-before-sourcery-fix`, `docs/audit-phases-1-7`, `main` (ahead 5), `phase-3/repository-ingestion` (ahead 1), `phase-5/investigation-engine`, and `phase-8/evaluation` (ahead 25). This documentation amendment adds a commit to the current branch; the post-amendment ahead count is checked before pushing.
+
+ The existing `evaluation/results/run-2.json` remains untracked and untouched.
