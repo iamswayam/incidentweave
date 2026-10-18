@@ -270,6 +270,14 @@ When a problem is caused by noisy data, generated dependencies, or repo quality 
 
 **Possible later work:** Obtain maintainer review, add a held-out corpus, and consider a separately scoped answer-judging method.
 
+### 8) Phase 8b follow-up: measurement validity and run comparability
+
+**Observed:** The final Phase 8b run `20261015T151657Z-c203e0e` used the pinned 40-file / 70-chunk snapshot and stored per-question generation metadata under a unique run ID. Each of its two 24-question passes recorded `correct_labeled_context` 10, `correct_unlabeled_context` 2, `retrieval_miss_abstained` 2, `incomplete_or_wrong` 2, `guard_true_refusal` 4, and `model_abstained` 4. It made 40 generation HTTP calls with 0 HTTP 429 responses and 0 errors; the corrected diagnostics counted 0 RRF, 4 vector, and 0 other rejections.
+
+**Impact:** The new run registry and additive taxonomy provide a consistent measurement baseline, but the underlying evaluation still uses a small known corpus and keyword labels rather than a review-grade benchmark.
+
+**Possible later work:** Expand the set, review the labels, and compare run-level deltas on a larger held-out evaluation before making any guard or retrieval changes.
+
 This file is intentionally a holding area for improvement work that should be revisited later once the core implementation is complete and verified.
 
 ## Phase 9 API follow-ups

@@ -1,24 +1,438 @@
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
 
-from evaluation.golden import validate_golden_set, validate_index_labels
+from app.investigation.parsing import extract_generation_trace
+from evaluation.corpus import export_snapshot
+from evaluation.golden import load_golden_set, validate_golden_set, validate_index_labels
 from evaluation.metrics import (
+    abstention_kind,
     answer_screen,
+    best_score_distribution,
+    citation_summary,
+    classify_outcome_v2,
     distance_sweep,
     guard_confusion,
+    guard_diagnostics,
     hit_at_k,
     is_refused,
     is_relevant,
     mean_reciprocal_rank,
     retrieval_summary,
+    value_distribution,
 )
+from evaluation.runner import (
+    classify_outcome_v2_for_records,
+    classify_outcomes,
+    resolve_corpus_sha,
+    run_pipeline_once,
+)
+from scripts.ingest_repo import chunk_lines, iter_python_files
 
 
 def result(file_path: str, content: str) -> dict[str, object]:
     return {"file_path": file_path, "content": content}
+
+
+def test_resolve_corpus_sha_returns_pinned_value_and_raises_on_invalid_input() -> None:
+    assert resolve_corpus_sha({"pinned_sha": "abc123"}) == "abc123"
+
+    with pytest.raises(ValueError, match="pinned_sha"):
+        resolve_corpus_sha({})
+
+    with pytest.raises(ValueError, match="pinned_sha"):
+        resolve_corpus_sha({"pinned_sha": ""})
+
+
+def test_pinned_snapshot_exports_and_validates_with_expected_counts(
+    tmp_path: Path,
+) -> None:
+    root = Path(__file__).resolve().parents[2]
+    data = load_golden_set(root / "evaluation" / "golden_set.json")
+    sha = resolve_corpus_sha(data)
+    snapshot_parent = tmp_path / "snapshot"
+    try:
+        snapshot_root = export_snapshot(root, sha, snapshot_parent)
+    except RuntimeError as exc:
+        pytest.skip(f"pinned commit not present in this clone: {exc}")
+
+    errors = validate_golden_set(data, snapshot_root, sha)
+    assert errors == []
+    files = sorted(iter_python_files(snapshot_root))
+    assert len(files) == 40
+
+    chunks = 0
+    for file_path in files:
+        lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for start_index, end_index in chunk_lines(lines):
+            content = "\n".join(lines[start_index:end_index])
+            if content.strip():
+                chunks += 1
+    assert chunks == 70
+
+
+def test_extract_generation_trace_handles_payload_and_missing_usage() -> None:
+    payload = {
+        "candidates": [{
+            "finishReason": "STOP",
+            "content": {"parts": [{"text": "diagnosis: INSUFFICIENT_EVIDENCE"}]},
+        }],
+        "usageMetadata": {"totalTokenCount": 42, "promptTokenCount": 10, "candidateTokenCount": 32},
+    }
+    trace = extract_generation_trace("sample prompt", payload)
+    assert trace is not None
+    assert trace["prompt_sha256"] == hashlib.sha256(b"sample prompt").hexdigest()
+    assert trace["prompt_chars"] == len("sample prompt")
+    assert trace["finish_reason"] == "STOP"
+    assert trace["usage"] == payload["usageMetadata"]
+    assert trace["total_tokens"] == 42
+
+    empty_usage = {
+        "candidates": [
+            {"content": {"parts": [{"text": "diagnosis: insufficient evidence"}]}}
+        ]
+    }
+    trace2 = extract_generation_trace("sample prompt", empty_usage)
+    assert trace2 is not None
+    assert trace2["usage"] == {}
+    assert trace2["total_tokens"] is None
+
+    assert extract_generation_trace(None, None) is None
+
+
+def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
+    assert (
+        abstention_kind("INSUFFICIENT_EVIDENCE", True, "INSUFFICIENT_EVIDENCE")
+        == "explicit"
+    )
+    assert (
+        abstention_kind(
+            "INSUFFICIENT_EVIDENCE",
+            True,
+            "diagnosis: insufficient evidence",
+        )
+        == "parse_fallback"
+    )
+    assert abstention_kind("INSUFFICIENT_EVIDENCE", False, "INSUFFICIENT_EVIDENCE") is None
+
+    cases = [
+        ("answerable", None, False, False, True, True, "correct_labeled_context"),
+        ("answerable", None, False, False, False, True, "correct_unlabeled_context"),
+        ("answerable", None, False, False, True, False, "incomplete_or_wrong"),
+        ("answerable", None, False, True, False, None, "retrieval_miss_abstained"),
+        ("answerable", None, False, True, True, None, "model_false_abstention"),
+        ("answerable", None, True, False, None, None, "guard_false_refusal"),
+        ("unanswerable", None, True, False, None, None, "guard_true_refusal"),
+        ("unanswerable", None, False, True, None, None, "model_abstained"),
+        ("unanswerable", None, False, False, None, None, "answered_unanswerable"),
+        ("answerable", "error", False, False, True, True, "error"),
+    ]
+    for (
+        category,
+        error,
+        guard_refused,
+        abstained,
+        labeled_in_context,
+        screen_pass,
+        expected,
+    ) in cases:
+        assert classify_outcome_v2(
+            category,
+            error,
+            guard_refused,
+            abstained,
+            labeled_in_context,
+            screen_pass,
+        ) == expected
+
+    assert value_distribution([3, 5, 1, None, 9]) == {
+        "min": 1,
+        "median": 4.0,
+        "max": 9,
+        "count": 4,
+    }
+    assert value_distribution([None, None]) == {
+        "min": None,
+        "median": None,
+        "max": None,
+        "count": 0,
+    }
+    assert value_distribution([]) == {
+        "min": None,
+        "median": None,
+        "max": None,
+        "count": 0,
+    }
+
+def test_exact_abstention_does_not_pass_answer_screen(monkeypatch, tmp_path: Path) -> None:
+    from evaluation import runner
+
+    question = {
+        "id": "exact-abstention",
+        "category": "direct",
+        "question": "What answer is supported?",
+        "relevant": [],
+        "must_mention": [["supported answer"]],
+    }
+
+    async def fake_investigate_repository(*args, **kwargs):
+        return {
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "latency_ms": 75,
+            "generation_trace": {"raw_text": "INSUFFICIENT_EVIDENCE"},
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate, "investigate_repository", fake_investigate_repository
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    records, _ = asyncio.run(
+        run_pipeline_once(
+            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
+        )
+    )
+    record = records[0]
+    classify_outcomes(records, [question])
+    classify_outcome_v2_for_records(records)
+
+    assert record["abstention_kind"] == "explicit"
+    assert record["screen_pass"] is None
+    assert record["outcome_v2"] == "retrieval_miss_abstained"
+
+
+def test_baseline_answer_mentioning_marker_is_screened_as_answer(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    root = Path(__file__).resolve().parents[2]
+    baseline = json.loads((root / "evaluation" / "results" / "baseline.json").read_text(
+        encoding="utf-8"
+    ))
+    question = next(item for item in baseline if item["id"] == "paraphrased-05")
+    diagnosis = question["diagnosis"]
+
+    async def fake_investigate_repository(*args, **kwargs):
+        return {
+            "diagnosis": diagnosis,
+            "latency_ms": 75,
+            "generation_trace": {"raw_text": diagnosis},
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate, "investigate_repository", fake_investigate_repository
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    records, _ = asyncio.run(
+        run_pipeline_once(
+            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
+        )
+    )
+    record = records[0]
+    classify_outcomes(records, [question])
+    classify_outcome_v2_for_records(records)
+
+    assert "INSUFFICIENT_EVIDENCE" in diagnosis
+    assert record["abstention_kind"] is None
+    assert record["screen_pass"] is True
+    assert record["outcome"] == "correct"
+    assert record["outcome_v2"] == "correct_unlabeled_context"
+
+
+def test_unanswerable_answer_mentioning_marker_is_answered(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    root = Path(__file__).resolve().parents[2]
+    baseline = json.loads((root / "evaluation" / "results" / "baseline.json").read_text(
+        encoding="utf-8"
+    ))
+    diagnosis = next(
+        item["diagnosis"] for item in baseline if item["id"] == "paraphrased-05"
+    )
+    question = {
+        "id": "unanswerable-marker-answer",
+        "category": "unanswerable_near",
+        "question": "An unanswerable test question",
+        "relevant": [],
+        "must_mention": [],
+    }
+
+    async def fake_investigate_repository(*args, **kwargs):
+        return {
+            "diagnosis": diagnosis,
+            "latency_ms": 75,
+            "generation_trace": {"raw_text": diagnosis},
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate, "investigate_repository", fake_investigate_repository
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    records, _ = asyncio.run(
+        run_pipeline_once(
+            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
+        )
+    )
+    record = records[0]
+    classify_outcomes(records, [question])
+    classify_outcome_v2_for_records(records)
+
+    assert record["abstention_kind"] is None
+    assert record["outcome"] == "falsely answered"
+    assert record["outcome_v2"] == "answered_unanswerable"
+
+
+def test_legacy_and_v2_outcome_count_invariants() -> None:
+    questions = [
+        {"id": "labeled", "category": "direct", "must_mention": [["answer"]]},
+        {"id": "unlabeled", "category": "paraphrased", "must_mention": [["answer"]]},
+        {"id": "false-refusal", "category": "direct", "must_mention": []},
+        {"id": "true-refusal", "category": "unanswerable_far", "must_mention": []},
+        {"id": "model-abstention", "category": "unanswerable_near", "must_mention": []},
+        {"id": "answered-unanswerable", "category": "unanswerable_near", "must_mention": []},
+    ]
+    records = [
+        {
+            "id": "labeled", "category": "direct", "diagnosis": "answer", "error": None,
+            "refused": False, "abstention_kind": None, "labeled_chunk_in_context": True,
+            "screen_pass": True,
+        },
+        {
+            "id": "unlabeled", "category": "paraphrased", "diagnosis": "answer",
+            "error": None, "refused": False, "abstention_kind": None,
+            "labeled_chunk_in_context": False, "screen_pass": True,
+        },
+        {
+            "id": "false-refusal", "category": "direct",
+            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": True,
+            "abstention_kind": None, "labeled_chunk_in_context": False,
+            "screen_pass": None,
+        },
+        {
+            "id": "true-refusal", "category": "unanswerable_far",
+            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": True,
+            "abstention_kind": None, "labeled_chunk_in_context": None, "screen_pass": None,
+        },
+        {
+            "id": "model-abstention", "category": "unanswerable_near",
+            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": False,
+            "abstention_kind": "explicit", "labeled_chunk_in_context": None,
+            "screen_pass": None,
+        },
+        {
+            "id": "answered-unanswerable", "category": "unanswerable_near",
+            "diagnosis": "an answer", "error": None, "refused": False,
+            "abstention_kind": None, "labeled_chunk_in_context": None, "screen_pass": None,
+        },
+    ]
+
+    classify_outcomes(records, questions)
+    classify_outcome_v2_for_records(records)
+    answerable = [
+        record for record in records if not record["category"].startswith("unanswerable")
+    ]
+
+    assert sum(record["outcome"] == "correct" for record in answerable) == sum(
+        record["outcome_v2"] in {"correct_labeled_context", "correct_unlabeled_context"}
+        for record in answerable
+    )
+    assert sum(record["outcome"] == "refused" for record in records) == sum(
+        record["outcome_v2"] == "guard_true_refusal" for record in records
+    )
+    assert sum(record["outcome"] == "falsely answered" for record in records) == sum(
+        record["outcome_v2"] in {"model_abstained", "answered_unanswerable"}
+        for record in records
+    )
+
+
+def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
+    checks = [
+        {
+            "is_sufficient": False,
+            "reason": "Best retrieved evidence score is below the minimum threshold.",
+        },
+        {
+            "is_sufficient": False,
+            "reason": "Best vector cosine distance is above the maximum threshold.",
+        },
+        {
+            "is_sufficient": False,
+            "reason": "No repository evidence was retrieved.",
+        },
+        {
+            "is_sufficient": True,
+            "reason": "Evidence strength meets the RRF and vector-distance requirements.",
+        },
+        {
+            "is_sufficient": True,
+            "reason": "Best retrieved evidence score is below the minimum threshold.",
+        },
+        {
+            "is_sufficient": True,
+            "reason": "Best vector cosine distance is above the maximum threshold.",
+        },
+    ]
+    diagnostics = guard_diagnostics(checks, 0.016)
+    assert diagnostics == {
+        "rrf_threshold": 0.016,
+        "rrf_rank1_floor": 1 / 61,
+        "rrf_gate_can_reject_nonempty_vector_results": False,
+        "rrf_rejections": 1,
+        "vector_rejections": 1,
+        "other_rejections": 1,
+    }
+    assert "can_reject" not in diagnostics
+    assert (
+        guard_diagnostics(checks, 0.02)[
+            "rrf_gate_can_reject_nonempty_vector_results"
+        ]
+        is True
+    )
+    assert best_score_distribution(
+        [{"score": 0.3}, {"score": 0.4}], "score"
+    ) == {"min": 0.3, "median": 0.35, "max": 0.4}
+
+    records = [{
+        "category": "direct",
+        "diagnosis": "answer",
+        "cited_chunk_ids": ["a", "b"],
+        "cited_chunk_relevance": [{"relevant": True}, {"relevant": False}],
+    }, {
+        "category": "direct",
+        "diagnosis": "answer",
+        "cited_chunk_ids": ["c"],
+        "cited_chunk_relevance": [{"relevant": False}],
+    }, {
+        "category": "unanswerable_far",
+        "diagnosis": "INSUFFICIENT_EVIDENCE",
+        "cited_chunk_ids": [],
+        "cited_chunk_relevance": [],
+    }, {
+        "category": "direct",
+        "diagnosis": "INSUFFICIENT_EVIDENCE",
+        "cited_chunk_ids": [],
+        "cited_chunk_relevance": [],
+    }]
+    summary = citation_summary(records)
+    assert summary == {"cited_total": 3, "cited_relevant": 1, "answers_with_zero_citations": 0}
 
 
 def test_retrieval_metrics_handle_hits_ties_and_no_hit() -> None:
@@ -214,3 +628,180 @@ def test_index_validation_requires_a_reachable_chunk() -> None:
     assert validate_index_labels(questions, [result("source.py", "no target")]) == [
         "direct-1: no indexed chunk matches a relevance label"
     ]
+
+
+def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from evaluation import runner
+    from evaluation.compare import compare_reports
+
+    def build_metadata(
+        *,
+        code_sha: str = "code123",
+        code_dirty: bool = False,
+        code_untracked_files: int = 1,
+    ) -> dict[str, object]:
+        return runner.build_run_metadata(
+            run_id="20260101T000000Z-abc1234",
+            started_at="2026-01-01T00:00:00+00:00",
+            finished_at="2026-01-01T00:01:00+00:00",
+            corpus_sha="deadbeef",
+            code_sha=code_sha,
+            code_dirty=code_dirty,
+            code_untracked_files=code_untracked_files,
+            models={"embedding": "m1", "generation": "g1"},
+            limit=5,
+            passes=2,
+        )
+
+    a = build_metadata()
+    b = build_metadata()
+    assert a["config_sha256"] == b["config_sha256"]
+    assert a["code_untracked_files"] == 1
+    code_metadata_changed = build_metadata(
+        code_sha="other-code",
+        code_dirty=True,
+        code_untracked_files=9,
+    )
+    assert code_metadata_changed["code_sha"] == "other-code"
+    assert code_metadata_changed["code_dirty"] is True
+    assert code_metadata_changed["code_untracked_files"] == 9
+    assert code_metadata_changed["config_sha256"] == a["config_sha256"]
+
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            runner,
+            "MIN_ACCEPTABLE_RRF_SCORE",
+            runner.MIN_ACCEPTABLE_RRF_SCORE + 0.001,
+        )
+        assert build_metadata()["config_sha256"] != a["config_sha256"]
+
+    with monkeypatch.context() as patch:
+        patch.setattr(runner, "SYSTEM_INSTRUCTION", runner.SYSTEM_INSTRUCTION + " changed")
+        assert build_metadata()["config_sha256"] != a["config_sha256"]
+
+    report_a = {
+        "pinned_sha": "deadbeef",
+        "run_id": "a",
+        "code_sha": "old-code",
+        "config_sha256": a["config_sha256"],
+        "guard_counts": {"true_accept": 2, "false_refusal": 1},
+        "retrieval_tables": {"vector": {"hit_at_1": 2, "hit_at_3": 3}},
+        "latency_summary": {"pass_1": {"generation_ms": {"median": 100}}},
+        "token_summary": {"pass_1": {"total_tokens": {"median": 120}}},
+        "run_summaries": [
+            {
+                "outcome_counts": {"correct": 2, "falsely answered": 1},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 2,
+                    "model_abstained": 1,
+                },
+            },
+            {
+                "outcome_counts": {"correct": 2, "falsely answered": 1},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 2,
+                    "model_abstained": 1,
+                },
+            },
+        ],
+        "records": [[
+            {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ], [
+            {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ]],
+    }
+    report_b = {
+        "pinned_sha": "deadbeef",
+        "run_id": "b",
+        "code_sha": "new-code",
+        "config_sha256": a["config_sha256"],
+        "guard_counts": {"true_accept": 1, "false_refusal": 2},
+        "retrieval_tables": {"vector": {"hit_at_1": 1, "hit_at_3": 2}},
+        "latency_summary": {"pass_1": {"generation_ms": {"median": 200}}},
+        "token_summary": {"pass_1": {"total_tokens": {"median": 180}}},
+        "run_summaries": [
+            {
+                "outcome_counts": {"correct": 1, "falsely answered": 2},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 1,
+                    "model_abstained": 2,
+                },
+            },
+            {
+                "outcome_counts": {"correct": 1, "falsely answered": 2},
+                "outcome_v2_counts": {
+                    "correct_labeled_context": 1,
+                    "model_abstained": 2,
+                },
+            },
+        ],
+        "records": [[
+            {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ], [
+            {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
+            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+        ]],
+    }
+
+    diff = compare_reports(report_a, report_b)
+    assert diff["config_differences"]["code_sha"] == {
+        "from": "old-code",
+        "to": "new-code",
+    }
+    assert diff["outcome_v2_counts_delta"]["correct_labeled_context"] == -1
+    assert diff["outcome_v2_counts_delta"]["model_abstained"] == 1
+    assert diff["outcome_v2_counts_delta_pass_2"] == {
+        "correct_labeled_context": -1,
+        "model_abstained": 1,
+    }
+    assert diff["question_flips"]["q1"]["outcome_v2"] == {
+        "from": "correct_labeled_context",
+        "to": "incomplete_or_wrong",
+    }
+    assert diff["question_flips"]["q1"]["labeled_rank"] == {"from": 1, "to": 3}
+    assert diff["generation_latency_delta"]["median_generation_ms"] == 100
+    assert diff["total_token_delta"]["median_total_tokens"] == 60
+
+    legacy_records = [
+        {"id": "q1", "outcome": "correct", "labeled_rank": None},
+        {"id": "q2", "outcome": "refused", "labeled_rank": None},
+    ]
+    legacy_diff = compare_reports(legacy_records, report_a)
+    assert legacy_diff["legacy_report"] is True
+    assert legacy_diff["question_flips"]["q1"]["outcome_v2"] == {
+        "from": None,
+        "to": "correct_labeled_context",
+    }
+    assert legacy_diff["question_flips"]["q2"]["outcome_v2"] == {
+        "from": None,
+        "to": "model_abstained",
+    }
+    assert "outcome_v2_counts_delta_pass_2" not in legacy_diff
+
+
+def test_compare_reports_uses_top_level_counts_only_without_run_summaries() -> None:
+    from evaluation.compare import compare_reports
+
+    report_a = {"outcome_v2_counts": {"correct_labeled_context": 3}}
+    report_b = {"outcome_v2_counts": {"correct_labeled_context": 5}}
+
+    assert compare_reports(report_a, report_b)["outcome_v2_counts_delta"] == {
+        "correct_labeled_context": 2
+    }
+
+
+def test_run_eval_accepts_only_two_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripts.run_eval import parse_args
+
+    monkeypatch.setattr("sys.argv", ["run_eval.py"])
+    assert parse_args().passes == 2
+
+    for pass_count in ("1", "3"):
+        monkeypatch.setattr("sys.argv", ["run_eval.py", "--passes", pass_count])
+        with pytest.raises(SystemExit):
+            parse_args()

@@ -15,8 +15,14 @@ from urllib import error as urllib_error
 
 from app.db.session import AsyncSessionLocal
 from app.investigation import generation
+from app.investigation.confidence import MAX_CLEAR_VECTOR_DISTANCE, MIN_CLEAR_RRF_SCORE
 from app.investigation.generation import GEMINI_GENERATION_MODEL
-from app.investigation.guard import MIN_ACCEPTABLE_RRF_SCORE, evaluate_evidence_sufficiency
+from app.investigation.guard import (
+    MAX_ACCEPTABLE_VECTOR_DISTANCE,
+    MIN_ACCEPTABLE_RRF_SCORE,
+    evaluate_evidence_sufficiency,
+)
+from app.investigation.prompt import SYSTEM_INSTRUCTION
 from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
@@ -26,13 +32,20 @@ from scripts.ingest_repo import chunk_lines, ingest_repository, iter_python_file
 from .corpus import EVAL_REPOSITORY_NAME, export_snapshot
 from .golden import load_golden_set, validate_golden_set, validate_index_labels
 from .metrics import (
+    abstention_kind,
     answer_screen,
     best_score_distribution,
+    citation_summary,
+    classify_outcome_v2,
     distance_sweep,
+    first_relevant_rank,
     guard_confusion,
+    guard_diagnostics,
     is_refused,
     is_relevant,
+    latency_summary,
     retrieval_summary,
+    token_summary,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +55,69 @@ RESULTS_ROOT = EVALUATION_ROOT / "results"
 LIMIT = 5
 MIN_API_DELAY_SECONDS = 1.5
 MAX_GENERATION_HTTP_CALLS = 119
+
+
+def build_run_metadata(
+    *,
+    run_id: str,
+    started_at: str,
+    finished_at: str,
+    corpus_sha: str,
+    code_sha: str,
+    code_dirty: bool,
+    code_untracked_files: int,
+    golden_set_path: Path | str = EVALUATION_ROOT / "golden_set.json",
+    models: dict[str, str] | None = None,
+    limit: int = LIMIT,
+    passes: int = 2,
+    generation_config: str = "provider default (none set)",
+) -> dict[str, Any]:
+    """Build the stable metadata block used to identify a report run."""
+
+    golden_path = Path(golden_set_path)
+    golden_data = load_golden_set(golden_path)
+    prompt_sha256 = hashlib.sha256(SYSTEM_INSTRUCTION.encode("utf-8")).hexdigest()
+    golden_set_sha256 = hashlib.sha256(golden_path.read_bytes()).hexdigest()
+    payload = {
+        "pinned_sha": corpus_sha,
+        "golden_set_sha256": golden_set_sha256,
+        "golden_review_status": golden_data.get("review_status"),
+        "models": models or {
+            "embedding": embed_chunks.GEMINI_MODEL,
+            "generation": GEMINI_GENERATION_MODEL,
+        },
+        "limit": limit,
+        "thresholds": {
+            "guard_rrf": MIN_ACCEPTABLE_RRF_SCORE,
+            "guard_vector": MAX_ACCEPTABLE_VECTOR_DISTANCE,
+            "calibration_rrf": MIN_CLEAR_RRF_SCORE,
+            "calibration_vector": MAX_CLEAR_VECTOR_DISTANCE,
+        },
+        "prompt_sha256": prompt_sha256,
+        "generation_config": generation_config,
+        "passes": passes,
+    }
+    return {
+        "run_id": run_id,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "date": started_at,
+        "pinned_sha": corpus_sha,
+        "code_sha": code_sha,
+        "code_dirty": code_dirty,
+        "code_untracked_files": code_untracked_files,
+        "golden_set_sha256": golden_set_sha256,
+        "golden_review_status": golden_data.get("review_status"),
+        "models": payload["models"],
+        "limit": limit,
+        "thresholds": payload["thresholds"],
+        "prompt_sha256": prompt_sha256,
+        "generation_config": generation_config,
+        "passes": passes,
+        "config_sha256": hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest(),
+    }
 
 
 def load_key_without_logging() -> None:
@@ -98,6 +174,15 @@ def snapshot_sha() -> str:
     return subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
+
+
+def resolve_corpus_sha(data: dict[str, Any]) -> str:
+    """Return the golden-set pinned corpus SHA, rejecting missing or empty values."""
+
+    pinned_sha = data.get("pinned_sha")
+    if not isinstance(pinned_sha, str) or not pinned_sha:
+        raise ValueError("pinned_sha must be a non-empty string")
+    return pinned_sha
 
 
 async def inventory() -> dict[str, int]:
@@ -276,12 +361,13 @@ async def run_pipeline_once(
         return calibrated, note
 
     def counted_urlopen(*args: Any, **kwargs: Any) -> Any:
-        nonlocal last_call_at
+        nonlocal last_call_at, question_throttle_wait_ms
         now = time.monotonic()
         if last_call_at is not None:
             delay = MIN_API_DELAY_SECONDS - (now - last_call_at)
             if delay > 0:
                 time.sleep(delay)
+                question_throttle_wait_ms += round(delay * 1000)
         if generation_budget["http_calls"] >= MAX_GENERATION_HTTP_CALLS:
             raise RuntimeError("Phase 8 generation HTTP call budget reached")
         generation_budget["http_calls"] += 1
@@ -301,8 +387,12 @@ async def run_pipeline_once(
     generation.request.urlopen = counted_urlopen
     try:
         records = []
+        question_throttle_wait_ms = 0
         for question in questions:
             calibration.clear()
+            start_http_calls = call_stats["http_calls"]
+            question_throttle_wait_ms = 0
+            start_wall = time.perf_counter()
             try:
                 result = await investigate.investigate_repository(
                     EVAL_REPOSITORY_NAME,
@@ -334,6 +424,26 @@ async def run_pipeline_once(
                         }
                     )
                 generation_latency_ms = result.get("latency_ms")
+                generation_trace = result.get("generation_trace")
+                generation_ran = generation_latency_ms is not None
+                abstained = abstention_kind(
+                    diagnosis,
+                    generation_ran,
+                    (
+                        generation_trace.get("raw_text")
+                        if isinstance(generation_trace, dict)
+                        else None
+                    ),
+                )
+                labeled_rank = (
+                    first_relevant_rank(retrieval_results, labels)
+                    if not question["category"].startswith("unanswerable")
+                    else None
+                )
+                labeled_chunk_in_context = labeled_rank is not None
+                screen_pass = None
+                if not question["category"].startswith("unanswerable") and not abstained:
+                    screen_pass = answer_screen(diagnosis, question.get("must_mention", []))
                 records.append(
                     {
                         "id": question["id"],
@@ -357,6 +467,21 @@ async def run_pipeline_once(
                         "evidence_source": result.get("evidence_source", "hybrid"),
                         "tool_calls": result.get("tool_calls", []),
                         "refused": is_refused(diagnosis, generation_latency_ms),
+                        "generation_ran": generation_ran,
+                        "generation_trace": generation_trace,
+                        "wall_ms": round((time.perf_counter() - start_wall) * 1000),
+                        "throttle_wait_ms": question_throttle_wait_ms,
+                        "generation_ms": (
+                            None
+                            if generation_latency_ms is None
+                            else max(0, int(generation_latency_ms) - question_throttle_wait_ms)
+                        ),
+                        "generation_http_calls": call_stats["http_calls"] - start_http_calls,
+                        "guard_refused": is_refused(diagnosis, generation_latency_ms),
+                        "abstention_kind": abstained,
+                        "labeled_rank": labeled_rank,
+                        "labeled_chunk_in_context": labeled_chunk_in_context,
+                        "screen_pass": screen_pass,
                         "error": None,
                         "outcome": "pending",
                     }
@@ -383,6 +508,17 @@ async def run_pipeline_once(
                         "evidence_source": "hybrid",
                         "tool_calls": [],
                         "refused": False,
+                        "generation_ran": False,
+                        "generation_trace": None,
+                        "wall_ms": round((time.perf_counter() - start_wall) * 1000),
+                        "throttle_wait_ms": question_throttle_wait_ms,
+                        "generation_ms": None,
+                        "generation_http_calls": call_stats["http_calls"] - start_http_calls,
+                        "guard_refused": False,
+                        "abstention_kind": None,
+                        "labeled_rank": None,
+                        "labeled_chunk_in_context": None,
+                        "screen_pass": None,
                         "error": safe_error_text(exc),
                         "outcome": "error",
                     }
@@ -413,11 +549,41 @@ def classify_outcomes(records: list[dict[str, Any]], questions: list[dict[str, A
             )
 
 
+def classify_outcome_v2_for_records(records: list[dict[str, Any]]) -> None:
+    """Set the additive outcome_v2 field while preserving the legacy outcome values."""
+
+    for record in records:
+        if record.get("error"):
+            record["outcome_v2"] = "error"
+            continue
+        category = str(record.get("category") or "")
+        guard_refused = bool(record.get("refused"))
+        abstained = record.get("abstention_kind") is not None
+        screen_pass = record.get("screen_pass")
+        labeled_in_context = record.get("labeled_chunk_in_context")
+        record["outcome_v2"] = classify_outcome_v2(
+            category,
+            record.get("error"),
+            guard_refused,
+            abstained,
+            labeled_in_context,
+            screen_pass,
+        )
+
+
 def summarize_run(records: list[dict[str, Any]]) -> dict[str, Any]:
     counts: dict[str, int] = {}
+    outcome_v2_counts: dict[str, int] = {}
     for record in records:
         counts[record["outcome"]] = counts.get(record["outcome"], 0) + 1
-    return {"outcome_counts": counts, "total_records": len(records)}
+        outcome_v2 = record.get("outcome_v2")
+        if outcome_v2 is not None:
+            outcome_v2_counts[outcome_v2] = outcome_v2_counts.get(outcome_v2, 0) + 1
+    return {
+        "outcome_counts": counts,
+        "outcome_v2_counts": outcome_v2_counts,
+        "total_records": len(records),
+    }
 
 
 def write_json(path: Path, value: object) -> None:
@@ -425,15 +591,34 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(_json_safe(value), indent=2), encoding="utf-8")
 
 
-async def run_evaluation() -> dict[str, Any]:
+async def run_evaluation(passes: int = 2) -> dict[str, Any]:
     load_key_without_logging()
+    started = datetime.now(UTC)
     data = load_golden_set(EVALUATION_ROOT / "golden_set.json")
-    sha = snapshot_sha()
+    corpus_sha = resolve_corpus_sha(data)
+    code_sha = snapshot_sha()
+    code_dirty = bool(
+        subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+    )
+    untracked_output = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    code_untracked_files = sum(bool(path) for path in untracked_output.split("\0"))
     snapshot_parent = EVALUATION_ROOT / "_snapshot"
     if snapshot_parent.exists():
         shutil.rmtree(snapshot_parent)
-    snapshot_root = export_snapshot(ROOT, sha, snapshot_parent)
-    errors = validate_golden_set(data, snapshot_root, sha)
+    snapshot_root = export_snapshot(ROOT, corpus_sha, snapshot_parent)
+    errors = validate_golden_set(data, snapshot_root, corpus_sha)
     if errors:
         raise ValueError("Golden set validation failed: " + "; ".join(errors))
 
@@ -500,12 +685,14 @@ async def run_evaluation() -> dict[str, Any]:
     run_results = []
     generation_budget = {"http_calls": 0, "http_429_responses": 0}
     generation_calls_by_run = []
-    for index in (1, 2):
+    run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-{code_sha[:7]}"
+    for index in range(1, passes + 1):
         records, call_stats = await run_pipeline_once(
             questions, snapshot_root, f"run-{index}", generation_budget
         )
         classify_outcomes(records, questions)
-        output_path = RESULTS_ROOT / ("baseline.json" if index == 1 else f"run-{index}.json")
+        classify_outcome_v2_for_records(records)
+        output_path = RESULTS_ROOT / "runs" / run_id / f"pass-{index}.json"
         write_json(output_path, records)
         run_results.append(records)
         generation_calls_by_run.append(call_stats)
@@ -515,22 +702,47 @@ async def run_evaluation() -> dict[str, Any]:
         for question, first, second in zip(questions, run_results[0], run_results[1])
         if first["outcome"] != second["outcome"]
     ]
-    return {
-        "pinned_sha": sha,
-        "date": datetime.now(UTC).isoformat(),
-        "repository": EVAL_REPOSITORY_NAME,
-        "snapshot_files": files,
-        "snapshot_chunks": chunks,
-        "models": {
+    metadata = build_run_metadata(
+        run_id=run_id,
+        started_at=started.isoformat(),
+        finished_at=datetime.now(UTC).isoformat(),
+        corpus_sha=corpus_sha,
+        code_sha=code_sha,
+        code_dirty=code_dirty,
+        code_untracked_files=code_untracked_files,
+        models={
             "embedding": embed_chunks.GEMINI_MODEL,
             "generation": GEMINI_GENERATION_MODEL,
         },
-        "limit": LIMIT,
+        limit=LIMIT,
+        passes=passes,
+    )
+    report = {
+        **metadata,
+        "repository": EVAL_REPOSITORY_NAME,
+        "snapshot_files": files,
+        "snapshot_chunks": chunks,
         "retrieval_tables": retrieval_tables,
         "retrieval_split_tables": split_tables,
         "fulltext_empty_answerable": fulltext_empty,
         "guard_counts": guard_counts,
         "guard_distributions": distributions,
+        "guard_diagnostics": guard_diagnostics(
+            [check for check in hybrid_checks if isinstance(check, dict)],
+            float(MIN_ACCEPTABLE_RRF_SCORE),
+        ),
+        "citation_summary": {
+            "pass_1": citation_summary(run_results[0]),
+            "pass_2": citation_summary(run_results[1]) if len(run_results) > 1 else None,
+        },
+        "latency_summary": {
+            "pass_1": latency_summary(run_results[0]),
+            "pass_2": latency_summary(run_results[1]) if len(run_results) > 1 else None,
+        },
+        "token_summary": {
+            "pass_1": token_summary(run_results[0]),
+            "pass_2": token_summary(run_results[1]) if len(run_results) > 1 else None,
+        },
         "distance_sweep": distance_sweep(
             hybrid_checks,
             answerable,
@@ -590,3 +802,6 @@ async def run_evaluation() -> dict[str, Any]:
         "repository_inventory_before": before,
         "repository_inventory_after": after,
     }
+    report_path = RESULTS_ROOT / "runs" / run_id / "report.json"
+    write_json(report_path, report)
+    return report

@@ -9,8 +9,29 @@ from pathlib import Path
 EVAL_REPOSITORY_NAME = "incidentweave-eval"
 
 
+def commit_exists(root: Path, sha: str) -> bool:
+    """Return True when the commit exists in this clone."""
+
+    try:
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
+            cwd=root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+
 def export_snapshot(root: Path, sha: str, destination: Path) -> Path:
     """Export a pinned commit and remove test fixtures from the snapshot."""
+
+    if not commit_exists(root, sha):
+        raise RuntimeError(
+            f"The pinned commit {sha} is not in this clone and full history must be fetched."
+        )
 
     destination.mkdir(parents=True, exist_ok=True)
     archive = destination.with_suffix(".tar")

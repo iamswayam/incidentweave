@@ -153,6 +153,165 @@ def answer_screen(diagnosis: str, must_mention: Sequence[Sequence[str]]) -> bool
     return all(any(option.casefold() in normalized for option in group) for group in must_mention)
 
 
+def citation_summary(records: Sequence[Mapping[str, object]]) -> dict[str, int]:
+    """Summarize how often cited chunks were actually relevant for answerable questions."""
+
+    answerable = [
+        record
+        for record in records
+        if isinstance(record, Mapping)
+        and not str(record.get("category") or "").startswith("unanswerable")
+    ]
+    cited_total = sum(len(record.get("cited_chunk_ids", [])) for record in answerable)
+    cited_relevant = sum(
+        sum(
+            1
+            for item in record.get("cited_chunk_relevance", [])
+            if isinstance(item, Mapping) and item.get("relevant")
+        )
+        for record in answerable
+    )
+    answers_with_zero_citations = sum(
+        1
+        for record in answerable
+        if record.get("diagnosis")
+        and record.get("diagnosis") != "INSUFFICIENT_EVIDENCE"
+        and not record.get("cited_chunk_ids")
+    )
+    return {
+        "cited_total": cited_total,
+        "cited_relevant": cited_relevant,
+        "answers_with_zero_citations": answers_with_zero_citations,
+    }
+
+
+def guard_diagnostics(
+    evidence_checks: Sequence[Mapping[str, object]],
+    rrf_threshold: float,
+) -> dict[str, float | int | bool]:
+    """Summarize whether the RRF guard can reject nonempty vector results."""
+
+    rejected = [check for check in evidence_checks if check.get("is_sufficient") is False]
+    rrf_reason = "Best retrieved evidence score is below the minimum threshold."
+    vector_reason = "Best vector cosine distance is above the maximum threshold."
+    rrf_rank1_floor = 1 / (60 + 1)
+    return {
+        "rrf_threshold": rrf_threshold,
+        "rrf_rank1_floor": rrf_rank1_floor,
+        "rrf_gate_can_reject_nonempty_vector_results": (
+            rrf_threshold > rrf_rank1_floor
+        ),
+        "rrf_rejections": sum(check.get("reason") == rrf_reason for check in rejected),
+        "vector_rejections": sum(
+            check.get("reason") == vector_reason for check in rejected
+        ),
+        "other_rejections": sum(
+            check.get("reason") not in {rrf_reason, vector_reason}
+            for check in rejected
+        ),
+    }
+
+
+def latency_summary(records: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    """Summarize wall and generation latency across records where generation ran."""
+
+    generation_records = [
+        record for record in records if isinstance(record, Mapping) and record.get("generation_ran")
+    ]
+    return {
+        "wall_ms": value_distribution(
+            [
+                record.get("wall_ms")
+                for record in generation_records
+                if record.get("wall_ms") is not None
+            ]
+        ),
+        "generation_ms": value_distribution(
+            [
+                record.get("generation_ms")
+                for record in generation_records
+                if record.get("generation_ms") is not None
+            ]
+        ),
+    }
+
+
+def token_summary(records: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    """Summarize total-token usage across records where generation produced usage metadata."""
+
+    totals = [
+        int(record.get("generation_trace", {}).get("total_tokens"))
+        for record in records
+        if isinstance(record, Mapping)
+        and isinstance(record.get("generation_trace"), Mapping)
+        and record.get("generation_trace", {}).get("total_tokens") is not None
+    ]
+    return {"total_tokens": value_distribution(totals)}
+
+
+def abstention_kind(
+    diagnosis: str,
+    generation_ran: bool,
+    raw_text: str | None,
+) -> str | None:
+    """Classify whether an insufficient-evidence result was explicit or a parse fallback."""
+
+    if not generation_ran:
+        return None
+    if diagnosis.strip() != "INSUFFICIENT_EVIDENCE":
+        return None
+    if not raw_text:
+        return "parse_fallback"
+    if "INSUFFICIENT_EVIDENCE" in raw_text:
+        return "explicit"
+    return "parse_fallback"
+
+
+def classify_outcome_v2(
+    category: str,
+    error: object,
+    guard_refused: bool,
+    abstained: bool,
+    labeled_in_context: bool | None,
+    screen_pass: bool | None,
+) -> str:
+    """Return the additive outcome taxonomy for per-question diagnosis analysis."""
+
+    if error:
+        return "error"
+    if category.startswith("unanswerable"):
+        if guard_refused:
+            return "guard_true_refusal"
+        if abstained:
+            return "model_abstained"
+        return "answered_unanswerable"
+    if guard_refused:
+        return "guard_false_refusal"
+    if abstained:
+        return "retrieval_miss_abstained" if not labeled_in_context else "model_false_abstention"
+    if screen_pass is True:
+        return "correct_labeled_context" if labeled_in_context else "correct_unlabeled_context"
+    if screen_pass is False:
+        return "incomplete_or_wrong"
+    return "incomplete_or_wrong"
+
+
+def value_distribution(values: Sequence[float | int | None]) -> dict[str, float | int | None]:
+    """Summarize numeric values while ignoring nulls and preserving None for empty inputs."""
+
+    filtered = [value for value in values if value is not None]
+    if not filtered:
+        return {"min": None, "median": None, "max": None, "count": 0}
+    sorted_values = sorted(filtered, key=float)
+    median_value = median(sorted_values)
+    return {
+        "min": sorted_values[0],
+        "median": median_value,
+        "max": sorted_values[-1],
+        "count": len(sorted_values),
+    }
+
+
 def is_refused(diagnosis: str, generation_latency_ms: int | None = None) -> bool:
     """Detect a guard refusal, not a generated diagnosis containing the marker."""
 

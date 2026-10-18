@@ -411,3 +411,19 @@ reviewed with the maintainer. Finish with a report containing: (1) every
 golden set question in a table, for the maintainer's review; (2) the list of
 non-correct outcomes and the questions that flipped between runs; (3)
 anything that could not be verified.
+
+---
+
+## Phase 8b addendum (measurement fix)
+
+This addendum records the final Phase 8b verification run. The measurement
+changes did not alter production behavior or the rule set under test.
+
+- Verification run: `20261015T151657Z-c203e0e`
+- Report: `evaluation/results/runs/20261015T151657Z-c203e0e/report.json`
+- Snapshot: `62d0e58593bb22d187ec7930274b0457afd3be74`; `snapshot_files` 40, `snapshot_chunks` 70.
+- Run metadata: `code_sha` `c203e0e3fac87340addfe905ce3bd17eacfbe35f`; `code_dirty` false; `code_untracked_files` 1.
+- Pass 1 and pass 2 each recorded legacy counts `correct` 12, `wrong-or-incomplete` 4, `refused` 4, and `falsely answered` 4. In each pass, `outcome_v2` counts were `correct_labeled_context` 10, `correct_unlabeled_context` 2, `retrieval_miss_abstained` 2, `incomplete_or_wrong` 2, `guard_true_refusal` 4, and `model_abstained` 4.
+- The report recorded 40 generation HTTP calls, 0 HTTP 429 responses, and 0 generation errors. `guard_diagnostics` recorded 0 RRF rejections, 4 vector rejections, and 0 other rejections.
+- The fix preserves legacy `outcome` for continuity and stores the additive taxonomy under `outcome_v2`.
+- The configured `GEMINI_API_KEY` and `API_PROTECTION_SECRET` values were not present in the report; neither secret value is printed here.

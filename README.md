@@ -139,8 +139,8 @@ IncidentWeave investigates production incidents by combining repository context,
 - Reproduce with the command shown by `--help`: `\.venv\Scripts\python.exe scripts\run_eval.py`.
 - Retrieval (16 answerable questions): vector and hybrid each hit `8/16` at 1, `11/16` at 3, and `11/16` at 5; full-text was empty for `14/16`.
 - Guard (24 questions): `16` true accepts, `0` false refusals, `4` true refusals, and `4` false accepts. No tested vector cutoff separated the answerable and unanswerable groups.
-- End to end (24 questions per run): run 1 had `15` correct, `1` wrong-or-incomplete, `4` refused, and `4` falsely answered; run 2 had `14`, `2`, `4`, and `4`. One outcome changed between runs; there were `40` generation HTTP calls, `0` HTTP 429 responses, and `0` errors.
-- Tests: `32 passed`.
+- End to end (24 questions per run): final Phase 8b run `20261015T151657Z-c203e0e` split the legacy labels into `outcome_v2` counts. Each pass had `correct_labeled_context` 10, `correct_unlabeled_context` 2, `retrieval_miss_abstained` 2, `incomplete_or_wrong` 2, `guard_true_refusal` 4, and `model_abstained` 4. There were `40` generation HTTP calls, `0` HTTP 429 responses, and `0` errors.
+- Tests: `53 passed`.
 
 **Limits:** This 24-question evaluation covers one pinned source snapshot and is diagnostic for that corpus, not a benchmark for other repositories. The labels remain pending maintainer review and were drafted from the indexed source. Keyword checks can accept an incorrect answer or reject a correct paraphrase, and no LLM judge was used.
 
