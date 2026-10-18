@@ -15,7 +15,7 @@
 
 **Scope:** chunking only. Retrieval ranking and golden-set label questions are logged here only when they bear on the chunking decision.
 
-**Status:** Phase: diagnosis complete, harness implemented and under review; experiment not run and not authorized. See "Current status" below.
+**Status:** Harness committed and both authorized experiment arms completed; retrieval favors 100/20, but adoption remains provisional pending Gate 5 human correctness review. See "Current status" below and entries [011]–[012].
 
 ---
 
@@ -50,18 +50,18 @@
 | Item | State |
 |---|---|
 | Baseline | 60-line windows, 10-line overlap, Python files only, no AST (`scripts/ingest_repo.py::chunk_lines`) |
-| Baseline run used for analysis | `20261015T151657Z-c203e0e` (top-5 chunk IDs identical to `20261014T160330Z-305200f`) |
+| Baseline run used for initial analysis | `20261015T151657Z-c203e0e` (top-5 chunk IDs identical to `20261014T160330Z-305200f`) |
 | Corpus | pinned SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, 40 files / 70 chunks |
 | Golden set | 24 questions, sha256 `5f4c27469a1e1836c47d4485e2091a9c70546dc52ce1e824b44f6380d1b42914`, status "pending maintainer review" |
 | Diagnosis of the 5 Hit@5 misses | Done (entry 001) |
 | Vector-ranking export (all 70 chunks per missed question) | Script provided; output not yet reviewed. Optional before building; recommended before interpreting results ([002]). |
-| Proposed next experiment | Fixed window 100/20 against the 60/10 baseline (entry 001) |
+| Completed paired experiment | 60/10 `20261018T123627Z-2274338-baseline` vs 100/20 `20261018T124223Z-2274338-w100_o20`; see [011] and [012] |
 | Reviews received | Claude [001], ChatGPT [001-G], Codex with repo access [002-G], Claude review of Codex [003], ChatGPT [005], Copilot [006], Codex [007], Claude [008]. Historical empty response blocks remain unchanged. |
 | Pinned-commit audit (Codex [002-G]) | Done. The uploaded `investigate.py`, `persistence.py`, `audit.py` do NOT match the pinned corpus; E3 rows based on them are superseded by [003]. Chunk count: 70 at 60/10, 52 at 100/20. |
 | Planner agreement | D3, D4, and D6 are approved by the maintainer in entry [004]. The D4 disagreement in [003] remains in the historical discussion and is resolved by the maintainer's recorded decision. |
-| Harness implementation | Initial evaluation harness and the subsequent four safety fixes are implemented in the working tree; see Copilot entry [006]. No commit was created. |
+| Harness implementation | Committed as `22743382a4980d7787bc798d9ad8e2ab6ddecb18`; see [011]. |
 | Evaluation-owned insertion equivalence | **Not established.** Source inspection shows evaluation chunks use the same path/range/content shape and the existing embedding helper, but no side-by-side database verification against production ingestion has been run. |
-| Experiment run | **Not authorized and not run.** D3 approves the experiment design; a separate maintainer approval is still required before running either arm or calling external APIs. |
+| Experiment run | **Completed** for both arms, recorded in [011]. D4 retrieval/safety gates 1–4 and 6–9 pass; Gate 5 human end-to-end correctness remains pending. No adoption approval is claimed. |
 
 ---
 
@@ -569,3 +569,107 @@ Scope: reviewed the [009] text, the pasted `git status`/diff, the supplied `runn
 5. Then compare with `compare_chunking_runs.py`, apply D4; gate 5 (end-to-end correctness) is a manual human review.
 
 **Status:** experiment still **not authorized**. Update the status table to point to [009] and [010].
+
+---
+
+### [011] Copilot (2026-10-18): authorized run record
+
+Commit: `2274338`.
+
+Baseline run: `20261018T123627Z-2274338-baseline` (70 chunks, 42 generation HTTP calls, 2 HTTP 429 responses, 0 generation errors).
+
+100/20 run: `20261018T124223Z-2274338-w100_o20` (52 chunks, 42 generation HTTP calls, 1 HTTP 429 response, 0 generation errors).
+
+Commands:
+
+```text
+git branch --show-current
+git status --short --untracked-files=all
+git status --porcelain=v1
+docker compose ps db
+git add evaluation/runner.py evaluation/chunk_experiments.py evaluation/compare_chunking_runs.py scripts/run_eval.py tests/unit/test_evaluation.py tests/unit/test_compare_chunking_runs.py docs/architecture.md docs/chunking-experiment.md
+git status --short
+git diff --cached --name-only
+git diff --cached --check
+git diff --cached --stat
+git diff --cached
+git commit -m "Add chunking experiment harness (baseline vs 100/20) and offline run comparator" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+.\.venv\Scripts\python.exe -m pytest -q tests\unit\test_evaluation.py tests\unit\test_ingest_repo.py tests\unit\test_compare_chunking_runs.py
+.\.venv\Scripts\ruff.exe check evaluation scripts tests\unit\test_evaluation.py tests\unit\test_compare_chunking_runs.py
+git status --short
+.\.venv\Scripts\python.exe scripts\run_eval.py --help
+.\.venv\Scripts\python.exe scripts\run_eval.py --strategy baseline --passes 2
+.\.venv\Scripts\python.exe scripts\run_eval.py --strategy w100_o20 --passes 2
+.\.venv\Scripts\python.exe evaluation\compare_chunking_runs.py --help
+.\.venv\Scripts\python.exe evaluation\compare_chunking_runs.py evaluation\results\runs\20261018T123627Z-2274338-baseline evaluation\results\runs\20261018T124223Z-2274338-w100_o20
+```
+
+No command failed; no other error text was reported. Full comparator output follows verbatim:
+
+```text
+Baseline: 20261018T123627Z-2274338-baseline
+Experiment: 20261018T124223Z-2274338-w100_o20
+Pinned SHA: 62d0e58593bb22d187ec7930274b0457afd3be74
+
+Pass-1 answerable paired retrieval (rank and hit indicators):
+id | baseline rank | experiment rank | baseline @1/@3/@5 | experiment @1/@3/@5 | file baseline/experiment | function baseline/experiment | gained | lost
+direct-01 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+direct-02 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+direct-03 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+direct-04 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+direct-05 | 3 | 2 | 0/1/1 | 0/1/1 | yes/yes | n/a/n/a | - | -
+direct-06 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+direct-07 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+direct-08 | None | 4 | 0/0/0 | 0/0/1 | no/yes | no/no | @5 | -
+paraphrased-01 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | n/a/n/a | - | -
+paraphrased-02 | 2 | 1 | 0/1/1 | 1/1/1 | yes/yes | n/a/n/a | @1 | -
+paraphrased-03 | None | 2 | 0/0/0 | 0/1/1 | yes/yes | no/yes | @3,@5 | -
+paraphrased-04 | 3 | 2 | 0/1/1 | 0/1/1 | yes/yes | no/yes | - | -
+paraphrased-05 | None | 4 | 0/0/0 | 0/0/1 | no/yes | no/yes | @5 | -
+paraphrased-06 | 1 | 1 | 1/1/1 | 1/1/1 | yes/yes | yes/yes | - | -
+paraphrased-07 | None | None | 0/0/0 | 0/0/0 | yes/yes | no/no | - | -
+paraphrased-08 | None | 5 | 0/0/0 | 0/0/1 | no/yes | no/yes | @5 | -
+
+pass-1 metrics:
+  baseline: overall={'questions': 16, 'hit_at_1': 8, 'hit_at_3': 11, 'hit_at_5': 11, 'mrr': 0.5729166666666666}; by_category={'direct': {'questions': 8, 'hit_at_1': 6, 'hit_at_3': 7, 'hit_at_5': 7, 'mrr': 0.7916666666666666}, 'paraphrased': {'questions': 8, 'hit_at_1': 2, 'hit_at_3': 4, 'hit_at_5': 4, 'mrr': 0.3541666666666667}}; by_label_file_type={'test_file': {'questions': 0, 'hit_at_1': 0, 'hit_at_3': 0, 'hit_at_5': 0, 'mrr': 0.0}, 'non_test_file': {'questions': 16, 'hit_at_1': 8, 'hit_at_3': 11, 'hit_at_5': 11, 'mrr': 0.5729166666666666}}; hit_by_file={'hit_at_5': 13, 'questions': 16}; hit_by_function={'hit_at_5': 1, 'applicable_questions': 7, 'not_applicable_module_level': 9}; top5_median_chars=7729.5; top5_chars_per_question=[{'id': 'direct-01', 'characters': 7904}, {'id': 'direct-02', 'characters': 7488}, {'id': 'direct-03', 'characters': 7813}, {'id': 'direct-04', 'characters': 7332}, {'id': 'direct-05', 'characters': 7239}, {'id': 'direct-06', 'characters': 7787}, {'id': 'direct-07', 'characters': 7907}, {'id': 'direct-08', 'characters': 8132}, {'id': 'paraphrased-01', 'characters': 6328}, {'id': 'paraphrased-02', 'characters': 7672}, {'id': 'paraphrased-03', 'characters': 8874}, {'id': 'paraphrased-04', 'characters': 7864}, {'id': 'paraphrased-05', 'characters': 10237}, {'id': 'paraphrased-06', 'characters': 8743}, {'id': 'paraphrased-07', 'characters': 9743}, {'id': 'paraphrased-08', 'characters': 9549}, {'id': 'unanswerable_far-01', 'characters': 0}, {'id': 'unanswerable_far-02', 'characters': 0}, {'id': 'unanswerable_far-03', 'characters': 0}, {'id': 'unanswerable_far-04', 'characters': 0}, {'id': 'unanswerable_near-01', 'characters': 4641}, {'id': 'unanswerable_near-02', 'characters': 10437}, {'id': 'unanswerable_near-03', 'characters': 3637}, {'id': 'unanswerable_near-04', 'characters': 6839}]; median_tokens=2835.5; tokens_per_question=[{'id': 'direct-01', 'total_tokens': 2802}, {'id': 'direct-02', 'total_tokens': 2746}, {'id': 'direct-03', 'total_tokens': 2761}, {'id': 'direct-04', 'total_tokens': 2785}, {'id': 'direct-05', 'total_tokens': 2676}, {'id': 'direct-06', 'total_tokens': 2869}, {'id': 'direct-07', 'total_tokens': 2750}, {'id': 'direct-08', 'total_tokens': 2996}, {'id': 'paraphrased-01', 'total_tokens': 2374}, {'id': 'paraphrased-02', 'total_tokens': 2905}, {'id': 'paraphrased-03', 'total_tokens': 3095}, {'id': 'paraphrased-04', 'total_tokens': 3199}, {'id': 'paraphrased-05', 'total_tokens': 3509}, {'id': 'paraphrased-06', 'total_tokens': 3320}, {'id': 'paraphrased-07', 'total_tokens': 3392}, {'id': 'paraphrased-08', 'total_tokens': 3167}, {'id': 'unanswerable_far-01', 'total_tokens': None}, {'id': 'unanswerable_far-02', 'total_tokens': None}, {'id': 'unanswerable_far-03', 'total_tokens': None}, {'id': 'unanswerable_far-04', 'total_tokens': None}, {'id': 'unanswerable_near-01', 'total_tokens': 1971}, {'id': 'unanswerable_near-02', 'total_tokens': 3435}, {'id': 'unanswerable_near-03', 'total_tokens': 1602}, {'id': 'unanswerable_near-04', 'total_tokens': 2335}]; guard_false_accepts=4; outcome_v2_counts={'correct_labeled_context': 10, 'correct_unlabeled_context': 3, 'guard_true_refusal': 4, 'incomplete_or_wrong': 1, 'model_abstained': 4, 'retrieval_miss_abstained': 2}
+  experiment: overall={'questions': 16, 'hit_at_1': 9, 'hit_at_3': 12, 'hit_at_5': 15, 'mrr': 0.7}; by_category={'direct': {'questions': 8, 'hit_at_1': 6, 'hit_at_3': 7, 'hit_at_5': 8, 'mrr': 0.84375}, 'paraphrased': {'questions': 8, 'hit_at_1': 3, 'hit_at_3': 5, 'hit_at_5': 7, 'mrr': 0.55625}}; by_label_file_type={'test_file': {'questions': 0, 'hit_at_1': 0, 'hit_at_3': 0, 'hit_at_5': 0, 'mrr': 0.0}, 'non_test_file': {'questions': 16, 'hit_at_1': 9, 'hit_at_3': 12, 'hit_at_5': 15, 'mrr': 0.7}}; hit_by_file={'hit_at_5': 16, 'questions': 16}; hit_by_function={'hit_at_5': 5, 'applicable_questions': 7, 'not_applicable_module_level': 9}; top5_median_chars=11072.0; top5_chars_per_question=[{'id': 'direct-01', 'characters': 12227}, {'id': 'direct-02', 'characters': 11036}, {'id': 'direct-03', 'characters': 11285}, {'id': 'direct-04', 'characters': 11108}, {'id': 'direct-05', 'characters': 10431}, {'id': 'direct-06', 'characters': 14216}, {'id': 'direct-07', 'characters': 8135}, {'id': 'direct-08', 'characters': 14537}, {'id': 'paraphrased-01', 'characters': 9145}, {'id': 'paraphrased-02', 'characters': 11274}, {'id': 'paraphrased-03', 'characters': 7664}, {'id': 'paraphrased-04', 'characters': 12593}, {'id': 'paraphrased-05', 'characters': 15127}, {'id': 'paraphrased-06', 'characters': 11113}, {'id': 'paraphrased-07', 'characters': 13453}, {'id': 'paraphrased-08', 'characters': 14964}, {'id': 'unanswerable_far-01', 'characters': 0}, {'id': 'unanswerable_far-02', 'characters': 0}, {'id': 'unanswerable_far-03', 'characters': 0}, {'id': 'unanswerable_far-04', 'characters': 0}, {'id': 'unanswerable_near-01', 'characters': 6951}, {'id': 'unanswerable_near-02', 'characters': 16900}, {'id': 'unanswerable_near-03', 'characters': 7267}, {'id': 'unanswerable_near-04', 'characters': 9795}]; median_tokens=3971.5; tokens_per_question=[{'id': 'direct-01', 'total_tokens': 4186}, {'id': 'direct-02', 'total_tokens': 3724}, {'id': 'direct-03', 'total_tokens': 3703}, {'id': 'direct-04', 'total_tokens': 4058}, {'id': 'direct-05', 'total_tokens': 3573}, {'id': 'direct-06', 'total_tokens': 4368}, {'id': 'direct-07', 'total_tokens': 2727}, {'id': 'direct-08', 'total_tokens': 4722}, {'id': 'paraphrased-01', 'total_tokens': 3210}, {'id': 'paraphrased-02', 'total_tokens': 4190}, {'id': 'paraphrased-03', 'total_tokens': 2869}, {'id': 'paraphrased-04', 'total_tokens': 4201}, {'id': 'paraphrased-05', 'total_tokens': 4927}, {'id': 'paraphrased-06', 'total_tokens': 3885}, {'id': 'paraphrased-07', 'total_tokens': 4512}, {'id': 'paraphrased-08', 'total_tokens': 4852}, {'id': 'unanswerable_far-01', 'total_tokens': None}, {'id': 'unanswerable_far-02', 'total_tokens': None}, {'id': 'unanswerable_far-03', 'total_tokens': None}, {'id': 'unanswerable_far-04', 'total_tokens': None}, {'id': 'unanswerable_near-01', 'total_tokens': 2498}, {'id': 'unanswerable_near-02', 'total_tokens': 5039}, {'id': 'unanswerable_near-03', 'total_tokens': 2538}, {'id': 'unanswerable_near-04', 'total_tokens': 3213}]; guard_false_accepts=4; outcome_v2_counts={'correct_labeled_context': 14, 'correct_unlabeled_context': 1, 'guard_true_refusal': 4, 'incomplete_or_wrong': 1, 'model_abstained': 4}
+pass-2 metrics:
+  baseline: overall={'questions': 16, 'hit_at_1': 8, 'hit_at_3': 11, 'hit_at_5': 11, 'mrr': 0.5729166666666666}; by_category={'direct': {'questions': 8, 'hit_at_1': 6, 'hit_at_3': 7, 'hit_at_5': 7, 'mrr': 0.7916666666666666}, 'paraphrased': {'questions': 8, 'hit_at_1': 2, 'hit_at_3': 4, 'hit_at_5': 4, 'mrr': 0.3541666666666667}}; by_label_file_type={'test_file': {'questions': 0, 'hit_at_1': 0, 'hit_at_3': 0, 'hit_at_5': 0, 'mrr': 0.0}, 'non_test_file': {'questions': 16, 'hit_at_1': 8, 'hit_at_3': 11, 'hit_at_5': 11, 'mrr': 0.5729166666666666}}; hit_by_file={'hit_at_5': 13, 'questions': 16}; hit_by_function={'hit_at_5': 1, 'applicable_questions': 7, 'not_applicable_module_level': 9}; top5_median_chars=7729.5; top5_chars_per_question=[{'id': 'direct-01', 'characters': 7904}, {'id': 'direct-02', 'characters': 7488}, {'id': 'direct-03', 'characters': 7813}, {'id': 'direct-04', 'characters': 7332}, {'id': 'direct-05', 'characters': 7239}, {'id': 'direct-06', 'characters': 7787}, {'id': 'direct-07', 'characters': 7907}, {'id': 'direct-08', 'characters': 8132}, {'id': 'paraphrased-01', 'characters': 6328}, {'id': 'paraphrased-02', 'characters': 7672}, {'id': 'paraphrased-03', 'characters': 8874}, {'id': 'paraphrased-04', 'characters': 7864}, {'id': 'paraphrased-05', 'characters': 10237}, {'id': 'paraphrased-06', 'characters': 8743}, {'id': 'paraphrased-07', 'characters': 9743}, {'id': 'paraphrased-08', 'characters': 9549}, {'id': 'unanswerable_far-01', 'characters': 0}, {'id': 'unanswerable_far-02', 'characters': 0}, {'id': 'unanswerable_far-03', 'characters': 0}, {'id': 'unanswerable_far-04', 'characters': 0}, {'id': 'unanswerable_near-01', 'characters': 4641}, {'id': 'unanswerable_near-02', 'characters': 10437}, {'id': 'unanswerable_near-03', 'characters': 3637}, {'id': 'unanswerable_near-04', 'characters': 6839}]; median_tokens=2867.5; tokens_per_question=[{'id': 'direct-01', 'total_tokens': 2800}, {'id': 'direct-02', 'total_tokens': 2708}, {'id': 'direct-03', 'total_tokens': 2840}, {'id': 'direct-04', 'total_tokens': 2738}, {'id': 'direct-05', 'total_tokens': 2665}, {'id': 'direct-06', 'total_tokens': 2909}, {'id': 'direct-07', 'total_tokens': 2750}, {'id': 'direct-08', 'total_tokens': 2996}, {'id': 'paraphrased-01', 'total_tokens': 2384}, {'id': 'paraphrased-02', 'total_tokens': 2895}, {'id': 'paraphrased-03', 'total_tokens': 3243}, {'id': 'paraphrased-04', 'total_tokens': 3160}, {'id': 'paraphrased-05', 'total_tokens': 3565}, {'id': 'paraphrased-06', 'total_tokens': 3311}, {'id': 'paraphrased-07', 'total_tokens': 3366}, {'id': 'paraphrased-08', 'total_tokens': 3231}, {'id': 'unanswerable_far-01', 'total_tokens': None}, {'id': 'unanswerable_far-02', 'total_tokens': None}, {'id': 'unanswerable_far-03', 'total_tokens': None}, {'id': 'unanswerable_far-04', 'total_tokens': None}, {'id': 'unanswerable_near-01', 'total_tokens': 1900}, {'id': 'unanswerable_near-02', 'total_tokens': 3435}, {'id': 'unanswerable_near-03', 'total_tokens': 1602}, {'id': 'unanswerable_near-04', 'total_tokens': 2335}]; guard_false_accepts=4; outcome_v2_counts={'correct_labeled_context': 10, 'correct_unlabeled_context': 3, 'guard_true_refusal': 4, 'incomplete_or_wrong': 2, 'model_abstained': 4, 'retrieval_miss_abstained': 1}
+  experiment: overall={'questions': 16, 'hit_at_1': 9, 'hit_at_3': 12, 'hit_at_5': 15, 'mrr': 0.7}; by_category={'direct': {'questions': 8, 'hit_at_1': 6, 'hit_at_3': 7, 'hit_at_5': 8, 'mrr': 0.84375}, 'paraphrased': {'questions': 8, 'hit_at_1': 3, 'hit_at_3': 5, 'hit_at_5': 7, 'mrr': 0.55625}}; by_label_file_type={'test_file': {'questions': 0, 'hit_at_1': 0, 'hit_at_3': 0, 'hit_at_5': 0, 'mrr': 0.0}, 'non_test_file': {'questions': 16, 'hit_at_1': 9, 'hit_at_3': 12, 'hit_at_5': 15, 'mrr': 0.7}}; hit_by_file={'hit_at_5': 16, 'questions': 16}; hit_by_function={'hit_at_5': 5, 'applicable_questions': 7, 'not_applicable_module_level': 9}; top5_median_chars=11072.0; top5_chars_per_question=[{'id': 'direct-01', 'characters': 12227}, {'id': 'direct-02', 'characters': 11036}, {'id': 'direct-03', 'characters': 11285}, {'id': 'direct-04', 'characters': 11108}, {'id': 'direct-05', 'characters': 10431}, {'id': 'direct-06', 'characters': 14216}, {'id': 'direct-07', 'characters': 8135}, {'id': 'direct-08', 'characters': 14537}, {'id': 'paraphrased-01', 'characters': 9145}, {'id': 'paraphrased-02', 'characters': 11274}, {'id': 'paraphrased-03', 'characters': 7664}, {'id': 'paraphrased-04', 'characters': 12593}, {'id': 'paraphrased-05', 'characters': 15127}, {'id': 'paraphrased-06', 'characters': 11113}, {'id': 'paraphrased-07', 'characters': 13453}, {'id': 'paraphrased-08', 'characters': 14964}, {'id': 'unanswerable_far-01', 'characters': 0}, {'id': 'unanswerable_far-02', 'characters': 0}, {'id': 'unanswerable_far-03', 'characters': 0}, {'id': 'unanswerable_far-04', 'characters': 0}, {'id': 'unanswerable_near-01', 'characters': 6951}, {'id': 'unanswerable_near-02', 'characters': 16900}, {'id': 'unanswerable_near-03', 'characters': 7267}, {'id': 'unanswerable_near-04', 'characters': 9795}]; median_tokens=4001.0; tokens_per_question=[{'id': 'direct-01', 'total_tokens': 4140}, {'id': 'direct-02', 'total_tokens': 3742}, {'id': 'direct-03', 'total_tokens': 3714}, {'id': 'direct-04', 'total_tokens': 4162}, {'id': 'direct-05', 'total_tokens': 3594}, {'id': 'direct-06', 'total_tokens': 4361}, {'id': 'direct-07', 'total_tokens': 2716}, {'id': 'direct-08', 'total_tokens': 4688}, {'id': 'paraphrased-01', 'total_tokens': 3203}, {'id': 'paraphrased-02', 'total_tokens': 4256}, {'id': 'paraphrased-03', 'total_tokens': 2870}, {'id': 'paraphrased-04', 'total_tokens': 4207}, {'id': 'paraphrased-05', 'total_tokens': 4928}, {'id': 'paraphrased-06', 'total_tokens': 3862}, {'id': 'paraphrased-07', 'total_tokens': 4567}, {'id': 'paraphrased-08', 'total_tokens': 4808}, {'id': 'unanswerable_far-01', 'total_tokens': None}, {'id': 'unanswerable_far-02', 'total_tokens': None}, {'id': 'unanswerable_far-03', 'total_tokens': None}, {'id': 'unanswerable_far-04', 'total_tokens': None}, {'id': 'unanswerable_near-01', 'total_tokens': 2498}, {'id': 'unanswerable_near-02', 'total_tokens': 5039}, {'id': 'unanswerable_near-03', 'total_tokens': 2518}, {'id': 'unanswerable_near-04', 'total_tokens': 3213}]; guard_false_accepts=4; outcome_v2_counts={'correct_labeled_context': 15, 'correct_unlabeled_context': 1, 'guard_true_refusal': 4, 'model_abstained': 4}
+
+Questions with changed outcome_v2:
+  pass-1 direct-04: incomplete_or_wrong -> correct_labeled_context
+  pass-1 direct-05: correct_labeled_context -> incomplete_or_wrong
+  pass-1 direct-08: retrieval_miss_abstained -> correct_labeled_context
+  pass-1 paraphrased-03: correct_unlabeled_context -> correct_labeled_context
+  pass-1 paraphrased-05: correct_unlabeled_context -> correct_labeled_context
+  pass-1 paraphrased-08: retrieval_miss_abstained -> correct_labeled_context
+  pass-2 direct-04: incomplete_or_wrong -> correct_labeled_context
+  pass-2 direct-08: retrieval_miss_abstained -> correct_labeled_context
+  pass-2 paraphrased-03: correct_unlabeled_context -> correct_labeled_context
+  pass-2 paraphrased-05: correct_unlabeled_context -> correct_labeled_context
+  pass-2 paraphrased-08: incomplete_or_wrong -> correct_labeled_context
+
+Gate checklist:
+  Gate 1: PASS � pass-1 net Hit@5=4; required >= 2
+  Gate 2: PASS � Hit@3 deltas={'pass-1': 1, 'pass-2': 1}; Hit@5 deltas={'pass-1': 4, 'pass-2': 4}
+  Gate 3: PASS � previously hit@5 questions lost=[]; each loss requires an explanation
+  Gate 4: PASS � false accepts baseline=4, experiment=4 (limit 4); answered-unanswerable baseline=0, experiment=0; new answered-unanswerable questions=[]
+  Gate 5: MANUAL � human-reviewed end-to-end correctness is not computed
+  Gate 6: PASS � median total tokens baseline=2835.5, experiment=3971.5; limit=1.5x baseline
+  Gate 7: PASS � hit-by-file@5 baseline=13, experiment=16; hit-by-function@5 baseline=1, experiment=5 (7 applicable, 9 module-level n/a)
+  Gate 8: PASS � net Hit@5=4; only exactly +1 is inconclusive
+  Gate 9: PASS � MRR delta=0.127083; supporting only, not an adoption route
+
+JSON report: D:\Projects\incidentweave\evaluation\results\runs\20261018T124223Z-2274338-w100_o20\chunking-comparison.json
+```
+
+---
+
+### [012] Copilot (2026-10-18): current-status correction
+
+**Confirmed from saved artifacts:** Both runs recorded in [011] completed on source commit `22743382a4980d7787bc798d9ad8e2ab6ddecb18` with `code_dirty=false`, pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, and 40 files. The baseline report records 70 chunks; the 100/20 report records 52 chunks. Both reports show 42 generation HTTP calls and 0 generation errors (baseline: 2 HTTP 429 responses; 100/20: 1).
+
+**Confirmed from the saved comparison:** Hit@5 is 11/16 for 60/10 and 15/16 for 100/20; no prior Hit@5 questions were lost. Gates 1–4 and 6–9 are recorded PASS, with Gate 5 MANUAL. The decision report is [evaluation/chunking-strategy-decision-report.md](../evaluation/chunking-strategy-decision-report.md).
+
+**Correction to current status only:** The experiment is complete and its run evidence is recorded in [011]. The “not authorized” sentence in [010] is retained as a historical statement from that entry and is superseded for current status by [011]–[012]. Gate 5 has not been reviewed by a human; adoption remains provisional and the 60/10 baseline remains the production choice pending that review.
