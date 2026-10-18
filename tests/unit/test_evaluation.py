@@ -3,11 +3,21 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+from app.db.models import Repository
 from app.investigation.parsing import extract_generation_trace
+from evaluation.chunk_experiments import (
+    DEFAULT_STRATEGY,
+    EVALUATION_REPOSITORIES,
+    STRATEGY_CHOICES,
+    expected_chunk_ranges,
+    get_strategy,
+    resolve_evaluation_repository,
+)
 from evaluation.corpus import export_snapshot
 from evaluation.golden import load_golden_set, validate_golden_set, validate_index_labels
 from evaluation.metrics import (
@@ -27,16 +37,568 @@ from evaluation.metrics import (
     value_distribution,
 )
 from evaluation.runner import (
+    build_run_id,
     classify_outcome_v2_for_records,
     classify_outcomes,
+    ensure_non_eval_inventory_unchanged,
     resolve_corpus_sha,
     run_pipeline_once,
 )
+from scripts import ingest_repo
 from scripts.ingest_repo import chunk_lines, iter_python_files
 
 
 def result(file_path: str, content: str) -> dict[str, object]:
     return {"file_path": file_path, "content": content}
+
+
+class FakeRows:
+    def __init__(self, rows: list[tuple[object, ...]]) -> None:
+        self.rows = rows
+
+    def all(self) -> list[tuple[object, ...]]:
+        return self.rows
+
+
+class FakeEvaluationSession:
+    def __init__(
+        self,
+        repository: Repository | None = None,
+        rows: list[tuple[object, ...]] | None = None,
+    ) -> None:
+        self.repository = repository
+        self.rows = rows or []
+        self.added: list[object] = []
+        self.added_chunks: list[object] = []
+        self.commit_count = 0
+        self.null_embedding_count = 0
+        self.scalar_call_count = 0
+
+    async def __aenter__(self) -> FakeEvaluationSession:
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+    async def scalar(self, statement: object) -> Repository | None:
+        del statement
+        self.scalar_call_count += 1
+        if self.scalar_call_count == 1:
+            return self.repository
+        return self.null_embedding_count
+
+    async def execute(self, statement: object) -> FakeRows:
+        del statement
+        return FakeRows(self.rows)
+
+    def add(self, value: object) -> None:
+        self.added.append(value)
+        if isinstance(value, Repository):
+            self.repository = value
+
+    def add_all(self, values: list[object]) -> None:
+        self.added_chunks.extend(values)
+
+    async def flush(self) -> None:
+        if self.repository is not None and self.repository.id is None:
+            self.repository.id = 17
+
+    async def commit(self) -> None:
+        self.commit_count += 1
+
+
+def test_chunk_strategies_preserve_baseline_and_define_experimental_ranges() -> None:
+    assert STRATEGY_CHOICES == ("baseline", "w100_o20")
+    assert get_strategy(DEFAULT_STRATEGY).chunk_size == 60
+    assert get_strategy(DEFAULT_STRATEGY).overlap == 10
+    assert get_strategy("w100_o20").chunk_size == 100
+    assert get_strategy("w100_o20").overlap == 20
+
+    for line_count in (0, 1, 60, 61, 110, 111, 200, 201):
+        lines = ["line"] * line_count
+        assert list(expected_chunk_ranges(lines)) == list(chunk_lines(lines))
+
+    assert list(expected_chunk_ranges(["line"] * 181, "w100_o20")) == [
+        (0, 100),
+        (80, 180),
+        (160, 181),
+    ]
+    with pytest.raises(ValueError, match="Unsupported chunking strategy"):
+        get_strategy("ast")
+
+
+@pytest.mark.parametrize(
+    ("strategy", "chunk_size", "overlap"),
+    [("baseline", 60, 10), ("w100_o20", 100, 20)],
+)
+def test_chunk_ranges_cover_boundaries_overlap_and_final_line(
+    strategy: str,
+    chunk_size: int,
+    overlap: int,
+) -> None:
+    step = chunk_size - overlap
+    second_boundary = chunk_size + step
+    third_boundary = chunk_size + 2 * step
+    line_counts = {
+        0,
+        1,
+        chunk_size - 1,
+        chunk_size,
+        chunk_size + 1,
+        second_boundary - 1,
+        second_boundary,
+        second_boundary + 1,
+        third_boundary - 1,
+        third_boundary,
+        third_boundary + 1,
+    }
+
+    for line_count in sorted(line_counts):
+        lines = [f"line-{line_number}" for line_number in range(1, line_count + 1)]
+        ranges = list(expected_chunk_ranges(lines, strategy))
+
+        if strategy == DEFAULT_STRATEGY:
+            assert ranges == list(chunk_lines(lines))
+        if not line_count:
+            assert ranges == []
+            continue
+
+        assert ranges[0][0] == 0
+        assert ranges[-1][1] == line_count
+        assert lines[ranges[-1][1] - 1] == f"line-{line_count}"
+        assert all(end - start <= chunk_size for start, end in ranges)
+        assert all(
+            next_start == end - overlap
+            for (_, end), (next_start, _) in zip(ranges, ranges[1:])
+        )
+
+
+def test_evaluation_repository_allowlist_and_inventory_guard() -> None:
+    assert EVALUATION_REPOSITORIES == {
+        "incidentweave-eval",
+        "incidentweave-eval-w100_20",
+    }
+    assert resolve_evaluation_repository() == "incidentweave-eval"
+    assert resolve_evaluation_repository(strategy="w100_o20") == (
+        "incidentweave-eval-w100_20"
+    )
+    with pytest.raises(ValueError, match="not allowed"):
+        resolve_evaluation_repository("incidentweave")
+    with pytest.raises(ValueError, match="not allowed"):
+        resolve_evaluation_repository("")
+    with pytest.raises(ValueError, match="requires evaluation repository"):
+        resolve_evaluation_repository("incidentweave-eval", "w100_o20")
+
+    for strategy, repository_name in (
+        ("baseline", "incidentweave-eval"),
+        ("w100_o20", "incidentweave-eval-w100_20"),
+    ):
+        ensure_non_eval_inventory_unchanged(
+            {"incidentweave": 48},
+            {"incidentweave": 48, repository_name: 52},
+            selected_repository=repository_name,
+        )
+
+        other_eval_repository = (
+            "incidentweave-eval-w100_20"
+            if strategy == "baseline"
+            else "incidentweave-eval"
+        )
+        with pytest.raises(RuntimeError, match=other_eval_repository):
+            ensure_non_eval_inventory_unchanged(
+                {other_eval_repository: 70},
+                {other_eval_repository: 71},
+                selected_repository=repository_name,
+            )
+
+    with pytest.raises(RuntimeError, match="incidentweave"):
+        ensure_non_eval_inventory_unchanged(
+            {"incidentweave": 48},
+            {"incidentweave": 49},
+            selected_repository="incidentweave-eval",
+        )
+    with pytest.raises(RuntimeError, match="created"):
+        ensure_non_eval_inventory_unchanged(
+            {},
+            {"unapproved-repository": 1},
+            selected_repository="incidentweave-eval",
+        )
+    with pytest.raises(RuntimeError, match="disappeared"):
+        ensure_non_eval_inventory_unchanged(
+            {"dexterai": 1},
+            {},
+            selected_repository="incidentweave-eval-w100_20",
+        )
+    ensure_non_eval_inventory_unchanged(
+        {"incidentweave": 48, "incidentweave-eval": 70},
+        {"incidentweave": 48, "incidentweave-eval": 70},
+        selected_repository="incidentweave-eval",
+    )
+
+
+@pytest.mark.parametrize("strategy", ["baseline", "w100_o20"])
+def test_setup_eval_corpus_inserts_strategy_chunks_without_global_mutation(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    strategy: str,
+) -> None:
+    from evaluation import runner
+
+    repository_name = resolve_evaluation_repository(strategy=strategy)
+    session = FakeEvaluationSession()
+    monkeypatch.setattr(runner, "AsyncSessionLocal", lambda: session)
+    source_file = tmp_path / "source.py"
+    source_lines = [f"line {line_number}" for line_number in range(1, 182)]
+    source_file.write_text("\n".join(source_lines), encoding="utf-8")
+    original_chunk_lines = ingest_repo.chunk_lines
+
+    async def fake_embed_repository_chunks(repo_name: str) -> tuple[int, int, int]:
+        assert repo_name == repository_name
+        return len(session.added_chunks), 0, 0
+
+    monkeypatch.setattr(
+        runner.embed_chunks,
+        "embed_repository_chunks",
+        fake_embed_repository_chunks,
+    )
+
+    files, chunks = asyncio.run(
+        runner.setup_eval_corpus(tmp_path, strategy=strategy)
+    )
+    expected_ranges = list(expected_chunk_ranges(source_lines, strategy))
+
+    assert (files, chunks) == (1, len(expected_ranges))
+    assert session.repository is not None
+    assert session.repository.name == repository_name
+    assert session.commit_count == 1
+    assert ingest_repo.chunk_lines is original_chunk_lines
+    assert [chunk.line_start for chunk in session.added_chunks] == [
+        start + 1 for start, _ in expected_ranges
+    ]
+    assert [chunk.line_end for chunk in session.added_chunks] == [
+        end for _, end in expected_ranges
+    ]
+    assert session.added_chunks[-1].content.endswith("line 181")
+
+
+@pytest.mark.parametrize("missing_embedding", [False, True])
+def test_setup_eval_corpus_reuses_exact_chunks_and_only_retries_missing_embeddings(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    missing_embedding: bool,
+) -> None:
+    from evaluation import runner
+
+    strategy = "w100_o20"
+    repository_name = resolve_evaluation_repository(strategy=strategy)
+    source_file = tmp_path / "source.py"
+    source_lines = [f"line {line_number}" for line_number in range(1, 182)]
+    source_file.write_text("\n".join(source_lines), encoding="utf-8")
+    expected_ranges = list(expected_chunk_ranges(source_lines, strategy))
+    rows = [
+        (
+            "source.py",
+            start + 1,
+            end,
+            "\n".join(source_lines[start:end]),
+            None if missing_embedding and index == 0 else [0.1],
+        )
+        for index, (start, end) in enumerate(expected_ranges)
+    ]
+    session = FakeEvaluationSession(Repository(name=repository_name), rows)
+    session.repository.id = 91
+    monkeypatch.setattr(runner, "AsyncSessionLocal", lambda: session)
+    embed_calls: list[str] = []
+
+    async def fake_embed_repository_chunks(name: str) -> tuple[int, int, int]:
+        embed_calls.append(name)
+        return 1, 0, len(expected_ranges) - 1
+
+    if missing_embedding:
+        monkeypatch.setattr(
+            runner.embed_chunks,
+            "embed_repository_chunks",
+            fake_embed_repository_chunks,
+        )
+    else:
+        monkeypatch.setattr(
+            runner.embed_chunks,
+            "embed_repository_chunks",
+            lambda *_args: pytest.fail("matching embedded chunks must be reused"),
+        )
+
+    assert asyncio.run(
+        runner.setup_eval_corpus(tmp_path, strategy=strategy)
+    ) == (1, len(expected_ranges))
+    assert session.added == []
+    assert session.added_chunks == []
+    assert session.commit_count == 0
+    assert embed_calls == ([repository_name] if missing_embedding else [])
+
+
+def test_setup_eval_corpus_checks_for_null_embeddings_after_embedding(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    repository_name = "incidentweave-eval-w100_20"
+    (tmp_path / "source.py").write_text("expected chunk\n", encoding="utf-8")
+    session = FakeEvaluationSession()
+    session.null_embedding_count = 1
+    monkeypatch.setattr(runner, "AsyncSessionLocal", lambda: session)
+
+    async def successful_embedding_call(name: str) -> tuple[int, int, int]:
+        assert name == repository_name
+        return 1, 0, 0
+
+    monkeypatch.setattr(
+        runner.embed_chunks,
+        "embed_repository_chunks",
+        successful_embedding_call,
+    )
+
+    with pytest.raises(RuntimeError, match="still has 1 chunks without embeddings"):
+        asyncio.run(
+            runner.setup_eval_corpus(tmp_path, strategy="w100_o20")
+        )
+
+
+def test_setup_eval_corpus_refuses_stale_chunks_without_deleting_or_replacing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    strategy = "w100_o20"
+    repository_name = resolve_evaluation_repository(strategy=strategy)
+    (tmp_path / "source.py").write_text("new source\n", encoding="utf-8")
+    session = FakeEvaluationSession(
+        Repository(name=repository_name),
+        [("source.py", 1, 1, "stale source", [0.1])],
+    )
+    session.repository.id = 92
+    monkeypatch.setattr(runner, "AsyncSessionLocal", lambda: session)
+    monkeypatch.setattr(
+        runner.embed_chunks,
+        "embed_repository_chunks",
+        lambda *_args: pytest.fail("stale chunks must not be embedded"),
+    )
+
+    with pytest.raises(RuntimeError, match="refusing to replace existing chunks"):
+        asyncio.run(runner.setup_eval_corpus(tmp_path, strategy=strategy))
+
+    assert session.added == []
+    assert session.added_chunks == []
+    assert session.commit_count == 0
+
+
+@pytest.mark.parametrize("strategy", ["baseline", "w100_o20"])
+def test_setup_eval_corpus_skips_empty_and_whitespace_only_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    strategy: str,
+) -> None:
+    from evaluation import runner
+
+    repository_name = resolve_evaluation_repository(strategy=strategy)
+    (tmp_path / "empty.py").write_text("", encoding="utf-8")
+    (tmp_path / "whitespace.py").write_text(" \n\t\n", encoding="utf-8")
+    session = FakeEvaluationSession()
+    monkeypatch.setattr(runner, "AsyncSessionLocal", lambda: session)
+
+    async def fake_embed_repository_chunks(name: str) -> tuple[int, int, int]:
+        assert name == repository_name
+        return 0, 0, 0
+
+    monkeypatch.setattr(
+        runner.embed_chunks,
+        "embed_repository_chunks",
+        fake_embed_repository_chunks,
+    )
+
+    assert asyncio.run(
+        runner.setup_eval_corpus(tmp_path, strategy=strategy)
+    ) == (2, 0)
+    assert session.added_chunks == []
+
+
+def test_run_pipeline_once_routes_selected_evaluation_repository(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from evaluation import runner
+
+    observed = {}
+    question = {
+        "id": "strategy-route",
+        "category": "direct",
+        "question": "Question for strategy routing",
+        "relevant": [],
+        "must_mention": [],
+    }
+
+    async def fake_investigate_repository(
+        repository_name: str,
+        query: str,
+        **kwargs: object,
+    ) -> dict[str, object]:
+        observed.update(repository_name=repository_name, query=query, **kwargs)
+        return {
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "latency_ms": None,
+            "generation_trace": None,
+            "retrieval_results": [],
+            "cited_chunk_ids": [],
+            "evidence_check": {"is_sufficient": False},
+            "tool_calls": [],
+        }
+
+    monkeypatch.setattr(
+        runner.investigate,
+        "investigate_repository",
+        fake_investigate_repository,
+    )
+    monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
+
+    asyncio.run(
+        run_pipeline_once(
+            [question],
+            tmp_path,
+            "test",
+            {"http_calls": 0, "http_429_responses": 0},
+            repository_name="incidentweave-eval-w100_20",
+            strategy="w100_o20",
+        )
+    )
+
+    assert observed["repository_name"] == "incidentweave-eval-w100_20"
+    assert observed["persist"] is False
+
+
+def test_run_evaluation_threads_strategy_and_repository_without_live_services(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from types import SimpleNamespace
+
+    from evaluation import runner
+
+    source_root = Path(__file__).resolve().parents[2]
+    evaluation_root = tmp_path / "evaluation"
+    evaluation_root.mkdir()
+    (evaluation_root / "golden_set.json").write_text(
+        (source_root / "evaluation" / "golden_set.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    results_root = tmp_path / "results"
+    pipeline_calls: list[tuple[str, str]] = []
+    observed: dict[str, object] = {}
+
+    async def fake_inventory() -> dict[str, int]:
+        return {"incidentweave": 48}
+
+    async def fake_setup_eval_corpus(
+        snapshot_root: Path,
+        *,
+        repository_name: str,
+        strategy: str,
+    ) -> tuple[int, int]:
+        observed["setup"] = (repository_name, strategy)
+        return 40, 52
+
+    async def fake_validate_eval_index(
+        questions: list[dict[str, object]],
+        *,
+        repository_name: str,
+        strategy: str,
+    ) -> list[str]:
+        observed["validate"] = (repository_name, strategy)
+        return []
+
+    async def fake_retrieval_records(
+        questions: list[dict[str, object]],
+        *,
+        repository_name: str,
+        strategy: str,
+    ) -> list[dict[str, object]]:
+        observed["retrieval"] = (repository_name, strategy)
+        return [
+            {
+                "id": question["id"],
+                "category": question["category"],
+                "relevant": question.get("relevant", []),
+                "vector": [],
+                "fulltext": [],
+                "hybrid": [],
+                "evidence_check": {
+                    "is_sufficient": False,
+                    "reason": "stubbed test evidence",
+                },
+            }
+            for question in questions
+        ]
+
+    async def fake_run_pipeline_once(
+        questions: list[dict[str, object]],
+        snapshot_root: Path,
+        run_name: str,
+        generation_budget: dict[str, int],
+        *,
+        repository_name: str,
+        strategy: str,
+    ) -> tuple[list[dict[str, object]], dict[str, int]]:
+        pipeline_calls.append((repository_name, strategy))
+        records = [
+            {
+                "id": question["id"],
+                "category": question["category"],
+                "diagnosis": "",
+                "error": "stubbed test pipeline",
+                "outcome": "error",
+                "generation_ran": False,
+                "generation_trace": None,
+                "wall_ms": 0,
+                "generation_ms": None,
+                "cited_chunk_ids": [],
+                "tool_calls": [],
+                "confidence_raw": None,
+                "confidence": None,
+            }
+            for question in questions
+        ]
+        return records, {"http_calls": 0, "http_429_responses": 0}
+
+    monkeypatch.setattr(runner, "EVALUATION_ROOT", evaluation_root)
+    monkeypatch.setattr(runner, "RESULTS_ROOT", results_root)
+    monkeypatch.setattr(runner, "load_key_without_logging", lambda: None)
+    monkeypatch.setattr(runner, "snapshot_sha", lambda: "abcdef0123456789")
+    monkeypatch.setattr(
+        runner.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(stdout=""),
+    )
+    monkeypatch.setattr(runner, "export_snapshot", lambda *args: tmp_path / "snapshot")
+    monkeypatch.setattr(runner, "validate_golden_set", lambda *args: [])
+    monkeypatch.setattr(runner, "inventory", fake_inventory)
+    monkeypatch.setattr(runner, "setup_eval_corpus", fake_setup_eval_corpus)
+    monkeypatch.setattr(runner, "validate_eval_index", fake_validate_eval_index)
+    monkeypatch.setattr(runner, "retrieval_records", fake_retrieval_records)
+    monkeypatch.setattr(runner, "run_pipeline_once", fake_run_pipeline_once)
+
+    report = asyncio.run(runner.run_evaluation(strategy="w100_o20"))
+
+    expected_route = ("incidentweave-eval-w100_20", "w100_o20")
+    assert observed["setup"] == expected_route
+    assert observed["validate"] == expected_route
+    assert observed["retrieval"] == expected_route
+    assert pipeline_calls == [expected_route, expected_route]
+    assert report["strategy"] == "w100_o20"
+    assert report["evaluation_repository"] == "incidentweave-eval-w100_20"
+    assert report["chunk_size"] == 100
+    assert report["overlap"] == 20
+    assert report["run_id"].endswith("-w100_o20")
+    assert (results_root / "runs" / report["run_id"] / "report.json").is_file()
 
 
 def test_resolve_corpus_sha_returns_pinned_value_and_raises_on_invalid_input() -> None:
@@ -74,6 +636,15 @@ def test_pinned_snapshot_exports_and_validates_with_expected_counts(
             if content.strip():
                 chunks += 1
     assert chunks == 70
+
+    experimental_chunks = 0
+    for file_path in files:
+        lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for start_index, end_index in expected_chunk_ranges(lines, "w100_o20"):
+            content = "\n".join(lines[start_index:end_index])
+            if content.strip():
+                experimental_chunks += 1
+    assert experimental_chunks == 52
 
 
 def test_extract_generation_trace_handles_payload_and_missing_usage() -> None:
@@ -641,9 +1212,14 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
         code_sha: str = "code123",
         code_dirty: bool = False,
         code_untracked_files: int = 1,
+        strategy: str = DEFAULT_STRATEGY,
     ) -> dict[str, object]:
         return runner.build_run_metadata(
-            run_id="20260101T000000Z-abc1234",
+            run_id=build_run_id(
+                datetime(2026, 1, 1, tzinfo=UTC),
+                code_sha,
+                strategy,
+            ),
             started_at="2026-01-01T00:00:00+00:00",
             finished_at="2026-01-01T00:01:00+00:00",
             corpus_sha="deadbeef",
@@ -653,12 +1229,18 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
             models={"embedding": "m1", "generation": "g1"},
             limit=5,
             passes=2,
+            strategy=strategy,
         )
 
     a = build_metadata()
     b = build_metadata()
     assert a["config_sha256"] == b["config_sha256"]
     assert a["code_untracked_files"] == 1
+    assert a["strategy"] == "baseline"
+    assert a["chunk_size"] == 60
+    assert a["overlap"] == 10
+    assert a["evaluation_repository"] == "incidentweave-eval"
+    assert a["run_id"].endswith("-baseline")
     code_metadata_changed = build_metadata(
         code_sha="other-code",
         code_dirty=True,
@@ -668,6 +1250,17 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
     assert code_metadata_changed["code_dirty"] is True
     assert code_metadata_changed["code_untracked_files"] == 9
     assert code_metadata_changed["config_sha256"] == a["config_sha256"]
+
+    experimental_metadata = build_metadata(strategy="w100_o20")
+    assert experimental_metadata["strategy"] == "w100_o20"
+    assert experimental_metadata["chunk_size"] == 100
+    assert experimental_metadata["overlap"] == 20
+    assert experimental_metadata["evaluation_repository"] == (
+        "incidentweave-eval-w100_20"
+    )
+    assert experimental_metadata["run_id"].endswith("-w100_o20")
+    assert experimental_metadata["run_id"] != a["run_id"]
+    assert experimental_metadata["config_sha256"] != a["config_sha256"]
 
     with monkeypatch.context() as patch:
         patch.setattr(
@@ -795,13 +1388,27 @@ def test_compare_reports_uses_top_level_counts_only_without_run_summaries() -> N
     }
 
 
-def test_run_eval_accepts_only_two_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_eval_accepts_only_two_passes_and_supported_strategies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from scripts.run_eval import parse_args
 
     monkeypatch.setattr("sys.argv", ["run_eval.py"])
-    assert parse_args().passes == 2
+    default_args = parse_args()
+    assert default_args.passes == 2
+    assert default_args.strategy == "baseline"
+
+    monkeypatch.setattr(
+        "sys.argv",
+        ["run_eval.py", "--strategy", "w100_o20", "--passes", "2"],
+    )
+    assert parse_args().strategy == "w100_o20"
 
     for pass_count in ("1", "3"):
         monkeypatch.setattr("sys.argv", ["run_eval.py", "--passes", pass_count])
         with pytest.raises(SystemExit):
             parse_args()
+
+    monkeypatch.setattr("sys.argv", ["run_eval.py", "--strategy", "ast"])
+    with pytest.raises(SystemExit):
+        parse_args()

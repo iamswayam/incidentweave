@@ -27,9 +27,16 @@ from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
 from scripts import embed_chunks, investigate
-from scripts.ingest_repo import chunk_lines, ingest_repository, iter_python_files
+from scripts.ingest_repo import iter_python_files
 
-from .corpus import EVAL_REPOSITORY_NAME, export_snapshot
+from .chunk_experiments import (
+    DEFAULT_STRATEGY,
+    EVALUATION_REPOSITORIES,
+    expected_chunk_ranges,
+    get_strategy,
+    resolve_evaluation_repository,
+)
+from .corpus import export_snapshot
 from .golden import load_golden_set, validate_golden_set, validate_index_labels
 from .metrics import (
     abstention_kind,
@@ -71,9 +78,16 @@ def build_run_metadata(
     limit: int = LIMIT,
     passes: int = 2,
     generation_config: str = "provider default (none set)",
+    strategy: str = DEFAULT_STRATEGY,
+    evaluation_repository: str | None = None,
 ) -> dict[str, Any]:
     """Build the stable metadata block used to identify a report run."""
 
+    selected_strategy = get_strategy(strategy)
+    evaluation_repository = resolve_evaluation_repository(
+        evaluation_repository,
+        selected_strategy.name,
+    )
     golden_path = Path(golden_set_path)
     golden_data = load_golden_set(golden_path)
     prompt_sha256 = hashlib.sha256(SYSTEM_INSTRUCTION.encode("utf-8")).hexdigest()
@@ -96,6 +110,10 @@ def build_run_metadata(
         "prompt_sha256": prompt_sha256,
         "generation_config": generation_config,
         "passes": passes,
+        "strategy": selected_strategy.name,
+        "chunk_size": selected_strategy.chunk_size,
+        "overlap": selected_strategy.overlap,
+        "evaluation_repository": evaluation_repository,
     }
     return {
         "run_id": run_id,
@@ -114,6 +132,10 @@ def build_run_metadata(
         "prompt_sha256": prompt_sha256,
         "generation_config": generation_config,
         "passes": passes,
+        "strategy": selected_strategy.name,
+        "chunk_size": selected_strategy.chunk_size,
+        "overlap": selected_strategy.overlap,
+        "evaluation_repository": evaluation_repository,
         "config_sha256": hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest(),
@@ -176,6 +198,20 @@ def snapshot_sha() -> str:
     ).strip()
 
 
+def build_run_id(
+    started_at: datetime,
+    code_sha: str,
+    strategy: str = DEFAULT_STRATEGY,
+) -> str:
+    """Build a run identifier that distinguishes chunking strategies."""
+
+    selected_strategy = get_strategy(strategy)
+    return (
+        f"{started_at.strftime('%Y%m%dT%H%M%SZ')}-"
+        f"{code_sha[:7]}-{selected_strategy.name}"
+    )
+
+
 def resolve_corpus_sha(data: dict[str, Any]) -> str:
     """Return the golden-set pinned corpus SHA, rejecting missing or empty values."""
 
@@ -202,16 +238,60 @@ async def inventory() -> dict[str, int]:
     return {name: int(count) for name, count in rows}
 
 
-async def setup_eval_corpus(snapshot_root: Path) -> tuple[int, int]:
-    if EVAL_REPOSITORY_NAME != "incidentweave-eval":
-        raise RuntimeError("Evaluation repository name is not allowed")
+def ensure_non_eval_inventory_unchanged(
+    before: dict[str, int],
+    after: dict[str, int],
+    *,
+    selected_repository: str,
+) -> None:
+    """Reject inventory changes outside the selected evaluation repository."""
+
+    if selected_repository not in EVALUATION_REPOSITORIES:
+        raise ValueError(f"Evaluation repository {selected_repository!r} is not allowed")
+
+    for name in sorted(set(before) | set(after)):
+        if name == selected_repository:
+            continue
+        before_count = before.get(name, 0)
+        after_count = after.get(name, 0)
+        if before_count != after_count and before_count == 0:
+            raise RuntimeError(
+                f"Unexpected repository created: {name!r} "
+                f"(chunks={after_count})"
+            )
+        if before_count != after_count and after_count == 0:
+            raise RuntimeError(
+                f"Unexpected repository disappeared: {name!r} "
+                f"(chunks before={before_count})"
+            )
+        if before_count != after_count:
+            raise RuntimeError(
+                f"Unexpected inventory change for repository {name!r}: "
+                f"before={before_count}, after={after_count}"
+            )
+
+
+async def setup_eval_corpus(
+    snapshot_root: Path,
+    *,
+    repository_name: str | None = None,
+    strategy: str = DEFAULT_STRATEGY,
+) -> tuple[int, int]:
+    selected_strategy = get_strategy(strategy)
+    repository_name = resolve_evaluation_repository(
+        repository_name,
+        selected_strategy.name,
+    )
 
     snapshot_chunks = []
     snapshot_files = sorted(iter_python_files(snapshot_root))
     for file_path in snapshot_files:
         relative_path = file_path.relative_to(snapshot_root).as_posix()
         lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
-        for start_index, end_index in chunk_lines(lines):
+        for start_index, end_index in expected_chunk_ranges(
+            lines,
+            selected_strategy.name,
+        ):
             content = "\n".join(lines[start_index:end_index])
             if content.strip():
                 snapshot_chunks.append(
@@ -222,11 +302,41 @@ async def setup_eval_corpus(snapshot_root: Path) -> tuple[int, int]:
 
     from app.db.models import Chunk, Repository
 
+    created_repository = False
+    should_embed = False
+    expected_to_embed = 0
+    selected_repository_id: int | None = None
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
-            select(Repository).where(Repository.name == EVAL_REPOSITORY_NAME)
+            select(Repository).where(Repository.name == repository_name)
         )
-        if repository is not None:
+        if repository is None:
+            repository = Repository(name=repository_name)
+            session.add(repository)
+            await session.flush()
+            selected_repository_id = repository.id
+            session.add_all(
+                [
+                    Chunk(
+                        repository_id=repository.id,
+                        content=content,
+                        file_path=relative_path,
+                        file_type="python",
+                        document_type="code",
+                        line_start=line_start,
+                        line_end=line_end,
+                        function_name=None,
+                        class_name=None,
+                        symbol=None,
+                    )
+                    for relative_path, line_start, line_end, content in snapshot_chunks
+                ]
+            )
+            await session.commit()
+            created_repository = True
+            should_embed = True
+        else:
+            selected_repository_id = repository.id
             rows = (
                 await session.execute(
                     select(
@@ -241,42 +351,66 @@ async def setup_eval_corpus(snapshot_root: Path) -> tuple[int, int]:
                 )
             ).all()
             current_chunks = [tuple(row[:4]) for row in rows]
-            if sorted(current_chunks) == sorted(snapshot_chunks):
-                missing_embeddings = sum(row[4] is None for row in rows)
-                if not missing_embeddings:
-                    return len(snapshot_files), len(snapshot_chunks)
-                _, failed, _ = await embed_chunks.embed_repository_chunks(
-                    EVAL_REPOSITORY_NAME
+            if sorted(current_chunks) != sorted(snapshot_chunks):
+                raise RuntimeError(
+                    f"Existing evaluation repository {repository_name!r} does not "
+                    "match the selected snapshot and chunking strategy; refusing "
+                    "to replace existing chunks."
                 )
-                if failed:
-                    raise RuntimeError(
-                        f"Evaluation embedding incomplete: failed={failed}"
-                    )
+            missing_embeddings = sum(row[4] is None for row in rows)
+            if not missing_embeddings:
                 return len(snapshot_files), len(snapshot_chunks)
+            expected_to_embed = missing_embeddings
+            should_embed = True
 
-    files, chunks = await ingest_repository(str(snapshot_root), EVAL_REPOSITORY_NAME)
-    embedded, failed, skipped = await embed_chunks.embed_repository_chunks(
-        EVAL_REPOSITORY_NAME
-    )
-    if failed or skipped or embedded != chunks:
-        raise RuntimeError(
-            f"Evaluation embedding incomplete: chunks={chunks}, embedded={embedded}, "
-            f"failed={failed}, skipped={skipped}"
+    if should_embed:
+        embedded, failed, skipped = await embed_chunks.embed_repository_chunks(
+            repository_name
         )
-    return files, chunks
+        expected_to_embed = len(snapshot_chunks) if created_repository else expected_to_embed
+        expected_skipped = len(snapshot_chunks) - expected_to_embed
+
+        from sqlalchemy import func, select
+
+        async with AsyncSessionLocal() as session:
+            remaining_null_embeddings = await session.scalar(
+                select(func.count(Chunk.id)).where(
+                    Chunk.repository_id == selected_repository_id,
+                    Chunk.embedding.is_(None),
+                )
+            )
+        if remaining_null_embeddings:
+            raise RuntimeError(
+                f"Evaluation repository {repository_name!r} still has "
+                f"{remaining_null_embeddings} chunks without embeddings."
+            )
+        if failed or skipped != expected_skipped or embedded != expected_to_embed:
+            raise RuntimeError(
+                "Evaluation embedding counts do not match the selected corpus: "
+                f"expected_embedded={expected_to_embed}, embedded={embedded}, "
+                f"expected_skipped={expected_skipped}, skipped={skipped}, "
+                f"failed={failed}"
+            )
+    return len(snapshot_files), len(snapshot_chunks)
 
 
-async def validate_eval_index(questions: list[dict[str, Any]]) -> list[str]:
+async def validate_eval_index(
+    questions: list[dict[str, Any]],
+    *,
+    repository_name: str | None = None,
+    strategy: str = DEFAULT_STRATEGY,
+) -> list[str]:
+    repository_name = resolve_evaluation_repository(repository_name, strategy)
     from sqlalchemy import select
 
     from app.db.models import Chunk, Repository
 
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
-            select(Repository).where(Repository.name == EVAL_REPOSITORY_NAME)
+            select(Repository).where(Repository.name == repository_name)
         )
         if repository is None:
-            return ["incidentweave-eval repository is missing"]
+            return [f"{repository_name} repository is missing"]
         rows = (
             await session.execute(
                 select(Chunk.file_path, Chunk.content).where(
@@ -291,17 +425,23 @@ async def validate_eval_index(questions: list[dict[str, Any]]) -> list[str]:
     return validate_index_labels(questions, indexed_chunks)
 
 
-async def retrieval_records(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+async def retrieval_records(
+    questions: list[dict[str, Any]],
+    *,
+    repository_name: str | None = None,
+    strategy: str = DEFAULT_STRATEGY,
+) -> list[dict[str, Any]]:
+    repository_name = resolve_evaluation_repository(repository_name, strategy)
     from sqlalchemy import select
 
     from app.db.models import Repository
 
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
-            select(Repository).where(Repository.name == EVAL_REPOSITORY_NAME)
+            select(Repository).where(Repository.name == repository_name)
         )
         if repository is None:
-            raise RuntimeError("Evaluation repository was not created")
+            raise RuntimeError(f"Evaluation repository was not created: {repository_name}")
         records = []
         for question in questions:
             embedding = cached_embedding(question["question"])
@@ -336,9 +476,13 @@ async def run_pipeline_once(
     snapshot_root: Path,
     run_name: str,
     generation_budget: dict[str, int],
+    *,
+    repository_name: str | None = None,
+    strategy: str = DEFAULT_STRATEGY,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Run the shipped CLI pipeline function with persistence disabled."""
 
+    repository_name = resolve_evaluation_repository(repository_name, strategy)
     original_embed = investigate.embed_text
     original_calibrator = investigate.calibrate_confidence
     original_urlopen = generation.request.urlopen
@@ -395,7 +539,7 @@ async def run_pipeline_once(
             start_wall = time.perf_counter()
             try:
                 result = await investigate.investigate_repository(
-                    EVAL_REPOSITORY_NAME,
+                    repository_name,
                     question["question"],
                     limit=LIMIT,
                     repo_path=str(snapshot_root),
@@ -591,7 +735,17 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(_json_safe(value), indent=2), encoding="utf-8")
 
 
-async def run_evaluation(passes: int = 2) -> dict[str, Any]:
+async def run_evaluation(
+    passes: int = 2,
+    *,
+    strategy: str = DEFAULT_STRATEGY,
+    repository_name: str | None = None,
+) -> dict[str, Any]:
+    selected_strategy = get_strategy(strategy)
+    repository_name = resolve_evaluation_repository(
+        repository_name,
+        selected_strategy.name,
+    )
     load_key_without_logging()
     started = datetime.now(UTC)
     data = load_golden_set(EVALUATION_ROOT / "golden_set.json")
@@ -623,17 +777,31 @@ async def run_evaluation(passes: int = 2) -> dict[str, Any]:
         raise ValueError("Golden set validation failed: " + "; ".join(errors))
 
     before = await inventory()
-    files, chunks = await setup_eval_corpus(snapshot_root)
+    files, chunks = await setup_eval_corpus(
+        snapshot_root,
+        repository_name=repository_name,
+        strategy=selected_strategy.name,
+    )
     after = await inventory()
-    for name, count in before.items():
-        if name != EVAL_REPOSITORY_NAME and after.get(name) != count:
-            raise RuntimeError(f"Non-eval repository changed: {name}")
+    ensure_non_eval_inventory_unchanged(
+        before,
+        after,
+        selected_repository=repository_name,
+    )
 
     questions = data["questions"]
-    index_errors = await validate_eval_index(questions)
+    index_errors = await validate_eval_index(
+        questions,
+        repository_name=repository_name,
+        strategy=selected_strategy.name,
+    )
     if index_errors:
         raise ValueError("Golden-set index validation failed: " + "; ".join(index_errors))
-    retrieval = await retrieval_records(questions)
+    retrieval = await retrieval_records(
+        questions,
+        repository_name=repository_name,
+        strategy=selected_strategy.name,
+    )
     answerable = [not question["category"].startswith("unanswerable") for question in questions]
     answerable_retrieval = [record for record, expected in zip(retrieval, answerable) if expected]
     labels = [record["relevant"] for record in answerable_retrieval]
@@ -685,10 +853,15 @@ async def run_evaluation(passes: int = 2) -> dict[str, Any]:
     run_results = []
     generation_budget = {"http_calls": 0, "http_429_responses": 0}
     generation_calls_by_run = []
-    run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-{code_sha[:7]}"
+    run_id = build_run_id(started, code_sha, selected_strategy.name)
     for index in range(1, passes + 1):
         records, call_stats = await run_pipeline_once(
-            questions, snapshot_root, f"run-{index}", generation_budget
+            questions,
+            snapshot_root,
+            f"run-{index}",
+            generation_budget,
+            repository_name=repository_name,
+            strategy=selected_strategy.name,
         )
         classify_outcomes(records, questions)
         classify_outcome_v2_for_records(records)
@@ -716,10 +889,12 @@ async def run_evaluation(passes: int = 2) -> dict[str, Any]:
         },
         limit=LIMIT,
         passes=passes,
+        strategy=selected_strategy.name,
+        evaluation_repository=repository_name,
     )
     report = {
         **metadata,
-        "repository": EVAL_REPOSITORY_NAME,
+        "repository": repository_name,
         "snapshot_files": files,
         "snapshot_chunks": chunks,
         "retrieval_tables": retrieval_tables,
