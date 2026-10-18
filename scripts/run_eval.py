@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evaluation.chunk_experiments import DEFAULT_STRATEGY, STRATEGY_CHOICES  # noqa: E402
 from evaluation.runner import EVALUATION_ROOT, run_evaluation  # noqa: E402
 
 
@@ -19,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Run Phase 8 retrieval and two-pass investigation evaluation "
-            "against the incidentweave-eval repository."
+            "against an allowlisted evaluation repository."
         ),
         epilog="Example: .\\.venv\\Scripts\\python.exe scripts\\run_eval.py",
     )
@@ -30,12 +31,18 @@ def parse_args() -> argparse.Namespace:
         choices=[2],
         help="Number of generation passes to run (default: 2)",
     )
+    parser.add_argument(
+        "--strategy",
+        choices=STRATEGY_CHOICES,
+        default=DEFAULT_STRATEGY,
+        help="Evaluation-only chunking strategy (default: baseline)",
+    )
     return parser.parse_args()
 
 
 async def main() -> None:
     args = parse_args()
-    report = await run_evaluation(passes=args.passes)
+    report = await run_evaluation(passes=args.passes, strategy=args.strategy)
     run_dir = EVALUATION_ROOT / "results" / "runs" / report["run_id"]
     report_path = run_dir / "report.json"
     snapshot_path = EVALUATION_ROOT / "_snapshot"
@@ -43,6 +50,8 @@ async def main() -> None:
         shutil.rmtree(snapshot_path)
     print("Evaluation complete")
     print(f"Run ID: {report['run_id']}")
+    print(f"Strategy: {report['strategy']}")
+    print(f"Evaluation repository: {report['evaluation_repository']}")
     print(f"Report path: {report_path}")
     print(f"Questions: {len(report['records'][0])}")
     print(f"Snapshot chunks: {report['snapshot_chunks']}")
