@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from app.api_security import require_api_access
 from app.db.models import Audit, Chunk, Investigation, Repository
 from app.db.session import AsyncSessionLocal
+from app.investigation.limits import MAX_LIMIT, MAX_QUERY_CHARS
 from scripts.investigate import investigate_repository
 
 router = APIRouter()
@@ -27,8 +28,8 @@ class InvestigationRequest(BaseModel):
     """Input for one synchronous grounded investigation."""
 
     repository_name: str = Field(min_length=1, max_length=255)
-    query: str = Field(min_length=1)
-    limit: int = Field(default=5, gt=0)
+    query: str = Field(min_length=1, max_length=MAX_QUERY_CHARS)
+    limit: int = Field(default=5, ge=1, le=MAX_LIMIT)
 
 
 class InvestigationResponse(BaseModel):

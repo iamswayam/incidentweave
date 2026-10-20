@@ -148,6 +148,125 @@ async def test_graph_stops_after_one_insufficient_retry(
     assert result["confidence"] == "low"
 
 
+@pytest.mark.anyio
+async def test_graph_records_prompt_budget_and_returns_kept_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = sufficient_result()
+    first["content"] = "a" * 20000
+    second = sufficient_result()
+    second["id"] = 137
+    second["content"] = "b" * 10000
+
+    async def fake_hybrid_search(
+        session: object,
+        repository_id: int,
+        query_text: str,
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[dict[str, object]]:
+        return [first, second]
+
+    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+        return response_payload(), 12
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", fake_generation)
+
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
+
+    budget_calls = [call for call in result["tool_calls"] if call["tool"] == "prompt_budget"]
+    assert result["retrieval_results"] == [first]
+    assert budget_calls == [
+        {
+            "tool": "prompt_budget",
+            "stage": "evidence_trim",
+            "parameters": {"max_chars": 24000},
+            "outcome": {
+                "kept": 1,
+                "dropped": 1,
+                "truncated": False,
+                "dropped_chunk_ids": [137],
+            },
+        }
+    ]
+
+
+@pytest.mark.anyio
+async def test_graph_does_not_record_prompt_budget_for_small_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_hybrid_search(
+        session: object,
+        repository_id: int,
+        query_text: str,
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[dict[str, object]]:
+        return [sufficient_result()]
+
+    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+        return response_payload(), 12
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", fake_generation)
+
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
+
+    assert not any(call["tool"] == "prompt_budget" for call in result["tool_calls"])
+
+
+@pytest.mark.anyio
+async def test_graph_records_truncated_first_result_and_dropped_chunk_ids(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = sufficient_result()
+    first["content"] = "a" * 25000
+    second = sufficient_result()
+    second["id"] = 137
+    second["content"] = "b"
+    third = sufficient_result()
+    third["id"] = 138
+    third["content"] = "c"
+
+    async def fake_hybrid_search(
+        session: object,
+        repository_id: int,
+        query_text: str,
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[dict[str, object]]:
+        return [first, second, third]
+
+    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+        return response_payload(), 12
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", fake_generation)
+
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
+
+    budget_calls = [call for call in result["tool_calls"] if call["tool"] == "prompt_budget"]
+    assert len(result["retrieval_results"]) == 1
+    assert result["retrieval_results"][0]["content"] == "a" * 24000 + "\n[truncated]"
+    assert budget_calls == [
+        {
+            "tool": "prompt_budget",
+            "stage": "evidence_trim",
+            "parameters": {"max_chars": 24000},
+            "outcome": {
+                "kept": 1,
+                "dropped": 2,
+                "truncated": True,
+                "dropped_chunk_ids": [137, 138],
+            },
+        }
+    ]
+
+
 def test_confidence_calibration_downgrades_borderline_retrieval() -> None:
     confidence, note = calibrate_confidence("high", 0.021, 0.3)
 

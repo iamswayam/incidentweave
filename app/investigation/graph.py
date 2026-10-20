@@ -15,8 +15,9 @@ from mcp.client.stdio import stdio_client
 from app.db.session import AsyncSessionLocal
 from app.investigation.generation import GEMINI_GENERATION_MODEL, generate_investigation
 from app.investigation.guard import evaluate_evidence_sufficiency
+from app.investigation.limits import MAX_EVIDENCE_CHARS
 from app.investigation.parsing import parse_investigation_response
-from app.investigation.prompt import build_grounded_prompt
+from app.investigation.prompt import build_grounded_prompt, select_evidence_within_budget
 from app.retrieval.hybrid_search import hybrid_search
 
 
@@ -203,9 +204,38 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         }
 
     def build_prompt(state: InvestigationState) -> dict[str, object]:
+        kept_results, dropped_count = select_evidence_within_budget(
+            state["retrieval_results"], max_chars=MAX_EVIDENCE_CHARS
+        )
+        tool_calls = list(state["tool_calls"])
+        first_content = (
+            str(state["retrieval_results"][0].get("content") or "")
+            if state["retrieval_results"]
+            else ""
+        )
+        was_truncated = len(first_content) > MAX_EVIDENCE_CHARS
+        dropped_results = state["retrieval_results"][len(kept_results) :]
+        if dropped_count or was_truncated:
+            tool_calls.append(
+                {
+                    "tool": "prompt_budget",
+                    "stage": "evidence_trim",
+                    "parameters": {"max_chars": MAX_EVIDENCE_CHARS},
+                    "outcome": {
+                        "kept": len(kept_results),
+                        "dropped": dropped_count,
+                        "truncated": was_truncated,
+                        "dropped_chunk_ids": [
+                            result.get("id") for result in dropped_results
+                        ],
+                    },
+                }
+            )
         return {
+            "retrieval_results": kept_results,
+            "tool_calls": tool_calls,
             "prompt": build_grounded_prompt(
-                state["query"], state["retrieval_results"]
+                state["query"], kept_results, max_evidence_chars=MAX_EVIDENCE_CHARS
             )
         }
 
