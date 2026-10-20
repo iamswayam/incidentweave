@@ -32,3 +32,12 @@
 - [manual-verification-and-improvements.md](./manual-verification-and-improvements.md) — Human-verified behavior and improvement scope grounded in manual tests.
 - [later-optimizations.md](./later-optimizations.md) — Deferred optimization and follow-up notes.
 - [README.md](./README.md) — This documentation index.
+
+## Gate 5 chunking review
+
+- [Experiment log](./gate-5-chunking-review/chunking-experiment.md)
+- [Strategy decision report](./gate-5-chunking-review/chunking-strategy-decision-report.md)
+- [Human review workbook](./gate-5-chunking-review/chunking-human-review-workbook.md)
+- [Claude review](./gate-5-chunking-review/gate5-review-claude.md)
+- [Copilot review](./gate-5-chunking-review/gate5-review-copilot.md)
+- [ChatGPT review](./gate-5-chunking-review/gate5-review-chatgpt.md)
