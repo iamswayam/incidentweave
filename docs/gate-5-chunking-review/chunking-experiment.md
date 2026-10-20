@@ -15,6 +15,8 @@
 
 **Scope:** chunking only. Retrieval ranking and golden-set label questions are logged here only when they bear on the chunking decision.
 
+**Chunking-work logging rule:** Whenever chunking-related implementation, evaluation, analysis, or review materials are created or changed, append a signed entry to this log in the same work session. State what changed, why it exists, its evidence/status, and any pending review or approval. Do not imply Gate 5 completion or production adoption without the required human review and maintainer decision.
+
 **Status:** Harness committed and both authorized experiment arms completed; retrieval favors 100/20, but adoption remains provisional pending Gate 5 human correctness review. See "Current status" below and entries [011]–[012].
 
 ---
@@ -670,6 +672,28 @@ JSON report: D:\Projects\incidentweave\evaluation\results\runs\20261018T124223Z-
 
 **Confirmed from saved artifacts:** Both runs recorded in [011] completed on source commit `22743382a4980d7787bc798d9ad8e2ab6ddecb18` with `code_dirty=false`, pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, and 40 files. The baseline report records 70 chunks; the 100/20 report records 52 chunks. Both reports show 42 generation HTTP calls and 0 generation errors (baseline: 2 HTTP 429 responses; 100/20: 1).
 
-**Confirmed from the saved comparison:** Hit@5 is 11/16 for 60/10 and 15/16 for 100/20; no prior Hit@5 questions were lost. Gates 1–4 and 6–9 are recorded PASS, with Gate 5 MANUAL. The decision report is [evaluation/chunking-strategy-decision-report.md](../evaluation/chunking-strategy-decision-report.md).
+**Confirmed from the saved comparison:** Hit@5 is 11/16 for 60/10 and 15/16 for 100/20; no prior Hit@5 questions were lost. Gates 1–4 and 6–9 are recorded PASS, with Gate 5 MANUAL. The decision report is [chunking-strategy-decision-report.md](./chunking-strategy-decision-report.md).
 
 **Correction to current status only:** The experiment is complete and its run evidence is recorded in [011]. The “not authorized” sentence in [010] is retained as a historical statement from that entry and is superseded for current status by [011]–[012]. Gate 5 has not been reviewed by a human; adoption remains provisional and the 60/10 baseline remains the production choice pending that review.
+
+---
+
+### [013] Copilot (2026-10-19): human-review workbook and documentation index
+
+**Confirmed:** The decision report [`chunking-strategy-decision-report.md`](./chunking-strategy-decision-report.md), already referenced in [012], is the concise experiment synthesis: it compares the 60/10 and 100/20 runs, reports retrieval and end-to-end measures, evaluates the nine approved gates, and keeps the recommendation provisional while Gate 5 is pending.
+
+**Confirmed:** Added [`chunking-human-review-workbook.md`](./chunking-human-review-workbook.md) to make Gate 5 review practical across all 24 questions, both saved passes, and both strategies. It presents each saved answer and top-five retrieval result, includes full retrieved chunk text, and links to the immediately preceding/following indexed chunk windows reconstructed from the runs' pinned corpus source. Adjacent windows are explicitly labeled as context, not retrieved evidence. The workbook does not record a question-level verdict or authorize adoption.
+
+**Verification:** All 96 saved diagnoses and 84 unique top-five retrieved chunks were checked against the saved pass artifacts. All 200 adjacent-window table slots were checked against chunk windows reconstructed from pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`; all internal workbook links resolve. No evaluation arm was rerun, and no database or external API was used.
+
+**Status and scope:** Gate 5 remains pending; no human correctness review or 100/20 production adoption is claimed. At the time of this entry, the workbook is an untracked local file and has not been committed. Existing untracked `docs/RUN-NOW.md` is unrelated and was left untouched. This entry documents the workbook's purpose and evidence; it does not amend the historical run records in [011] or the decision criteria in [004].
+
+---
+
+### [014] Copilot (2026-10-20): Gate 5 review bundle organization
+
+**Confirmed:** Moved the experiment log, strategy decision report, human review workbook, and Claude, Copilot, and ChatGPT reviews into `docs/gate-5-chunking-review/`. Updated links to follow the new locations.
+
+**Maintainer position recorded in the workbook:** “As a human reviewer, I currently lean 55% toward 100/20 and 45% toward 60/10. However, the evidence does not establish a clear winner. Gate 5 remains neutral pending further review, and production chunking will stay at 60/10 until a final decision is made.”
+
+**Status and scope:** This is an overall position, not a question-level verdict or Gate 5 pass. Gate 5 remains neutral and pending further review, and production remains 60/10. No production configuration, evaluation data, or question-level verdict was changed.

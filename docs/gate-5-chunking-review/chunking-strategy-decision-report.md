@@ -19,15 +19,15 @@ Both runs used pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, the
 
 Saved artifacts:
 
-- Baseline metadata and summaries: [`report.json`](results/runs/20261018T123627Z-2274338-baseline/report.json)
-- Baseline pass records: [`pass-1.json`](results/runs/20261018T123627Z-2274338-baseline/pass-1.json), [`pass-2.json`](results/runs/20261018T123627Z-2274338-baseline/pass-2.json)
-- Experimental metadata and summaries: [`report.json`](results/runs/20261018T124223Z-2274338-w100_o20/report.json)
-- Experimental pass records: [`pass-1.json`](results/runs/20261018T124223Z-2274338-w100_o20/pass-1.json), [`pass-2.json`](results/runs/20261018T124223Z-2274338-w100_o20/pass-2.json)
-- Saved paired metrics and gate assessment: [`chunking-comparison.json`](results/runs/20261018T124223Z-2274338-w100_o20/chunking-comparison.json)
-- Run commands and captured comparison output: [`docs/chunking-experiment.md`, entry 011](../docs/chunking-experiment.md)
-- Approved decision criteria: [`docs/chunking-experiment.md`, entry 004](../docs/chunking-experiment.md)
+- Baseline metadata and summaries: [`report.json`](../../evaluation/results/runs/20261018T123627Z-2274338-baseline/report.json)
+- Baseline pass records: [`pass-1.json`](../../evaluation/results/runs/20261018T123627Z-2274338-baseline/pass-1.json), [`pass-2.json`](../../evaluation/results/runs/20261018T123627Z-2274338-baseline/pass-2.json)
+- Experimental metadata and summaries: [`report.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/report.json)
+- Experimental pass records: [`pass-1.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/pass-1.json), [`pass-2.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/pass-2.json)
+- Saved paired metrics and gate assessment: [`chunking-comparison.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/chunking-comparison.json)
+- Run commands and captured comparison output: [`chunking-experiment.md`, entry 011](./chunking-experiment.md)
+- Approved decision criteria: [`chunking-experiment.md`, entry 004](./chunking-experiment.md)
 
-The repository architecture assigns run comparison and evaluation reports to `evaluation/`; therefore the proposed report location is consistent with the approved directory conventions ([architecture reference index](../docs/architecture.md)).
+The repository architecture assigns run comparison and evaluation reports to `evaluation/`; therefore the report's source artifacts remain there ([architecture reference index](../architecture.md)).
 
 ## 3. Quantitative Comparison
 
@@ -190,11 +190,11 @@ Manual review should pay particular attention to:
 2. `paraphrased-08`, experimental passes 1 and 2: labeled chunk is rank 5, while cited chunk IDs are empty. Verify grounding against the actual retrieved top-five context.
 3. `direct-04`, `direct-08`, `paraphrased-03`, and `paraphrased-05`: confirm answer completeness and support in the recorded cited/retrieved chunks, not only agreement with the label substring or automated screen.
 
-No manual review result is present in the saved artifacts. Until a reviewer records one, Gate 5 cannot be marked PASS and adoption cannot be decided under D4.
+The saved run artifacts do not contain a human verdict. The human-review workbook now records the maintainer's current 55% lean toward 100/20 and 45% toward 60/10, while concluding that the evidence does not establish a clear winner. Gate 5 remains neutral and pending further review; this position does not mark Gate 5 PASS or authorize adoption under D4.
 
 ## 6. Approved D4 Adoption-Gate Checklist
 
-The criteria below are the approved D4 criteria in [`docs/chunking-experiment.md`, entry 004](../docs/chunking-experiment.md). The report preserves the criteria and their interpretation; Gate 5 is not inferred from automated outcomes. Gate 7 counts function hits only for labels inside a function or class and treats module-level labels as not applicable.
+The criteria below are the approved D4 criteria in [`chunking-experiment.md`, entry 004](./chunking-experiment.md). The report preserves the criteria and their interpretation; Gate 5 is not inferred from automated outcomes. Gate 7 counts function hits only for labels inside a function or class and treats module-level labels as not applicable.
 
 | Gate | Approved criterion | Result | Evidence |
 |---:|---|---|---|
@@ -202,7 +202,7 @@ The criteria below are the approved D4 criteria in [`docs/chunking-experiment.md
 | 2 | Hit@3 and Hit@5 must not decrease. | **PASS** | Both passes: Hit@3 delta +1 question; Hit@5 delta +4. |
 | 3 | Explain every previously hit question that is lost. | **PASS** | No previously Hit@5 question was lost; loss list is empty. |
 | 4 | Guard false accepts must remain at or below four, with no new answered-unanswerable cases. | **PASS** | False accepts are 4/24 in each arm; outcome_v2 answered-unanswerable is 0/24 in each; no new answered-unanswerable questions. Legacy falsely-answered is separately 4 in each arm. |
-| 5 | Human-reviewed end-to-end correctness must not be lower. | **MANUAL — PENDING** | The run artifacts do not contain a human review. Answer comparisons are in sections 4–5; this gate cannot yet pass. |
+| 5 | Human-reviewed end-to-end correctness must not be lower. | **MANUAL — PENDING** | The workbook records the maintainer's current neutral position, not a final Gate 5 verdict. Answer comparisons are in sections 4–5; the gate cannot yet pass. |
 | 6 | Median tokens per question should remain within approximately 1.5 times the baseline. | **PASS** | Pass 1: 3,971.5 / 2,835.5 = 1.401×. Pass 2: 4,001 / 2,867.5 = 1.395×. Both are below approximately 1.5×. |
 | 7 | Improvements must be visible in hit-by-function and hit-by-file, not only hit-by-label. | **PASS** | Hit-by-file@5: 13/16 → 16/16. Hit-by-function@5: 1/7 → 5/7. Nine module-level labels are n/a for function hits. |
 | 8 | A net gain of only one Hit@5 question is inconclusive; retain the baseline. | **PASS** | Net Hit@5 gain is +4, not +1. |
@@ -230,18 +230,18 @@ These are two runs over a small, fixed evaluation set, not a broad benchmark. Th
 
 The saved evidence establishes a repeatable retrieval improvement on this 16-question set, with no Hit@3/Hit@5 losses and gains in both file and applicable function coverage. It also establishes higher context/token use and exposes answer-level issues that retrieval metrics cannot resolve.
 
-Before adoption, a maintainer/reviewer must complete the human comparison in section 5, especially `direct-05`'s omitted required value and `paraphrased-08`'s empty citations. The reviewer must assess answer correctness, completeness, and grounding and record whether end-to-end correctness is not lower. Until that happens, the approved all-gates requirement is unmet; this report does not claim approval.
+The workbook now records the maintainer's overall 55/45 lean but finds no clear winner and keeps Gate 5 neutral pending further review. Before adoption, the remaining review must resolve whether end-to-end correctness is not lower, especially considering `direct-05`'s omitted required value and `paraphrased-08`'s empty citations. Until a final human decision is made, the approved all-gates requirement is unmet; this report does not claim approval.
 
 ## 9. Evidence References and Limitations
 
 | Evidence | What it supports |
 |---|---|
-| `results/runs/20261018T123627Z-2274338-baseline/report.json` | Baseline run identity, configuration, generation summary, legacy and v2 outcome totals, token/citation/guard summaries. |
-| `results/runs/20261018T123627Z-2274338-baseline/pass-1.json` and `pass-2.json` | Baseline per-question answers, citations, retrieved chunks, ranks, and outcome labels. |
-| `results/runs/20261018T124223Z-2274338-w100_o20/report.json` | Experimental run identity, configuration, generation summary, legacy and v2 outcome totals, token/citation/guard summaries. |
-| `results/runs/20261018T124223Z-2274338-w100_o20/pass-1.json` and `pass-2.json` | Experimental per-question answers, citations, retrieved chunks, ranks, and outcome labels. |
-| `results/runs/20261018T124223Z-2274338-w100_o20/chunking-comparison.json` | Paired ranks/hits, category and label-file metrics, outcome_v2 changes, and computed gate evidence. |
-| `docs/chunking-experiment.md`, entries 004 and 011 | Approved D4 criteria and the recorded commands/comparator output. |
-| `docs/architecture.md`, section 14 and verification notes | Evaluation report ownership and cautions about local/ignored artifacts and evidence scope. |
+| `evaluation/results/runs/20261018T123627Z-2274338-baseline/report.json` | Baseline run identity, configuration, generation summary, legacy and v2 outcome totals, token/citation/guard summaries. |
+| `evaluation/results/runs/20261018T123627Z-2274338-baseline/pass-1.json` and `pass-2.json` | Baseline per-question answers, citations, retrieved chunks, ranks, and outcome labels. |
+| `evaluation/results/runs/20261018T124223Z-2274338-w100_o20/report.json` | Experimental run identity, configuration, generation summary, legacy and v2 outcome totals, token/citation/guard summaries. |
+| `evaluation/results/runs/20261018T124223Z-2274338-w100_o20/pass-1.json` and `pass-2.json` | Experimental per-question answers, citations, retrieved chunks, ranks, and outcome labels. |
+| `evaluation/results/runs/20261018T124223Z-2274338-w100_o20/chunking-comparison.json` | Paired ranks/hits, category and label-file metrics, outcome_v2 changes, and computed gate evidence. |
+| `chunking-experiment.md`, entries 004 and 011 | Approved D4 criteria and the recorded commands/comparator output. |
+| `../architecture.md`, section 14 and verification notes | Evaluation report ownership and cautions about local/ignored artifacts and evidence scope. |
 
-**Insufficient or missing evidence:** Gate 5 human correctness review; test-file label subgroup (zero questions); performance outside the 40-file pinned corpus and 24-question set; broader multi-run generation variance; production-scale latency/cost; independent verification of all cited answer claims. The run artifacts may be ignored or local to this checkout and are not guaranteed to exist in other clones. The golden set remains marked “pending maintainer review,” including its labels.
+**Insufficient or missing evidence:** a final human Gate 5 decision (the current overall position is neutral/pending); test-file label subgroup (zero questions); performance outside the 40-file pinned corpus and 24-question set; broader multi-run generation variance; production-scale latency/cost; independent verification of all cited answer claims. The run artifacts may be ignored or local to this checkout and are not guaranteed to exist in other clones. The golden set remains marked “pending maintainer review,” including its labels.
