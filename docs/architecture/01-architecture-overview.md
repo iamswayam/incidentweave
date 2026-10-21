@@ -192,7 +192,7 @@ All six timestamped runs report corpus SHA `62d0e58593bb22d187ec7930274b0457afd3
 - **Launch — Source-verified:** `scripts/serve.py` starts Uvicorn and configures a selector event loop on Windows; `app/main.py` also sets the Windows selector policy before app import ([launcher](../../scripts/serve.py#L1), [app entry](../../app/main.py#L1)).
 - **Dependencies — Source-verified:** FastAPI, Pydantic Settings, Uvicorn, SQLAlchemy async, psycopg, pgvector, Alembic, LangGraph, and MCP are runtime dependencies ([dependency list](../../pyproject.toml#L1)). Gemini access uses standard-library `urllib`; evaluation uses standard-library JSON/hash/process functions and existing application packages.
 - **API protection — Source-verified:** Shared-secret header plus per-process IP limiter; source comments explicitly state this is not production-grade authentication and limiter state is not shared across workers ([security module](../../app/api_security.py#L1)).
-- **Documentation drift:** `docs/later-optimizations.md` still says the Docker image omits `scripts/`, while the current Dockerfile copies it ([note](../notes/02-deferred-optimizations.md#L130), [Dockerfile](../../docker/Dockerfile#L12)).
+- **Documentation drift:** `docs/notes/02-deferred-optimizations.md` still says the Docker image omits `scripts/`, while the current Dockerfile copies it ([note](../notes/02-deferred-optimizations.md#L130), [Dockerfile](../../docker/Dockerfile#L12)).
 
 ## 13. Known Limitations and Failure Modes
 

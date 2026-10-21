@@ -166,5 +166,5 @@ The items below are current implementation facts, not planned components:
 | Retrieval | [`app/retrieval/`](../../app/retrieval/) |
 | Workflow, generation, prompts, parsing | [`app/investigation/`](../../app/investigation/) |
 | Models and migration | [`app/db/models/`](../../app/db/models/), [`migrations/versions/20260819_0001_initial_schema.py`](../../migrations/versions/20260819_0001_initial_schema.py) |
-| Evaluation | [`evaluation/`](../../evaluation/) and [`docs/phase8-evaluation.md`](../phases/08-evaluation.md) |
+| Evaluation | [`evaluation/`](../../evaluation/) and [`docs/phases/08-evaluation.md`](../phases/08-evaluation.md) |
 | Build plan and verification history | [`docs/README.md`](../README.md) and [`README.md`](../../README.md) |
