@@ -14,7 +14,7 @@
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Evaluation](#evaluation) · [Documentation](#documentation)
 
-![IncidentWeave architecture preview](docs/assets/social-preview.png)
+![IncidentWeave: Evidence-Grounded AI Incident Investigation System](docs/assets/social-preview.png)
 
 </div>
 
@@ -218,7 +218,7 @@ incidentweave/
 ├── migrations/                # Alembic schema history
 ├── tests/                     # unit and PostgreSQL integration tests
 ├── docker/                    # application image
-└── docs/                      # phase logs, learning notes, HLD and LLD
+└── docs/                      # architecture, phase logs, reviews, learning notes
 ```
 
 ## Known limitations
@@ -236,11 +236,12 @@ IncidentWeave intentionally makes its current boundaries visible:
 
 | Document | Contents |
 |---|---|
-| [High-Level Design](docs/architecture/02-high-level-design.md) | System context, architecture, primary data flows, boundaries, and scope. |
-| [Low-Level Design](docs/architecture/03-low-level-design.md) | Modules, workflow state, API/CLI boundaries, entities, and sequence diagrams. |
-| [Phase build logs](docs/README.md) | Detailed Phase 1–9 specifications, verification records, and engineering history. |
-| [Learning notes](docs/learning/README.md) | Interview-oriented summaries of the major concepts. |
-| [Deferred optimizations](docs/notes/02-deferred-optimizations.md) | Explicitly deferred follow-up work, not implemented features. |
+| [Architecture](docs/architecture/README.md) | Architecture reference and design documents. <br>↳ [High-Level Design](docs/architecture/02-high-level-design.md) <br>↳ [Low-Level Design](docs/architecture/03-low-level-design.md) |
+| [Phase build logs](docs/phases/README.md) | Nine-phase task specifications and verification logs. |
+| [Architecture review](docs/architecture-review/README.md) | Independent audits of the project and the prioritized fix checklist. |
+| [Chunking experiment](docs/chunking-experiment/README.md) | Chunking-strategy experiment record and independent reviews. |
+| [Learning notes](docs/learning/README.md) | Interview-oriented summaries of major concepts. |
+| [Notes](docs/notes/README.md) | Manual verification and deferred optimization notes. |
 
 ## Roadmap status
 
