@@ -78,7 +78,7 @@ Claude’s checklist is stronger on operationalizing the work: it supplies concr
 
 **Executed:** the appendix reproduced exactly: 70 chunks (60/10), 52 (100/20); 16/48 vs 5/48 split non-test functions; median non-test function length 21.5, p90 60, max 177; labels reachable in one chunk at all sizes except `paraphrased-05` in two 60/10 chunks; Wilson 95% intervals: 11/16 = 44–86%, 15/16 = 72–99%, 4/8 = 22–78%, 12/16 = 51–90%.
 
-**Artifact-observed:** saved reports say 100/20 raises Hit@5 11/16 to 15/16 and increases context/tokens; the decision report correctly retains 60/10 pending Gate 5 ([chunking decision report](../gate-5-chunking-review/chunking-strategy-decision-report.md#L5-L9)). I did not rerun live embeddings or generation.
+**Artifact-observed:** saved reports say 100/20 raises Hit@5 11/16 to 15/16 and increases context/tokens; the decision report correctly retains 60/10 pending Gate 5 ([chunking decision report](../chunking-experiment/02-decision-report.md#L5-L9)). I did not rerun live embeddings or generation.
 
 ### Interpretation
 

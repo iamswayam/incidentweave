@@ -672,7 +672,7 @@ JSON report: D:\Projects\incidentweave\evaluation\results\runs\20261018T124223Z-
 
 **Confirmed from saved artifacts:** Both runs recorded in [011] completed on source commit `22743382a4980d7787bc798d9ad8e2ab6ddecb18` with `code_dirty=false`, pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`, and 40 files. The baseline report records 70 chunks; the 100/20 report records 52 chunks. Both reports show 42 generation HTTP calls and 0 generation errors (baseline: 2 HTTP 429 responses; 100/20: 1).
 
-**Confirmed from the saved comparison:** Hit@5 is 11/16 for 60/10 and 15/16 for 100/20; no prior Hit@5 questions were lost. Gates 1–4 and 6–9 are recorded PASS, with Gate 5 MANUAL. The decision report is [chunking-strategy-decision-report.md](./chunking-strategy-decision-report.md).
+**Confirmed from the saved comparison:** Hit@5 is 11/16 for 60/10 and 15/16 for 100/20; no prior Hit@5 questions were lost. Gates 1–4 and 6–9 are recorded PASS, with Gate 5 MANUAL. The decision report is [chunking-strategy-decision-report.md](02-decision-report.md).
 
 **Correction to current status only:** The experiment is complete and its run evidence is recorded in [011]. The “not authorized” sentence in [010] is retained as a historical statement from that entry and is superseded for current status by [011]–[012]. Gate 5 has not been reviewed by a human; adoption remains provisional and the 60/10 baseline remains the production choice pending that review.
 
@@ -680,9 +680,9 @@ JSON report: D:\Projects\incidentweave\evaluation\results\runs\20261018T124223Z-
 
 ### [013] Copilot (2026-10-19): human-review workbook and documentation index
 
-**Confirmed:** The decision report [`chunking-strategy-decision-report.md`](./chunking-strategy-decision-report.md), already referenced in [012], is the concise experiment synthesis: it compares the 60/10 and 100/20 runs, reports retrieval and end-to-end measures, evaluates the nine approved gates, and keeps the recommendation provisional while Gate 5 is pending.
+**Confirmed:** The decision report [`chunking-strategy-decision-report.md`](02-decision-report.md), already referenced in [012], is the concise experiment synthesis: it compares the 60/10 and 100/20 runs, reports retrieval and end-to-end measures, evaluates the nine approved gates, and keeps the recommendation provisional while Gate 5 is pending.
 
-**Confirmed:** Added [`chunking-human-review-workbook.md`](./chunking-human-review-workbook.md) to make Gate 5 review practical across all 24 questions, both saved passes, and both strategies. It presents each saved answer and top-five retrieval result, includes full retrieved chunk text, and links to the immediately preceding/following indexed chunk windows reconstructed from the runs' pinned corpus source. Adjacent windows are explicitly labeled as context, not retrieved evidence. The workbook does not record a question-level verdict or authorize adoption.
+**Confirmed:** Added [`chunking-human-review-workbook.md`](03-human-review-workbook.md) to make Gate 5 review practical across all 24 questions, both saved passes, and both strategies. It presents each saved answer and top-five retrieval result, includes full retrieved chunk text, and links to the immediately preceding/following indexed chunk windows reconstructed from the runs' pinned corpus source. Adjacent windows are explicitly labeled as context, not retrieved evidence. The workbook does not record a question-level verdict or authorize adoption.
 
 **Verification:** All 96 saved diagnoses and 84 unique top-five retrieved chunks were checked against the saved pass artifacts. All 200 adjacent-window table slots were checked against chunk windows reconstructed from pinned corpus SHA `62d0e58593bb22d187ec7930274b0457afd3be74`; all internal workbook links resolve. No evaluation arm was rerun, and no database or external API was used.
 

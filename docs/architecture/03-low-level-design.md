@@ -2,7 +2,7 @@
 
 ## 1. Scope and implementation status
 
-This document records the low-level design implemented on the `main` branch. It is source-based: paths named here exist in the repository and diagrams model current runtime behavior. The Phase 1–9 build logs and [README roadmap](../README.md#roadmap) are the in-repository plan baseline; the roadmap is complete at Phase 9. No standalone project-plan or chat-roles document was found in this checkout.
+This document records the low-level design implemented on the `main` branch. It is source-based: paths named here exist in the repository and diagrams model current runtime behavior. The Phase 1–9 build logs and [README roadmap](../../README.md#roadmap) are the in-repository plan baseline; the roadmap is complete at Phase 9. No standalone project-plan or chat-roles document was found in this checkout.
 
 ## 2. Package and entry-point map
 
@@ -54,9 +54,9 @@ flowchart TB
 
 ## 3. Runtime configuration and database session
 
-[`app/config.py`](../app/config.py) defines `Settings` with `app_env`, `database_url`, `gemini_api_key`, and `api_protection_secret`. It loads `.env` using Pydantic Settings. Provider functions intentionally read `GEMINI_API_KEY` from the process environment.
+[`app/config.py`](../../app/config.py) defines `Settings` with `app_env`, `database_url`, `gemini_api_key`, and `api_protection_secret`. It loads `.env` using Pydantic Settings. Provider functions intentionally read `GEMINI_API_KEY` from the process environment.
 
-[`app/db/session.py`](../app/db/session.py) converts a plain PostgreSQL URL to `postgresql+psycopg://` when required, creates one async SQLAlchemy engine with `pool_pre_ping=True`, registers pgvector on each Psycopg connection, and exports `AsyncSessionLocal`. Callers open their own `async with AsyncSessionLocal()` blocks; there is also a `get_db_session()` generator.
+[`app/db/session.py`](../../app/db/session.py) converts a plain PostgreSQL URL to `postgresql+psycopg://` when required, creates one async SQLAlchemy engine with `pool_pre_ping=True`, registers pgvector on each Psycopg connection, and exports `AsyncSessionLocal`. Callers open their own `async with AsyncSessionLocal()` blocks; there is also a `get_db_session()` generator.
 
 ## 4. Persistence design
 
@@ -108,7 +108,7 @@ erDiagram
     }
 ```
 
-The initial migration creates the `vector` extension and all four tables ([`20260819_0001_initial_schema.py`](../migrations/versions/20260819_0001_initial_schema.py)). `Chunk` contains additional nullable metadata fields (`file_type`, `document_type`, `symbol`, `function_name`, `class_name`, `section`, `service`, `environment`, `incident_id`, `timestamp`) that the current Python ingester does not populate except `file_type` and `document_type`.
+The initial migration creates the `vector` extension and all four tables ([`20260819_0001_initial_schema.py`](../../migrations/versions/20260819_0001_initial_schema.py)). `Chunk` contains additional nullable metadata fields (`file_type`, `document_type`, `symbol`, `function_name`, `class_name`, `section`, `service`, `environment`, `incident_id`, `timestamp`) that the current Python ingester does not populate except `file_type` and `document_type`.
 
 ### 4.2 Referential behavior and indexes
 
@@ -145,7 +145,7 @@ sequenceDiagram
 
 ### 5.2 Embedding algorithm
 
-`embed_repository_chunks()` selects all chunks for a named repository, filters to `embedding is None`, then calls `embed_text()` once per missing chunk. `embed_text()` POSTs Gemini `embedContent` with model `models/gemini-embedding-001` and `outputDimensionality` 768; it validates the returned list length before assignment. Errors are logged per chunk and do not abort remaining chunks. Each iteration waits 1.5 seconds, and successful assignments are committed after the loop ([`scripts/embed_chunks.py`](../scripts/embed_chunks.py)).
+`embed_repository_chunks()` selects all chunks for a named repository, filters to `embedding is None`, then calls `embed_text()` once per missing chunk. `embed_text()` POSTs Gemini `embedContent` with model `models/gemini-embedding-001` and `outputDimensionality` 768; it validates the returned list length before assignment. Errors are logged per chunk and do not abort remaining chunks. Each iteration waits 1.5 seconds, and successful assignments are committed after the loop ([`scripts/embed_chunks.py`](../../scripts/embed_chunks.py)).
 
 ## 6. Retrieval internals
 
@@ -242,15 +242,15 @@ sequenceDiagram
 
 ### 7.3 Guard, prompt, parsing and calibration
 
-- **Guard:** for hybrid results, `evaluate_evidence_sufficiency()` requires a maximum RRF score of at least `0.016` and a minimum available vector distance of at most `0.5`. For literal evidence, any non-empty match set is sufficient ([`guard.py`](../app/investigation/guard.py)).
-- **Prompt:** `build_grounded_prompt()` emits the system instruction, user query, and every retrieved result’s chunk ID, path, line range, scores and content. It asks the model to use only supplied evidence and to return `INSUFFICIENT_EVIDENCE` if unsupported ([`prompt.py`](../app/investigation/prompt.py)).
-- **Generation:** `generate_investigation()` calls Gemini with a 60-second request timeout and at most three attempts. HTTP 429/5xx and connection/timeout errors retry with 1- then 2-second backoff ([`generation.py`](../app/investigation/generation.py)).
-- **Parsing:** only the first Gemini candidate is parsed. Regexes extract a diagnosis, `high|medium|low` confidence, and cited retrieved chunks. A matching chunk ID, exact file path, or path/range pattern marks a citation ([`parsing.py`](../app/investigation/parsing.py)).
-- **Calibration:** only a `high` model confidence can be lowered to `medium`, when RRF is under `0.032` or vector distance exceeds `0.4` ([`confidence.py`](../app/investigation/confidence.py)).
+- **Guard:** for hybrid results, `evaluate_evidence_sufficiency()` requires a maximum RRF score of at least `0.016` and a minimum available vector distance of at most `0.5`. For literal evidence, any non-empty match set is sufficient ([`guard.py`](../../app/investigation/guard.py)).
+- **Prompt:** `build_grounded_prompt()` emits the system instruction, user query, and every retrieved result’s chunk ID, path, line range, scores and content. It asks the model to use only supplied evidence and to return `INSUFFICIENT_EVIDENCE` if unsupported ([`prompt.py`](../../app/investigation/prompt.py)).
+- **Generation:** `generate_investigation()` calls Gemini with a 60-second request timeout and at most three attempts. HTTP 429/5xx and connection/timeout errors retry with 1- then 2-second backoff ([`generation.py`](../../app/investigation/generation.py)).
+- **Parsing:** only the first Gemini candidate is parsed. Regexes extract a diagnosis, `high|medium|low` confidence, and cited retrieved chunks. A matching chunk ID, exact file path, or path/range pattern marks a citation ([`parsing.py`](../../app/investigation/parsing.py)).
+- **Calibration:** only a `high` model confidence can be lowered to `medium`, when RRF is under `0.032` or vector distance exceeds `0.4` ([`confidence.py`](../../app/investigation/confidence.py)).
 
 ### 7.4 Persistence behavior
 
-`persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count and final confidence in both records. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls` ([`persistence.py`](../app/investigation/persistence.py)).
+`persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count and final confidence in both records. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls` ([`persistence.py`](../../app/investigation/persistence.py)).
 
 `investigate_repository()` returns early on guard insufficiency; therefore that branch has no `Investigation` or `Audit` insert even when its `persist` argument is true. A model-level abstention after a successful guard follows the generated persistence path.
 
@@ -299,9 +299,9 @@ flowchart LR
 
 ## 11. Source references
 
-- [Application and API](../app/main.py), [routes](../app/api.py), [security](../app/api_security.py)
-- [Database infrastructure](../app/db/session.py), [models](../app/db/models/), [migration](../migrations/versions/20260819_0001_initial_schema.py)
-- [Ingestion](../scripts/ingest_repo.py), [embedding](../scripts/embed_chunks.py), [investigation](../scripts/investigate.py)
-- [Retrieval package](../app/retrieval/), [investigation package](../app/investigation/)
-- [Evaluation package](../evaluation/), [Phase 8 evaluation log](./phase8-evaluation.md)
-- [Phase documentation index](./README.md), [project README and roadmap](../README.md)
+- [Application and API](../../app/main.py), [routes](../../app/api.py), [security](../../app/api_security.py)
+- [Database infrastructure](../../app/db/session.py), [models](../../app/db/models/), [migration](../../migrations/versions/20260819_0001_initial_schema.py)
+- [Ingestion](../../scripts/ingest_repo.py), [embedding](../../scripts/embed_chunks.py), [investigation](../../scripts/investigate.py)
+- [Retrieval package](../../app/retrieval/), [investigation package](../../app/investigation/)
+- [Evaluation package](../../evaluation/), [Phase 8 evaluation log](../phases/08-evaluation.md)
+- [Phase documentation index](../README.md), [project README and roadmap](../../README.md)

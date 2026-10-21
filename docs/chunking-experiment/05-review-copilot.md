@@ -4,7 +4,7 @@
 - **Model:** ChatGPT via Copilot SDK in VS Code; exact backend model build is not exposed to me
 - **Date:** 2026-10-19
 
-**Independence statement:** I read the human-review workbook, the Gate 5 approval context in [`chunking-experiment.md`](./chunking-experiment.md), and relevant source files at pinned commit `62d0e58593bb22d187ec7930274b0457afd3be74`. I did not read any other `docs/gate5-review-*.md` file, and did not use automated outcome labels, keyword screens, or decision-report verdicts as evidence. I had no prior opinion on this experiment before reviewing the saved answers and source.
+**Independence statement:** I read the human-review workbook, the Gate 5 approval context in [`chunking-experiment.md`](01-experiment-log.md), and relevant source files at pinned commit `62d0e58593bb22d187ec7930274b0457afd3be74`. I did not read any other `docs/gate5-review-*.md` file, and did not use automated outcome labels, keyword screens, or decision-report verdicts as evidence. I had no prior opinion on this experiment before reviewing the saved answers and source.
 
 **Inspected:** all 24 saved questions and their four responses, cited chunk IDs, retrieval-span tables and response text; the source ranges relevant to the claims at the pinned commit; and the cited chunk bodies for material priority claims. I checked the cited path/line spans against the pinned source. I did not read every full, uncited top-five chunk body; where a response has no citation, I say so and score its grounding accordingly. I also searched the pinned repository for the unanswerable topics.
 
@@ -694,7 +694,7 @@ The experimental arm has more uncited answers (8/32 versus 2/29), despite answer
 - The runs provide two saved generations per strategy and 16 answerable questions. This is evidence about these responses, not a guarantee of repeat-run quality.
 
 ### Gate 5 assessment
-**Mixed, with a modest descriptive Overall-score advantage for 100/20 in these saved responses, but not an unqualified quality improvement.** The experiment improves answers on direct-08 and paraphrased-08, and pass-1 aggregate Overall is higher. However, pass 2 also has a clear correctness regression on direct-03, more uncited answerable responses, and more question-level losses than pass 1. Retrieval effectiveness is deliberately kept separate: this is an answer-quality review and does not infer a retrieval win from ranks or hit measures. The human Gate 5 requirement in [`chunking-experiment.md`](./chunking-experiment.md), entry [004], is not an adoption authorization. Production remains 60/10 unless the maintainer separately approves a change.
+**Mixed, with a modest descriptive Overall-score advantage for 100/20 in these saved responses, but not an unqualified quality improvement.** The experiment improves answers on direct-08 and paraphrased-08, and pass-1 aggregate Overall is higher. However, pass 2 also has a clear correctness regression on direct-03, more uncited answerable responses, and more question-level losses than pass 1. Retrieval effectiveness is deliberately kept separate: this is an answer-quality review and does not infer a retrieval win from ranks or hit measures. The human Gate 5 requirement in [`chunking-experiment.md`](01-experiment-log.md), entry [004], is not an adoption authorization. Production remains 60/10 unless the maintainer separately approves a change.
 
 ### Unresolved issues
 - Whether the higher uncited-answer rate for 100/20 recurs beyond these two saved passes.
