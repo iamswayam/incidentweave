@@ -7,7 +7,7 @@
 2. One item at a time. Each item has a **Done when** test. Do not start the next until the test passes.
 3. After any change that affects retrieval or the guard, re-run the evaluation and record the result.
 4. Effort: **S** = under half a day, **M** = 1–3 days, **L** = a week or more.
-5. Nothing in this file has been implemented. Every claim is a recommendation to be verified (Codex is asked to do that in section 6).
+5. Item 1 is implemented; remaining entries are recommendations to be verified (Codex is asked to do that in section 6).
 
 **Evidence tags** (same as in my audit): **[SRC]** read from code, **[EXEC]** I ran it, **[ART]** author-reported in repo docs/artifacts, **[INF]** my inference.
 
@@ -17,7 +17,7 @@
 
 | # | ✔ | Fix | Priority | Effort | Raised by |
 |---|---|---|---|---|---|
-| 1 | ☐ | Cap `limit`, query length and prompt size | High | S | Both |
+| 1 | ☑ | Cap `limit`, query length and prompt size | High | S | Both |
 | 2 | ☐ | Stop the API's grep fallback searching the wrong repository | High | S | Claude (Codex partial) |
 | 3 | ☐ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate) | High | S | Both |
 | 4 | ☐ | Make abstention consistent (low confidence, no citations; literal-evidence rule) | High | S | Claude |
@@ -53,6 +53,7 @@
 - *Why:* `limit: int = Field(default=5, gt=0)` has no maximum, `query` has no max length, and `build_grounded_prompt` inserts every chunk with no ceiling [SRC: `app/api.py`, `app/investigation/prompt.py`]. An authenticated caller can create outsized cost and latency.
 - *Fix:* `limit` `ge=1, le=20`; `query` `max_length=2000`; in the prompt builder enforce a total evidence budget (for example 24,000 characters), drop the lowest-ranked chunks first, and record what was dropped in the audit.
 - *Done when:* `limit=1000` and an oversized query return 422, and a test proves the prompt never exceeds the budget.
+- **Status:** 2026-10-21; branch `fix/01-input-caps`; changed `app/investigation/limits.py`, `app/api.py`, `scripts/investigate.py`, `app/investigation/prompt.py`, `app/investigation/graph.py`, `tests/unit/test_api.py`, `tests/unit/test_prompt.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigate_limits.py`, `docs/fix_checklist.md`; `ruff check .`: All checks passed!; `pytest tests/unit -q`: 84 passed in 45.42s; `pytest -q`: 87 passed in 44.83s.
 
 **2. Stop the wrong-tree grep fallback.**
 - *Why:* `POST /investigations` calls `investigate_repository(...)` without `repo_path`, so the default is IncidentWeave's own checkout (`REPO_ROOT`). For any other repository the literal fallback can return IncidentWeave source as evidence [SRC]. In the final evaluation run grep recovered 0 of 8 attempts [ART], so removing it loses nothing measured.

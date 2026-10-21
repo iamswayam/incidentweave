@@ -176,6 +176,61 @@ def test_post_invalid_limit_returns_sanitized_422(api_client: TestClient) -> Non
     assert "input" not in response.text
 
 
+def test_post_limit_above_max_returns_sanitized_422(api_client: TestClient) -> None:
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "test", "limit": 21},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {"code": "validation_error", "message": "Request validation failed."}
+    }
+    assert "input" not in response.text
+
+
+def test_post_query_above_max_returns_sanitized_422(api_client: TestClient) -> None:
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "q" * 2001},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {"code": "validation_error", "message": "Request validation failed."}
+    }
+    assert "input" not in response.text
+
+
+def test_post_maximum_limit_and_query_length_pass_validation(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_investigate(
+        repository_name: str,
+        query: str,
+        limit: int,
+        persist: bool,
+    ) -> dict[str, object]:
+        result = sufficient_pipeline_result()
+        result["repository"] = repository_name
+        result["query"] = query
+        return result
+
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "q" * 2000, "limit": 20},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["query"] == "q" * 2000
+
+
 def test_health_is_open_and_missing_secret_is_rejected(api_client: TestClient) -> None:
     health = api_client.get("/health")
     missing_secret = api_client.get("/repositories")
