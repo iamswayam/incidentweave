@@ -4,7 +4,7 @@
 
 IncidentWeave is a repository-aware investigation service for backend systems. It ingests a local Python repository, embeds source chunks, retrieves repository evidence for a natural-language question, and conditionally asks Gemini for an evidence-grounded diagnosis. Successful generated investigations are persisted with an audit trail.
 
-This document describes the implementation on the `main` branch, not an aspirational redesign. The authoritative project-plan material present in the repository is the completed Phase 1–9 build-log series in [`docs/`](./README.md) and the [nine-phase roadmap](../README.md#roadmap); the roadmap ends at Phase 9. No standalone project-plan or chat-roles document exists in the checked-out repository, so no absent document has been inferred.
+This document describes the implementation on the `main` branch, not an aspirational redesign. The authoritative project-plan material present in the repository is the completed Phase 1–9 build-log series in [`docs/`](../README.md) and the [nine-phase roadmap](../../README.md#roadmap); the roadmap ends at Phase 9. No standalone project-plan or chat-roles document exists in the checked-out repository, so no absent document has been inferred.
 
 ## 2. Architectural goals implemented today
 
@@ -26,7 +26,7 @@ This document describes the implementation on the `main` branch, not an aspirati
 | Local tools | Model Context Protocol (MCP), stdio | Local `grep_search` fallback; server also exposes `hybrid_search` |
 | Quality/runtime | pytest, Ruff, GitHub Actions, Docker Compose | Test, lint, database-backed CI, and local container runtime |
 
-Dependency ranges and Python version are defined in [`pyproject.toml`](../pyproject.toml). The local Compose environment and Docker image are defined in [`docker-compose.yml`](../docker-compose.yml) and [`docker/Dockerfile`](../docker/Dockerfile).
+Dependency ranges and Python version are defined in [`pyproject.toml`](../../pyproject.toml). The local Compose environment and Docker image are defined in [`docker-compose.yml`](../../docker-compose.yml) and [`docker/Dockerfile`](../../docker/Dockerfile).
 
 ## 4. Implemented system context
 
@@ -70,7 +70,7 @@ flowchart LR
     Eval --> Gemini
 ```
 
-The evaluation runner uses the same retrieval/investigation implementation, but invokes it with `persist=False`; evaluation results are written as JSON files under `evaluation/results/runs/`, not as investigation/audit records. See [`evaluation/runner.py`](../evaluation/runner.py).
+The evaluation runner uses the same retrieval/investigation implementation, but invokes it with `persist=False`; evaluation results are written as JSON files under `evaluation/results/runs/`, not as investigation/audit records. See [`evaluation/runner.py`](../../evaluation/runner.py).
 
 ## 5. Primary data flows
 
@@ -117,7 +117,7 @@ flowchart TD
     K --> P
 ```
 
-The API handler delegates to [`scripts/investigate.py`](../scripts/investigate.py). The graph executes hybrid search in-process. It starts a local MCP subprocess only for the literal fallback, even though the MCP server also exposes a hybrid-search tool ([`app/investigation/graph.py`](../app/investigation/graph.py), [`app/investigation/mcp_server.py`](../app/investigation/mcp_server.py)).
+The API handler delegates to [`scripts/investigate.py`](../../scripts/investigate.py). The graph executes hybrid search in-process. It starts a local MCP subprocess only for the literal fallback, even though the MCP server also exposes a hybrid-search tool ([`app/investigation/graph.py`](../../app/investigation/graph.py), [`app/investigation/mcp_server.py`](../../app/investigation/mcp_server.py)).
 
 ### 5.3 Retrieval composition
 
@@ -131,7 +131,7 @@ flowchart LR
     E --> G[Evidence guard and grounded prompt]
 ```
 
-Vector retrieval scopes by repository ID and orders by cosine distance. Full-text retrieval scopes by repository ID and uses `websearch_to_tsquery` against `to_tsvector('english', content)`. RRF adds `1 / (60 + rank)` for each result list in which a chunk appears. See [`app/retrieval/`](../app/retrieval/).
+Vector retrieval scopes by repository ID and orders by cosine distance. Full-text retrieval scopes by repository ID and uses `websearch_to_tsquery` against `to_tsvector('english', content)`. RRF adds `1 / (60 + rank)` for each result list in which a chunk appears. See [`app/retrieval/`](../../app/retrieval/).
 
 ## 6. External and operational boundaries
 
@@ -160,11 +160,11 @@ The items below are current implementation facts, not planned components:
 
 | Concern | Primary source |
 |---|---|
-| HTTP app, routes, protection | [`app/main.py`](../app/main.py), [`app/api.py`](../app/api.py), [`app/api_security.py`](../app/api_security.py) |
-| Ingestion and embeddings | [`scripts/ingest_repo.py`](../scripts/ingest_repo.py), [`scripts/embed_chunks.py`](../scripts/embed_chunks.py) |
-| Investigation boundary | [`scripts/investigate.py`](../scripts/investigate.py) |
-| Retrieval | [`app/retrieval/`](../app/retrieval/) |
-| Workflow, generation, prompts, parsing | [`app/investigation/`](../app/investigation/) |
-| Models and migration | [`app/db/models/`](../app/db/models/), [`migrations/versions/20260819_0001_initial_schema.py`](../migrations/versions/20260819_0001_initial_schema.py) |
-| Evaluation | [`evaluation/`](../evaluation/) and [`docs/phase8-evaluation.md`](./phase8-evaluation.md) |
-| Build plan and verification history | [`docs/README.md`](./README.md) and [`README.md`](../README.md) |
+| HTTP app, routes, protection | [`app/main.py`](../../app/main.py), [`app/api.py`](../../app/api.py), [`app/api_security.py`](../../app/api_security.py) |
+| Ingestion and embeddings | [`scripts/ingest_repo.py`](../../scripts/ingest_repo.py), [`scripts/embed_chunks.py`](../../scripts/embed_chunks.py) |
+| Investigation boundary | [`scripts/investigate.py`](../../scripts/investigate.py) |
+| Retrieval | [`app/retrieval/`](../../app/retrieval/) |
+| Workflow, generation, prompts, parsing | [`app/investigation/`](../../app/investigation/) |
+| Models and migration | [`app/db/models/`](../../app/db/models/), [`migrations/versions/20260819_0001_initial_schema.py`](../../migrations/versions/20260819_0001_initial_schema.py) |
+| Evaluation | [`evaluation/`](../../evaluation/) and [`docs/phase8-evaluation.md`](../phases/08-evaluation.md) |
+| Build plan and verification history | [`docs/README.md`](../README.md) and [`README.md`](../../README.md) |

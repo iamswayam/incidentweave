@@ -2,16 +2,16 @@
 
 ## Phase build logs
 
-- [phase1-project-setup.md](./phase1-project-setup.md) — Phase 1 project setup task specification and verification log.
-- [phase2-database-persistence.md](./phase2-database-persistence.md) — Phase 2 database and persistence task specification and verification log.
-- [phase3-ingestion-chunking.md](./phase3-ingestion-chunking.md) — Phase 3 repository ingestion and chunking task specification and verification log.
-- [phase4-embeddings-retrieval.md](./phase4-embeddings-retrieval.md) — Phase 4 embeddings and retrieval task specification and verification log.
-- [phase5-investigation-engine.md](./phase5-investigation-engine.md) — Phase 5 Investigation Engine task specification and verification log.
-- [phase6-grounding-confidence.md](./phase6-grounding-confidence.md) — Phase 6 Grounding & Confidence task specification and verification log.
-- [phase7-controlled-tools-audit.md](./phase7-controlled-tools-audit.md) — Phase 7 Controlled Tools & Audit task specification and verification log.
-- [phase8-evaluation.md](./phase8-evaluation.md) — Phase 8 evaluation task specification, measurements, and verification log.
-- [phase8b-evaluation-improvements.md](./phase8b-evaluation-improvements.md) — Phase 8b measurement-validation fixes, run registry, and evidence bundle.
-- [phase9-production-api.md](./phase9-production-api.md) — Phase 9 production CLI/API task specification and verification log.
+- [phase1-project-setup.md](phases/01-project-setup.md) — Phase 1 project setup task specification and verification log.
+- [phase2-database-persistence.md](phases/02-database-persistence.md) — Phase 2 database and persistence task specification and verification log.
+- [phase3-ingestion-chunking.md](phases/03-ingestion-chunking.md) — Phase 3 repository ingestion and chunking task specification and verification log.
+- [phase4-embeddings-retrieval.md](phases/04-embeddings-retrieval.md) — Phase 4 embeddings and retrieval task specification and verification log.
+- [phase5-investigation-engine.md](phases/05-investigation-engine.md) — Phase 5 Investigation Engine task specification and verification log.
+- [phase6-grounding-confidence.md](phases/06-grounding-confidence.md) — Phase 6 Grounding & Confidence task specification and verification log.
+- [phase7-controlled-tools-audit.md](phases/07-controlled-tools-audit.md) — Phase 7 Controlled Tools & Audit task specification and verification log.
+- [phase8-evaluation.md](phases/08-evaluation.md) — Phase 8 evaluation task specification, measurements, and verification log.
+- [phase8b-evaluation-improvements.md](phases/08b-evaluation-improvements.md) — Phase 8b measurement-validation fixes, run registry, and evidence bundle.
+- [phase9-production-api.md](phases/09-production-api.md) — Phase 9 production CLI/API task specification and verification log.
 
 ## Learning writeups
 
@@ -29,15 +29,15 @@
 
 ## Notes
 
-- [manual-verification-and-improvements.md](./manual-verification-and-improvements.md) — Human-verified behavior and improvement scope grounded in manual tests.
-- [later-optimizations.md](./later-optimizations.md) — Deferred optimization and follow-up notes.
+- [manual-verification-and-improvements.md](notes/01-manual-verification.md) — Human-verified behavior and improvement scope grounded in manual tests.
+- [later-optimizations.md](notes/02-deferred-optimizations.md) — Deferred optimization and follow-up notes.
 - [README.md](./README.md) — This documentation index.
 
 ## Gate 5 chunking review
 
-- [Experiment log](./gate-5-chunking-review/chunking-experiment.md)
-- [Strategy decision report](./gate-5-chunking-review/chunking-strategy-decision-report.md)
-- [Human review workbook](./gate-5-chunking-review/chunking-human-review-workbook.md)
-- [Claude review](./gate-5-chunking-review/gate5-review-claude.md)
-- [Copilot review](./gate-5-chunking-review/gate5-review-copilot.md)
-- [ChatGPT review](./gate-5-chunking-review/gate5-review-chatgpt.md)
+- [Experiment log](chunking-experiment/01-experiment-log.md)
+- [Strategy decision report](chunking-experiment/02-decision-report.md)
+- [Human review workbook](chunking-experiment/03-human-review-workbook.md)
+- [Claude review](chunking-experiment/04-review-claude.md)
+- [Copilot review](chunking-experiment/05-review-copilot.md)
+- [ChatGPT review](chunking-experiment/06-review-chatgpt.md)

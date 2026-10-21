@@ -14,7 +14,7 @@
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Evaluation](#evaluation) · [Documentation](#documentation)
 
-![IncidentWeave architecture preview](docs/incidentweave-social-preview.png)
+![IncidentWeave architecture preview](docs/assets/social-preview.png)
 
 </div>
 
@@ -56,7 +56,7 @@ flowchart LR
     Persist --> Store
 ```
 
-The graph executes hybrid retrieval in-process. After one unsuccessful widened retrieval it starts a local MCP stdio server only for `grep_search`; the model does not choose tools. See [HLD](docs/HLD.md) and [LLD](docs/LLD.md) for the implementation-level design.
+The graph executes hybrid retrieval in-process. After one unsuccessful widened retrieval it starts a local MCP stdio server only for `grep_search`; the model does not choose tools. See [HLD](docs/architecture/02-high-level-design.md) and [LLD](docs/architecture/03-low-level-design.md) for the implementation-level design.
 
 ## What’s implemented
 
@@ -190,7 +190,7 @@ python scripts\run_eval.py --help
 
 The recorded Phase 8 baseline on the pinned 70-chunk snapshot found vector and hybrid retrieval tied at hit@1 `8/16`, hit@3 `11/16`, hit@5 `11/16`, and MRR `0.573`; full-text was empty for 14 of 16 answerable questions. The guard recorded 16 true accepts, 0 false refusals, 4 true refusals, and 4 false accepts.
 
-These are diagnostic measurements, **not a general benchmark**: the set covers one source snapshot, labels are pending maintainer review, and answer screening uses keywords rather than human or LLM-judge adjudication. Full methodology, artifacts, and limitations are in [Phase 8](docs/phase8-evaluation.md) and [Phase 8b](docs/phase8b-evaluation-improvements.md).
+These are diagnostic measurements, **not a general benchmark**: the set covers one source snapshot, labels are pending maintainer review, and answer screening uses keywords rather than human or LLM-judge adjudication. Full methodology, artifacts, and limitations are in [Phase 8](docs/phases/08-evaluation.md) and [Phase 8b](docs/phases/08b-evaluation-improvements.md).
 
 ## Quality checks and CI
 
@@ -236,11 +236,11 @@ IncidentWeave intentionally makes its current boundaries visible:
 
 | Document | Contents |
 |---|---|
-| [High-Level Design](docs/HLD.md) | System context, architecture, primary data flows, boundaries, and scope. |
-| [Low-Level Design](docs/LLD.md) | Modules, workflow state, API/CLI boundaries, entities, and sequence diagrams. |
+| [High-Level Design](docs/architecture/02-high-level-design.md) | System context, architecture, primary data flows, boundaries, and scope. |
+| [Low-Level Design](docs/architecture/03-low-level-design.md) | Modules, workflow state, API/CLI boundaries, entities, and sequence diagrams. |
 | [Phase build logs](docs/README.md) | Detailed Phase 1–9 specifications, verification records, and engineering history. |
 | [Learning notes](docs/learning/README.md) | Interview-oriented summaries of the major concepts. |
-| [Deferred optimizations](docs/later-optimizations.md) | Explicitly deferred follow-up work, not implemented features. |
+| [Deferred optimizations](docs/notes/02-deferred-optimizations.md) | Explicitly deferred follow-up work, not implemented features. |
 
 ## Roadmap status
 

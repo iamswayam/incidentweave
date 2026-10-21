@@ -7819,4 +7819,4 @@ if __name__ == "__main__":
 - Experimental responses: `../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/pass-1.json` and `pass-2.json`.
 - Paired retrieval/gate comparison: `../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/chunking-comparison.json`.
 - Approved adoption criteria: `chunking-experiment.md`, entry [004].
-- Prior risk-focused answer comparison: [`chunking-strategy-decision-report.md`](./chunking-strategy-decision-report.md), sections 4–6.
+- Prior risk-focused answer comparison: [`chunking-strategy-decision-report.md`](02-decision-report.md), sections 4–6.

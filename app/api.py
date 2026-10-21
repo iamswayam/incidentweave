@@ -20,7 +20,7 @@ EVALUATION_NOTE = (
     "Phase 8 evaluated 24 questions on one source snapshot: hybrid tied vector-only "
     "(hit@1 8/16, hit@3 and hit@5 11/16, MRR 0.573), the guard had 4 false accepts, "
     "and no tested vector-distance cutoff separated the groups. These results are "
-    "diagnostic, not a benchmark; see docs/phase8-evaluation.md for limits."
+    "diagnostic, not a benchmark; see docs/phases/08-evaluation.md for limits."
 )
 
 

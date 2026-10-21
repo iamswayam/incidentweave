@@ -24,10 +24,10 @@ Saved artifacts:
 - Experimental metadata and summaries: [`report.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/report.json)
 - Experimental pass records: [`pass-1.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/pass-1.json), [`pass-2.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/pass-2.json)
 - Saved paired metrics and gate assessment: [`chunking-comparison.json`](../../evaluation/results/runs/20261018T124223Z-2274338-w100_o20/chunking-comparison.json)
-- Run commands and captured comparison output: [`chunking-experiment.md`, entry 011](./chunking-experiment.md)
-- Approved decision criteria: [`chunking-experiment.md`, entry 004](./chunking-experiment.md)
+- Run commands and captured comparison output: [`chunking-experiment.md`, entry 011](01-experiment-log.md)
+- Approved decision criteria: [`chunking-experiment.md`, entry 004](01-experiment-log.md)
 
-The repository architecture assigns run comparison and evaluation reports to `evaluation/`; therefore the report's source artifacts remain there ([architecture reference index](../architecture.md)).
+The repository architecture assigns run comparison and evaluation reports to `evaluation/`; therefore the report's source artifacts remain there ([architecture reference index](../architecture/01-architecture-overview.md)).
 
 ## 3. Quantitative Comparison
 
@@ -194,7 +194,7 @@ The saved run artifacts do not contain a human verdict. The human-review workboo
 
 ## 6. Approved D4 Adoption-Gate Checklist
 
-The criteria below are the approved D4 criteria in [`chunking-experiment.md`, entry 004](./chunking-experiment.md). The report preserves the criteria and their interpretation; Gate 5 is not inferred from automated outcomes. Gate 7 counts function hits only for labels inside a function or class and treats module-level labels as not applicable.
+The criteria below are the approved D4 criteria in [`chunking-experiment.md`, entry 004](01-experiment-log.md). The report preserves the criteria and their interpretation; Gate 5 is not inferred from automated outcomes. Gate 7 counts function hits only for labels inside a function or class and treats module-level labels as not applicable.
 
 | Gate | Approved criterion | Result | Evidence |
 |---:|---|---|---|

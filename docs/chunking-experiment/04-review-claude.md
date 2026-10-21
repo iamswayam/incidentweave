@@ -4,7 +4,7 @@
 
 **Reviewer:** Claude (Sonnet 5.5), planner role.
 **Date:** 2026-10-19.
-**Companion files:** [`chunking-human-review-workbook.md`](./chunking-human-review-workbook.md) (saved answers, by question anchor), [`chunking-strategy-decision-report.md`](./chunking-strategy-decision-report.md).
+**Companion files:** [`chunking-human-review-workbook.md`](03-human-review-workbook.md) (saved answers, by question anchor), [`chunking-strategy-decision-report.md`](02-decision-report.md).
 
 ## 0. Independence disclosure, method and limits
 
