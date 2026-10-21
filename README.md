@@ -14,7 +14,7 @@
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Evaluation](#evaluation) · [Documentation](#documentation)
 
-![IW | IncidentWeave — Repository-aware AI incident investigation](docs/assets/incidentweave-hero.png)
+![IW | IncidentWeave — Repository-aware AI incident investigation](docs/assets/social-preview.png)
 
 </div>
 
