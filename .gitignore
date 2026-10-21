@@ -24,6 +24,9 @@ evaluation/results/evaluation_report.json
 # Tool worktrees
 .kilo/
 
+# Local scratch
+tmp/
+
 # Build artifacts
 build/
 dist/
