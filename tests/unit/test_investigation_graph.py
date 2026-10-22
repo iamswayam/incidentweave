@@ -22,7 +22,6 @@ def initial_state() -> dict[str, Any]:
     return {
         "repository_id": 4,
         "repository_name": "incidentweave-local",
-        "repository_path": ".",
         "query": "how are async sessions configured?",
         "query_embedding": [0.1, 0.2],
         "search_limit": 5,
@@ -126,18 +125,9 @@ async def test_graph_stops_after_one_insufficient_retry(
     def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         raise AssertionError("Generation must not run after insufficient evidence")
 
-    async def fake_grep_search_mcp(
-        repository_name: str,
-        repository_path: str,
-        keyword: str,
-        limit: int,
-    ) -> tuple[list[dict[str, object]], None]:
-        return [], None
-
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
     monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
     monkeypatch.setattr(graph_module, "generate_investigation", unexpected_generation)
-    monkeypatch.setattr(graph_module, "call_grep_search_mcp", fake_grep_search_mcp)
 
     result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
 
@@ -146,6 +136,68 @@ async def test_graph_stops_after_one_insufficient_retry(
     assert result["retry_used"] is True
     assert result["diagnosis"] == "INSUFFICIENT_EVIDENCE"
     assert result["confidence"] == "low"
+
+
+@pytest.mark.anyio
+async def test_graph_stops_after_two_weak_hybrid_attempts_without_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+
+    async def fake_hybrid_search(
+        session: object,
+        repository_id: int,
+        query_text: str,
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[dict[str, object]]:
+        events.append(f"hybrid:{limit}")
+        return [{"id": limit, "rrf_score": 0.02, "vector_score": 0.7}]
+
+    def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+        raise AssertionError("Generation must not run after insufficient evidence")
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", unexpected_generation)
+
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
+
+    assert events == ["hybrid:5", "hybrid:10"]
+    assert result["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert [attempt["tool"] for attempt in result["tool_calls"]] == [
+        "hybrid_search",
+        "hybrid_search",
+    ]
+
+
+@pytest.mark.anyio
+async def test_graph_never_uses_grep_for_other_repository_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_hybrid_search(
+        session: object,
+        repository_id: int,
+        query_text: str,
+        query_embedding: list[float],
+        limit: int,
+    ) -> list[dict[str, object]]:
+        return [{"id": limit, "rrf_score": 0.02, "vector_score": 0.7}]
+
+    def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+        raise AssertionError("Generation must not run after insufficient evidence")
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", unexpected_generation)
+
+    state = initial_state()
+    state["repository_name"] = "some-other-repo"
+    state["query"] = "create_investigation_graph"
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(state)
+
+    assert not any(attempt["tool"] == "grep_search" for attempt in result["tool_calls"])
+    assert not hasattr(graph_module, "call_grep_search_mcp")
 
 
 @pytest.mark.anyio
