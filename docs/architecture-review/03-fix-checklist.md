@@ -18,7 +18,7 @@
 | # | ✔ | Fix | Priority | Effort | Raised by |
 |---|---|---|---|---|---|
 | 1 | ☑ | Cap `limit`, query length and prompt size | High | S | Both |
-| 2 | ☐ | Stop the API's grep fallback searching the wrong repository (the API never runs the literal fallback) | High | S | Claude (Codex partial) |
+| 2 | ☐ | Remove the literal grep fallback (as wired, the API could search the wrong repository) | High | S | Claude (Codex partial) |
 | 3a | ☐ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate, literal evidence never sufficient) | **Critical** | S | Both |
 | 3b | ☐ | Re-validate the guard thresholds on the held-out split (after item 16) | High | S | Both |
 | 4 | ☐ | Make abstention consistent (low confidence; keep citations that explain the abstention; literal-evidence rule) | High | S | Claude |
@@ -58,6 +58,7 @@
 | 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
+
 ---
 
 ## 2. Item details (Why / Fix / Done when)
@@ -70,19 +71,19 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - *Done when:* `limit=1000` and an oversized query return 422; evidence content never exceeds the 24,000-character budget; the total prompt is bounded by the evidence budget plus the query cap plus fixed instruction and metadata overhead (a worst-case test is added with item 11, when the prompt is restructured). Dropped chunk IDs appear in the `prompt_budget` trace entry but not yet in the per-chunk audit snapshot; item 8 closes that.
 - **Status:** 2026-10-21; branch `fix/01-input-caps`; changed `app/investigation/limits.py`, `app/api.py`, `scripts/investigate.py`, `app/investigation/prompt.py`, `app/investigation/graph.py`, `tests/unit/test_api.py`, `tests/unit/test_prompt.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigate_limits.py`, `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest tests/unit -q`: 84 passed in 45.42s; `pytest -q`: 87 passed in 44.83s.
 
-**2. Stop the wrong-tree grep fallback.**
+**2. Remove the literal grep fallback.**
 - *Why:* `POST /investigations` calls `investigate_repository(...)` without `repo_path`, so the default is IncidentWeave's own checkout (`REPO_ROOT`). For any other repository the literal fallback can return IncidentWeave source as evidence [SRC]. In the final evaluation run grep recovered 0 of 8 attempts [ART], so removing it loses nothing measured.
-- *Fix:* short-term only: the API never runs the literal fallback (pass `repo_path=None` and have the graph skip grep). Do not store a mutable `source_path` on `Repository`; durable source binding comes with item 9's immutable ingest runs. Open maintainer decision: remove the literal grep path entirely, or keep it CLI-only as extra context that never counts as sufficient evidence (item 3a).
-- *Done when:* a test with a repository other than IncidentWeave, and a query matching IncidentWeave's source, shows grep is not run or returns nothing.
+- *Fix:* remove the literal grep fallback from the investigation graph entirely (maintainer decision, 2026-10-22; it recovered 0 of 8 attempts in the final evaluation run [ART] and, as wired, can search IncidentWeave's own tree). The MCP tool code stays until the item 25 decision. Do not store a mutable `source_path` on `Repository`; durable source binding comes with item 9's immutable ingest runs.
+- *Done when:* a test with a repository other than IncidentWeave, and a query matching IncidentWeave's source, shows no literal search runs and no IncidentWeave source appears as evidence.
 
 **3a. Fix the evidence guard (now). 3b. Re-validate the thresholds (after item 16).**
 - *Why:* (a) `MIN_ACCEPTABLE_RRF_SCORE = 0.016` is below `1/61 = 0.016393`, so any rank-1 vector hit passes; I executed this [EXEC]. (b) The guard takes the best RRF and best vector distance from *different* chunks independently (`max` and `min` over all results), so no single chunk has to satisfy both [SRC; found by Codex]. Result: 4 of 8 unanswerable questions pass the guard [ART].
-- *Fix:* decide sufficiency per chunk. Use RRF for ranking only. Example rule: the top chunk's own vector distance ≤ T, or it has a lexical match and distance ≤ T2. Pick T from the sweep as a provisional value and re-validate on the held-out set (item 16). Update the README sentence about "both an RRF threshold and a vector-distance threshold".
+- *Fix:* decide sufficiency per chunk; the RRF number is for ranking, not a gate. Literal (grep) evidence never counts as sufficient by itself. Example rule: the top chunk's own vector distance ≤ T, or it has a lexical match and distance ≤ T2. T is provisional and must not be tuned on the same 24 questions; 3b re-validates it on the item 16 split. Update the README sentence about "both an RRF threshold and a vector-distance threshold".
 - *Done when:* unit tests show the guard accepts only if one chunk passes, including: RRF and vector success on different chunks (refused), a rank-one vector-only hit, an FTS-only hit, and a literal-only result (never sufficient); the evaluation is re-run and false accepts are recorded; the README matches the code.
 
 **4. Make abstention consistent.**
 - *Why:* a response with `Diagnosis: INSUFFICIENT_EVIDENCE` and `Confidence: high` is stored as `high` [EXEC]. For literal-grep evidence, calibration retains `high` with the note "retrieval scores clear both calibration margins", which is false because there are no scores [EXEC].
-- *Fix:* after parsing, if the diagnosis equals `INSUFFICIENT_EVIDENCE` then confidence = `low`. Do not erase citations that explain the abstention; distinguish "supporting evidence" from "positive diagnosis evidence". For literal-only evidence cap confidence at `medium` with an honest note (moot if the literal path is removed, item 2). The generated-abstention rule is completed in item 11.
+- *Fix:* after parsing, if the diagnosis equals `INSUFFICIENT_EVIDENCE` then confidence = `low`. Do not erase citations that explain the abstention; distinguish "supporting evidence" from "positive diagnosis evidence". For literal-only evidence cap confidence at `medium` with an honest note (moot now that item 2 removes the literal path). The generated-abstention rule is completed in item 11.
 - *Done when:* parser and calibration tests cover both cases.
 
 **5a. Hardening now. 5b. Hardening later.**
@@ -92,24 +93,24 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 
 **6. Make docs match code.**
 - *Why:* the README says retrieval must clear both thresholds (not true, item 3); "one Audit row per query" (not true for refusals); the raw model response is persisted (not true: only the parsed diagnosis is stored); the test count is stated as both 41 and 53, and `main` contains both phases [SRC].
-- *Fix:* run `pytest -q` on the current `main`, then update the counts and rewrite each claim to say exactly what the code does.
+- *Fix:* not a standalone phase. Every behaviour change fixes its own README sentence. Test counts come only from an executed command.
 - *Done when:* every README claim maps to a code location or a test.
 
 ### Phase 2: audit and provenance
 
 **7. Persist every outcome.**
 - *Why:* when the guard fails, `investigate_repository` returns before persistence, so there is no row, `investigation_id` is `None`, and refusals cannot be reviewed [SRC].
-- *Fix:* add an `outcome` column (`answered`, `refused_guard`, `abstained_model`, `error`) via Alembic migration `0002`. Store a row for refusals with the evidence check and a retrieval summary. The API returns an ID for refusals.
+- *Fix:* add an `outcome` column (`answered`, `refused_guard`, `abstained_model`, `error`) via Alembic migration `0002`. Store a row for refusals with the evidence check and a retrieval summary. The API returns an ID for refusals. Also persist provider, validation and MCP errors (sanitized error class, terminal status).
 - *Done when:* a refused POST returns an ID and `GET /investigations/{id}` returns the refusal reason.
 
 **8. Store a replayable audit.**
 - *Why:* only the parsed diagnosis is stored. Missing: raw model text, raw confidence, prompt, model and embedding versions, generation settings, thresholds [SRC].
-- *Fix:* add `raw_response`, `raw_confidence`, `prompt_text` (or `prompt_sha256` plus `prompt_template_version`), `embedding_model`, `generation_config` (JSONB), `thresholds` (JSONB), and a content hash per retrieved chunk. Note the prompt contains source code, so restrict who can read it.
+- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, stage timings, model, error); the tool choice is deferred (item 18).
 - *Done when:* an old investigation can be explained from its stored data alone.
 
 **9. Source versioning and upsert ingestion.**
 - *Why:* `ingest_repository` deletes all chunks and reinserts them, so chunk IDs change and embeddings are lost. `Audit.retrieved_chunk_ids` has no foreign key and no content snapshot. No commit SHA is stored [SRC].
-- *Fix:* an `ingest_runs` table (`repository_id`, `source_path`, `git_remote`, `commit_sha`, `dirty`, `started_at`, `chunker_version`, `embedding_model`); `chunks.ingest_run_id` and `chunks.content_hash`; upsert by (repository, file, range, content hash) so unchanged chunks keep their ID and embedding; audit rows reference the `ingest_run_id`.
+- *Fix:* an `ingest_runs` table (`repository_id`, `source_path`, `git_remote`, `commit_sha`, `dirty`, `started_at`, `chunker_version`, `embedding_model`); `chunks.ingest_run_id` and `chunks.content_hash`; upsert by (repository, file, range, content hash) so unchanged chunks keep their ID and embedding; audit rows reference the `ingest_run_id`. Make ingest runs immutable; an upsert alone cannot preserve historical evidence.
 - *Done when:* re-ingesting an unchanged repository leaves chunk IDs and embeddings intact, and an audit row shows which commit it described.
 
 ### Phase 3: answer contract
@@ -117,16 +118,17 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 **10. Async, batched provider client.**
 - *Why:* `embed_text` and `generate_investigation` use blocking `urllib` calls on async paths (up to 60 s per attempt plus `time.sleep` backoff). Embedding is one chunk per request with a 1.5 s sleep, about 4.2 hours of sleep for 10,000 chunks [SRC]. A batch embedding endpoint exists [per Google docs].
 - *Fix:* use `httpx.AsyncClient` or the `google-genai` async client; batch embeddings with a bounded-concurrency semaphore; retries with jitter on 429 and 5xx; one end-to-end deadline per request.
-- *Done when:* a test with a slow fake provider shows other requests stay responsive, and 500 chunks embed in minutes.
+- *Done when:* a test with a slow fake provider shows other requests stay responsive, and a measured batch-embedding benchmark is recorded (no throughput promise before measuring).
 
 **11. Structured output and server-side citation validation.**
 - *Why:* citations are string mentions. A response calling `app/config.py` "unrelated" still cites it, and a nonexistent line range still cites every chunk from that file [EXEC]. In the final run only 9 of 22 and 9 of 31 cited chunks matched a labeled-relevant substring [ART].
-- *Fix:* use the provider's JSON-schema output: `{outcome, diagnosis, claims:[{text, evidence:[{chunk_id, quote}]}], uncertainty_note}`. The server checks that every `chunk_id` was retrieved and every `quote` is a substring of that chunk (whitespace-normalized). Invalid claims are dropped or flagged. `cited_chunk_ids` is derived from validated claims. If no claim is valid, refuse. This replaces the regex parser.
+- *Fix:* use the provider's JSON-schema output: `{outcome, diagnosis, claims:[{text, evidence:[{chunk_id, quote}]}], uncertainty_note}`. The server checks that every `chunk_id` was retrieved and every `quote` is a substring of that chunk (whitespace-normalized). Invalid claims are dropped or flagged. `cited_chunk_ids` is derived from validated claims. If no claim is valid, refuse. This replaces the regex parser. A valid quote proves the reference is valid, not that the claim follows from it: report reference-validity separately from faithfulness (item 17). This item also completes the generated-abstention rule from item 4.
 - *Done when:* tests cover a hallucinated chunk ID, a quote not in the chunk, and a valid case; the evaluation reports a citation-validity rate.
 
-**12. Prompt-injection and secret controls.**
+**12a. Injection and secret controls (early). 12b. Wider injection testing (later).**
 - *Why:* repository text is concatenated into the prompt with no trust boundary, and code sent to an external model may contain secrets [SRC; Codex].
 - *Fix:* wrap each chunk in explicit tags (`<evidence id=… path=…>…</evidence>`) and instruct the model that evidence is untrusted data. Scan for secrets at ingestion (regex for keys and tokens) and redact or skip with a warning. Document the data policy.
+- *Scope:* **12a** = evidence tags, secret skip before anything is sent to the provider (tested with a mock provider), and a short threat-model note. **12b** = wider injection testing.
 - *Done when:* a fixture file containing "ignore previous instructions" does not change the diagnosis, and a fixture secret never reaches the prompt.
 
 ### Phase 4: measurement foundation, then retrieval gains
@@ -135,36 +137,37 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - Chunk-agnostic labels: the evidence is a file plus line range, and a retrieved chunk is a hit if it overlaps or contains it.
 - A retrieval-only mode (no LLM call) that uses cached query and chunk embeddings committed as a small fixture, so CI can run it offline.
 - Generation settings recorded and `temperature=0`.
-- Confidence intervals and a paired comparison in every report.
+- Confidence intervals and a paired per-question comparison (exact sign or McNemar test) in every report; overlapping intervals are not a significance test for paired data.
+- Span labels depend on none of items 9, 11 and 12 and may start earlier to measure the guard change (3a).
 - *Done when:* a CI job runs the retrieval evaluation offline and fails if Hit@5 or MRR drops beyond a stored tolerance.
 
 **14. Cheap retrieval ablations (each is one row in an ablation table).**
-- *Why:* full-text returned nothing for 14 of 16 answerable questions [ART] because `websearch_to_tsquery` ANDs all words [PostgreSQL docs]; no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs]; 44% of top-5 results come from `tests/` [EXEC on the committed `baseline.json`].
+- *Why:* full-text returned nothing for 14 of 16 answerable questions [ART], consistent with and likely amplified by `websearch_to_tsquery` ANDing all words [PostgreSQL docs] (the SQL has not been traced to rule out stemming, stop words or query wording; sub-experiment (c) includes a one-query check); no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs]; 44% of top-5 results come from `tests/` [EXEC on the committed `baseline.json`].
 - *Fix, as three separate experiments:*
   - (a) Add `task_type` (documents `RETRIEVAL_DOCUMENT`, queries `CODE_RETRIEVAL_QUERY`) and re-embed.
   - (b) Tag tests `document_type="test"`, then compare keep / downweight / exclude.
   - (c) Build an OR query from extracted identifiers and keywords, split `snake_case` and `camelCase` into extra searchable text, and add a generated `tsvector` column with a GIN index.
-- *Done when:* a committed ablation table with confidence intervals; keep only changes that help without hurting.
+- *Done when:* a committed ablation table with confidence intervals; keep only changes that help without hurting. One change per run, with re-embedding versioned. Report test-file recall and precision, not only aggregate Hit@5. HNSW and GIN indexes are scale work, not a quality ablation at 70 chunks.
 
-**15. Chunking upgrade.** See Part A. *Done when:* the four-way chunker comparison runs on the item 13 metrics and the winner is chosen by a rule fixed in advance.
+**15. Chunking upgrade (staged).** See Part A. First compare 60/10, 100/20, function-aware, and function-aware with parent expansion under one fixed test-file policy; function-aware is a strong candidate, not a proven winner. *Done when:* the comparison runs on the item 13 metrics and the winner is chosen by a rule fixed in advance.
 
 ### Phase 5: scale and breadth
 
 **16. Held-out evaluation set.**
-- *Fix:* add a second repository (a small open-source Python service; your other repository only once non-Python ingestion exists) and at least 60 questions written independently of the system's own retrieval output. Include multi-file, config, error-message and stack-trace style questions. Split into a dev set and a frozen test set. Record a human review before the label status changes from "pending maintainer review".
+- *Fix:* add a second repository (a small open-source Python service; your other repository only once non-Python ingestion exists) and start with 30 questions written independently of the system's own retrieval output and independently reviewed, drawn from two sources. Freeze a smaller test split and grow to 60+ later. Include multi-file questions; add config and error-message questions only after item 20 ingests those artifact types. Split into a dev set and a frozen test set. Record a human review before the label status changes from "pending maintainer review".
 - *Done when:* the frozen test set is used only for final reporting.
 
 **17. LLM judge and a larger abstention set.**
-- *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement. Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).
+- *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement (30 labels is a pilot, not proof of reliability; temperature 0 does not guarantee determinism). Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).
 - *Done when:* the report shows judge agreement with humans.
 
 **18. Tracing, cost, latency.**
-- *Fix:* OpenTelemetry spans per graph node, tokens and estimated cost per request, p50/p95 per stage; self-hosted Langfuse or Grafana.
+- *Fix:* the minimal terminal trace event is built inside items 7 and 8. Then OpenTelemetry spans per graph node, tokens and estimated cost per request, p50/p95 per stage; self-hosted Langfuse or Grafana.
 - *Done when:* one request shows every stage with timings and cost.
 
 **19. "Confidence".**
 - *Why:* in the committed baseline the model said `high` on 15 of 16 answers, and calibration moved 13 to `medium` [EXEC]. It has not been checked against correctness.
-- *Fix:* rename the API field to `evidence_score` and `model_self_rating`, or, with at least 100 labeled answers, publish a reliability table (bucket → accuracy).
+- *Fix:* do the rename early (`model_self_rating` plus an evidence-based note). A real reliability table (bucket → accuracy) needs at least 100 labeled answers and comes later.
 - *Done when:* wording matches the evidence.
 
 **20. Multi-artifact ingestion.**
@@ -179,12 +182,14 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - *Done when:* a report across all incidents exists.
 
 **23. Security and operability.**
-- *Fix:* per-user API keys (hashed) with scopes; distributed rate limiting; a per-request cost budget; structured logs with request IDs; a load test (20 concurrent requests); a threat-model document (prompt injection, data exfiltration, secrets, tenant isolation); CI type checking, `pip-audit` and secret scanning.
+- *Fix:* the threat model and secret scanning are done early in 12a; the rest stays here: per-user API keys (hashed) with scopes; distributed rate limiting; a per-request cost budget; structured logs with request IDs; a load test (20 concurrent requests); a threat-model document (prompt injection, data exfiltration, secrets, tenant isolation); CI type checking, `pip-audit` and secret scanning.
 - *Done when:* the threat model and load-test report are committed.
 
 **24. Provider adapter and model comparison.** Add an `LLMClient` interface, pin model versions in config and audit, and run the harness on `gemini-3.5-flash-lite`, `gemini-3.8-flash` and one other provider.
 
-**25. MCP, LangGraph, deployment.** Either remove the per-call stdio MCP grep (use in-process exact search) or expose IncidentWeave as a read-only MCP server. Keep LangGraph only if the hypothesis loop genuinely needs branching or checkpoints. Deploy a hosted demo.
+**25. MCP, LangGraph, deployment.** Either remove the per-call stdio MCP grep (use in-process exact search) or expose IncidentWeave as a read-only MCP server. Keep LangGraph only if the hypothesis loop genuinely needs branching or checkpoints. Deploy a hosted demo. These are three separate decisions: (1) the grep fallback, settled by items 2 and 3a; (2) the MCP and LangGraph rationale; (3) the hosted deployment.
+
+**26. Layering cleanup.** `app/api.py` imports `scripts/investigate.py`; move the shared logic into `app/` so the API does not depend on a script. *Done when:* no module under `app/` imports from `scripts/`. Low priority.
 
 ---
 
@@ -207,7 +212,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 
 **What this means.**
 - The 100/20 gain (Hit@5 11/16 → 15/16 [ART]) has a concrete explanation: far fewer functions are cut in half. This is stronger evidence than the sample size alone suggests.
-- It also says the real problem is **cutting without regard to structure**, so bigger windows are a blunt fix. A function-aware chunker should help further.
+- It also says the real problem is **cutting without regard to structure**, so bigger windows are a blunt fix. A function-aware chunker is a strong candidate to help further, not a proven winner; item 15 tests it.
 - I have not measured the retrieval effect of function-aware chunking. That needs embeddings and a model, which I could not run [INF].
 - Test files add noise to the top results regardless of chunk size.
 
@@ -228,7 +233,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 2. Embed `File: … / Symbol: … / Docstring: … / <code>` but keep `content` raw for display and citations.
 3. Tag tests with `document_type="test"` and decide the policy (keep, downweight, exclude) by ablation.
 4. Record `chunker_version` in `ingest_runs` (item 9) so audits stay reproducible.
-5. Decide by experiment: four chunkers × the test-file policy, scored with the item 13 metrics, with the decision rule written down before running. A quick throwaway prototype of mine produced 88 chunks with median 27 lines (max 177, a very long function). It is not in the appendix; treat the numbers as indicative.
+5. Decide by experiment: compare 60/10, 100/20, function-aware and function-aware with parent expansion under one fixed test-file policy first, scored with the item 13 metrics, with the decision rule written down before running. A quick throwaway prototype of mine produced 88 chunks with median 27 lines (max 177, a very long function). It is not in the appendix; treat the numbers as indicative.
 
 **Caveats.** The corpus is small (40 files; the top 5 of 70 chunks is 7% of everything), so Hit@5 is easy here and will drop on real repositories. Do not treat conclusions as general.
 
@@ -256,7 +261,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 **What is good already** [ART/SRC]: pinned corpus, run metadata (hashes, dirty flag), a validator that stops paraphrased questions leaking source identifiers, near/far unanswerable categories, and a distance-cutoff sweep.
 
 **Problems, ranked**
-1. **The sample is too small to settle anything.** 16 answerable questions. Wilson 95% intervals [EXEC]: Hit@5 60/10 is 11/16 [44%, 86%]; 100/20 is 15/16 [72%, 99%]. They overlap. Guard false accepts are 4/8 [22%, 78%]. Answer screen correct is 12/16 [51%, 90%]. A paired sign test on the 4-wins-0-losses Hit@5 gain gives p≈0.125.
+1. **The sample is too small to settle anything.** 16 answerable questions. Wilson 95% intervals [EXEC]: Hit@5 60/10 is 11/16 [44%, 86%]; 100/20 is 15/16 [72%, 99%]. They overlap. Guard false accepts are 4/8 [22%, 78%]. Answer screen correct is 12/16 [51%, 90%]. A paired exact sign test on the 4-wins-0-losses Hit@5 gain gives two-sided p = 0.125: suggestive, not decisive. Overlapping intervals are not themselves a significance test for paired data.
 2. **Self-referential, author-drafted, unreviewed.** The system is judged on its own source, the questions were drafted from the indexed content, and the status is "pending maintainer review" [ART].
 3. **Labels depend on chunk text** (file + substring). I checked whether this favors big chunks: each label matches exactly one chunk at every size (two at 60/10 for one question) [EXEC]. So this bias is small here. The real limits are that substring labels cannot say "this answer needs two pieces of evidence" and do not penalize noisy results.
 4. **Answer scoring is keyword groups.** It can accept a wrong answer or reject a correct paraphrase. `direct-05` shows an answer that omitted the required value yet ranked better [ART].
@@ -274,7 +279,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 | 3. Abstention and safety | Nightly or manual | At least 20 unanswerable (far, near-miss, false-premise), injection and secret fixtures; refusal precision/recall | Tokens |
 | 4. Incident replay (later) | Manual | Root-cause accuracy over labeled incidents (item 22) | Tokens |
 
-**Dataset:** 60 or more questions across two or more repositories, split into dev and a frozen test set; types: direct, paraphrased, multi-file, config, error-message/stack-trace, unanswerable; written independently and human-reviewed; version-controlled with a changelog.
+**Dataset:** start with 30, grow to 60 or more, across two or more sources, split into dev and a frozen test set; types: direct, paraphrased, multi-file, config, error-message/stack-trace, unanswerable; written independently and human-reviewed; version-controlled with a changelog.
 
 **Experiment discipline:** write the hypothesis and decision rule first; change one thing at a time; report the effect with an interval and a paired test; never tune thresholds on the frozen test set.
 
@@ -302,44 +307,18 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - I said label matching "favors larger chunks". The label-reachability check shows the count effect is small here (Part B problem 3). The better explanation for 100/20's gain is fewer cut functions (33% → 10%).
 - I said AST-aware chunking was a "later" item. Both audits said later. The function-splitting data justifies moving it earlier (item 15), but only after the evaluation foundation (item 13) so the gain can be measured.
 
+- After the Codex review (commit `59f38fd`): the original header wrongly described `main` @ `e98da82` as the reference with 51 tests. The reviewed commit contains the evaluation harness and has 64 `test_` functions and 70 executed tests.
+- Item 1's Done-when said the *prompt* never exceeds the budget, but the implementation caps the *evidence content* (24,000 characters); the query is capped separately. Reworded.
+- Item 3 is Critical, not High: the product claims grounded, evidence-checked answers and the guard lets 4 of 8 unanswerable questions through.
+- The claim that full-text was empty because `websearch_to_tsquery` ANDs terms is now stated as "consistent with, and likely amplified by"; the query was not traced.
+- Overlapping Wilson intervals are not a significance test for paired data; the paired exact sign test (p = 0.125) is the right comparison.
+- Items 5, 12 and 15 are split or staged because they were too heavy for one developer in one step; item 6 is no longer a standalone phase; item 26 is new.
+
 ---
 
-## 6. Prompt to hand to Codex
+## 6. Review status
 
-Place these three files in the repository first: `docs/audit_report_claude.md` (my audit), `docs/audit_report_codex.md` (your earlier audit), and `docs/fix_checklist.md` (this file). Then give Codex the block below.
-
-````text
-You are the independent reviewer of a prioritized fix checklist for the IncidentWeave repository.
-
-Inputs (read all three fully before answering):
-- docs/audit_report_claude.md  : Claude's engineering + market audit
-- docs/audit_report_codex.md   : your own earlier audit
-- docs/fix_checklist.md        : Claude's merged, ordered checklist (25 items), plus Part A (chunking), Part B (evaluation) and an appendix script
-If a file is not found under docs/, search the repo for the name without the extension; if still missing, stop and tell me.
-
-Ground rules:
-- Treat every claim in the checklist as a hypothesis. Verify it against the code. If Claude misread something, say so plainly.
-- State which branch/commit you inspected (main e98da82 vs experiment/chunking-evaluation-harness 12edf8e) and use the same one throughout. Your report counted 64 test functions; Claude counted 51 on main and 64 on the experiment branch, so confirm which tree you used.
-- Do NOT modify product code. You may run read-only commands, the test suite, and the appendix script.
-- Label evidence: Verified (code/official docs), Executed (you ran it), Artifact-observed, Inferred, Unverified. Cite file and line for code claims. Say what you could not run.
-- Be concrete and concise. No generic advice.
-
-Tasks:
-1. Item-by-item review of checklist items 1-25. For each: verify the premise in code; give AGREE / AGREE-WITH-CHANGES / DISAGREE; correct priority or effort if wrong; flag ordering or dependency problems and regression risks; strengthen weak "Done when" tests.
-2. Missing items: list anything in your own audit that the checklist omits, and anything you now think is wrong or low value in the checklist.
-3. Where your audit's recommendation is better than Claude's, say so and why (for example structured output, threat model, provenance). Where Claude's is better, say that too.
-4. Independently verify Part A and Part B numbers by running the appendix script (functions cut at 60/10 vs 100/20, chunk counts 70/52, label reachability, Wilson intervals). Challenge the interpretation. In particular: (a) is function-aware chunking the right next chunking step, or is a different choice better for this repo? (b) are the three-layer evaluation design and the 60+ question target realistic for one developer? (c) any statistical or methodological errors?
-5. Check the ordering principle: quick safety/honesty -> audit trail -> answer contract -> evaluation foundation -> retrieval/chunking gains -> scale/breadth. Propose a different order if you disagree, with reasons.
-6. Check Claude's claims that you may dispute: guard severity (High vs your Critical), API grep fallback using IncidentWeave's own tree (api.py does not pass repo_path), refusals not persisted, raw response not persisted, no GIN/HNSW index, full-text empty for 14 of 16 questions because websearch_to_tsquery ANDs terms.
-
-Output: write docs/fix_checklist_review_codex.md containing:
-(a) one-paragraph verdict;
-(b) a table: item # | verdict | corrections | extra tests;
-(c) missing or removable items;
-(d) ranked list of disagreements with Claude, each with evidence;
-(e) your final recommended fix order as a list of item numbers;
-(f) what you could not verify.
-````
+The independent Codex review of the original checklist is in `04-fix-checklist-review-codex.md`. Its accepted changes are folded into this file. Still unverified: live Gemini calls (embeddings, generation, batch, cost, retention); the saved 60/10 vs 100/20 experiment was not re-run live; golden labels still say "pending maintainer review"; no query-plan analysis of the empty full-text results; no load, injection or deployed-container test.
 
 ---
 
