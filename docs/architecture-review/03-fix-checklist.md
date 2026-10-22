@@ -1,13 +1,13 @@
 # IncidentWeave: Prioritized Fix Checklist (merged from the Claude and Codex audits)
 
-*Written 2026-10-21 by Claude (Sonnet 5.5). Source reports: `docs/audit_report_claude.md` and `docs/audit_report_codex.md`. Code reference: `main` @ `e98da82`; experiment branch `experiment/chunking-evaluation-harness` @ `12edf8e`.*
+*Written 2026-10-21 by Claude (Sonnet 5.5); revised 2026-10-22 after the independent Codex review in `04-fix-checklist-review-codex.md`. Source reports: `01-audit-claude.md` and `02-audit-codex.md` in this folder. Code reference: the Codex review inspected commit `59f38fd`, which descends from `main` @ `e98da82` and from the evaluation harness @ `12edf8e`; that commit has 64 `test_` functions and 70 executed tests. The figures in Parts A and B come from the pinned evaluation snapshot (`62d0e58`).*
 
 **How to use this file**
-1. Work **top to bottom**. The order is: cheap safety and honesty fixes → audit trail → answer contract → measurement foundation → retrieval/chunking gains → scale and breadth.
+1. Work in the order of the **Recommended order** table in section 1 (it replaces the original top-to-bottom order). Item numbers are stable labels, not a sequence.
 2. One item at a time. Each item has a **Done when** test. Do not start the next until the test passes.
 3. After any change that affects retrieval or the guard, re-run the evaluation and record the result.
 4. Effort: **S** = under half a day, **M** = 1–3 days, **L** = a week or more.
-5. Item 1 is implemented; remaining entries are recommendations to be verified (Codex is asked to do that in section 6).
+5. Item 1 is implemented and merged. The other entries were reviewed by Codex and the accepted changes are folded in below. Test counts and metrics are quoted only from a command that was actually run.
 
 **Evidence tags** (same as in my audit): **[SRC]** read from code, **[EXEC]** I ran it, **[ART]** author-reported in repo docs/artifacts, **[INF]** my inference.
 
@@ -18,31 +18,46 @@
 | # | ✔ | Fix | Priority | Effort | Raised by |
 |---|---|---|---|---|---|
 | 1 | ☑ | Cap `limit`, query length and prompt size | High | S | Both |
-| 2 | ☐ | Stop the API's grep fallback searching the wrong repository | High | S | Claude (Codex partial) |
-| 3 | ☐ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate) | High | S | Both |
-| 4 | ☐ | Make abstention consistent (low confidence, no citations; literal-evidence rule) | High | S | Claude |
-| 5 | ☐ | Hardening bundle: API key in header, grep timeout, Docker non-root and env, healthcheck | Medium | S | Both |
-| 6 | ☐ | Make README/docs claims match the code (RRF, audit, raw response, test counts) | Medium | S | Both |
-| 7 | ☐ | Persist every outcome (answered, refused, abstained, error) | High | S–M | Both |
+| 2 | ☐ | Stop the API's grep fallback searching the wrong repository (the API never runs the literal fallback) | High | S | Claude (Codex partial) |
+| 3a | ☐ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate, literal evidence never sufficient) | **Critical** | S | Both |
+| 3b | ☐ | Re-validate the guard thresholds on the held-out split (after item 16) | High | S | Both |
+| 4 | ☐ | Make abstention consistent (low confidence; keep citations that explain the abstention; literal-evidence rule) | High | S | Claude |
+| 5a | ☐ | Hardening now: API key in header, timeout on the MCP/grep call | Medium | S | Both |
+| 5b | ☐ | Hardening later: Docker non-root and env, healthcheck | Medium | S | Both |
+| 6 | ☐ | Keep README/docs claims matching the code (done inside each item, not a standalone phase) | Medium | S | Both |
+| 7 | ☐ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
 | 8 | ☐ | Store a replayable audit (raw output, raw confidence, prompt, versions, thresholds) | High | M | Both |
 | 9 | ☐ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
 | 10 | ☐ | Async, batched provider client with deadlines and retries | High | M | Both |
 | 11 | ☐ | Structured output and server-side citation validation | High | M | Both (Codex stronger) |
-| 12 | ☐ | Prompt-injection and secret-leak controls | Medium | M | Codex (Claude minor) |
+| 12a | ☐ | Injection and secret controls, early: evidence tags, secret skip, short threat-model note | Medium | S–M | Codex (Claude minor) |
+| 12b | ☐ | Wider prompt-injection testing (later) | Low | M | Codex |
 | 13 | ☐ | **Evaluation foundation** (do before any retrieval tuning) | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
-| 15 | ☐ | Chunking upgrade: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
-| 16 | ☐ | Held-out evaluation set: second repository, 60+ independent questions | High | M–L | Both |
+| 15 | ☐ | Chunking upgrade, staged comparison: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
+| 16 | ☐ | Held-out evaluation set: second repository, 30 independent questions first, 60+ later | High | M–L | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Tracing, cost and latency telemetry | Medium | M | Both |
 | 19 | ☐ | Rename or truly calibrate "confidence" | Medium | S–M | Codex (Claude data) |
 | 20 | ☐ | Multi-artifact ingestion (docs, configs, logs) with metadata | Medium | L | Both |
 | 21 | ☐ | Reranker experiment | Low | M | Both |
 | 22 | ☐ | Incident-replay evaluation and hypothesis loop (flagship feature) | Medium | L | Claude |
-| 23 | ☐ | Security and operability layer (auth scopes, distributed limits, load test, threat model) | Medium | L | Codex |
+| 23 | ☐ | Security and operability layer (auth scopes, distributed limits, load test; threat model and secret scanning moved to 12a) | Medium | L | Codex |
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
-| 25 | ☐ | Decide on MCP and LangGraph; deploy a hosted demo | Low | M | Both |
+| 25 | ☐ | Three separate decisions: grep fallback (settled by 2 and 3a), MCP/LangGraph rationale, hosted demo | Low | M | Both |
+| 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
 
+**Recommended order (after the Codex review)**
+
+| Step | Items | Why now |
+|---|---|---|
+| 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
+| 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
+| 3 | **13**, **16** (30 questions, staged), **17**, **3b** | Measurement you can trust before tuning |
+| 4 | **14**, **15** (staged), **10**, **5b**, **21** | Retrieval, chunking and provider execution, measured against step 3 |
+| 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
+
+Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 ---
 
 ## 2. Item details (Why / Fix / Done when)
@@ -52,27 +67,27 @@
 **1. Cap `limit`, query length and prompt size.**
 - *Why:* `limit: int = Field(default=5, gt=0)` has no maximum, `query` has no max length, and `build_grounded_prompt` inserts every chunk with no ceiling [SRC: `app/api.py`, `app/investigation/prompt.py`]. An authenticated caller can create outsized cost and latency.
 - *Fix:* `limit` `ge=1, le=20`; `query` `max_length=2000`; in the prompt builder enforce a total evidence budget (for example 24,000 characters), drop the lowest-ranked chunks first, and record what was dropped in the audit.
-- *Done when:* `limit=1000` and an oversized query return 422, and a test proves the prompt never exceeds the budget.
-- **Status:** 2026-10-21; branch `fix/01-input-caps`; changed `app/investigation/limits.py`, `app/api.py`, `scripts/investigate.py`, `app/investigation/prompt.py`, `app/investigation/graph.py`, `tests/unit/test_api.py`, `tests/unit/test_prompt.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigate_limits.py`, `docs/fix_checklist.md`; `ruff check .`: All checks passed!; `pytest tests/unit -q`: 84 passed in 45.42s; `pytest -q`: 87 passed in 44.83s.
+- *Done when:* `limit=1000` and an oversized query return 422; evidence content never exceeds the 24,000-character budget; the total prompt is bounded by the evidence budget plus the query cap plus fixed instruction and metadata overhead (a worst-case test is added with item 11, when the prompt is restructured). Dropped chunk IDs appear in the `prompt_budget` trace entry but not yet in the per-chunk audit snapshot; item 8 closes that.
+- **Status:** 2026-10-21; branch `fix/01-input-caps`; changed `app/investigation/limits.py`, `app/api.py`, `scripts/investigate.py`, `app/investigation/prompt.py`, `app/investigation/graph.py`, `tests/unit/test_api.py`, `tests/unit/test_prompt.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigate_limits.py`, `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest tests/unit -q`: 84 passed in 45.42s; `pytest -q`: 87 passed in 44.83s.
 
 **2. Stop the wrong-tree grep fallback.**
 - *Why:* `POST /investigations` calls `investigate_repository(...)` without `repo_path`, so the default is IncidentWeave's own checkout (`REPO_ROOT`). For any other repository the literal fallback can return IncidentWeave source as evidence [SRC]. In the final evaluation run grep recovered 0 of 8 attempts [ART], so removing it loses nothing measured.
-- *Fix:* add a nullable `source_path` to `Repository` (migration), set at ingest. The API passes it. If it is null, skip the grep fallback and refuse. Short-term option: pass `repo_path=None` and have the graph skip grep.
+- *Fix:* short-term only: the API never runs the literal fallback (pass `repo_path=None` and have the graph skip grep). Do not store a mutable `source_path` on `Repository`; durable source binding comes with item 9's immutable ingest runs. Open maintainer decision: remove the literal grep path entirely, or keep it CLI-only as extra context that never counts as sufficient evidence (item 3a).
 - *Done when:* a test with a repository other than IncidentWeave, and a query matching IncidentWeave's source, shows grep is not run or returns nothing.
 
-**3. Fix the evidence guard.**
+**3a. Fix the evidence guard (now). 3b. Re-validate the thresholds (after item 16).**
 - *Why:* (a) `MIN_ACCEPTABLE_RRF_SCORE = 0.016` is below `1/61 = 0.016393`, so any rank-1 vector hit passes; I executed this [EXEC]. (b) The guard takes the best RRF and best vector distance from *different* chunks independently (`max` and `min` over all results), so no single chunk has to satisfy both [SRC; found by Codex]. Result: 4 of 8 unanswerable questions pass the guard [ART].
 - *Fix:* decide sufficiency per chunk. Use RRF for ranking only. Example rule: the top chunk's own vector distance ≤ T, or it has a lexical match and distance ≤ T2. Pick T from the sweep as a provisional value and re-validate on the held-out set (item 16). Update the README sentence about "both an RRF threshold and a vector-distance threshold".
-- *Done when:* unit tests show the guard accepts only if one chunk passes; the evaluation is re-run and false accepts are recorded; the README matches the code.
+- *Done when:* unit tests show the guard accepts only if one chunk passes, including: RRF and vector success on different chunks (refused), a rank-one vector-only hit, an FTS-only hit, and a literal-only result (never sufficient); the evaluation is re-run and false accepts are recorded; the README matches the code.
 
 **4. Make abstention consistent.**
 - *Why:* a response with `Diagnosis: INSUFFICIENT_EVIDENCE` and `Confidence: high` is stored as `high` [EXEC]. For literal-grep evidence, calibration retains `high` with the note "retrieval scores clear both calibration margins", which is false because there are no scores [EXEC].
-- *Fix:* after parsing, if the diagnosis equals `INSUFFICIENT_EVIDENCE` then confidence = `low` and cited chunks = `[]`. For literal-only evidence cap confidence at `medium` with an honest note.
+- *Fix:* after parsing, if the diagnosis equals `INSUFFICIENT_EVIDENCE` then confidence = `low`. Do not erase citations that explain the abstention; distinguish "supporting evidence" from "positive diagnosis evidence". For literal-only evidence cap confidence at `medium` with an honest note (moot if the literal path is removed, item 2). The generated-abstention rule is completed in item 11.
 - *Done when:* parser and calibration tests cover both cases.
 
-**5. Hardening bundle.**
+**5a. Hardening now. 5b. Hardening later.**
 - *Why:* the Gemini key is in the URL query string [SRC] (it can leak into logs); the grep subprocess call has no deadline [SRC; Codex]; the Dockerfile runs as root and Compose passes neither `GEMINI_API_KEY` nor `API_PROTECTION_SECRET`, so the container cannot generate or authenticate [SRC].
-- *Fix:* send the key in the `x-goog-api-key` header (generation and embedding); wrap the MCP call in `asyncio.wait_for(..., 10)`; add `USER` (non-root) to the Dockerfile; pass env via `env_file`; add a healthcheck on `/health`.
+- *Fix:* **5a (now):** send the key in the `x-goog-api-key` header (generation and embedding); wrap the MCP call in `asyncio.wait_for(..., 10)`. **5b (later):** add `USER` (non-root) to the Dockerfile; pass env via `env_file`; add a healthcheck on `/health`.
 - *Done when:* each is covered by a test or a `docker compose up` smoke check.
 
 **6. Make docs match code.**
