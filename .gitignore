@@ -38,3 +38,8 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local assistant configuration (personal tooling, not part of the project)
+AGENTS.md
+CLAUDE.md
+.github/copilot-instructions.md
