@@ -2,9 +2,9 @@
 
 **Canonical repository:** [github.com/iamswayam/incidentweave](https://github.com/iamswayam/incidentweave)
 
-IncidentWeave is a repository-aware AI incident investigation platform. Its purpose is to help an engineer investigate questions about a software repository by retrieving source evidence, presenting that evidence to a language model, and returning a diagnosis with references to retrieved chunks. The implemented workflow starts by ingesting Python source into PostgreSQL/pgvector, then accepts a query, searches the selected repository, applies a numeric evidence gate, and either abstains, tries retrieval fallbacks, or generates and optionally persists a response.
+IncidentWeave is a repository-aware AI incident investigation platform. Its purpose is to help an engineer investigate questions about a software repository by retrieving source evidence, presenting that evidence to a language model, and returning a diagnosis with references to retrieved chunks. The implemented workflow starts by ingesting Python source into PostgreSQL/pgvector, then accepts a query, searches the selected repository, applies a numeric evidence gate, widens retrieval once if needed, and either abstains or generates and optionally persists a response.
 
-**Implemented capability:** local Python repository ingestion, fixed-window chunking, Gemini embeddings, PostgreSQL vector and full-text retrieval, RRF fusion, a score-based evidence guard, one widened retrieval retry, literal grep fallback through MCP, Gemini response parsing, categorical confidence downgrading, and Investigation/Audit persistence. The HTTP API exposes synchronous investigation and repository-read endpoints; ingestion and embedding remain CLI operations.
+**Implemented capability:** local Python repository ingestion, fixed-window chunking, Gemini embeddings, PostgreSQL vector and full-text retrieval, RRF fusion, a score-based evidence guard, one widened retrieval retry, Gemini response parsing, categorical confidence downgrading, and Investigation/Audit persistence. The HTTP API exposes synchronous investigation and repository-read endpoints; ingestion and embedding remain CLI operations.
 
 **Intended goal versus guarantee:** the prompt and citations are intended to keep investigations evidence-oriented. The implementation does not verify that every answer claim is entailed by cited content, and the evidence guard does not check semantic relevance. Evaluation results are small-sample diagnostics, not evidence of general accuracy or reliability. This document makes no claim that the system is production-ready or eliminates unsupported model output.
 
@@ -24,7 +24,7 @@ This is a source-grounded reference, not authorization to change the architectur
 
 ## 1. System Overview
 
-The two principal paths connect indexed repository content to a user investigation. Ingestion stores Python source chunks and their embeddings in PostgreSQL/pgvector. A query is embedded and searched against one named repository using vector and PostgreSQL full-text retrieval; RRF combines their rankings before the evidence guard decides whether to proceed, retry, fall back, or abstain. Guard-accepted content is placed in a prompt for Gemini. A generated result can be persisted with an audit record; an insufficient-evidence result is returned without persistence.
+The two principal paths connect indexed repository content to a user investigation. Ingestion stores Python source chunks and their embeddings in PostgreSQL/pgvector. A query is embedded and searched against one named repository using vector and PostgreSQL full-text retrieval; RRF combines their rankings before the evidence guard decides whether to proceed, retry once, or abstain. Guard-accepted content is placed in a prompt for Gemini. A generated result can be persisted with an audit record; an insufficient-evidence result is returned without persistence.
 
 **Source-verified:** The application uses Python 3.12+, FastAPI, SQLAlchemy async sessions, PostgreSQL, pgvector, LangGraph, and MCP. Gemini is called using synchronous `urllib` requests. Evaluation code is outside `app/` and calls the investigation pipeline with persistence disabled.
 
@@ -42,15 +42,15 @@ The two principal paths connect indexed repository content to a user investigati
 | `app/retrieval/vector_search.py` | Top-K pgvector cosine-distance query scoped by repository ID. [`search_vector`](../../app/retrieval/vector_search.py#L11). |
 | `app/retrieval/fulltext_search.py` | Query-time PostgreSQL full-text filtering and ranking. [`search_fulltext`](../../app/retrieval/fulltext_search.py#L9). |
 | `app/retrieval/hybrid_search.py` | Runs both retrievers, combines rankings with reciprocal-rank fusion (RRF), and returns fused top-K. [`hybrid_search`](../../app/retrieval/hybrid_search.py#L9). |
-| `app/investigation/graph.py` | LangGraph orchestration: retrieval, guard, one widening retry, literal grep fallback, prompt, generation, parse, and calibration. [`create_investigation_graph`](../../app/investigation/graph.py#L94). |
+| `app/investigation/graph.py` | LangGraph orchestration: retrieval, guard, one widening retry, insufficient-evidence return, prompt, generation, parse, and calibration. [`create_investigation_graph`](../../app/investigation/graph.py#L94). |
 | `app/investigation/guard.py` | Score-based evidence gate; it does not inspect golden labels or prove semantic relevance. [`evaluate_evidence_sufficiency`](../../app/investigation/guard.py#L11). |
-| `app/investigation/mcp_server.py` | Exposes `hybrid_search` and `grep_search` MCP tools. The graph calls hybrid directly and invokes grep through MCP. [`grep_search_tool`](../../app/investigation/mcp_server.py#L99). |
+| `app/investigation/mcp_server.py` | Exposes `hybrid_search` and `grep_search` MCP tools; the investigation graph does not invoke this server. [`grep_search_tool`](../../app/investigation/mcp_server.py#L99). |
 | `app/investigation/prompt.py`, `generation.py`, `parsing.py`, `confidence.py` | Build evidence prompt, call Gemini, parse response/citations, and downgrade confidence where score margins are weak. [`build_grounded_prompt`](../../app/investigation/prompt.py#L20), [`generate_investigation`](../../app/investigation/generation.py#L30), [`parse_investigation_response`](../../app/investigation/parsing.py#L118), [`calibrate_confidence`](../../app/investigation/confidence.py#L9). |
 | `app/investigation/persistence.py` | Stores parsed diagnosis and audit metadata when the pipeline's `persist` flag permits it. [`persist_investigation`](../../app/investigation/persistence.py#L11). |
 | `scripts/investigate.py`, `app/api.py`, `app/main.py` | CLI/pipeline entry and synchronous HTTP API. [`investigate_repository`](../../scripts/investigate.py#L42), [API routes](../../app/api.py#L68), [FastAPI app and error handlers](../../app/main.py#L1). |
 | `evaluation/`, `scripts/run_eval.py` | Pinned-corpus validation, retrieval and end-to-end measurement, per-question traces, reports, and run comparison. [`run_evaluation`](../../evaluation/runner.py#L715), [`compare_reports`](../../evaluation/compare.py#L77). |
 
-**MCP distinction:** The server exposes a hybrid-search tool, but no caller was found in the investigation graph for that MCP tool. Hybrid search is imported and called directly; only grep runs through the MCP stdio client ([graph retrieval](../../app/investigation/graph.py#L100), [MCP caller](../../app/investigation/graph.py#L54)).
+**MCP distinction:** The server exposes both `hybrid_search` and `grep_search`, but the investigation graph does not call either MCP tool. Hybrid search is imported and called directly ([graph retrieval](../../app/investigation/graph.py#L100)); the future of the MCP module is deferred to checklist item 25.
 
 ## 3. Ingestion and Indexing Flow
 
@@ -68,10 +68,10 @@ The two principal paths connect indexed repository content to a user investigati
 
 ## 4. User-Query Investigation Flow
 
-1. **Entry points — Source-verified.** The investigation CLI is `python -m scripts.investigate <repo_name> <query> [--limit N] [--repo-path PATH]`; `scripts/search_repo.py` is a separate hybrid-search-only CLI. HTTP routes are `POST /investigations`, `GET /investigations/{id}`, `GET /repositories`; `/health` is open ([routes](../../app/api.py#L26), [health and error handlers](../../app/main.py#L1)).
+1. **Entry points — Source-verified.** The investigation CLI is `python -m scripts.investigate <repo_name> <query> [--limit N]`; `scripts/search_repo.py` is a separate hybrid-search-only CLI. HTTP routes are `POST /investigations`, `GET /investigations/{id}`, `GET /repositories`; `/health` is open ([routes](../../app/api.py#L26), [health and error handlers](../../app/main.py#L1)).
 2. **Validation and authentication — Source-verified.** The Pydantic request requires repository name length 1-255, query length at least one character, and positive limit default 5, with no maximum limit. Protected routes require `X-API-Secret`, compare against configured secret with `secrets.compare_digest`, then apply a 10-request/60-second per-client-IP in-memory sliding window ([request model](../../app/api.py#L26), [`require_api_access`](../../app/api_security.py#L57)).
-3. **Repository and query embedding — Source-verified.** `investigate_repository` finds the exact repository row, obtains its ID, synchronously embeds the query using the embedding script, and starts the graph with initial limit `limit`, retry limit `2 * limit`, and an absolute filesystem path for grep ([`investigate_repository`](../../scripts/investigate.py#L42)).
-4. **Retrieval and guard — Source-verified.** Graph retrieval calls `hybrid_search` for the selected database repository. Guard checks scores and appends an attempt record. If sufficient, the graph builds a prompt; if insufficient on first search it widens; if insufficient after widening it runs literal grep; if grep still fails it returns `INSUFFICIENT_EVIDENCE` without generation ([graph routing](../../app/investigation/graph.py#L164)).
+3. **Repository and query embedding — Source-verified.** `investigate_repository` finds the exact repository row, obtains its ID, synchronously embeds the query using the embedding script, and starts the graph with initial limit `limit` and retry limit `2 * limit` ([`investigate_repository`](../../scripts/investigate.py#L42)).
+4. **Retrieval and guard — Source-verified.** Graph retrieval calls `hybrid_search` for the selected database repository. Guard checks scores and appends an attempt record. If sufficient, the graph builds a prompt; if insufficient on first search it widens; if insufficient after widening it returns `INSUFFICIENT_EVIDENCE` without generation ([graph routing](../../app/investigation/graph.py#L164)).
 5. **Prompt and generation — Source-verified.** The prompt includes the query plus each hybrid result's ID, path, line range, scores, and content. It tells Gemini to use only supplied repository evidence and to return `INSUFFICIENT_EVIDENCE` if unsupported ([`SYSTEM_INSTRUCTION`](../../app/investigation/prompt.py#L7), [`build_grounded_prompt`](../../app/investigation/prompt.py#L20)). The graph calls Gemini synchronously after guard acceptance.
 6. **Parsing, calibration, response — Source-verified.** The parser extracts diagnosis/confidence/cited IDs; confidence calibration may downgrade high to medium. The pipeline returns result fields to the CLI or API. The API POST then maps them into its explicit `InvestigationResponse` schema ([response model](../../app/api.py#L34)).
 7. **Persistence — Source-verified.** API POST passes `persist=True`; the investigation CLI defaults to `True`. Evaluation passes `False`. Guard-level insufficient evidence returns before persistence. A generated path that reaches persistence stores an Investigation and an Audit row ([pipeline persistence branch](../../scripts/investigate.py#L90), [`persist_investigation`](../../app/investigation/persistence.py#L11)).
@@ -108,10 +108,7 @@ flowchart TD
     G -->|Yes| J[Build prompt from fused chunks]
     G -->|No, first pass| H[Widen limit once to 2K]
     H --> E
-    G -->|No, after retry| I[Literal grep over local Python files via MCP stdio]
-    I --> I2{Any grep match?}
-    I2 -->|Yes| J
-    I2 -->|No| Z[Return INSUFFICIENT_EVIDENCE; do not persist]
+    G -->|No, after retry| Z[Return INSUFFICIENT_EVIDENCE; do not persist]
     J --> K[Gemini generateContent; up to 3 attempts]
     K --> L[Parse diagnosis, confidence, citation IDs]
     L --> M[Downgrade high confidence if score margins fail]
@@ -133,15 +130,15 @@ flowchart TD
 
 The only migration found is `20260819_0001_initial_schema`, which creates the vector extension and these tables/indexes. Migration execution was not performed. SQLAlchemy sessions are configured through `AsyncSessionLocal` in [app/db/session.py](../../app/db/session.py#L1). PostgreSQL full-text indexes are not declared in this migration.
 
-## 8. Retrieval, RRF, Evidence Guard, Retry and Fallback
+## 8. Retrieval, RRF, Evidence Guard, Retry and Abstention
 
 - **Vector — Source-verified:** pgvector cosine distance, ascending, repository-scoped, excludes null embeddings; top K from `search_vector` ([implementation](../../app/retrieval/vector_search.py#L11)).
 - **Full text — Source-verified:** `websearch_to_tsquery` filters English `to_tsvector` content and ranks by `ts_rank_cd`; top K ([implementation](../../app/retrieval/fulltext_search.py#L9)). Query lexemes are not guaranteed to match code tokens; the Phase 8 log observed many empty results.
 - **RRF — Source-verified:** for each chunk, sum `1 / (60 + rank)` over the vector and FTS lists where the chunk appears. Shared chunks get both contributions. Sort descending and return K ([fusion](../../app/retrieval/hybrid_search.py#L21)). Numeric source scores are not averaged.
 - **Guard — Source-verified:** hybrid path passes when max `rrf_score >= 0.016` and min available vector distance `<= 0.5`; those extrema need not belong to the same chunk ([constants and decision](../../app/investigation/guard.py#L7)). A single rank-1 vector contribution is `1/61 ~= 0.01639`, above the RRF threshold. The threshold therefore cannot reject a nonempty vector result on RRF alone; distance can reject it.
 - **Widening — Source-verified:** if the initial result is insufficient, one retry doubles requested K. A vector-only closest distance will not improve merely because K grows; RRF membership can change. This is an implication of the ranking query, not a separate live measurement.
-- **Grep fallback — Source-verified:** after an insufficient widened result, graph calls MCP `grep_search` with the full query, path, repository name, and limit 20 ([caller](../../app/investigation/graph.py#L54)). The tool scans line-by-line and checks case-folded substring containment in ingester-visible Python files ([implementation](../../app/investigation/mcp_server.py#L21)). Any match is sufficient; zero matches lead to guard abstention. The path is not checked against the source corresponding to the repository name.
-- **MCP — Source-verified:** graph starts `python -m app.investigation.mcp_server` over stdio for grep. Hybrid MCP is exposed but graph uses in-process `hybrid_search`; no explicit subprocess timeout is configured in the inspected caller.
+- **Retry and abstention — Source-verified:** after an insufficient widened result, the graph returns `INSUFFICIENT_EVIDENCE` without generation. The MCP server separately exposes literal `grep_search`; the investigation graph does not call it.
+- **MCP — Source-verified:** `app.investigation.mcp_server` exposes `hybrid_search` and `grep_search` tools over stdio, but neither is invoked by the investigation graph. The graph calls `hybrid_search` in-process.
 
 ## 9. LLM Integration, Prompting, Parsing and Confidence
 
@@ -155,7 +152,7 @@ The only migration found is `20260819_0001_initial_schema`, which creates the ve
 ## 10. Audit, Citations, Abstention and Persistence
 
 - **Generated success:** `persist_investigation` reparses the provider response and stores the parsed diagnosis, model, latency, token count, and final confidence in Investigation and Audit rows. Audit JSON stores tool attempts, cited IDs, and retrieval metadata; it does not store full retrieved chunk text or the original Gemini response payload ([persistence](../../app/investigation/persistence.py#L11)).
-- **Guard abstention:** if the graph remains insufficient after retry/grep, it returns `INSUFFICIENT_EVIDENCE` with no generation latency and no persistence. A generated model abstention occurs only after the guard passed and generation ran; evaluation distinguishes these states ([graph return](../../app/investigation/graph.py#L193), [outcome taxonomy](../../evaluation/metrics.py#L193)).
+- **Guard abstention:** if the graph remains insufficient after the widened retry, it returns `INSUFFICIENT_EVIDENCE` with no generation latency and no persistence. A generated model abstention occurs only after the guard passed and generation ran; evaluation distinguishes these states ([graph return](../../app/investigation/graph.py#L193), [outcome taxonomy](../../evaluation/metrics.py#L193)).
 - **Evaluation persistence:** `run_pipeline_once` calls the same investigation function with `persist=False` and captures compact generation metadata for measurement; it does not request Investigation/Audit writes ([runner](../../evaluation/runner.py#L320)).
 - **API response:** POST returns investigation ID if persisted, diagnosis, confidence, reconstructed raw confidence, citations, evidence check, retry flag, tool calls, model, latency, and a static note summarizing Phase 8 ([response model](../../app/api.py#L34)). GET reconstructs fields from Investigation and its single Audit row; raw confidence is `null` on GET. `/repositories` returns total and embedded chunk counts.
 - **Documentation mismatch:** README says raw model response is persisted; current persistence code stores parsed diagnosis, not the raw provider response ([README](../../README.md#L170), [implementation](../../app/investigation/persistence.py#L25)).
@@ -201,7 +198,7 @@ All six timestamped runs report corpus SHA `62d0e58593bb22d187ec7930274b0457afd3
 - Embedding is synchronous and per-chunk, has a fixed delay but no internal retry, and can leave null vectors after failures.
 - FTS query-time parsing may return no rows for natural-language questions; there is no FTS index in the declared migration.
 - Hybrid RRF treats list ranks equally and has no explicit deterministic tie-break. The evidence guard does not require relevant source content and its RRF threshold is below a rank-1 single-source contribution.
-- Grep fallback searches the entire query as a literal substring in Python source lines, not indexed chunks. A match alone is sufficient. The filesystem path may not correspond to the named database repository.
+- The MCP server still exposes a local literal grep tool, but the investigation graph does not invoke it. Checklist item 25 addresses whether the MCP module should remain.
 - Gemini calls are synchronous in async flow. Provider-default generation settings are not pinned in the report; retry latency is not the same as total request duration.
 - Citation matching is a reference detector, not claim verification. Confidence is a categorical model label subject only to a one-way threshold downgrade.
 - API limiter is in-memory and per worker; no user accounts, key rotation, or per-user quota. API has no ingestion/embedding endpoint or background queue.

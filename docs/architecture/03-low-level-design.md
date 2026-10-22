@@ -50,7 +50,7 @@ flowchart TB
 | `scripts/search_repo.py` | repository name, query, optional limit | Embed query, run hybrid search and print ranked evidence. |
 | `scripts/investigate.py` | repository name, query, optional limit/path | Run full investigation graph; persist generated sufficient-evidence results by default. |
 | `scripts/run_eval.py` | evaluation CLI options | Validate/evaluate pinned corpus and write run artifacts. |
-| `app.investigation.mcp_server` | stdio MCP transport | Exposes local `hybrid_search` and `grep_search` tools. |
+| `app.investigation.mcp_server` | stdio MCP transport | Exposes local `hybrid_search` and `grep_search` tools; the investigation graph does not invoke them. |
 
 ## 3. Runtime configuration and database session
 
@@ -176,18 +176,16 @@ RRF preserves raw vector distance and FTS score beside a rank-only fused score. 
 
 ### 7.1 State and routing
 
-`InvestigationState` holds repository identity/path, query/query embedding, initial and retry limits, retry flags, retrieved evidence, sufficiency result, parsed response, confidence/calibration fields, evidence source, tool trace, and optional prompt/provider payload. The graph is compiled by `create_investigation_graph()`.
+`InvestigationState` holds repository identity, query/query embedding, initial and retry limits, retry flags, retrieved evidence, sufficiency result, parsed response, confidence/calibration fields, evidence source, tool trace, and optional prompt/provider payload. The graph is compiled by `create_investigation_graph()`.
 
 ```mermaid
 stateDiagram-v2
     [*] --> retrieve
     retrieve --> guard
-    guard --> build_prompt: sufficient hybrid or literal evidence
+    guard --> build_prompt: sufficient hybrid evidence
     guard --> widen_search: insufficient first hybrid attempt
     widen_search --> retrieve
-    guard --> grep_search: insufficient widened hybrid attempt
-    grep_search --> guard
-    guard --> insufficient: insufficient literal result
+    guard --> insufficient: insufficient widened attempt
     insufficient --> [*]
     build_prompt --> generate
     generate --> parse
@@ -204,11 +202,10 @@ sequenceDiagram
     participant Emb as embed_text
     participant Graph as LangGraph
     participant Ret as hybrid_search
-    participant MCP as local MCP server
     participant Gen as Gemini generateContent
     participant DB as PostgreSQL
 
-    Caller->>Entry: repository name, query, limit, repo path
+    Caller->>Entry: repository name, query, limit
     Entry->>DB: Resolve repository ID
     Entry->>Emb: Embed query
     Emb-->>Entry: 768-dimension query vector
@@ -223,13 +220,7 @@ sequenceDiagram
         alt retry accepted
             Graph->>Gen: grounded prompt
         else retry insufficient
-            Graph->>MCP: grep_search full query literal
-            MCP-->>Graph: matching source lines or error
-            alt literal match
-                Graph->>Gen: grounded prompt
-            else no literal match
-                Graph-->>Entry: INSUFFICIENT_EVIDENCE
-            end
+            Graph-->>Entry: INSUFFICIENT_EVIDENCE
         end
     end
     Gen-->>Graph: provider payload and latency
@@ -242,7 +233,7 @@ sequenceDiagram
 
 ### 7.3 Guard, prompt, parsing and calibration
 
-- **Guard:** for hybrid results, `evaluate_evidence_sufficiency()` requires a maximum RRF score of at least `0.016` and a minimum available vector distance of at most `0.5`. For literal evidence, any non-empty match set is sufficient ([`guard.py`](../../app/investigation/guard.py)).
+- **Guard:** `evaluate_evidence_sufficiency()` evaluates hybrid retrieval scores and requires a maximum RRF score of at least `0.016` and a minimum available vector distance of at most `0.5` ([`guard.py`](../../app/investigation/guard.py)).
 - **Prompt:** `build_grounded_prompt()` emits the system instruction, user query, and every retrieved result’s chunk ID, path, line range, scores and content. It asks the model to use only supplied evidence and to return `INSUFFICIENT_EVIDENCE` if unsupported ([`prompt.py`](../../app/investigation/prompt.py)).
 - **Generation:** `generate_investigation()` calls Gemini with a 60-second request timeout and at most three attempts. HTTP 429/5xx and connection/timeout errors retry with 1- then 2-second backoff ([`generation.py`](../../app/investigation/generation.py)).
 - **Parsing:** only the first Gemini candidate is parsed. Regexes extract a diagnosis, `high|medium|low` confidence, and cited retrieved chunks. A matching chunk ID, exact file path, or path/range pattern marks a citation ([`parsing.py`](../../app/investigation/parsing.py)).
@@ -284,9 +275,9 @@ flowchart LR
 | Ingest | Source write boundary: mutates chunks for the supplied repository name. |
 | Embed | External provider plus database write boundary: mutates only null embeddings. |
 | Search | External embedding call plus database read boundary; no persistence. |
-| Investigate | External embedding/generation, database read, optional Investigation/Audit write, local filesystem grep fallback. |
+| Investigate | External embedding/generation, database read, optional Investigation/Audit write. |
 | Evaluation | Exports the pinned source snapshot, validates golden labels and index reachability, sets up an allowlisted evaluation repository, runs retrieval/guard/pipeline metrics, and writes JSON reports. It invokes investigations with `persist=False`. |
-| MCP | Local subprocess protocol boundary. `hybrid_search_tool` resolves a database repository and delegates to existing hybrid search; `grep_search_tool` resolves a repository then scans eligible Python files at the given path. |
+| MCP | Local subprocess protocol boundary. The server exposes `hybrid_search_tool` and `grep_search_tool`, but the investigation graph does not invoke either tool. |
 
 ## 10. Implemented limits and deferred behavior
 

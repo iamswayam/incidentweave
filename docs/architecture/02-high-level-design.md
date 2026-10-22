@@ -10,7 +10,7 @@ This document describes the implementation on the `main` branch, not an aspirati
 
 - Keep repository evidence ahead of generation: retrieval and an evidence-sufficiency check occur before Gemini generation.
 - Keep the service small: one FastAPI process, one PostgreSQL + pgvector database, and direct Gemini REST calls.
-- Keep workflow behavior bounded: one expanded-retrieval retry and then one deterministic literal-grep fallback; the model does not choose tools.
+- Keep workflow behavior bounded: one expanded-retrieval retry, then return `INSUFFICIENT_EVIDENCE` if evidence is still insufficient; the model does not choose tools.
 - Record successful generated investigations with their retrieved evidence scores and tool trace.
 - Provide local developer workflows and a CI pipeline that exercises PostgreSQL + pgvector, migrations, tests, linting, and Docker build.
 
@@ -19,11 +19,11 @@ This document describes the implementation on the `main` branch, not an aspirati
 | Layer | Implemented technology | Responsibility |
 |---|---|---|
 | API | Python 3.12, FastAPI, Uvicorn, Pydantic | HTTP validation, error shaping, health check, protected investigation/read APIs |
-| Workflow | LangGraph | Bounded retrieval, guard, retry, local grep fallback, generation, parsing, calibration |
+| Workflow | LangGraph | Bounded retrieval, guard, one retry, insufficient-evidence return, generation, parsing, calibration |
 | AI | Gemini REST APIs | `gemini-embedding-001` embeddings (768 dimensions) and `gemini-3.5-flash-lite` generation |
 | Retrieval | pgvector cosine distance, PostgreSQL FTS, RRF | Vector and lexical candidate retrieval, rank fusion |
 | Persistence | PostgreSQL 17 + pgvector, SQLAlchemy async, Psycopg 3, Alembic | Source chunks, investigation records, audit data and schema migration |
-| Local tools | Model Context Protocol (MCP), stdio | Local `grep_search` fallback; server also exposes `hybrid_search` |
+| Local tools | Model Context Protocol (MCP), stdio | MCP server exposes `grep_search` and `hybrid_search`; the investigation graph invokes neither |
 | Quality/runtime | pytest, Ruff, GitHub Actions, Docker Compose | Test, lint, database-backed CI, and local container runtime |
 
 Dependency ranges and Python version are defined in [`pyproject.toml`](../../pyproject.toml). The local Compose environment and Docker image are defined in [`docker-compose.yml`](../../docker-compose.yml) and [`docker/Dockerfile`](../../docker/Dockerfile).
@@ -41,7 +41,7 @@ flowchart LR
         CLI[CLI scripts]
         API[FastAPI application]
         Flow[Investigation workflow]
-        MCP[MCP stdio server]
+        MCP[MCP stdio server; not called by investigation graph]
     end
 
     subgraph DB[PostgreSQL plus pgvector]
@@ -62,8 +62,6 @@ flowchart LR
     API --> Flow
     Flow --> Chunks
     Flow --> Gemini
-    Flow --> MCP
-    MCP --> Repo
     Flow --> Inv
     Flow --> Audit
     Eval --> Chunks
@@ -105,10 +103,7 @@ flowchart TD
     F -->|yes| G[Build grounded prompt]
     F -->|no, first pass| H[Increase result limit once]
     H --> E
-    F -->|no, second pass| I[Local MCP literal grep]
-    I --> J{Any literal match?}
-    J -->|yes| G
-    J -->|no| K[Return INSUFFICIENT_EVIDENCE]
+    F -->|no, second pass| K[Return INSUFFICIENT_EVIDENCE]
     G --> L[Gemini generation]
     L --> M[Parse diagnosis, confidence and cited IDs]
     M --> N[Calibrate high confidence]
@@ -117,7 +112,7 @@ flowchart TD
     K --> P
 ```
 
-The API handler delegates to [`scripts/investigate.py`](../../scripts/investigate.py). The graph executes hybrid search in-process. It starts a local MCP subprocess only for the literal fallback, even though the MCP server also exposes a hybrid-search tool ([`app/investigation/graph.py`](../../app/investigation/graph.py), [`app/investigation/mcp_server.py`](../../app/investigation/mcp_server.py)).
+The API handler delegates to [`scripts/investigate.py`](../../scripts/investigate.py). The graph executes hybrid search in-process and does not invoke the MCP server. The server module still exposes `grep_search` and `hybrid_search`; its future is deferred to checklist item 25 ([`app/investigation/graph.py`](../../app/investigation/graph.py), [`app/investigation/mcp_server.py`](../../app/investigation/mcp_server.py)).
 
 ### 5.3 Retrieval composition
 
@@ -137,7 +132,7 @@ Vector retrieval scopes by repository ID and orders by cosine distance. Full-tex
 
 | Boundary | Implemented behavior |
 |---|---|
-| Local filesystem | Ingestion and grep fallback read a supplied local directory. The database stores a repository name but not the source root or Git revision. |
+| Local filesystem | Ingestion reads a supplied local directory. The database stores a repository name but not the source root or Git revision. |
 | Gemini | API key is read from `GEMINI_API_KEY`; embedding and generation use REST over HTTPS. |
 | PostgreSQL | The application converts a `postgresql://` URL to Psycopg’s async SQLAlchemy dialect, registers pgvector per connection, and uses async sessions. |
 | HTTP | `/health` is open. `/investigations`, `/investigations/{id}`, and `/repositories` require `X-API-Secret`. |
@@ -151,7 +146,7 @@ The items below are current implementation facts, not planned components:
 - **Python source only:** ingestion does not currently index non-Python code, Markdown/runbooks, configuration, logs, traces, or external operational systems.
 - **Fixed line chunks:** the 60/10 line-window strategy does not use AST/symbol-aware chunking; structural metadata columns exist but ingestion sets `function_name`, `class_name`, and `symbol` to `None`.
 - **Small-corpus retrieval posture:** the schema has B-tree repository/path indexes but no pgvector ANN index and no persisted/generated FTS vector with a GIN index. FTS computes `to_tsvector` at query time.
-- **Bounded local workflow only:** the grep fallback treats the whole user query as a case-insensitive literal. It is a deterministic recovery path, not an agent that decomposes a question.
+- **Bounded local workflow only:** after one widened retrieval retry, insufficient evidence returns `INSUFFICIENT_EVIDENCE`. The MCP server still exposes a grep tool, but the investigation graph does not invoke it.
 - **Local-grade access control:** protected API routes use one shared secret and a process-local, per-IP limiter. There are no user accounts, key rotation, per-user quotas, or distributed rate-limit storage.
 - **Selective audit persistence:** generated, sufficient-evidence paths persist `Investigation` and `Audit`; the guard’s `INSUFFICIENT_EVIDENCE` return is not persisted by the current orchestration path.
 - **No future component is assumed:** the approved README roadmap ends at Phase 9. Deferred options in existing documentation should not be read as implemented architecture.

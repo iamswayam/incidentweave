@@ -18,7 +18,7 @@
 | # | ✔ | Fix | Priority | Effort | Raised by |
 |---|---|---|---|---|---|
 | 1 | ☑ | Cap `limit`, query length and prompt size | High | S | Both |
-| 2 | ☐ | Remove the literal grep fallback (as wired, the API could search the wrong repository) | High | S | Claude (Codex partial) |
+| 2 | ☑ | Remove the literal grep fallback (as wired, the API could search the wrong repository) | High | S | Claude (Codex partial) |
 | 3a | ☐ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate, literal evidence never sufficient) | **Critical** | S | Both |
 | 3b | ☐ | Re-validate the guard thresholds on the held-out split (after item 16) | High | S | Both |
 | 4 | ☐ | Make abstention consistent (low confidence; keep citations that explain the abstention; literal-evidence rule) | High | S | Claude |
@@ -75,6 +75,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - *Why:* `POST /investigations` calls `investigate_repository(...)` without `repo_path`, so the default is IncidentWeave's own checkout (`REPO_ROOT`). For any other repository the literal fallback can return IncidentWeave source as evidence [SRC]. In the final evaluation run grep recovered 0 of 8 attempts [ART], so removing it loses nothing measured.
 - *Fix:* remove the literal grep fallback from the investigation graph entirely (maintainer decision, 2026-10-22; it recovered 0 of 8 attempts in the final evaluation run [ART] and, as wired, can search IncidentWeave's own tree). The MCP tool code stays until the item 25 decision. Do not store a mutable `source_path` on `Repository`; durable source binding comes with item 9's immutable ingest runs.
 - *Done when:* a test with a repository other than IncidentWeave, and a query matching IncidentWeave's source, shows no literal search runs and no IncidentWeave source appears as evidence.
+- **Status:** 2026-10-22; branch `fix/02-remove-literal-grep`; changed `app/investigation/graph.py`, `app/investigation/guard.py`, `scripts/investigate.py`, `evaluation/runner.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigation_mcp_tools.py`, `tests/unit/test_investigation_parsing.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 88 passed in 37.69s.
 
 **3a. Fix the evidence guard (now). 3b. Re-validate the thresholds (after item 16).**
 - *Why:* (a) `MIN_ACCEPTABLE_RRF_SCORE = 0.016` is below `1/61 = 0.016393`, so any rank-1 vector hit passes; I executed this [EXEC]. (b) The guard takes the best RRF and best vector distance from *different* chunks independently (`max` and `min` over all results), so no single chunk has to satisfy both [SRC; found by Codex]. Result: 4 of 8 unanswerable questions pass the guard [ART].

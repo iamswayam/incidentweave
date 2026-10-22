@@ -27,7 +27,7 @@ An investigation answer is only useful when its evidence can be inspected. Incid
 It is deliberately a bounded system rather than an open-ended agent loop:
 
 - Retrieval is repository-scoped and carries file paths, line ranges, scores, and chunk IDs through the workflow.
-- The workflow retries retrieval once with a wider limit, then uses a deterministic local literal-grep fallback.
+- The workflow retries retrieval once with a wider limit, then returns `INSUFFICIENT_EVIDENCE` if evidence is still insufficient.
 - Generated, sufficient-evidence investigations persist an `Investigation` plus an `Audit` record with retrieved evidence metadata and tool attempts.
 - The project includes a pinned-corpus evaluation harness, PostgreSQL-backed integration tests, Ruff, Docker, and GitHub Actions CI.
 
@@ -50,13 +50,11 @@ flowchart LR
     Gemini --> Parse[Parse citations and confidence]
     Parse --> Persist[Investigation and audit persistence]
     Guard -->|retry once| Retrieve
-    Guard -->|still insufficient| Grep[Local MCP literal grep]
-    Grep --> Guard
-    Guard -->|no evidence| Abstain[INSUFFICIENT_EVIDENCE]
+    Guard -->|still insufficient| Abstain[INSUFFICIENT_EVIDENCE]
     Persist --> Store
 ```
 
-The graph executes hybrid retrieval in-process. After one unsuccessful widened retrieval it starts a local MCP stdio server only for `grep_search`; the model does not choose tools. See [HLD](docs/architecture/02-high-level-design.md) and [LLD](docs/architecture/03-low-level-design.md) for the implementation-level design.
+The graph executes hybrid retrieval in-process and does not invoke MCP tools. After one unsuccessful widened retrieval it returns `INSUFFICIENT_EVIDENCE`; the model does not choose tools. The MCP server module still exposes `grep_search` and `hybrid_search`, but neither is called by the investigation graph. See [HLD](docs/architecture/02-high-level-design.md) and [LLD](docs/architecture/03-low-level-design.md) for the implementation-level design.
 
 ## What’s implemented
 
@@ -65,7 +63,7 @@ The graph executes hybrid retrieval in-process. After one unsuccessful widened r
 | **Repository ingestion** | Traverses eligible local `*.py` files, excludes VCS/cache/tool directories, and creates non-redundant 60-line chunks with 10-line overlap. Re-ingestion replaces chunks for the same repository name. |
 | **Embeddings** | Calls Gemini `gemini-embedding-001`, requests 768 dimensions, validates the vector length, and stores it in `VECTOR(768)`. |
 | **Hybrid retrieval** | Combines pgvector cosine-distance results with PostgreSQL full-text results through Reciprocal Rank Fusion (RRF). |
-| **Evidence gate** | Requires both RRF and vector-distance thresholds for hybrid evidence; widens retrieval once before local literal-grep fallback. |
+| **Evidence gate** | Requires both RRF and vector-distance thresholds for hybrid evidence; widens retrieval once, then returns `INSUFFICIENT_EVIDENCE` if evidence remains insufficient. |
 | **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores to Gemini `gemini-3.5-flash-lite` with a use-evidence-only instruction. |
 | **Citations & confidence** | Extracts citations to retrieved chunk IDs/file paths and may downgrade reported `high` confidence when retrieval margins are borderline. |
 | **Audit trail** | Persists the query, generated diagnosis, model, latency, token count, ranked chunk IDs/scores, citations, and ordered tool attempts for successful generated investigations. |
@@ -134,10 +132,8 @@ python scripts\search_repo.py <repository_name> "How are database sessions confi
 
 # Run the full grounded workflow and persist a generated sufficient-evidence result.
 python scripts\investigate.py <repository_name> "How are database sessions configured?" `
-  --limit 5 --repo-path <repo_path>
+  --limit 5
 ```
-
-Pass the same local source directory to `--repo-path` so the literal-grep fallback, when needed, searches the indexed repository.
 
 ## API
 
