@@ -63,7 +63,7 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | **Repository ingestion** | Traverses eligible local `*.py` files, excludes VCS/cache/tool directories, and creates non-redundant 60-line chunks with 10-line overlap. Re-ingestion replaces chunks for the same repository name. |
 | **Embeddings** | Calls Gemini `gemini-embedding-001`, requests 768 dimensions, validates the vector length, and stores it in `VECTOR(768)`. |
 | **Hybrid retrieval** | Combines pgvector cosine-distance results with PostgreSQL full-text results through Reciprocal Rank Fusion (RRF). |
-| **Evidence gate** | Requires both RRF and vector-distance thresholds for hybrid evidence; widens retrieval once, then returns `INSUFFICIENT_EVIDENCE` if evidence remains insufficient. |
+| **Evidence gate** | Requires at least one retrieved chunk with vector distance at or below the provisional 0.5 cutoff; RRF is for ranking and reporting, not a gate. A chunk without vector distance cannot make evidence sufficient. The cutoff will be re-validated on the held-out split in checklist item 3b. |
 | **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores to Gemini `gemini-3.5-flash-lite` with a use-evidence-only instruction. |
 | **Citations & confidence** | Extracts citations to retrieved chunk IDs/file paths and may downgrade reported `high` confidence when retrieval margins are borderline. |
 | **Audit trail** | Persists the query, generated diagnosis, model, latency, token count, ranked chunk IDs/scores, citations, and ordered tool attempts for successful generated investigations. |
