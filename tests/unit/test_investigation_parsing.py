@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from app.investigation.confidence import calibrate_confidence
 from app.investigation.guard import evaluate_evidence_sufficiency
 from app.investigation.parsing import parse_investigation_response
 
@@ -142,3 +143,101 @@ def test_evaluate_evidence_sufficiency_respects_vector_distance_boundary() -> No
 def test_evaluate_evidence_sufficiency_rejects_evidence_source_argument() -> None:
     with pytest.raises(TypeError):
         evaluate_evidence_sufficiency([], evidence_source="literal")
+
+
+def test_parse_investigation_response_forces_low_confidence_on_abstention() -> None:
+    payload = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": (
+                                "Diagnosis: INSUFFICIENT_EVIDENCE\n"
+                                "Confidence: high\n"
+                                "Evidence used: app/db/session.py, lines 1-46"
+                            )
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+    retrieved_results = [
+        {
+            "id": 105,
+            "file_path": "app/db/session.py",
+            "line_start": 1,
+            "line_end": 46,
+        }
+    ]
+
+    parsed = parse_investigation_response(payload, retrieved_results)
+
+    assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert parsed["confidence"] == "low"
+    assert parsed["cited_chunk_ids"] == ["105"]
+
+
+def test_parse_investigation_response_normalizes_punctuated_abstention() -> None:
+    payload = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {"text": "Diagnosis: insufficient_evidence.\nConfidence: medium"}
+                    ]
+                }
+            }
+        ]
+    }
+
+    parsed = parse_investigation_response(payload, [])
+
+    assert parsed["confidence"] == "low"
+
+
+def test_parse_investigation_response_preserves_non_abstention_confidence() -> None:
+    payload = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": (
+                                "Diagnosis: Sessions use async_sessionmaker.\n"
+                                "Confidence: high"
+                            )
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+    parsed = parse_investigation_response(payload, [])
+
+    assert parsed["confidence"] == "high"
+
+
+def test_parse_investigation_response_forces_low_confidence_without_diagnosis_header() -> None:
+    payload = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {"text": "Confidence: high"}
+                    ]
+                }
+            }
+        ]
+    }
+
+    parsed = parse_investigation_response(payload, [])
+
+    assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert parsed["confidence"] == "low"
+
+
+def test_calibrate_confidence_keeps_low_confidence_low() -> None:
+    assert calibrate_confidence("low", 0.04, 0.2)[0] == "low"

@@ -133,9 +133,13 @@ def parse_investigation_response(
 
     diagnosis_match = _DIAGNOSIS_PATTERN.search(response_text)
     diagnosis = diagnosis_match.group(1).strip() if diagnosis_match else "INSUFFICIENT_EVIDENCE"
+    diagnosis = diagnosis or "INSUFFICIENT_EVIDENCE"
+    if diagnosis.rstrip(".").strip().upper() == "INSUFFICIENT_EVIDENCE":
+        # An abstention can never carry a confident rating (checklist item 4).
+        confidence = "low"
 
     return {
-        "diagnosis": diagnosis or "INSUFFICIENT_EVIDENCE",
+        "diagnosis": diagnosis,
         "confidence": confidence,
         "cited_chunk_ids": cited_ids,
         "raw_text": response_text,

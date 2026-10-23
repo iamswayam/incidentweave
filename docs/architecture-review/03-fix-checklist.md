@@ -22,6 +22,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | Done | n/a | Input caps merged. |
 | 2 | Done | #16 | Literal grep fallback removed from the investigation graph. |
 | 3a | Done | #18 | Guard decides per chunk on vector distance; RRF is no longer a gate; threshold unchanged until 3b. |
+| 4 | In progress | pending | Insufficient-evidence answers are forced to low confidence; citations are kept. |
 
 ## 1. Fix-order checklist (summary)
 
@@ -31,7 +32,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 2 | ☑ | Remove the literal grep fallback (as wired, the API could search the wrong repository) | High | S | Claude (Codex partial) |
 | 3a | ☑ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate, literal evidence never sufficient) | **Critical** | S | Both |
 | 3b | ☐ | Re-validate the guard thresholds on the held-out split (after item 16) | High | S | Both |
-| 4 | ☐ | Make abstention consistent (low confidence; keep citations that explain the abstention; literal-evidence rule) | High | S | Claude |
+| 4 | ☑ | Make abstention consistent (low confidence; keep citations that explain the abstention; literal-evidence rule) | High | S | Claude |
 | 5a | ☐ | Hardening now: API key in header, timeout on the MCP/grep call | Medium | S | Both |
 | 5b | ☐ | Hardening later: Docker non-root and env, healthcheck | Medium | S | Both |
 | 6 | ☐ | Keep README/docs claims matching the code (done inside each item, not a standalone phase) | Medium | S | Both |
@@ -97,6 +98,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - *Why:* a response with `Diagnosis: INSUFFICIENT_EVIDENCE` and `Confidence: high` is stored as `high` [EXEC]. For literal-grep evidence, calibration retains `high` with the note "retrieval scores clear both calibration margins", which is false because there are no scores [EXEC].
 - *Fix:* after parsing, if the diagnosis equals `INSUFFICIENT_EVIDENCE` then confidence = `low`. Do not erase citations that explain the abstention; distinguish "supporting evidence" from "positive diagnosis evidence". For literal-only evidence cap confidence at `medium` with an honest note (moot now that item 2 removes the literal path). The generated-abstention rule is completed in item 11.
 - *Done when:* parser and calibration tests cover both cases.
+- **Status:** 2026-10-23; branch fix/04-consistent-abstention; changed app/investigation/parsing.py, tests/unit/test_investigation_parsing.py and the docs in the diff; ruff check .: All checks passed!; pytest -q: 97 passed in 54.50s. Citations are kept; the supporting-versus-positive evidence split comes with item 11.
 
 **5a. Hardening now. 5b. Hardening later.**
 - *Why:* the Gemini key is in the URL query string [SRC] (it can leak into logs); the grep subprocess call has no deadline [SRC; Codex]; the Dockerfile runs as root and Compose passes neither `GEMINI_API_KEY` nor `API_PROTECTION_SECRET`, so the container cannot generate or authenticate [SRC].
