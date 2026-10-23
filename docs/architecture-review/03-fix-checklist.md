@@ -52,7 +52,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16 | ☐ | Held-out evaluation set: second repository, 30 independent questions first, 60+ later | High | M–L | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Tracing, cost and latency telemetry | Medium | M | Both |
-| 19 | ☐ | Rename or truly calibrate "confidence" | Medium | S–M | Codex (Claude data) |
+| 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
 | 20 | ☐ | Multi-artifact ingestion (docs, configs, logs) with metadata | Medium | L | Both |
 | 21 | ☐ | Reranker experiment | Low | M | Both |
 | 22 | ☐ | Incident-replay evaluation and hypothesis loop (flagship feature) | Medium | L | Claude |
@@ -183,10 +183,11 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - *Fix:* the minimal terminal trace event is built inside items 7 and 8. Then OpenTelemetry spans per graph node, tokens and estimated cost per request, p50/p95 per stage; self-hosted Langfuse or Grafana.
 - *Done when:* one request shows every stage with timings and cost.
 
-**19. "Confidence".**
-- *Why:* in the committed baseline the model said `high` on 15 of 16 answers, and calibration moved 13 to `medium` [EXEC]. It has not been checked against correctness.
-- *Fix:* do the rename early (`model_self_rating` plus an evidence-based note). A real reliability table (bucket → accuracy) needs at least 100 labeled answers and comes later.
-- *Done when:* wording matches the evidence.
+**19. Model self-rating.**
+- *Why:* in the committed baseline the model labeled 15 of 16 answers `high`, and retrieval calibration moved 13 to `medium` [EXEC]. The label has not been checked against correctness.
+- *Fix:* rename the API field to `model_self_rating` and include an evidence-based note. A real reliability table (bucket → accuracy) needs at least 100 labeled answers and comes later.
+- *Done when:* API output uses `model_self_rating` and a note that it is not measured probability; CLI output says model self-rating; no API `confidence` or `raw_confidence` fields remain.
+- **Status:** 2026-10-24; branch fix/19-model-self-rating; changed app/api.py, scripts/investigate.py, tests/unit/test_api.py, README.md, docs/architecture/01-architecture-overview.md, docs/architecture/03-low-level-design.md and docs/architecture-review/03-fix-checklist.md; ruff check .: All checks passed!; pytest -q: 100 passed in 22.44s.
 
 **20. Multi-artifact ingestion.**
 - *Fix:* Markdown by heading; YAML/TOML/JSON by top-level key; Dockerfile and CI files whole; logs by time window or request ID with stack traces kept intact. Fill `document_type`, `service`, `environment`, `timestamp`, `incident_id` (the columns already exist but are unused) and filter on them.

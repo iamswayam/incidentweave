@@ -183,13 +183,13 @@ def main() -> None:
     print(f"Repository: {result['repository']}")
     print(f"Query: {result['query']}")
     print(f"Diagnosis: {result['diagnosis']}")
-    print(f"Confidence: {result['confidence']}")
+    print(f"Model self-rating: {result['confidence']}")
     print(f"Cited chunks: {result['cited_chunk_ids']}")
     print(f"Model: {result['model']}")
     print(f"Latency ms: {result['latency_ms']}")
     print(
         "Retry used: "
-        f"{result['retry_used']}; confidence calibrated: "
+        f"{result['retry_used']}; model self-rating calibrated: "
         f"{result['confidence_calibrated']}"
     )
     print(f"Tool attempts: {len(result['tool_calls'])}")

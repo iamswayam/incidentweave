@@ -262,11 +262,11 @@ flowchart LR
 | Route | Protection | Behavior |
 |---|---|---|
 | `GET /health` | None | Returns `{"status": "ok"}`. |
-| `POST /investigations` | Shared `X-API-Secret`, then rate limit | Validates `repository_name`, non-empty query, positive `limit`; runs/persists synchronously; returns diagnosis, confidence, citations, evidence check, tool trace, model and latency. |
+| `POST /investigations` | Shared `X-API-Secret`, then rate limit | Validates `repository_name`, non-empty query, positive `limit`; runs/persists synchronously; returns diagnosis, `model_self_rating`, a `rating_note`, citations, evidence check, tool trace, model and latency. |
 | `GET /investigations/{id}` | Same | Reads one investigation and exactly one audit record; reconstructs returned evidence/tool fields. |
 | `GET /repositories` | Same | Returns every repository’s total chunk count and non-null embedding count. |
 
-`require_api_access()` uses `secrets.compare_digest` for the configured secret, then applies ten accepted requests per 60 seconds to the request client IP. HTTP validation/error handlers redact internal details into a consistent `{"error": {"code", "message"}}` shape. The API’s `raw_confidence` is reconstructed for the immediate POST response when calibration occurred; historical GET output is `null` because the raw label is not stored.
+`require_api_access()` uses `secrets.compare_digest` for the configured secret, then applies ten accepted requests per 60 seconds to the request client IP. HTTP validation/error handlers redact internal details into a consistent `{"error": {"code", "message"}}` shape. Both API methods return the final model self-rating and a note describing its limits; the API does not expose a `confidence` or `raw_confidence` field.
 
 ## 9. CLI and evaluation boundaries
 

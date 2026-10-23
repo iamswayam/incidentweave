@@ -22,6 +22,11 @@ EVALUATION_NOTE = (
     "and no tested vector-distance cutoff separated the groups. These results are "
     "diagnostic, not a benchmark; see docs/phases/08-evaluation.md for limits."
 )
+RATING_NOTE = (
+    "Model self-rating (low, medium or high). It is the model's own label, lowered when "
+    "retrieval scores are weak. It is not a measured probability of correctness; no "
+    "accuracy check exists yet."
+)
 
 
 class InvestigationRequest(BaseModel):
@@ -33,14 +38,14 @@ class InvestigationRequest(BaseModel):
 
 
 class InvestigationResponse(BaseModel):
-    """Investigation output with calibrated and raw confidence context."""
+    """Investigation output with the model's self-rating and its limitations."""
 
     investigation_id: int | None
     repository_name: str
     query: str
     diagnosis: str
-    confidence: str
-    raw_confidence: str | None
+    model_self_rating: str
+    rating_note: str
     cited_chunk_ids: list[str]
     evidence_check: dict[str, Any]
     retry_used: bool
@@ -95,9 +100,7 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
             "The investigation provider failed after its retries.",
         ) from exc
 
-    confidence = str(result.get("confidence") or "low")
-    calibrated = bool(result.get("confidence_calibrated"))
-    raw_confidence = "high" if calibrated else confidence
+    calibration_note = str(result.get("calibration_note") or "")
     evidence_check = result.get("evidence_check")
     if not isinstance(evidence_check, dict):
         evidence_check = {}
@@ -117,8 +120,10 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
         repository_name=str(result.get("repository") or payload.repository_name),
         query=str(result.get("query") or payload.query),
         diagnosis=str(result.get("diagnosis") or "INSUFFICIENT_EVIDENCE"),
-        confidence=confidence,
-        raw_confidence=raw_confidence,
+        model_self_rating=str(result.get("confidence") or "low"),
+        rating_note=(
+            f"{RATING_NOTE} {calibration_note}" if calibration_note else RATING_NOTE
+        ),
         cited_chunk_ids=[str(chunk_id) for chunk_id in cited_chunk_ids],
         evidence_check=evidence_check,
         retry_used=bool(result.get("retry_used")),
@@ -184,8 +189,8 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
         repository_name=repository.name if repository is not None else "",
         query=investigation.query,
         diagnosis=investigation.response or "INSUFFICIENT_EVIDENCE",
-        confidence=investigation.confidence or "low",
-        raw_confidence=None,
+        model_self_rating=investigation.confidence or "low",
+        rating_note=RATING_NOTE,
         cited_chunk_ids=[str(item) for item in audit_payload.get("cited_chunk_ids", [])],
         evidence_check=evidence_check,
         retry_used=any(attempt.get("stage") == "widened_retry" for attempt in tool_calls),
