@@ -44,11 +44,6 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="Maximum hybrid-search results to consider",
     )
-    parser.add_argument(
-        "--repo-path",
-        default=str(REPO_ROOT),
-        help="Local repository root used by the literal grep fallback",
-    )
     return parser.parse_args()
 
 
@@ -56,7 +51,6 @@ async def investigate_repository(
     repo_name: str,
     query_text: str,
     limit: int = 5,
-    repo_path: str = str(REPO_ROOT),
     persist: bool = True,
 ) -> dict[str, object]:
     """Perform the end-to-end grounded investigation flow for one query."""
@@ -82,7 +76,6 @@ async def investigate_repository(
         {
             "repository_id": repository_id,
             "repository_name": repo_name,
-            "repository_path": str(Path(repo_path).resolve()),
             "query": query_text,
             "query_embedding": query_embedding,
             "search_limit": limit,
@@ -181,7 +174,6 @@ def main() -> None:
                 args.repo_name,
                 args.query,
                 limit=args.limit,
-                repo_path=args.repo_path,
             )
         )
     except (RuntimeError, ValueError) as exc:

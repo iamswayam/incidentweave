@@ -542,7 +542,6 @@ async def run_pipeline_once(
                     repository_name,
                     question["question"],
                     limit=LIMIT,
-                    repo_path=str(snapshot_root),
                     persist=False,
                 )
                 diagnosis = str(result.get("diagnosis") or "")

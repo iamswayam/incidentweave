@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.investigation.guard import evaluate_evidence_sufficiency
 from app.investigation.parsing import parse_investigation_response
 
@@ -93,3 +95,8 @@ def test_evaluate_evidence_sufficiency_rejects_empty_and_weak_results() -> None:
     assert evaluate_evidence_sufficiency([
         {"id": 5, "rrf_score": 0.021},
     ])["is_sufficient"] is False
+
+
+def test_evaluate_evidence_sufficiency_rejects_evidence_source_argument() -> None:
+    with pytest.raises(TypeError):
+        evaluate_evidence_sufficiency([], evidence_source="literal")
