@@ -66,6 +66,7 @@ def sufficient_pipeline_result() -> dict[str, object]:
         "diagnosis": "The chunk size is 60 lines.",
         "confidence": "medium",
         "confidence_calibrated": True,
+        "calibration_note": "High self-rating downgraded because retrieval scores were weak.",
         "cited_chunk_ids": ["7"],
         "evidence_check": {
             "is_sufficient": True,
@@ -106,14 +107,44 @@ def test_post_investigation_success_response_shape(
     assert response.status_code == 200
     body = response.json()
     assert body["investigation_id"] == 123
-    assert body["confidence"] == "medium"
-    assert body["raw_confidence"] == "high"
+    assert body["model_self_rating"] == "medium"
+    assert body["rating_note"].startswith(
+        "Model self-rating (low, medium or high). It is the model's own label"
+    )
+    assert body["rating_note"].endswith(
+        "High self-rating downgraded because retrieval scores were weak."
+    )
+    assert "confidence" not in body
+    assert "raw_confidence" not in body
     assert body["evidence_check"]["best_rrf_score"] == 0.04
     assert body["evidence_check"]["best_vector_score"] == 0.25
     assert body["evaluation_note"].startswith("Phase 8 evaluated 24 questions")
     assert calls == [
         ("incidentweave-eval", "What chunk size is configured?", 5, True)
     ]
+
+
+def test_post_response_omits_legacy_confidence_fields(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
+        return sufficient_pipeline_result()
+
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "question"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "confidence" not in body
+    assert "raw_confidence" not in body
+    assert "model_self_rating" in body
+    assert "rating_note" in body
 
 
 def test_post_unknown_repository_uses_standard_404(
@@ -314,6 +345,10 @@ def test_get_investigation_and_missing_id(
 
     assert found.status_code == 200
     assert found.json()["diagnosis"] == investigation.response
+    assert found.json()["model_self_rating"] == "medium"
+    assert found.json()["rating_note"].startswith("Model self-rating")
+    assert "confidence" not in found.json()
+    assert "raw_confidence" not in found.json()
     assert found.json()["cited_chunk_ids"] == ["7"]
     assert found.json()["evidence_check"]["best_rrf_score"] == 0.04
     assert found.json()["evaluation_note"].startswith("Phase 8 evaluated 24 questions")
