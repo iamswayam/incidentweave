@@ -88,7 +88,7 @@ async def test_graph_retries_once_with_wider_limit(monkeypatch: pytest.MonkeyPat
     ) -> list[dict[str, object]]:
         limits.append(limit)
         if len(limits) == 1:
-            return [{"id": 1, "rrf_score": 0.01, "vector_score": 0.3}]
+            return [{"id": 1, "rrf_score": 0.01, "vector_score": 0.7}]
         return [sufficient_result()]
 
     def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
@@ -120,7 +120,7 @@ async def test_graph_stops_after_one_insufficient_retry(
         limit: int,
     ) -> list[dict[str, object]]:
         limits.append(limit)
-        return [{"id": len(limits), "rrf_score": 0.01, "vector_score": 0.3}]
+        return [{"id": len(limits), "rrf_score": 0.01, "vector_score": 0.7}]
 
     def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         raise AssertionError("Generation must not run after insufficient evidence")
