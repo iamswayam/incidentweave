@@ -23,7 +23,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 2 | Done | #16 | Literal grep fallback removed from the investigation graph. |
 | 3a | Done | #18 | Guard decides per chunk on vector distance; RRF is no longer a gate; threshold unchanged until 3b. |
 | 4 | Done | #20 | Insufficient-evidence answers are forced to low confidence; citations are kept. |
-| 5a | In progress | pending | Send the Gemini API key in a header; remove the moot MCP/grep timeout item. |
+| 5a | Done | #22 | Send the Gemini API key in a header; remove the moot MCP/grep timeout item. |
+| 19 | In progress | pending | Confidence renamed to model self-rating. |
+| 7 | In progress | pending | Every outcome is persisted. |
 
 ## 1. Fix-order checklist (summary)
 
