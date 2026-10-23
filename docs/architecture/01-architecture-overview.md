@@ -104,7 +104,7 @@ flowchart TD
     C --> D[Embed query with Gemini]
     D --> E[Vector top K and FTS top K]
     E --> F[RRF merge and truncate to K]
-    F --> G{RRF >= 0.016 and best vector distance <= 0.5?}
+    F --> G{Any chunk vector distance <= provisional 0.5?}
     G -->|Yes| J[Build prompt from fused chunks]
     G -->|No, first pass| H[Widen limit once to 2K]
     H --> E
@@ -135,7 +135,7 @@ The only migration found is `20260819_0001_initial_schema`, which creates the ve
 - **Vector — Source-verified:** pgvector cosine distance, ascending, repository-scoped, excludes null embeddings; top K from `search_vector` ([implementation](../../app/retrieval/vector_search.py#L11)).
 - **Full text — Source-verified:** `websearch_to_tsquery` filters English `to_tsvector` content and ranks by `ts_rank_cd`; top K ([implementation](../../app/retrieval/fulltext_search.py#L9)). Query lexemes are not guaranteed to match code tokens; the Phase 8 log observed many empty results.
 - **RRF — Source-verified:** for each chunk, sum `1 / (60 + rank)` over the vector and FTS lists where the chunk appears. Shared chunks get both contributions. Sort descending and return K ([fusion](../../app/retrieval/hybrid_search.py#L21)). Numeric source scores are not averaged.
-- **Guard — Source-verified:** hybrid path passes when max `rrf_score >= 0.016` and min available vector distance `<= 0.5`; those extrema need not belong to the same chunk ([constants and decision](../../app/investigation/guard.py#L7)). A single rank-1 vector contribution is `1/61 ~= 0.01639`, above the RRF threshold. The threshold therefore cannot reject a nonempty vector result on RRF alone; distance can reject it.
+- **Guard — Source-verified:** evidence is sufficient when at least one retrieved chunk has a vector distance `<= 0.5`. RRF is used for ranking and reporting, not as a gate; a result without a vector distance cannot make evidence sufficient ([guard](../../app/investigation/guard.py)). The cutoff is provisional and will be re-validated on the held-out split in checklist item 3b.
 - **Widening — Source-verified:** if the initial result is insufficient, one retry doubles requested K. A vector-only closest distance will not improve merely because K grows; RRF membership can change. This is an implication of the ranking query, not a separate live measurement.
 - **Retry and abstention — Source-verified:** after an insufficient widened result, the graph returns `INSUFFICIENT_EVIDENCE` without generation. The MCP server separately exposes literal `grep_search`; the investigation graph does not call it.
 - **MCP — Source-verified:** `app.investigation.mcp_server` exposes `hybrid_search` and `grep_search` tools over stdio, but neither is invoked by the investigation graph. The graph calls `hybrid_search` in-process.
@@ -197,7 +197,7 @@ All six timestamped runs report corpus SHA `62d0e58593bb22d187ec7930274b0457afd3
 - Re-ingestion replaces all chunks for a repository and can change chunk IDs; there is no incremental update or chunk uniqueness key.
 - Embedding is synchronous and per-chunk, has a fixed delay but no internal retry, and can leave null vectors after failures.
 - FTS query-time parsing may return no rows for natural-language questions; there is no FTS index in the declared migration.
-- Hybrid RRF treats list ranks equally and has no explicit deterministic tie-break. The evidence guard does not require relevant source content and its RRF threshold is below a rank-1 single-source contribution.
+- Hybrid RRF treats list ranks equally and has no explicit deterministic tie-break. The evidence guard does not require relevant source content; its vector-distance cutoff is provisional and does not establish semantic relevance.
 - The MCP server still exposes a local literal grep tool, but the investigation graph does not invoke it. Checklist item 25 addresses whether the MCP module should remain.
 - Gemini calls are synchronous in async flow. Provider-default generation settings are not pinned in the report; retry latency is not the same as total request duration.
 - Citation matching is a reference detector, not claim verification. Confidence is a categorical model label subject only to a one-way threshold downgrade.

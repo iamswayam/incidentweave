@@ -233,7 +233,7 @@ sequenceDiagram
 
 ### 7.3 Guard, prompt, parsing and calibration
 
-- **Guard:** `evaluate_evidence_sufficiency()` evaluates hybrid retrieval scores and requires a maximum RRF score of at least `0.016` and a minimum available vector distance of at most `0.5` ([`guard.py`](../../app/investigation/guard.py)).
+- **Guard:** `evaluate_evidence_sufficiency()` considers evidence sufficient when at least one retrieved chunk has vector distance at most `0.5`. RRF is used for ranking and reporting, not as a gate; a chunk without vector distance cannot make evidence sufficient. The cutoff is provisional until it is re-validated on the held-out split in checklist item 3b ([`guard.py`](../../app/investigation/guard.py)).
 - **Prompt:** `build_grounded_prompt()` emits the system instruction, user query, and every retrieved result’s chunk ID, path, line range, scores and content. It asks the model to use only supplied evidence and to return `INSUFFICIENT_EVIDENCE` if unsupported ([`prompt.py`](../../app/investigation/prompt.py)).
 - **Generation:** `generate_investigation()` calls Gemini with a 60-second request timeout and at most three attempts. HTTP 429/5xx and connection/timeout errors retry with 1- then 2-second backoff ([`generation.py`](../../app/investigation/generation.py)).
 - **Parsing:** only the first Gemini candidate is parsed. Regexes extract a diagnosis, `high|medium|low` confidence, and cited retrieved chunks. A matching chunk ID, exact file path, or path/range pattern marks a citation ([`parsing.py`](../../app/investigation/parsing.py)).
