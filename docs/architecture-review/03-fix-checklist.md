@@ -13,6 +13,15 @@
 
 ---
 
+## Progress log
+
+One row per item, updated when an item starts, finishes or is blocked. Status values: In progress, Done, Blocked (reason), Skipped (reason).
+
+| Item | Status | PR | Note |
+|---|---|---|---|
+| 1 | Done | n/a | Input caps merged. |
+| 2 | Done | #16 | Literal grep fallback removed from the investigation graph. |
+
 ## 1. Fix-order checklist (summary)
 
 | # | ✔ | Fix | Priority | Effort | Raised by |

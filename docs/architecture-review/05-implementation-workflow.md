@@ -22,7 +22,7 @@ One checklist item = one branch = one pull request (PR). Items are never mixed, 
 6. **Update the docs** that describe the changed behaviour (README, architecture documents). A behaviour change and its documentation ship together.
 7. **Update the checklist**: tick the item in the summary table and add one **Status** line (date, branch, files changed, real ruff and pytest results).
 8. **Commit** in small logical steps (section 3) and push the branch.
-9. **Open a PR** (section 5). CI must be green.
+9. **Open a PR** (section 5) that says `Closes #N` for the item's issue. CI must be green.
 10. **Review the diff** against the item's *Done when* line, then **merge with a merge commit**.
 11. **Clean up**: delete the branch on GitHub and locally, then update local `main`.
 
@@ -57,10 +57,14 @@ Changes under `docs/` or to `README.md` go directly to `main` as one small commi
 
 ## 7. Where progress is recorded
 
-- Per-item progress: the **Status** lines in [03-fix-checklist.md](03-fix-checklist.md).
+- Per-item progress: the **Progress log** and the **Status** lines in [03-fix-checklist.md](03-fix-checklist.md).
 - History of decisions and corrections: the checklist's corrections section and the [independent review](04-fix-checklist-review-codex.md).
 - What was merged and when: the merge commits on `main`.
 
 ## 8. Recommended repository setting
 
 Protect `main` on GitHub (Settings → Branches): require a pull request and a passing CI check before merging. This enforces the rules above mechanically instead of by convention.
+
+## 9. Blocked items
+
+If an item cannot be finished (a failing check, a conflict, an unclear design), stop work on it, do not force it, and record `Blocked (reason)` in the Progress log. Continue with the next item only if that item does not depend on the blocked one (see the Recommended order table). A blocked item is revisited as soon as the reason is resolved.
