@@ -21,7 +21,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 |---|---|---|---|
 | 1 | Done | n/a | Input caps merged. |
 | 2 | Done | #16 | Literal grep fallback removed from the investigation graph. |
-| 3a | In progress | pending | Guard decides per chunk on vector distance; RRF is no longer a gate; threshold unchanged until 3b. |
+| 3a | Done | #18 | Guard decides per chunk on vector distance; RRF is no longer a gate; threshold unchanged until 3b. |
 
 ## 1. Fix-order checklist (summary)
 
@@ -90,7 +90,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 **3a. Fix the evidence guard (now). 3b. Re-validate the thresholds (after item 16).**
 - *Why:* (a) `MIN_ACCEPTABLE_RRF_SCORE = 0.016` is below `1/61 = 0.016393`, so any rank-1 vector hit passes; I executed this [EXEC]. (b) The guard takes the best RRF and best vector distance from *different* chunks independently (`max` and `min` over all results), so no single chunk has to satisfy both [SRC; found by Codex]. Result: 4 of 8 unanswerable questions pass the guard [ART].
 - *Fix:* decide sufficiency per chunk; the RRF number is for ranking, not a gate. Literal (grep) evidence never counts as sufficient by itself. Example rule: the top chunk's own vector distance ≤ T, or it has a lexical match and distance ≤ T2. T is provisional and must not be tuned on the same 24 questions; 3b re-validates it on the item 16 split. Update the README sentence about "both an RRF threshold and a vector-distance threshold".
-- *Done when:* unit tests show the guard accepts only if one chunk passes, including: RRF and vector success on different chunks (refused), a rank-one vector-only hit, an FTS-only hit, and a literal-only result (never sufficient); the README matches the code. The evaluation re-run (false accepts, new threshold) belongs to 3b, because it needs the held-out split and live provider calls. On the current 24 questions the guard's behaviour is unchanged (4 of 8 unanswerable questions still pass).
+- *Done when:* unit tests show the guard accepts only if one chunk passes, including: RRF and vector success on different chunks (accepted when the chunk with the close distance qualifies on its own; refused when no chunk has a distance within the cutoff), a rank-one vector-only hit, an FTS-only hit, and a literal-only result (never sufficient); the README matches the code. The evaluation re-run (false accepts, new threshold) belongs to 3b, because it needs the held-out split and live provider calls. On the current 24 questions the guard's behaviour is unchanged (4 of 8 unanswerable questions still pass).
 - **Status (3a):** 2026-10-23; branch fix/03-evidence-guard; changed app/investigation/guard.py, tests/unit/test_investigation_parsing.py, tests/unit/test_investigation_graph.py, README.md, docs/architecture/01-architecture-overview.md, docs/architecture/03-low-level-design.md and docs/architecture-review/03-fix-checklist.md; ruff check .: All checks passed!; pytest -q: 92 passed in 56.57s. Threshold unchanged at 0.5 until 3b.
 
 **4. Make abstention consistent.**
