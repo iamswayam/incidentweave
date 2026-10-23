@@ -47,7 +47,7 @@ flowchart LR
     Fuse --> Guard{Evidence sufficient?}
     Guard -->|yes| Prompt[Grounded prompt]
     Prompt --> Gemini[Gemini generation]
-    Gemini --> Parse[Parse citations and confidence]
+    Gemini --> Parse[Parse citations and model self-rating]
     Parse --> Persist[Investigation and audit persistence]
     Guard -->|retry once| Retrieve
     Guard -->|still insufficient| Abstain[INSUFFICIENT_EVIDENCE]
@@ -65,7 +65,7 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | **Hybrid retrieval** | Combines pgvector cosine-distance results with PostgreSQL full-text results through Reciprocal Rank Fusion (RRF). |
 | **Evidence gate** | Requires at least one retrieved chunk with vector distance at or below the provisional 0.5 cutoff; RRF is for ranking and reporting, not a gate. A chunk without vector distance cannot make evidence sufficient. The cutoff will be re-validated on the held-out split in checklist item 3b. |
 | **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores to Gemini `gemini-3.5-flash-lite` with a use-evidence-only instruction. |
-| **Citations & confidence** | Extracts citations to retrieved chunk IDs/file paths and may downgrade reported `high` confidence when retrieval margins are borderline. |
+| **Citations & model self-rating** | Extracts citations to retrieved chunk IDs/file paths and may lower the model's `high` self-rating when retrieval margins are borderline. The rating is not a measured probability of correctness. |
 | **Audit trail** | Persists the query, generated diagnosis, model, latency, token count, ranked chunk IDs/scores, citations, and ordered tool attempts for successful generated investigations. |
 | **API & tooling** | Protected HTTP endpoints, local CLI entry points, a stdio MCP server, Docker Compose, Alembic migrations, pytest, Ruff, and CI. |
 
@@ -167,7 +167,7 @@ Invoke-RestMethod -Method Post `
   -Body '{"repository_name":"<repository_name>","query":"How are database sessions configured?","limit":5}'
 ```
 
-The response includes a diagnosis, calibrated and raw confidence context, cited chunk IDs, the evidence check, tool attempt trace, model, latency, and a fixed evaluation caveat. Guard-level insufficient-evidence results return `INSUFFICIENT_EVIDENCE` and are not persisted by the current pipeline.
+The API and CLI report the diagnosis and model self-rating (`low`, `medium`, or `high`). The API also includes a rating note: it is the model's own label, may be lowered when retrieval scores are weak, and is not a measured probability of correctness; no accuracy check exists yet. API responses include cited chunk IDs, the evidence check, tool attempt trace, model, latency, and a fixed evaluation caveat. Guard-level insufficient-evidence results return `INSUFFICIENT_EVIDENCE` and are not persisted by the current pipeline.
 
 ## Evaluation
 
@@ -223,10 +223,10 @@ IncidentWeave intentionally makes its current boundaries visible:
 
 - **Source coverage:** it indexes local Python files only; it does not yet ingest other languages, docs/runbooks, configuration, logs, traces, or live operational systems.
 - **Chunking and retrieval:** chunks are fixed line windows. There is no AST-aware chunking, reranker, pgvector ANN index, or persisted FTS/GIN index in the current schema.
-- **Evidence and confidence:** citations establish that the response referred to retrieved IDs/paths; they do not independently prove every claim. Confidence is a model label with retrieval-based downgrade logic, not calibrated probability.
+- **Evidence and model self-rating:** citations establish that the response referred to retrieved IDs/paths; they do not independently prove every claim. The self-rating is the model's own label with retrieval-based downgrade logic, not a measured probability of correctness.
 - **Evaluation:** the current evaluation is useful for regression-oriented diagnosis but is small, repository-specific, and pending label review.
 - **Service security:** protected routes use one shared secret and an in-memory per-IP limiter. There are no user accounts, key rotation, per-user quotas, distributed limiting, or production deployment controls.
-- **Audit completeness:** sufficient generated paths are persisted; guard-level abstentions are returned without an `Investigation`/`Audit` row. The database also does not retain the raw confidence label for historical API reads.
+- **Audit completeness:** sufficient generated paths are persisted; guard-level abstentions are returned without an `Investigation`/`Audit` row. The database does not retain the pre-calibration model label for historical API reads.
 
 ## Documentation
 
