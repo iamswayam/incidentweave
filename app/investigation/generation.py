@@ -35,11 +35,13 @@ def generate_investigation(prompt: str) -> tuple[dict[str, object], int]:
             "contents": [{"parts": [{"text": prompt}]}],
         }
     ).encode("utf-8")
-    url = f"{GEMINI_GENERATION_ENDPOINT}?key={get_gemini_api_key()}"
     req = request.Request(
-        url,
+        GEMINI_GENERATION_ENDPOINT,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": get_gemini_api_key(),
+        },
         method="POST",
     )
 

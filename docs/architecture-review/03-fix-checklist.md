@@ -34,7 +34,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 3a | ☑ | Fix the evidence guard (per-chunk check, drop the vacuous RRF gate, literal evidence never sufficient) | **Critical** | S | Both |
 | 3b | ☐ | Re-validate the guard thresholds on the held-out split (after item 16) | High | S | Both |
 | 4 | ☑ | Make abstention consistent (low confidence; keep citations that explain the abstention; literal-evidence rule) | High | S | Claude |
-| 5a | ☐ | Hardening now: API key in header, timeout on the MCP/grep call | Medium | S | Both |
+| 5a | ☑ | Hardening now: API key in header | Medium | S | Both |
 | 5b | ☐ | Hardening later: Docker non-root and env, healthcheck | Medium | S | Both |
 | 6 | ☐ | Keep README/docs claims matching the code (done inside each item, not a standalone phase) | Medium | S | Both |
 | 7 | ☐ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
@@ -103,8 +103,9 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 
 **5a. Hardening now. 5b. Hardening later.**
 - *Why:* the Gemini key is in the URL query string [SRC] (it can leak into logs); the grep subprocess call has no deadline [SRC; Codex]; the Dockerfile runs as root and Compose passes neither `GEMINI_API_KEY` nor `API_PROTECTION_SECRET`, so the container cannot generate or authenticate [SRC].
-- *Fix:* **5a (now):** send the key in the `x-goog-api-key` header (generation and embedding); wrap the MCP call in `asyncio.wait_for(..., 10)`. **5b (later):** add `USER` (non-root) to the Dockerfile; pass env via `env_file`; add a healthcheck on `/health`.
+- *Fix:* **5a (now):** send the key in the `x-goog-api-key` header (generation and embedding); ~~wrap the MCP call in `asyncio.wait_for(..., 10)~~ (moot: no MCP call exists in the graph since item 2). **5b (later):** add `USER` (non-root) to the Dockerfile; pass env via `env_file`; add a healthcheck on `/health`.
 - *Done when:* each is covered by a test or a `docker compose up` smoke check.
+- **Status:** 2026-10-23; branch fix/05-api-key-header; changed app/investigation/generation.py, scripts/embed_chunks.py, tests/unit/test_gemini_api_key_header.py and docs/architecture-review/03-fix-checklist.md; ruff check .: All checks passed!; pytest -q: 99 passed in 38.81s.
 
 **6. Make docs match code.**
 - *Why:* the README says retrieval must clear both thresholds (not true, item 3); "one Audit row per query" (not true for refusals); the raw model response is persisted (not true: only the parsed diagnosis is stored); the test count is stated as both 41 and 53, and `main` contains both phases [SRC].
