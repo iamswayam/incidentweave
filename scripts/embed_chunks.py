@@ -47,11 +47,14 @@ def embed_text(text: str) -> list[float]:
         }
     ).encode("utf-8")
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/{GEMINI_MODEL}:embedContent?key={api_key}"
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/"
+        f"{GEMINI_MODEL}:embedContent"
+    )
     req = request.Request(
         url,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         method="POST",
     )
 
