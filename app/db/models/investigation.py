@@ -31,6 +31,12 @@ class Investigation(Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     token_usage: Mapped[int | None] = mapped_column(Integer)
     confidence: Mapped[str | None] = mapped_column(String(50))
+    outcome: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default="answered",
+    )
+    error_class: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

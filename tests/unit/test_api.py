@@ -64,6 +64,7 @@ def sufficient_pipeline_result() -> dict[str, object]:
         "repository": "incidentweave-eval",
         "query": "What chunk size is configured?",
         "diagnosis": "The chunk size is 60 lines.",
+        "outcome": "answered",
         "confidence": "medium",
         "confidence_calibrated": True,
         "calibration_note": "High self-rating downgraded because retrieval scores were weak.",
@@ -79,6 +80,95 @@ def sufficient_pipeline_result() -> dict[str, object]:
         "model": "gemini-3.5-flash-lite",
         "latency_ms": 1200,
     }
+
+
+def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refusal_reason = "No vector similarity score was retrieved."
+    async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
+        return {
+            "investigation_id": 77,
+            "repository": "incidentweave-eval",
+            "query": "question",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "outcome": "refused_guard",
+            "confidence": "low",
+            "cited_chunk_ids": [],
+            "evidence_check": {
+                "is_sufficient": False,
+                "reason": refusal_reason,
+                "best_rrf_score": 0.02,
+                "best_vector_score": None,
+            },
+            "retry_used": True,
+            "tool_calls": [
+                {
+                    "stage": "widened_retry",
+                    "outcome": {
+                        "sufficient": False,
+                        "reason": refusal_reason,
+                        "best_rrf_score": 0.02,
+                        "best_vector_score": None,
+                    },
+                }
+            ],
+            "model": "gemini-3.5-flash-lite",
+            "latency_ms": None,
+        }
+
+    investigation = SimpleNamespace(
+        id=77,
+        repository_id=34,
+        query="question",
+        response="INSUFFICIENT_EVIDENCE",
+        outcome="refused_guard",
+        confidence="low",
+        model=None,
+        latency_ms=None,
+    )
+    repository = SimpleNamespace(id=34, name="incidentweave-eval")
+    audit = SimpleNamespace(
+        investigation_id=77,
+        tool_calls={
+            "attempts": [
+                {
+                    "stage": "widened_retry",
+                    "outcome": {
+                        "sufficient": False,
+                        "reason": refusal_reason,
+                        "best_rrf_score": 0.02,
+                        "best_vector_score": None,
+                    },
+                }
+            ],
+            "cited_chunk_ids": [],
+        },
+    )
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+    monkeypatch.setattr(
+        api_module,
+        "AsyncSessionLocal",
+        lambda: FakeSession(
+            entities={(Investigation, 77): investigation, (Repository, 34): repository},
+            rows=[audit],
+        ),
+    )
+
+    created = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "question"},
+    )
+    fetched = api_client.get("/investigations/77", headers=HEADERS)
+
+    assert created.status_code == 200
+    assert created.json()["investigation_id"] == 77
+    assert created.json()["outcome"] == "refused_guard"
+    assert fetched.status_code == 200
+    assert fetched.json()["outcome"] == "refused_guard"
+    assert fetched.json()["evidence_check"]["reason"] == refusal_reason
 
 
 def test_post_investigation_success_response_shape(
@@ -311,6 +401,7 @@ def test_get_investigation_and_missing_id(
         repository_id=34,
         query="What chunk size does repository ingestion use?",
         response="Repository ingestion uses 60 lines.",
+        outcome="answered",
         confidence="medium",
         model="gemini-3.5-flash-lite",
         latency_ms=1361,
@@ -345,6 +436,7 @@ def test_get_investigation_and_missing_id(
 
     assert found.status_code == 200
     assert found.json()["diagnosis"] == investigation.response
+    assert found.json()["outcome"] == "answered"
     assert found.json()["model_self_rating"] == "medium"
     assert found.json()["rating_note"].startswith("Model self-rating")
     assert "confidence" not in found.json()
@@ -367,6 +459,7 @@ def test_get_investigation_uses_last_grep_attempt_for_evidence_check(
         repository_id=34,
         query="What does this error indicate?",
         response="The error is handled by the fallback.",
+        outcome="answered",
         confidence="medium",
         model="gemini-3.5-flash-lite",
         latency_ms=1200,

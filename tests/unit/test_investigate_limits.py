@@ -87,3 +87,60 @@ async def test_investigate_repository_accepts_limit_bounds_without_external_serv
     assert result["diagnosis"] == "test diagnosis"
     assert fake_graph.state is not None
     assert fake_graph.state["search_limit"] == limit
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("persist", [True, False])
+async def test_investigate_repository_persists_guard_refusal_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+    persist: bool,
+) -> None:
+    class InsufficientGraph:
+        async def ainvoke(self, state: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "evidence_check": {
+                    "is_sufficient": False,
+                    "reason": "No vector similarity score was retrieved.",
+                },
+                "diagnosis": "INSUFFICIENT_EVIDENCE",
+                "confidence": "low",
+                "cited_chunk_ids": [],
+                "retrieval_results": [{"id": 9, "file_path": "source.py"}],
+                "model": "test-model",
+                "latency_ms": None,
+                "retry_used": True,
+                "confidence_calibrated": False,
+                "calibration_note": "",
+                "tool_calls": [{"stage": "widened_retry"}],
+            }
+
+    persisted_calls: list[tuple[object, ...]] = []
+
+    async def fake_persist_refusal(
+        session: object,
+        repository_id: int,
+        query: str,
+        retrieval_results: list[dict[str, object]],
+        tool_call_trace: list[dict[str, object]],
+    ) -> SimpleNamespace:
+        persisted_calls.append(
+            (repository_id, query, retrieval_results, tool_call_trace)
+        )
+        return SimpleNamespace(id=71)
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "embed_text", lambda query: [0.1, 0.2])
+    monkeypatch.setattr(
+        investigate_module, "create_investigation_graph", lambda calibrator: InsufficientGraph()
+    )
+    monkeypatch.setattr(investigate_module, "persist_refusal", fake_persist_refusal)
+
+    result = await investigate_module.investigate_repository(
+        "test-repo",
+        "question",
+        persist=persist,
+    )
+
+    assert result["outcome"] == "refused_guard"
+    assert result["investigation_id"] == (71 if persist else None)
+    assert len(persisted_calls) == (1 if persist else 0)

@@ -20,6 +20,16 @@ def test_chunk_embedding_is_768_dimensions() -> None:
     assert column.type.dim == 768
 
 
+def test_investigation_outcome_columns_are_registered() -> None:
+    columns = Investigation.__table__.c
+
+    assert columns.outcome.type.length == 32
+    assert columns.outcome.nullable is False
+    assert columns.outcome.server_default is not None
+    assert columns.error_class.type.length == 100
+    assert columns.error_class.nullable is True
+
+
 def test_phase2_relationships_are_defined() -> None:
     assert Chunk.repository.property.back_populates == "chunks"
     assert Investigation.repository.property.back_populates == "investigations"

@@ -44,6 +44,7 @@ class InvestigationResponse(BaseModel):
     repository_name: str
     query: str
     diagnosis: str
+    outcome: str
     model_self_rating: str
     rating_note: str
     cited_chunk_ids: list[str]
@@ -120,6 +121,7 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
         repository_name=str(result.get("repository") or payload.repository_name),
         query=str(result.get("query") or payload.query),
         diagnosis=str(result.get("diagnosis") or "INSUFFICIENT_EVIDENCE"),
+        outcome=str(result["outcome"]),
         model_self_rating=str(result.get("confidence") or "low"),
         rating_note=(
             f"{RATING_NOTE} {calibration_note}" if calibration_note else RATING_NOTE
@@ -189,6 +191,7 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
         repository_name=repository.name if repository is not None else "",
         query=investigation.query,
         diagnosis=investigation.response or "INSUFFICIENT_EVIDENCE",
+        outcome=investigation.outcome,
         model_self_rating=investigation.confidence or "low",
         rating_note=RATING_NOTE,
         cited_chunk_ids=[str(item) for item in audit_payload.get("cited_chunk_ids", [])],
