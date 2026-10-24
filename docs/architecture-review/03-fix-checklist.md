@@ -31,6 +31,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 8 | Done | #33 | Replayable audit record. |
 | 11 | Done | #34 | Structured output and citation validation. |
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
+| 13a | In progress | pending | Span labels, statistics, offline retrieval evaluation. |
+| 13b | Not started | n/a | CI gate and generation settings after 13a. |
 
 ## 1. Fix-order checklist (summary)
 
@@ -51,7 +53,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 11 | ☑ | Structured output and server-side citation validation | High | M | Both (Codex stronger) |
 | 12a | ☑ | Injection and secret controls, early: evidence tags, secret skip, short threat-model note | Medium | S–M | Codex (Claude minor) |
 | 12b | ☐ | Wider prompt-injection testing (later) | Low | M | Codex |
-| 13 | ☐ | **Evaluation foundation** (do before any retrieval tuning) | High | M | Both |
+| 13a | ☐ | Evaluation foundation, part a: span labels, statistics, offline retrieval evaluation | High | M | Both |
+| 13b | ☐ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
 | 15 | ☐ | Chunking upgrade, staged comparison: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
 | 16 | ☐ | Held-out evaluation set: second repository, 30 independent questions first, 60+ later | High | M–L | Both |
@@ -164,7 +167,7 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
 
 ### Phase 4: measurement foundation, then retrieval gains
 
-**13. Evaluation foundation (before tuning anything).** Why and design are in Part B. Minimum set:
+**13. Evaluation foundation (before tuning anything).** Delivered as items 13a and 13b. Why and design are in Part B. Minimum set:
 - Chunk-agnostic labels: the evidence is a file plus line range, and a retrieved chunk is a hit if it overlaps or contains it.
 - A retrieval-only mode (no LLM call) that uses cached query and chunk embeddings committed as a small fixture, so CI can run it offline.
 - Generation settings recorded and `temperature=0`.
