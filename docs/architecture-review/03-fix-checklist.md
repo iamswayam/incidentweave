@@ -24,8 +24,10 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 3a | Done | #18 | Guard decides per chunk on vector distance; RRF is no longer a gate; threshold unchanged until 3b. |
 | 4 | Done | #20 | Insufficient-evidence answers are forced to low confidence; citations are kept. |
 | 5a | Done | #22 | Send the Gemini API key in a header; remove the moot MCP/grep timeout item. |
-| 19 | In progress | pending | Confidence renamed to model self-rating. |
-| 7 | In progress | pending | Every outcome is persisted. |
+| 19 | Done | #25 | Confidence renamed to model self-rating. |
+| 7 | Done | #26 | Every outcome is persisted. |
+| 12a | In progress | pending | Evidence tags and secret skip. |
+| 9 | In progress | pending | Ingest runs and upsert ingestion. |
 
 ## 1. Fix-order checklist (summary)
 
@@ -72,6 +74,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
+
+Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker versions can be compared on a fair evaluation.
 
 ---
 
