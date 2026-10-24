@@ -21,6 +21,15 @@ class Chunk(Base):
     __table_args__ = (
         Index("ix_chunks_repository_id", "repository_id"),
         Index("ix_chunks_repository_file_path", "repository_id", "file_path"),
+        Index(
+            "uq_chunks_identity",
+            "repository_id",
+            "file_path",
+            "line_start",
+            "line_end",
+            "content_hash",
+            unique=True,
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -42,6 +51,10 @@ class Chunk(Base):
     environment: Mapped[str | None] = mapped_column(String(100))
     incident_id: Mapped[str | None] = mapped_column(String(255))
     timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ingest_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ingest_runs.id", ondelete="SET NULL")
+    )
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     embedding: Mapped[list[float] | None] = mapped_column(VECTOR(768))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

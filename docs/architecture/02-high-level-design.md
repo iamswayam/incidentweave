@@ -79,18 +79,21 @@ flowchart TD
     A[ingest_repo CLI: path and repository name] --> B[Resolve local directory]
     B --> C[Walk Python files, applying exclusions]
     C --> D[Create or find Repository]
-    D --> E[Delete existing chunks for that repository]
-    E --> F[Create 60-line chunks with 10-line overlap]
-    F --> G[Skip chunks matching supported secret patterns]
-    G --> H[(chunks table)]
-    I[embed_chunks CLI: repository name] --> J[Select chunks without embeddings]
-    J --> K[Gemini embedContent]
-    K --> L[Validate 768 values]
-    L --> M[Store VECTOR(768) embedding]
-    M --> H
+    D --> E[Create IngestRun with source and available Git metadata]
+    E --> F[Create 60-line chunks and skip supported secret patterns]
+    F --> G[Hash content and compare path/range/hash identity]
+    G --> H[Keep matching IDs and embeddings; add new identities]
+    H --> I[Delete identities missing from the current ingest]
+    I --> J[(chunks table)]
+    J --> K
+    K[embed_chunks CLI: repository name] --> L[Select chunks without embeddings]
+    L --> M[Gemini embedContent]
+    M --> N[Validate 768 values]
+    N --> O[Store VECTOR(768) embedding]
+    O --> J
 ```
 
-`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type and content. Before storage, it skips nonblank chunks matching the supported secret patterns and prints a warning with the pattern name and source location, never the match. It clears current chunks for the same repository name before inserting the replacement set. `scripts/embed_chunks.py` processes only missing embeddings, continues after an individual provider failure, and commits at the end.
+`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type, content hash, and the creating ingest-run ID. Each run records its resolved source path, available Git commit/dirty/remote metadata, and `chunker_version="lines-60-10-v1"`; remote URL userinfo is stripped. Before hashing, it skips nonblank chunks matching supported secret patterns and prints a warning with the pattern name and source location, never the match. Existing chunks with identical repository/path/range/hash identities keep their IDs and embeddings. New identities are inserted, and chunks absent from the latest ingest are deleted. The latter are not archived, so historical evidence text is preserved only after checklist item 8. `scripts/embed_chunks.py` processes only missing embeddings, continues after an individual provider failure, and commits at the end.
 
 ### 5.2 Synchronous API investigation
 
@@ -133,7 +136,7 @@ Vector retrieval scopes by repository ID and orders by cosine distance. Full-tex
 
 | Boundary | Implemented behavior |
 |---|---|
-| Local filesystem | Ingestion reads a supplied local directory. The database stores a repository name but not the source root or Git revision. |
+| Local filesystem | Ingestion reads a supplied local directory and records its resolved source path plus available Git revision metadata in an IngestRun row. |
 | Gemini | API key is read from `GEMINI_API_KEY`; embedding and generation use REST over HTTPS. |
 | PostgreSQL | The application converts a `postgresql://` URL to Psycopg’s async SQLAlchemy dialect, registers pgvector per connection, and uses async sessions. |
 | HTTP | `/health` is open. `/investigations`, `/investigations/{id}`, and `/repositories` require `X-API-Secret`. |

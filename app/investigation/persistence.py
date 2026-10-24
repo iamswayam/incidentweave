@@ -4,13 +4,26 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from app.db.models import Audit, Investigation
+from sqlalchemy import select
+
+from app.db.models import Audit, IngestRun, Investigation
 from app.investigation.parsing import parse_investigation_response
 
 OUTCOME_ANSWERED = "answered"
 OUTCOME_REFUSED_GUARD = "refused_guard"
 OUTCOME_ABSTAINED_MODEL = "abstained_model"
 OUTCOME_ERROR = "error"
+
+
+async def latest_ingest_run_id(session, repository_id: int) -> int | None:
+    """Return the newest ingestion run for a repository, if one exists."""
+
+    return await session.scalar(
+        select(IngestRun.id)
+        .where(IngestRun.repository_id == repository_id)
+        .order_by(IngestRun.id.desc())
+        .limit(1)
+    )
 
 
 def _retrieval_summary(
@@ -41,6 +54,7 @@ async def persist_investigation(
     token_usage: int | None = None,
     final_confidence: str | None = None,
     tool_call_trace: Sequence[Mapping[str, object]] | None = None,
+    ingest_run_id: int | None = None,
 ) -> Investigation:
     """Create one Investigation row and one Audit row from a Gemini response."""
 
@@ -78,6 +92,7 @@ async def persist_investigation(
         investigation_id=investigation.id,
         query=query,
         repository_id=repository_id,
+        ingest_run_id=ingest_run_id,
         retrieved_chunk_ids=retrieved_chunk_ids,
         vector_scores=[
             float(item["vector_score"])
@@ -116,6 +131,7 @@ async def persist_refusal(
     query: str,
     retrieval_results: Sequence[Mapping[str, object]],
     tool_call_trace: Sequence[Mapping[str, object]],
+    ingest_run_id: int | None = None,
 ) -> Investigation:
     """Persist a guard refusal and its retrieval evidence."""
 
@@ -136,6 +152,7 @@ async def persist_refusal(
         investigation_id=investigation.id,
         query=query,
         repository_id=repository_id,
+        ingest_run_id=ingest_run_id,
         retrieved_chunk_ids=[
             int(chunk_id)
             for item in retrieval_results
@@ -178,6 +195,7 @@ async def persist_error(
     repository_id: int,
     query: str,
     error_class: str,
+    ingest_run_id: int | None = None,
 ) -> Investigation:
     """Persist an investigation failure without storing its exception message."""
 
@@ -199,6 +217,7 @@ async def persist_error(
         investigation_id=investigation.id,
         query=query,
         repository_id=repository_id,
+        ingest_run_id=ingest_run_id,
         retrieved_chunk_ids=[],
         vector_scores=[],
         fts_scores=[],

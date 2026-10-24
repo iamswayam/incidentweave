@@ -60,7 +60,7 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 
 | Capability | Implementation |
 |---|---|
-| **Repository ingestion** | Traverses eligible local `*.py` files, excludes VCS/cache/tool directories, and creates non-redundant 60-line chunks with 10-line overlap. Chunks matching supported secret patterns are skipped with a warning; re-ingestion replaces chunks for the same repository name. |
+| **Repository ingestion** | Traverses eligible local `*.py` files, excludes VCS/cache/tool directories, and creates non-redundant 60-line chunks with 10-line overlap. Chunks matching supported secret patterns are skipped. Each run records `chunker_version`; matching path/range/hash identities keep chunk IDs and embeddings, while changed chunks are added. |
 | **Embeddings** | Calls Gemini `gemini-embedding-001`, requests 768 dimensions, validates the vector length, and stores it in `VECTOR(768)`. |
 | **Hybrid retrieval** | Combines pgvector cosine-distance results with PostgreSQL full-text results through Reciprocal Rank Fusion (RRF). |
 | **Evidence gate** | Requires at least one retrieved chunk with vector distance at or below the provisional 0.5 cutoff; RRF is for ranking and reporting, not a gate. A chunk without vector distance cannot make evidence sufficient. The cutoff will be re-validated on the held-out split in checklist item 3b. |
@@ -68,6 +68,8 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | **Citations & model self-rating** | Extracts citations to retrieved chunk IDs/file paths and may lower the model's `high` self-rating when retrieval margins are borderline. The rating is not a measured probability of correctness. |
 | **Audit trail** | Persists an investigation and audit for answers, guard refusals, model abstentions, and failures; the investigation stores a typed outcome, and refusals retain retrieval evidence and tool attempts. |
 | **API & tooling** | Protected HTTP endpoints, local CLI entry points, a stdio MCP server, Docker Compose, Alembic migrations, pytest, Ruff, and CI. |
+
+Ingest runs record the source path and available Git metadata, and each investigation audit links to the latest run. Chunks no longer present in a later ingest are deleted rather than archived, so historical evidence text is preserved only after checklist item 8.
 
 ## Technology stack
 

@@ -1,5 +1,6 @@
 """PostgreSQL integration tests for the Phase 2 database foundation."""
 
+import hashlib
 import os
 
 import pytest
@@ -67,6 +68,9 @@ async def test_repository_and_chunk_persistence() -> None:
         chunk = Chunk(
             repository_id=repository.id,
             content="Phase 2 persistence test",
+            content_hash=hashlib.sha256(
+                "Phase 2 persistence test".encode("utf-8")
+            ).hexdigest(),
             file_path="tests/example.py",
             file_type="python",
             line_start=1,

@@ -1,7 +1,7 @@
 from pgvector.sqlalchemy import VECTOR
 
 from app.db.base import Base
-from app.db.models import Audit, Chunk, Investigation
+from app.db.models import Audit, Chunk, IngestRun, Investigation
 
 
 def test_all_phase2_models_are_registered() -> None:
@@ -10,6 +10,7 @@ def test_all_phase2_models_are_registered() -> None:
         "chunks",
         "investigations",
         "audit_records",
+        "ingest_runs",
     }
 
 
@@ -18,6 +19,17 @@ def test_chunk_embedding_is_768_dimensions() -> None:
 
     assert isinstance(column.type, VECTOR)
     assert column.type.dim == 768
+
+
+def test_chunk_has_required_content_hash_and_ingest_run_reference() -> None:
+    columns = Chunk.__table__.c
+
+    assert columns.content_hash.type.length == 64
+    assert columns.content_hash.nullable is False
+    assert columns.ingest_run_id.nullable is True
+    assert columns.ingest_run_id.foreign_keys.pop().ondelete == "SET NULL"
+    assert IngestRun.__tablename__ == "ingest_runs"
+    assert Audit.__table__.c.ingest_run_id.nullable is True
 
 
 def test_investigation_outcome_columns_are_registered() -> None:
@@ -41,3 +53,4 @@ def test_required_chunk_indexes_exist() -> None:
 
     assert "ix_chunks_repository_id" in index_names
     assert "ix_chunks_repository_file_path" in index_names
+    assert "uq_chunks_identity" in index_names

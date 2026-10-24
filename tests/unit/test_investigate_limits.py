@@ -122,11 +122,16 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
         query: str,
         retrieval_results: list[dict[str, object]],
         tool_call_trace: list[dict[str, object]],
+        ingest_run_id: int | None = None,
     ) -> SimpleNamespace:
         persisted_calls.append(
-            (repository_id, query, retrieval_results, tool_call_trace)
+            (repository_id, query, retrieval_results, tool_call_trace, ingest_run_id)
         )
         return SimpleNamespace(id=71)
+
+    async def fake_latest_ingest_run_id(session: object, repository_id: int) -> int:
+        del session, repository_id
+        return 42
 
     monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
     monkeypatch.setattr(investigate_module, "embed_text", lambda query: [0.1, 0.2])
@@ -134,6 +139,9 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
         investigate_module, "create_investigation_graph", lambda calibrator: InsufficientGraph()
     )
     monkeypatch.setattr(investigate_module, "persist_refusal", fake_persist_refusal)
+    monkeypatch.setattr(
+        investigate_module, "latest_ingest_run_id", fake_latest_ingest_run_id
+    )
 
     result = await investigate_module.investigate_repository(
         "test-repo",
@@ -144,3 +152,5 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
     assert result["outcome"] == "refused_guard"
     assert result["investigation_id"] == (71 if persist else None)
     assert len(persisted_calls) == (1 if persist else 0)
+    if persist:
+        assert persisted_calls[0][-1] == 42
