@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import asdict
 
 from sqlalchemy import select
 
 from app.db.models import Audit, IngestRun, Investigation
 from app.investigation.parsing import parse_investigation_response
+from app.investigation.replay import ReplayRecord
 
 OUTCOME_ANSWERED = "answered"
 OUTCOME_REFUSED_GUARD = "refused_guard"
@@ -43,6 +45,10 @@ def _retrieval_summary(
     ]
 
 
+def _replay_columns(replay: ReplayRecord | None) -> dict[str, object]:
+    return asdict(replay) if replay is not None else {}
+
+
 async def persist_investigation(
     session,
     repository_id: int,
@@ -55,6 +61,7 @@ async def persist_investigation(
     final_confidence: str | None = None,
     tool_call_trace: Sequence[Mapping[str, object]] | None = None,
     ingest_run_id: int | None = None,
+    replay: ReplayRecord | None = None,
 ) -> Investigation:
     """Create one Investigation row and one Audit row from a Gemini response."""
 
@@ -119,6 +126,7 @@ async def persist_investigation(
         latency_ms=latency_ms,
         token_usage=token_usage,
         confidence=str(confidence) if confidence else None,
+        **_replay_columns(replay),
     )
     session.add(audit)
     await session.commit()
@@ -132,6 +140,7 @@ async def persist_refusal(
     retrieval_results: Sequence[Mapping[str, object]],
     tool_call_trace: Sequence[Mapping[str, object]],
     ingest_run_id: int | None = None,
+    replay: ReplayRecord | None = None,
 ) -> Investigation:
     """Persist a guard refusal and its retrieval evidence."""
 
@@ -184,6 +193,7 @@ async def persist_refusal(
         latency_ms=None,
         token_usage=None,
         confidence="low",
+        **_replay_columns(replay),
     )
     session.add(audit)
     await session.commit()
@@ -196,6 +206,7 @@ async def persist_error(
     query: str,
     error_class: str,
     ingest_run_id: int | None = None,
+    replay: ReplayRecord | None = None,
 ) -> Investigation:
     """Persist an investigation failure without storing its exception message."""
 
@@ -228,6 +239,7 @@ async def persist_error(
         latency_ms=None,
         token_usage=None,
         confidence=None,
+        **_replay_columns(replay),
     )
     session.add(audit)
     await session.commit()

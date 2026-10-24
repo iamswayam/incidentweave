@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -18,10 +19,26 @@ from sqlalchemy import select  # noqa: E402
 
 from app.db.models import Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
-from app.investigation.confidence import calibrate_confidence  # noqa: E402
-from app.investigation.generation import GEMINI_GENERATION_MODEL  # noqa: E402
+from app.investigation.confidence import (  # noqa: E402
+    MAX_CLEAR_VECTOR_DISTANCE,
+    MIN_CLEAR_RRF_SCORE,
+    calibrate_confidence,
+)
+from app.investigation.generation import (  # noqa: E402
+    GEMINI_GENERATION_MODEL,
+    GENERATION_TIMEOUT_SECONDS,
+    MAX_GENERATION_ATTEMPTS,
+)
 from app.investigation.graph import create_investigation_graph  # noqa: E402
-from app.investigation.limits import MAX_LIMIT, MAX_QUERY_CHARS  # noqa: E402
+from app.investigation.guard import (  # noqa: E402
+    MAX_ACCEPTABLE_VECTOR_DISTANCE,
+    MIN_ACCEPTABLE_RRF_SCORE,
+)
+from app.investigation.limits import (  # noqa: E402
+    MAX_EVIDENCE_CHARS,
+    MAX_LIMIT,
+    MAX_QUERY_CHARS,
+)
 from app.investigation.parsing import extract_generation_trace  # noqa: E402
 from app.investigation.persistence import (  # noqa: E402
     OUTCOME_ABSTAINED_MODEL,
@@ -32,7 +49,9 @@ from app.investigation.persistence import (  # noqa: E402
     persist_investigation,
     persist_refusal,
 )
-from scripts.embed_chunks import embed_text  # noqa: E402
+from app.investigation.prompt import PROMPT_VERSION  # noqa: E402
+from app.investigation.replay import ReplayRecord, build_chunk_records  # noqa: E402
+from scripts.embed_chunks import GEMINI_MODEL, embed_text  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -63,6 +82,7 @@ async def investigate_repository(
 ) -> dict[str, object]:
     """Perform the end-to-end grounded investigation flow for one query."""
 
+    correlation_id = uuid4().hex
     if not 1 <= limit <= MAX_LIMIT:
         raise ValueError(f"--limit must be between 1 and {MAX_LIMIT}")
     if len(query_text) > MAX_QUERY_CHARS:
@@ -115,6 +135,15 @@ async def investigate_repository(
                         query_text,
                         type(exc).__name__,
                         ingest_run_id=ingest_run_id,
+                        replay=ReplayRecord(
+                            trace={
+                                "correlation_id": correlation_id,
+                                "outcome": "error",
+                                "model": GEMINI_GENERATION_MODEL,
+                                "generation_latency_ms": None,
+                                "error_class": type(exc).__name__,
+                            }
+                        ),
                     )
             except Exception as persistence_error:
                 print(
@@ -125,6 +154,21 @@ async def investigate_repository(
         raise
 
     if not result["evidence_check"]["is_sufficient"]:
+        replay = ReplayRecord(
+            thresholds=_current_thresholds(),
+            embedding_model=GEMINI_MODEL,
+            chunk_records=build_chunk_records(
+                result.get("retrieved_before_budget", result["retrieval_results"]),
+                [],
+            ),
+            trace={
+                "correlation_id": correlation_id,
+                "outcome": OUTCOME_REFUSED_GUARD,
+                "model": None,
+                "generation_latency_ms": None,
+                "error_class": None,
+            },
+        )
         if persist:
             async with AsyncSessionLocal() as session:
                 investigation = await persist_refusal(
@@ -134,6 +178,7 @@ async def investigate_repository(
                     result["retrieval_results"],
                     result["tool_calls"],
                     ingest_run_id=ingest_run_id,
+                    replay=replay,
                 )
             investigation_id = investigation.id
         return {
@@ -164,6 +209,33 @@ async def investigate_repository(
         if str(result["diagnosis"]).rstrip(".").strip().upper() == "INSUFFICIENT_EVIDENCE"
         else OUTCOME_ANSWERED
     )
+    replay = ReplayRecord(
+        prompt=str(result.get("prompt") or ""),
+        prompt_version=PROMPT_VERSION,
+        raw_response=str(result.get("raw_response") or ""),
+        raw_self_rating=str(result.get("raw_self_rating") or ""),
+        generation_params={
+            "timeout_seconds": GENERATION_TIMEOUT_SECONDS,
+            "max_attempts": MAX_GENERATION_ATTEMPTS,
+        },
+        thresholds=_current_thresholds(),
+        embedding_model=GEMINI_MODEL,
+        chunk_records=build_chunk_records(
+            result.get("retrieved_before_budget", result["retrieval_results"]),
+            [
+                item.get("id")
+                for item in result["retrieval_results"]
+                if item.get("id") is not None
+            ],
+        ),
+        trace={
+            "correlation_id": correlation_id,
+            "outcome": outcome,
+            "model": result["model"],
+            "generation_latency_ms": result["latency_ms"],
+            "error_class": None,
+        },
+    )
     if persist:
         response_payload = result["response_payload"]
         async with AsyncSessionLocal() as session:
@@ -183,6 +255,7 @@ async def investigate_repository(
                 ),
                 tool_call_trace=result["tool_calls"],
                 ingest_run_id=ingest_run_id,
+                replay=replay,
             )
         investigation_response = investigation.response
         investigation_confidence = investigation.confidence
@@ -207,6 +280,18 @@ async def investigate_repository(
         "generation_trace": extract_generation_trace(
             result.get("prompt"), result.get("response_payload")
         ),
+    }
+
+
+def _current_thresholds() -> dict[str, object]:
+    return {
+        "max_acceptable_vector_distance": MAX_ACCEPTABLE_VECTOR_DISTANCE,
+        "min_acceptable_rrf_score": MIN_ACCEPTABLE_RRF_SCORE,
+        "max_clear_vector_distance": MAX_CLEAR_VECTOR_DISTANCE,
+        "min_clear_rrf_score": MIN_CLEAR_RRF_SCORE,
+        "max_evidence_chars": MAX_EVIDENCE_CHARS,
+        "max_limit": MAX_LIMIT,
+        "max_query_chars": MAX_QUERY_CHARS,
     }
 
 

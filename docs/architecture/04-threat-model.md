@@ -6,7 +6,7 @@ This short model covers the current local IncidentWeave workflow.
 
 - **Source code in prompts:** retrieved repository chunks may contain proprietary or sensitive text.
 - **Provider credential:** `GEMINI_API_KEY` authorizes embedding and generation requests.
-- **Stored audits:** investigation queries, outcomes, retrieval metadata, and tool traces are stored in PostgreSQL.
+- **Stored audits:** investigation queries, outcomes, retrieval metadata, tool traces, exact prompts, and raw model text are stored in PostgreSQL. Prompts and responses can contain proprietary repository source.
 
 ## Trust boundaries
 
@@ -28,10 +28,13 @@ This short model covers the current local IncidentWeave workflow.
 - Gemini credentials use the `x-goog-api-key` request header; API routes use `X-API-Secret`.
 - Input caps, a process-local API rate limit, and generic error responses constrain some API abuse and leakage paths.
 - Persisted error outcomes store the exception class name, not the exception message.
+- Replay fields are omitted from both API response models; access is limited to direct database access.
 
 ## Residual risks
 
 - Regex scanning can miss secrets, so sensitive repository text can still reach the provider.
 - Evidence tags and instructions reduce but do not eliminate prompt-injection risk.
 - The rate limit is process-local and is not a distributed quota or cost budget.
+- Per-chunk replay records store hashes and locations, not content. Generated prompts preserve included evidence text; dropped or refused evidence requires access to the source revision.
+- Prompt and raw response columns increase the sensitivity of the database. Database roles, backups, and operational access must protect them.
 - Behavioral prompt-injection tests are deferred to checklist item 12b.

@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 import scripts.investigate as investigate_module
+from app.investigation.replay import ReplayRecord
 
 
 class FakeSessionContext:
@@ -123,9 +124,10 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
         retrieval_results: list[dict[str, object]],
         tool_call_trace: list[dict[str, object]],
         ingest_run_id: int | None = None,
+        replay: ReplayRecord | None = None,
     ) -> SimpleNamespace:
         persisted_calls.append(
-            (repository_id, query, retrieval_results, tool_call_trace, ingest_run_id)
+            (repository_id, query, retrieval_results, tool_call_trace, ingest_run_id, replay)
         )
         return SimpleNamespace(id=71)
 
@@ -153,4 +155,12 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
     assert result["investigation_id"] == (71 if persist else None)
     assert len(persisted_calls) == (1 if persist else 0)
     if persist:
-        assert persisted_calls[0][-1] == 42
+        assert persisted_calls[0][-2] == 42
+        replay = persisted_calls[0][-1]
+        assert isinstance(replay, ReplayRecord)
+        assert replay.prompt is None
+        assert replay.raw_response is None
+        assert replay.chunk_records is not None
+        assert replay.chunk_records[0]["kept_in_prompt"] is False
+        assert replay.trace is not None
+        assert replay.trace["outcome"] == "refused_guard"

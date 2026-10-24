@@ -120,12 +120,21 @@ erDiagram
         float_array fts_scores
         float_array rrf_scores
         jsonb tool_calls
+        text prompt
+        string prompt_version
+        text raw_response
+        string raw_self_rating
+        jsonb generation_params
+        jsonb thresholds
+        string embedding_model
+        jsonb chunk_records
+        jsonb trace
         text response
         string confidence
     }
 ```
 
-Migrations `20260819_0001_initial_schema`, `20261024_0002_investigation_outcome`, and `20261025_0003_ingest_runs` define the schema. `Chunk` contains additional nullable metadata fields (`file_type`, `document_type`, `symbol`, `function_name`, `class_name`, `section`, `service`, `environment`, `incident_id`, `timestamp`) that the current Python ingester does not populate except `file_type` and `document_type`.
+Migrations `20260819_0001_initial_schema`, `20261024_0002_investigation_outcome`, `20261025_0003_ingest_runs`, and `20261026_0004_replayable_audit` define the schema. `Chunk` contains additional nullable metadata fields (`file_type`, `document_type`, `symbol`, `function_name`, `class_name`, `section`, `service`, `environment`, `incident_id`, `timestamp`) that the current Python ingester does not populate except `file_type` and `document_type`.
 
 ### 4.2 Referential behavior and indexes
 
@@ -265,9 +274,9 @@ sequenceDiagram
 
 ### 7.4 Persistence behavior
 
-`persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count, and final model self-rating in both records; the Investigation stores the `answered` or `abstained_model` outcome. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls` ([`persistence.py`](../../app/investigation/persistence.py)).
+`persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count, and final model self-rating in both records; the Investigation stores the `answered` or `abstained_model` outcome. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls`. Nullable replay columns capture the exact prompt/version, raw candidate text, pre-calibration model self-rating, generation parameters, threshold snapshot, embedding model, ranked per-chunk hashes/locations/scores/kept flags, and minimal correlation/outcome/model/generation-latency/error-class trace ([`persistence.py`](../../app/investigation/persistence.py), [`ReplayRecord`](../../app/investigation/replay.py)).
 
-`investigate_repository()` resolves the repository's latest IngestRun by highest ID and attaches that run ID to the Audit row for answers, model abstentions, guard refusals, and error outcomes. It persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace and retrieval summary. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Exceptions during embedding or graph execution are re-raised after an `error` outcome and empty Audit row are attempted. Only the exception class name is stored, never its message. `persist=False` skips these writes.
+`investigate_repository()` resolves the repository's latest IngestRun by highest ID and attaches that run ID to the Audit row for answers, model abstentions, guard refusals, and error outcomes. It persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace, retrieval summary, per-chunk snapshot and threshold values; refusal rows have no prompt or raw response. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Exceptions during embedding or graph execution are re-raised after an `error` outcome and empty Audit row are attempted. Error audits store only the exception class name, never its message. Audit replay fields are not exposed through the API. Prompt and raw response may contain source code, so database access must be restricted. The generated prompt stores the evidence text the model saw; per-chunk snapshots store hashes and source locations, so dropped chunks and refusal evidence require the source revision for historical recovery. The trace records generation latency, not per-stage timings. `persist=False` skips these writes.
 
 ## 8. API design
 

@@ -28,7 +28,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 7 | Done | #26 | Every outcome is persisted. |
 | 12a | Done | #29 | Evidence tags and secret skip. |
 | 9 | Done | #30 | Ingest runs and upsert ingestion. |
-| 8 | In progress | pending | Replayable audit record. |
+| 8 | Done | pending | Replayable audit record. |
 | 11 | In progress | pending | Structured output and citation validation. |
 
 ## 1. Fix-order checklist (summary)
@@ -44,7 +44,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 5b | ☐ | Hardening later: Docker non-root and env, healthcheck | Medium | S | Both |
 | 6 | ☐ | Keep README/docs claims matching the code (done inside each item, not a standalone phase) | Medium | S | Both |
 | 7 | ☑ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
-| 8 | ☐ | Store a replayable audit (raw output, raw confidence, prompt, versions, thresholds) | High | M | Both |
+| 8 | ☑ | Store a replayable audit (raw output, raw confidence, prompt, versions, thresholds) | High | M | Both |
 | 9 | ☑ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
 | 10 | ☐ | Async, batched provider client with deadlines and retries | High | M | Both |
 | 11 | ☐ | Structured output and server-side citation validation | High | M | Both (Codex stronger) |
@@ -130,8 +130,9 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
 
 **8. Store a replayable audit.**
 - *Why:* only the parsed diagnosis is stored. Missing: raw model text, raw confidence, prompt, model and embedding versions, generation settings, thresholds [SRC].
-- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, stage timings, model, error); the tool choice is deferred (item 18).
+- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, outcome, model, generation latency, error class); per-stage timings are deferred to item 18.
 - *Done when:* an old investigation can be explained from its stored data alone.
+- **Status:** 2026-10-27; branch `fix/08-replayable-audit`; changed `migrations/versions/20261026_0004_replayable_audit.py`, `app/db/models/audit.py`, `app/investigation/graph.py`, `app/investigation/persistence.py`, `app/investigation/prompt.py`, `app/investigation/replay.py`, `scripts/investigate.py`, `tests/unit/test_api.py`, `tests/unit/test_investigate_limits.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigation_persistence.py`, `tests/unit/test_investigation_replay.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/architecture/04-threat-model.md` and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 122 passed in 38.84s.
 
 **9. Source versioning and upsert ingestion.**
 - *Why:* `ingest_repository` deletes all chunks and reinserts them, so chunk IDs change and embeddings are lost. `Audit.retrieved_chunk_ids` has no foreign key and no content snapshot. No commit SHA is stored [SRC].

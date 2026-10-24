@@ -37,7 +37,10 @@ class InvestigationState(TypedDict):
     evidence_source: str
     tool_calls: list[dict[str, object]]
     prompt: NotRequired[str]
+    raw_response: NotRequired[str]
     response_payload: NotRequired[Mapping[str, object]]
+    retrieved_before_budget: NotRequired[list[dict[str, object]]]
+    raw_self_rating: NotRequired[str]
 
 
 ConfidenceCalibrator = Callable[
@@ -59,6 +62,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
             )
         return {
             "retrieval_results": results,
+            "retrieved_before_budget": results,
             "evidence_source": "hybrid",
         }
 
@@ -143,6 +147,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
             )
         return {
             "retrieval_results": kept_results,
+            "retrieved_before_budget": list(state["retrieval_results"]),
             "tool_calls": tool_calls,
             "prompt": build_grounded_prompt(
                 state["query"], kept_results, max_evidence_chars=MAX_EVIDENCE_CHARS
@@ -164,6 +169,8 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         return {
             "diagnosis": str(parsed["diagnosis"]),
             "confidence": str(parsed["confidence"]),
+            "raw_self_rating": str(parsed["confidence"]),
+            "raw_response": str(parsed["raw_text"]),
             "cited_chunk_ids": list(parsed["cited_chunk_ids"]),
         }
 
