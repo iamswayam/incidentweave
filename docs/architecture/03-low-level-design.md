@@ -180,7 +180,7 @@ sequenceDiagram
 
 `embed_repository_chunks()` selects all chunks for a named repository, filters to `embedding is None`, splits the missing chunks into batches of 50, and runs at most four batches concurrently. Each batch uses Gemini `batchEmbedContents` with model `models/gemini-embedding-001` and `outputDimensionality` 768; response count and vector dimensions are validated before assignment. Failed batches are reported and counted while other batches continue. Successful assignments are committed after all batches finish ([`scripts/embed_chunks.py`](../../scripts/embed_chunks.py)).
 
-Provider requests use `httpx.AsyncClient`, place the API key in the `x-goog-api-key` header, and retry selected HTTP statuses and network/timeout failures with exponential backoff and jitter. The client timeout is 60 seconds, the generation deadline is 90 seconds, and the end-to-end investigation deadline is 120 seconds. Batch size 50, concurrency 4, and these deadlines are initial defaults. No throughput figure is claimed until the maintainer runs the live `scripts/benchmark_embeddings.py` and records the measurements; the benchmark reads existing chunk contents and does not write to the database.
+Provider requests use `httpx.AsyncClient`, place the API key in the `x-goog-api-key` header, and retry selected HTTP statuses and network/timeout failures with exponential backoff and jitter. The client timeout is 60 seconds, the generation deadline is 90 seconds, and the end-to-end investigation deadline is 120 seconds. Batch size 50, concurrency 4, and these deadlines are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 
 ## 6. Retrieval internals
 
@@ -320,7 +320,7 @@ flowchart LR
 
 - Only Python code is ingested. The broader `Chunk` model supports document/incident metadata, but current ingestion does not fill it.
 - There is no background queue, cache, distributed rate limiter, multi-user authorization model, remote source connector, source revision model, or remote MCP service.
-- The HTTP request remains open until its investigation completes; provider I/O is asynchronous. Batch size 50, concurrency 4, and the 90-second generation / 120-second investigation deadlines are initial defaults, not measured throughput guarantees.
+- The HTTP request remains open until its investigation completes; provider I/O is asynchronous. Batch size 50, concurrency 4, and the 90-second generation / 120-second investigation deadlines are initial defaults, not throughput guarantees. The first live embedding benchmark is recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 - FTS and vector retrieval have no ANN/GIN index declared by the migration; this is the small-corpus V1 implementation, not a demonstrated large-scale design.
 - The current roadmap ends at Phase 9. Existing deferred-optimization documentation is not an approved implementation plan for a Phase 10.
 

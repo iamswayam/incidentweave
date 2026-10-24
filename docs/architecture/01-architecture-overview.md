@@ -204,11 +204,11 @@ All six timestamped runs report corpus SHA `62d0e58593bb22d187ec7930274b0457afd3
 
 - Ingestion accepts Python files only; fixed line windows can split semantic units. No AST-aware or document-format parsing is implemented.
 - Re-ingestion replaces all chunks for a repository and can change chunk IDs; there is no incremental update or chunk uniqueness key.
-- Embedding uses batches of 50 with concurrency capped at 4; these and the provider deadlines are initial defaults, not measured throughput guarantees. A live maintainer run of `scripts/benchmark_embeddings.py` is required before claiming throughput.
+- Embedding uses batches of 50 with concurrency capped at 4; these and the provider deadlines are initial defaults, not throughput guarantees. The first live benchmark and its limits are recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 - FTS query-time parsing may return no rows for natural-language questions; there is no FTS index in the declared migration.
 - Hybrid RRF treats list ranks equally and has no explicit deterministic tie-break. The evidence guard does not require relevant source content; its vector-distance cutoff is provisional and does not establish semantic relevance.
 - The MCP server still exposes a local literal grep tool, but the investigation graph does not invoke it. Checklist item 25 addresses whether the MCP module should remain.
-- Provider-default generation settings are not pinned in the report. Batch size 50, concurrency 4, and the 90-second generation / 120-second investigation deadlines are initial defaults; no throughput figure is claimed until the maintainer runs the live benchmark and records its measurements.
+- Provider-default generation settings are not pinned in the report. Batch size 50, concurrency 4, and the 90-second generation / 120-second investigation deadlines are initial defaults. The first live embedding benchmark is recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 - Citation matching is a reference detector, not claim verification. Confidence is a categorical model label subject only to a one-way threshold downgrade.
 - API limiter is in-memory and per worker; no user accounts, key rotation, or per-user quota. API has no ingestion/embedding endpoint or background queue.
 - README overstates both grounding protection and raw-response persistence ([README](../../README.md#L169), [persistence](../../app/investigation/persistence.py#L25)).

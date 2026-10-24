@@ -71,7 +71,7 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 
 Ingest runs record the source path and available Git metadata, and each investigation audit links to the latest run. Chunks no longer present in a later ingest are deleted rather than archived, so historical evidence text is preserved only after checklist item 8.
 
-Provider execution uses bounded asynchronous HTTP calls with retries on selected transient failures. Batch size 50, concurrency 4, the 90-second generation deadline, and the 120-second investigation deadline are initial defaults. No throughput figure is claimed until the maintainer runs `scripts/benchmark_embeddings.py` against the live provider and records the measurements; the benchmark makes live calls but does not write to the database.
+Provider execution uses bounded asynchronous HTTP calls with retries on selected transient failures. Batch size 50, concurrency 4, the 90-second generation deadline, and the 120-second investigation deadline are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](docs/notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 
 ## Technology stack
 
