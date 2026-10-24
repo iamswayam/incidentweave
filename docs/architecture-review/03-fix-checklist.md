@@ -26,8 +26,10 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 5a | Done | #22 | Send the Gemini API key in a header; remove the moot MCP/grep timeout item. |
 | 19 | Done | #25 | Confidence renamed to model self-rating. |
 | 7 | Done | #26 | Every outcome is persisted. |
-| 12a | Done | pending | Evidence tags and secret skip. |
-| 9 | Done | pending | Ingest runs and upsert ingestion. |
+| 12a | Done | #29 | Evidence tags and secret skip. |
+| 9 | Done | #30 | Ingest runs and upsert ingestion. |
+| 8 | In progress | pending | Replayable audit record. |
+| 11 | In progress | pending | Structured output and citation validation. |
 
 ## 1. Fix-order checklist (summary)
 
