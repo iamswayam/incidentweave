@@ -571,6 +571,7 @@ async def run_pipeline_once(
                     question["question"],
                     limit=LIMIT,
                     persist=False,
+                    temperature=0,
                 )
                 diagnosis = str(result.get("diagnosis") or "")
                 cited_chunk_ids = result.get("cited_chunk_ids", [])
@@ -944,6 +945,10 @@ async def run_evaluation(
         passes=passes,
         strategy=selected_strategy.name,
         evaluation_repository=repository_name,
+        generation_config=(
+            "temperature=0; responseMimeType=application/json; "
+            "response schema + prompt version grounded-v3"
+        ),
     )
     report = {
         **metadata,

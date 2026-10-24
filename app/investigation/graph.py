@@ -36,6 +36,7 @@ class InvestigationState(TypedDict):
     confidence_calibrated: bool
     evidence_source: str
     tool_calls: list[dict[str, object]]
+    temperature: NotRequired[float | None]
     prompt: NotRequired[str]
     raw_response: NotRequired[str]
     response_payload: NotRequired[Mapping[str, object]]
@@ -160,7 +161,10 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         }
 
     async def generate(state: InvestigationState) -> dict[str, object]:
-        response_payload, latency_ms = await generate_investigation(state["prompt"])
+        response_payload, latency_ms = await generate_investigation(
+            state["prompt"],
+            temperature=state.get("temperature"),
+        )
         return {
             "response_payload": response_payload,
             "latency_ms": latency_ms,
