@@ -165,7 +165,10 @@ async def test_ingest_upserts_chunks_and_links_audit_to_latest_run(
             async def ainvoke(self, state: dict[str, object]) -> dict[str, object]:
                 return await fake_ainvoke(state)
 
-        monkeypatch.setattr(investigate_module, "embed_text", lambda query: [0.0])
+        async def fake_embed_text(query: str) -> list[float]:
+            return [0.0]
+
+        monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
         monkeypatch.setattr(
             investigate_module,
             "create_investigation_graph",

@@ -110,7 +110,7 @@ async def test_graph_retries_once_with_wider_limit(monkeypatch: pytest.MonkeyPat
             return [{"id": 1, "rrf_score": 0.01, "vector_score": 0.7}]
         return [sufficient_result()]
 
-    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         return response_payload(), 12
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
@@ -141,7 +141,7 @@ async def test_graph_stops_after_one_insufficient_retry(
         limits.append(limit)
         return [{"id": len(limits), "rrf_score": 0.01, "vector_score": 0.7}]
 
-    def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         raise AssertionError("Generation must not run after insufficient evidence")
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
@@ -173,7 +173,7 @@ async def test_graph_stops_after_two_weak_hybrid_attempts_without_generation(
         events.append(f"hybrid:{limit}")
         return [{"id": limit, "rrf_score": 0.02, "vector_score": 0.7}]
 
-    def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         raise AssertionError("Generation must not run after insufficient evidence")
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
@@ -203,7 +203,7 @@ async def test_graph_never_uses_grep_for_other_repository_query(
     ) -> list[dict[str, object]]:
         return [{"id": limit, "rrf_score": 0.02, "vector_score": 0.7}]
 
-    def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         raise AssertionError("Generation must not run after insufficient evidence")
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
@@ -238,7 +238,7 @@ async def test_graph_records_prompt_budget_and_returns_kept_evidence(
     ) -> list[dict[str, object]]:
         return [first, second]
 
-    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         return response_payload(), 12
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
@@ -279,7 +279,7 @@ async def test_graph_does_not_record_prompt_budget_for_small_evidence(
     ) -> list[dict[str, object]]:
         return [sufficient_result()]
 
-    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         return response_payload(), 12
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
@@ -313,7 +313,7 @@ async def test_graph_records_truncated_first_result_and_dropped_chunk_ids(
     ) -> list[dict[str, object]]:
         return [first, second, third]
 
-    def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+    async def fake_generation(prompt: str) -> tuple[Mapping[str, object], int]:
         return response_payload(), 12
 
     monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)

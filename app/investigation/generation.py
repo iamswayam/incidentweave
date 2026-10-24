@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json
-import os
-import time
 from time import perf_counter
-from urllib import error, request
+
+from app.providers.gemini import (
+    make_client,
+    post_json,
+)
 
 GEMINI_GENERATION_MODEL = "gemini-3.5-flash-lite"
 GEMINI_GENERATION_ENDPOINT = (
@@ -14,8 +15,8 @@ GEMINI_GENERATION_ENDPOINT = (
     f"{GEMINI_GENERATION_MODEL}:generateContent"
 )
 GENERATION_TIMEOUT_SECONDS = 60
+GENERATION_DEADLINE_SECONDS = 90
 MAX_GENERATION_ATTEMPTS = 3
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 RESPONSE_SCHEMA: dict[str, object] = {
     "type": "OBJECT",
     "properties": {
@@ -61,60 +62,24 @@ RESPONSE_SCHEMA: dict[str, object] = {
 }
 
 
-def get_gemini_api_key() -> str:
-    """Read the Gemini API key from the process environment."""
-
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is not set")
-    return api_key
-
-
-def generate_investigation(prompt: str) -> tuple[dict[str, object], int]:
+async def generate_investigation(prompt: str) -> tuple[dict[str, object], int]:
     """Send a grounded prompt to Gemini and return its payload and latency."""
 
-    payload = json.dumps(
-        {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "responseSchema": RESPONSE_SCHEMA,
-            },
-        }
-    ).encode("utf-8")
-    req = request.Request(
-        GEMINI_GENERATION_ENDPOINT,
-        data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "x-goog-api-key": get_gemini_api_key(),
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": RESPONSE_SCHEMA,
         },
-        method="POST",
-    )
-
-    last_error: Exception | None = None
-    for attempt in range(1, MAX_GENERATION_ATTEMPTS + 1):
-        try:
-            started_at = perf_counter()
-            with request.urlopen(req, timeout=GENERATION_TIMEOUT_SECONDS) as response:
-                response_payload = json.loads(response.read().decode("utf-8"))
-            latency_ms = round((perf_counter() - started_at) * 1000)
-            if not isinstance(response_payload, dict):
-                raise RuntimeError("Unexpected Gemini generation response format")
-            return response_payload, latency_ms
-        except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            last_error = RuntimeError(
-                f"Gemini generation failed with HTTP {exc.code}: {detail}"
-            )
-            if exc.code not in RETRYABLE_STATUS_CODES:
-                raise last_error from exc
-        except (error.URLError, TimeoutError, OSError) as exc:
-            last_error = RuntimeError(f"Gemini generation connection failed: {exc}")
-
-        if attempt < MAX_GENERATION_ATTEMPTS:
-            time.sleep(2 ** (attempt - 1))
-
-    raise RuntimeError(
-        f"Gemini generation failed after {MAX_GENERATION_ATTEMPTS} attempts: {last_error}"
-    ) from last_error
+    }
+    started_at = perf_counter()
+    async with make_client() as client:
+        response_payload = await post_json(
+            client,
+            GEMINI_GENERATION_ENDPOINT,
+            payload,
+            deadline_seconds=GENERATION_DEADLINE_SECONDS,
+            max_attempts=MAX_GENERATION_ATTEMPTS,
+        )
+    latency_ms = round((perf_counter() - started_at) * 1000)
+    return response_payload, latency_ms

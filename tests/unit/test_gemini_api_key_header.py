@@ -1,73 +1,109 @@
 from __future__ import annotations
 
 import json
-from urllib.request import Request
+
+import httpx
+import pytest
 
 from app.investigation import generation
 from scripts import embed_chunks
 
 
-class _FakeResponse:
-    def __init__(self, payload: dict[str, object]) -> None:
-        self._payload = json.dumps(payload).encode("utf-8")
+def mock_client(monkeypatch, handler) -> list[httpx.Request]:
+    requests: list[httpx.Request] = []
 
-    def __enter__(self) -> _FakeResponse:
-        return self
+    async def capture(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return await handler(request)
 
-    def __exit__(self, *_: object) -> None:
-        return None
-
-    def read(self) -> bytes:
-        return self._payload
-
-
-def _assert_key_is_in_header(req: Request) -> None:
-    assert "key=" not in req.full_url
-    assert "test-key" not in req.full_url
-    api_key_header = next(
-        value
-        for name, value in req.headers.items()
-        if name.lower() == "x-goog-api-key"
+    monkeypatch.setattr(
+        generation,
+        "make_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(capture)),
     )
-    assert api_key_header == "test-key"
+    monkeypatch.setattr(
+        embed_chunks,
+        "make_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(capture)),
+    )
+    return requests
 
 
-def test_generate_investigation_sends_api_key_in_header(monkeypatch) -> None:
+def assert_key_header_and_url(request: httpx.Request) -> None:
+    assert request.headers["x-goog-api-key"] == "test-key"
+    assert "test-key" not in str(request.url)
+    assert "key=" not in str(request.url)
+
+
+@pytest.mark.anyio
+async def test_generate_investigation_sends_key_in_header_and_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    captured_requests: list[Request] = []
 
-    def fake_urlopen(req: Request, timeout: float):
-        captured_requests.append(req)
-        return _FakeResponse({"candidates": []})
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"candidates": []})
 
-    monkeypatch.setattr(generation.request, "urlopen", fake_urlopen)
+    requests = mock_client(monkeypatch, handler)
+    payload, _ = await generation.generate_investigation("question")
 
-    generation.generate_investigation("question")
-
-    _assert_key_is_in_header(captured_requests[0])
-    body = json.loads(captured_requests[0].data.decode("utf-8"))
-    assert body["generationConfig"]["responseMimeType"] == "application/json"
-    assert set(body["generationConfig"]["responseSchema"]["required"]) == {
-        "outcome",
-        "diagnosis",
-        "self_rating",
-        "claims",
-        "uncertainty_note",
+    assert payload == {"candidates": []}
+    assert_key_header_and_url(requests[0])
+    body = json.loads(requests[0].content)
+    assert body["generationConfig"] == {
+        "responseMimeType": "application/json",
+        "responseSchema": generation.RESPONSE_SCHEMA,
     }
-    assert body["generationConfig"]["responseSchema"] == generation.RESPONSE_SCHEMA
 
 
-def test_embed_text_sends_api_key_in_header(monkeypatch) -> None:
+@pytest.mark.anyio
+async def test_embed_text_sends_key_in_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    captured_requests: list[Request] = []
 
-    def fake_urlopen(req: Request, timeout: float):
-        captured_requests.append(req)
-        return _FakeResponse({"embedding": {"values": [0.0] * 768}})
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={"embedding": {"values": [0.0] * embed_chunks.EMBEDDING_DIMENSION}},
+        )
 
-    monkeypatch.setattr(embed_chunks.request, "urlopen", fake_urlopen)
+    requests = mock_client(monkeypatch, handler)
+    values = await embed_chunks.embed_text("text")
 
-    embedding = embed_chunks.embed_text("text")
+    assert len(values) == 768
+    assert_key_header_and_url(requests[0])
+    assert str(requests[0].url).endswith(":embedContent")
 
-    assert len(embedding) == 768
-    _assert_key_is_in_header(captured_requests[0])
+
+@pytest.mark.anyio
+async def test_embed_texts_sends_key_in_header_and_batch_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "embeddings": [
+                    {"values": [float(i)] * embed_chunks.EMBEDDING_DIMENSION}
+                    for i, _ in enumerate(json.loads(request.content)["requests"])
+                ]
+            },
+        )
+
+    requests = mock_client(monkeypatch, handler)
+    vectors = await embed_chunks.embed_texts(["one", "two"])
+
+    assert len(vectors) == 2
+    assert_key_header_and_url(requests[0])
+    assert str(requests[0].url).endswith(":batchEmbedContents")
+    assert json.loads(requests[0].content)["requests"] == [
+        {
+            "model": embed_chunks.GEMINI_MODEL,
+            "content": {"parts": [{"text": text}]},
+            "outputDimensionality": 768,
+        }
+        for text in ("one", "two")
+    ]

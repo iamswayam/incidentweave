@@ -53,6 +53,8 @@ from app.investigation.prompt import PROMPT_VERSION  # noqa: E402
 from app.investigation.replay import ReplayRecord, build_chunk_records  # noqa: E402
 from scripts.embed_chunks import GEMINI_MODEL, embed_text  # noqa: E402
 
+INVESTIGATION_DEADLINE_SECONDS = 120
+
 
 def parse_args() -> argparse.Namespace:
     """Parse repository name and query from the CLI."""
@@ -100,31 +102,32 @@ async def investigate_repository(
         ingest_run_id = await latest_ingest_run_id(session, repository_id)
 
     try:
-        query_embedding = embed_text(query_text)
-        graph = create_investigation_graph(calibrate_confidence)
-        result = await graph.ainvoke(
-            {
-                "repository_id": repository_id,
-                "repository_name": repo_name,
-                "query": query_text,
-                "query_embedding": query_embedding,
-                "search_limit": limit,
-                "retry_limit": limit * 2,
-                "retry_count": 0,
-                "retry_used": False,
-                "retrieval_results": [],
-                "evidence_check": {},
-                "diagnosis": "",
-                "confidence": "",
-                "cited_chunk_ids": [],
-                "model": GEMINI_GENERATION_MODEL,
-                "latency_ms": None,
-                "calibration_note": "",
-                "confidence_calibrated": False,
-                "evidence_source": "hybrid",
-                "tool_calls": [],
-            }
-        )
+        async with asyncio.timeout(INVESTIGATION_DEADLINE_SECONDS):
+            query_embedding = await embed_text(query_text)
+            graph = create_investigation_graph(calibrate_confidence)
+            result = await graph.ainvoke(
+                {
+                    "repository_id": repository_id,
+                    "repository_name": repo_name,
+                    "query": query_text,
+                    "query_embedding": query_embedding,
+                    "search_limit": limit,
+                    "retry_limit": limit * 2,
+                    "retry_count": 0,
+                    "retry_used": False,
+                    "retrieval_results": [],
+                    "evidence_check": {},
+                    "diagnosis": "",
+                    "confidence": "",
+                    "cited_chunk_ids": [],
+                    "model": GEMINI_GENERATION_MODEL,
+                    "latency_ms": None,
+                    "calibration_note": "",
+                    "confidence_calibrated": False,
+                    "evidence_source": "hybrid",
+                    "tool_calls": [],
+                }
+            )
     except Exception as exc:
         if persist:
             try:
