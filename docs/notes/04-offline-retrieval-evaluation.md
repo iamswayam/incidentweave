@@ -27,3 +27,24 @@ Limits: the golden set has 24 questions from one repository and remains marked ‚
 review.‚Äù The offline result is a retrieval-only diagnostic, not answer-quality or general
 throughput evidence. The committed baseline run produced substring and span Hit@1/3/5 of 8/16,
 11/16, and 11/16, respectively, with MRR 0.573 for each label type.
+
+## CI retrieval gate
+
+Run the gate locally with:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate
+```
+
+It reruns offline retrieval on the committed fixture and compares Hit@5 successes and MRR for
+substring labels and spans against [evaluation/gate.json](../../evaluation/gate.json). The
+configured maximum drops are zero Hit@5 successes and 0.02 MRR. A failure means retrieval on this
+fixture fell below its allowed baseline. Retrieval on the committed fixture is deterministic, so
+any drop is a real change; changing the tolerance or baseline requires a reviewed PR.
+
+Evaluation generations now use temperature 0, and run metadata records
+`temperature=0; responseMimeType=application/json; response schema + prompt version grounded-v3`.
+Earlier recorded runs used the provider default, so they are not directly comparable. The gate
+protects retrieval only, not generation or answer quality. Its limits remain 24 questions, one
+repository, labels pending maintainer review, and a fixture reflecting 60/10 chunking at build
+time.
