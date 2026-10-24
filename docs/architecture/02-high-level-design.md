@@ -2,7 +2,7 @@
 
 ## 1. Purpose and documentation basis
 
-IncidentWeave is a repository-aware investigation service for backend systems. It ingests a local Python repository, embeds source chunks, retrieves repository evidence for a natural-language question, and conditionally asks Gemini for an evidence-grounded diagnosis. Successful generated investigations are persisted with an audit trail.
+IncidentWeave is a repository-aware investigation service for backend systems. It ingests a local Python repository, embeds source chunks, retrieves repository evidence for a natural-language question, and conditionally asks Gemini for an evidence-grounded diagnosis. With persistence enabled, generated answers, model abstentions, guard refusals, and pipeline errors are persisted with audit records.
 
 This document describes the implementation on the `main` branch, not an aspirational redesign. The authoritative project-plan material present in the repository is the completed Phase 1–9 build-log series in [`docs/`](../README.md) and the [nine-phase roadmap](../../README.md#roadmap); the roadmap ends at Phase 9. No standalone project-plan or chat-roles document exists in the checked-out repository, so no absent document has been inferred.
 
