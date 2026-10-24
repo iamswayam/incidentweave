@@ -18,6 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.db.models import Chunk, Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
+from app.secret_scan import find_secret  # noqa: E402
 
 CHUNK_SIZE = 60
 OVERLAP_SIZE = 10
@@ -90,6 +91,7 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
 
         files_processed = 0
         chunks_to_create: list[Chunk] = []
+        skipped_chunks: list[tuple[str, str, int, int]] = []
 
         for file_path in sorted(iter_python_files(root)):
             files_processed += 1
@@ -105,6 +107,15 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
                 if not chunk_content.strip():
                     continue
 
+                line_start = start_index + 1
+                line_end = end_index
+                secret_pattern = find_secret(chunk_content)
+                if secret_pattern is not None:
+                    skipped_chunks.append(
+                        (secret_pattern, relative_path, line_start, line_end)
+                    )
+                    continue
+
                 chunks_to_create.append(
                     Chunk(
                         repository_id=repository.id,
@@ -112,8 +123,8 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
                         file_path=relative_path,
                         file_type="python",
                         document_type="code",
-                        line_start=start_index + 1,
-                        line_end=end_index,
+                        line_start=line_start,
+                        line_end=line_end,
                         function_name=None,
                         class_name=None,
                         symbol=None,
@@ -122,6 +133,12 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
 
         session.add_all(chunks_to_create)
         await session.commit()
+
+        for pattern_name, relative_path, line_start, line_end in skipped_chunks:
+            print(
+                "Skipped chunk with possible secret "
+                f"({pattern_name}): {relative_path}:{line_start}-{line_end}"
+            )
 
         return files_processed, len(chunks_to_create)
 
