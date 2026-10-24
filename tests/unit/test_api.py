@@ -79,7 +79,28 @@ def sufficient_pipeline_result() -> dict[str, object]:
         "tool_calls": [{"tool": "hybrid_search", "stage": "initial"}],
         "model": "gemini-3.5-flash-lite",
         "latency_ms": 1200,
+        "prompt": "must not be exposed",
+        "raw_response": "must not be exposed",
+        "raw_self_rating": "high",
+        "generation_params": {"max_attempts": 3},
+        "thresholds": {"max_evidence_chars": 24000},
+        "embedding_model": "models/gemini-embedding-001",
+        "chunk_records": [{"chunk_id": "7"}],
+        "trace": {"correlation_id": "private"},
     }
+
+
+AUDIT_ONLY_FIELDS = {
+    "prompt",
+    "prompt_version",
+    "raw_response",
+    "raw_self_rating",
+    "generation_params",
+    "thresholds",
+    "embedding_model",
+    "chunk_records",
+    "trace",
+}
 
 
 def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
@@ -145,6 +166,15 @@ def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
             ],
             "cited_chunk_ids": [],
         },
+        prompt_version="grounded-v2",
+        prompt="must not be exposed",
+        raw_response="must not be exposed",
+        raw_self_rating="low",
+        generation_params={},
+        thresholds={},
+        embedding_model="models/gemini-embedding-001",
+        chunk_records=[],
+        trace={"correlation_id": "private"},
     )
     monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
     monkeypatch.setattr(
@@ -169,6 +199,8 @@ def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
     assert fetched.status_code == 200
     assert fetched.json()["outcome"] == "refused_guard"
     assert fetched.json()["evidence_check"]["reason"] == refusal_reason
+    assert AUDIT_ONLY_FIELDS.isdisjoint(created.json())
+    assert AUDIT_ONLY_FIELDS.isdisjoint(fetched.json())
 
 
 def test_post_investigation_success_response_shape(
@@ -206,6 +238,7 @@ def test_post_investigation_success_response_shape(
     )
     assert "confidence" not in body
     assert "raw_confidence" not in body
+    assert AUDIT_ONLY_FIELDS.isdisjoint(body)
     assert body["evidence_check"]["best_rrf_score"] == 0.04
     assert body["evidence_check"]["best_vector_score"] == 0.25
     assert body["evaluation_note"].startswith("Phase 8 evaluated 24 questions")
@@ -235,6 +268,7 @@ def test_post_response_omits_legacy_confidence_fields(
     assert "raw_confidence" not in body
     assert "model_self_rating" in body
     assert "rating_note" in body
+    assert AUDIT_ONLY_FIELDS.isdisjoint(body)
 
 
 def test_post_unknown_repository_uses_standard_404(
@@ -424,6 +458,15 @@ def test_get_investigation_and_missing_id(
             ],
             "cited_chunk_ids": ["7"],
         },
+        prompt_version="grounded-v2",
+        prompt="must not be exposed",
+        raw_response="must not be exposed",
+        raw_self_rating="medium",
+        generation_params={},
+        thresholds={},
+        embedding_model="models/gemini-embedding-001",
+        chunk_records=[],
+        trace={"correlation_id": "private"},
     )
     session = FakeSession(
         entities={(Investigation, 19): investigation, (Repository, 34): repository},
@@ -441,6 +484,7 @@ def test_get_investigation_and_missing_id(
     assert found.json()["rating_note"].startswith("Model self-rating")
     assert "confidence" not in found.json()
     assert "raw_confidence" not in found.json()
+    assert AUDIT_ONLY_FIELDS.isdisjoint(found.json())
     assert found.json()["cited_chunk_ids"] == ["7"]
     assert found.json()["evidence_check"]["best_rrf_score"] == 0.04
     assert found.json()["evaluation_note"].startswith("Phase 8 evaluated 24 questions")

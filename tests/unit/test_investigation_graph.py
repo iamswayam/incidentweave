@@ -230,6 +230,8 @@ async def test_graph_records_prompt_budget_and_returns_kept_evidence(
 
     budget_calls = [call for call in result["tool_calls"] if call["tool"] == "prompt_budget"]
     assert result["retrieval_results"] == [first]
+    assert result["retrieved_before_budget"] == [first, second]
+    assert result["raw_self_rating"] == "high"
     assert budget_calls == [
         {
             "tool": "prompt_budget",

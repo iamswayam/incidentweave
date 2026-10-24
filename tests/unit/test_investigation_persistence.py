@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.db.models import Audit
+from app.investigation.parsing import parse_investigation_response
 from app.investigation.persistence import (
     OUTCOME_ABSTAINED_MODEL,
     OUTCOME_ANSWERED,
@@ -12,6 +13,7 @@ from app.investigation.persistence import (
     persist_investigation,
     persist_refusal,
 )
+from app.investigation.replay import ReplayRecord
 
 
 class FakeSession:
@@ -67,9 +69,10 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
                     "parts": [
                         {
                             "text": (
-                            "Diagnosis: Async sessions are configured using async_sessionmaker.\n\n"
-                            "Confidence: high\n\n"
-                            "Evidence used:\n- app/db/session.py, lines 1-46"
+                                "Diagnosis: Async sessions are configured using "
+                                "async_sessionmaker.\n\n"
+                                "Confidence: high\n\n"
+                                "Evidence used:\n- app/db/session.py, lines 1-46"
                             )
                         }
                     ]
@@ -110,6 +113,33 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
         final_confidence="medium",
         tool_call_trace=tool_call_trace,
         ingest_run_id=231,
+        replay=ReplayRecord(
+            prompt="grounded prompt",
+            prompt_version="grounded-v2",
+            raw_response=(
+                "Diagnosis: Async sessions are configured using async_sessionmaker.\n"
+                "Confidence: high\nEvidence used: app/db/session.py"
+            ),
+            raw_self_rating="high",
+            generation_params={"timeout_seconds": 60, "max_attempts": 3},
+            thresholds={"max_evidence_chars": 24000},
+            embedding_model="models/gemini-embedding-001",
+            chunk_records=[
+                {
+                    "chunk_id": "105",
+                    "rank": 1,
+                    "content_hash": "hash-105",
+                    "kept_in_prompt": True,
+                }
+            ],
+            trace={
+                "correlation_id": "abc123",
+                "outcome": "answered",
+                "model": "gemini-3.5-flash-lite",
+                "generation_latency_ms": 2400,
+                "error_class": None,
+            },
+        ),
     )
 
     assert investigation.query == "how are async sessions configured?"
@@ -129,6 +159,21 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit_rows[0].tool_calls["attempts"] == tool_call_trace
     assert audit_rows[0].confidence == "medium"
     assert audit_rows[0].ingest_run_id == 231
+    audit = audit_rows[0]
+    assert audit.prompt == "grounded prompt"
+    assert audit.prompt_version == "grounded-v2"
+    assert audit.raw_self_rating == "high"
+    assert audit.chunk_records[0]["kept_in_prompt"] is True
+    reparsed = parse_investigation_response(
+        {
+            "candidates": [
+                {"content": {"parts": [{"text": audit.raw_response}]}}
+            ]
+        },
+        retrieval_results,
+    )
+    assert reparsed["diagnosis"] == investigation.response
+    assert reparsed["confidence"] == "high"
 
 
 @pytest.mark.anyio
@@ -196,6 +241,25 @@ async def test_persist_refusal_creates_investigation_and_audit() -> None:
         retrieval_results=retrieval_results,
         tool_call_trace=trace,
         ingest_run_id=232,
+        replay=ReplayRecord(
+            thresholds={"max_acceptable_vector_distance": 0.5},
+            embedding_model="models/gemini-embedding-001",
+            chunk_records=[
+                {
+                    "chunk_id": "105",
+                    "rank": 1,
+                    "content_hash": "hash-105",
+                    "kept_in_prompt": False,
+                }
+            ],
+            trace={
+                "correlation_id": "refusal123",
+                "outcome": OUTCOME_REFUSED_GUARD,
+                "model": None,
+                "generation_latency_ms": None,
+                "error_class": None,
+            },
+        ),
     )
 
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
@@ -221,6 +285,10 @@ async def test_persist_refusal_creates_investigation_and_audit() -> None:
         }
     ]
     assert audit_rows[0].ingest_run_id == 232
+    assert audit_rows[0].prompt is None
+    assert audit_rows[0].raw_response is None
+    assert audit_rows[0].chunk_records[0]["kept_in_prompt"] is False
+    assert audit_rows[0].trace["outcome"] == OUTCOME_REFUSED_GUARD
 
 
 @pytest.mark.anyio
@@ -236,6 +304,15 @@ async def test_persist_error_stores_only_exception_class_name() -> None:
         query="question",
         error_class=type(error).__name__,
         ingest_run_id=233,
+        replay=ReplayRecord(
+            trace={
+                "correlation_id": "error123",
+                "outcome": OUTCOME_ERROR,
+                "model": "gemini-3.5-flash-lite",
+                "generation_latency_ms": None,
+                "error_class": "SecretError",
+            }
+        ),
     )
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
 
@@ -249,6 +326,9 @@ async def test_persist_error_stores_only_exception_class_name() -> None:
         "retrieval_results": [],
     }
     assert audit_rows[0].ingest_run_id == 233
+    assert audit_rows[0].trace["error_class"] == "SecretError"
+    assert audit_rows[0].prompt is None
+    assert audit_rows[0].raw_response is None
     assert "SECRET" not in repr(
         (
             investigation.error_class,

@@ -7,6 +7,8 @@ from collections.abc import Mapping, Sequence
 
 from app.investigation.limits import MAX_EVIDENCE_CHARS
 
+PROMPT_VERSION = "grounded-v2"
+
 SYSTEM_INSTRUCTION = """You are an evidence-grounded incident investigation assistant.
 Use only the repository evidence supplied below. Do not invent causes, files,
 lines, or system behavior that the evidence does not support. If the evidence
