@@ -66,7 +66,7 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | **Evidence gate** | Requires at least one retrieved chunk with vector distance at or below the provisional 0.5 cutoff; RRF is for ranking and reporting, not a gate. A chunk without vector distance cannot make evidence sufficient. The cutoff will be re-validated on the held-out split in checklist item 3b. |
 | **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores to Gemini `gemini-3.5-flash-lite` with a use-evidence-only instruction. |
 | **Citations & model self-rating** | Extracts citations to retrieved chunk IDs/file paths and may lower the model's `high` self-rating when retrieval margins are borderline. The rating is not a measured probability of correctness. |
-| **Audit trail** | Persists the query, generated diagnosis, model, latency, token count, ranked chunk IDs/scores, citations, and ordered tool attempts for successful generated investigations. |
+| **Audit trail** | Persists an investigation and audit for answers, guard refusals, model abstentions, and failures; the investigation stores a typed outcome, and refusals retain retrieval evidence and tool attempts. |
 | **API & tooling** | Protected HTTP endpoints, local CLI entry points, a stdio MCP server, Docker Compose, Alembic migrations, pytest, Ruff, and CI. |
 
 ## Technology stack
@@ -153,7 +153,7 @@ uvicorn app.main:app --reload
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /health` | None | Returns `{"status": "ok"}`. |
-| `POST /investigations` | `X-API-Secret` | Runs a synchronous investigation and persists a successful generated result. |
+| `POST /investigations` | `X-API-Secret` | Runs a synchronous investigation and persists its outcome, including refusals and failures. |
 | `GET /investigations/{id}` | `X-API-Secret` | Returns the persisted investigation plus reconstructed audit details. |
 | `GET /repositories` | `X-API-Secret` | Lists repositories with total and embedded chunk counts. |
 
@@ -167,7 +167,7 @@ Invoke-RestMethod -Method Post `
   -Body '{"repository_name":"<repository_name>","query":"How are database sessions configured?","limit":5}'
 ```
 
-The API and CLI report the diagnosis and model self-rating (`low`, `medium`, or `high`). The API also includes a rating note: it is the model's own label, may be lowered when retrieval scores are weak, and is not a measured probability of correctness; no accuracy check exists yet. API responses include cited chunk IDs, the evidence check, tool attempt trace, model, latency, and a fixed evaluation caveat. Guard-level insufficient-evidence results return `INSUFFICIENT_EVIDENCE` and are not persisted by the current pipeline.
+The API and CLI report the diagnosis and model self-rating (`low`, `medium`, or `high`). The API also includes a rating note: it is the model's own label, may be lowered when retrieval scores are weak, and is not a measured probability of correctness; no accuracy check exists yet. API responses include the outcome, cited chunk IDs, the evidence check, tool attempt trace, model, latency, and a fixed evaluation caveat. Guard refusals are persisted with an investigation ID and retrieval evidence; errors store only their exception class name.
 
 ## Evaluation
 
@@ -226,7 +226,7 @@ IncidentWeave intentionally makes its current boundaries visible:
 - **Evidence and model self-rating:** citations establish that the response referred to retrieved IDs/paths; they do not independently prove every claim. The self-rating is the model's own label with retrieval-based downgrade logic, not a measured probability of correctness.
 - **Evaluation:** the current evaluation is useful for regression-oriented diagnosis but is small, repository-specific, and pending label review.
 - **Service security:** protected routes use one shared secret and an in-memory per-IP limiter. There are no user accounts, key rotation, per-user quotas, distributed limiting, or production deployment controls.
-- **Audit completeness:** sufficient generated paths are persisted; guard-level abstentions are returned without an `Investigation`/`Audit` row. The database does not retain the pre-calibration model label for historical API reads.
+- **Audit completeness:** answers, guard refusals, model abstentions and investigation errors are persisted with an outcome. Refusals retain retrieval evidence and a reason for historical API reads; errors store only the exception class name. The database does not retain the pre-calibration model label for historical API reads.
 
 ## Documentation
 

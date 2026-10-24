@@ -39,7 +39,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 5a | ☑ | Hardening now: API key in header | Medium | S | Both |
 | 5b | ☐ | Hardening later: Docker non-root and env, healthcheck | Medium | S | Both |
 | 6 | ☐ | Keep README/docs claims matching the code (done inside each item, not a standalone phase) | Medium | S | Both |
-| 7 | ☐ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
+| 7 | ☑ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
 | 8 | ☐ | Store a replayable audit (raw output, raw confidence, prompt, versions, thresholds) | High | M | Both |
 | 9 | ☐ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
 | 10 | ☐ | Async, batched provider client with deadlines and retries | High | M | Both |
@@ -120,6 +120,7 @@ Item 13's span labels depend on none of items 9, 11 and 12, so they may start ea
 - *Why:* when the guard fails, `investigate_repository` returns before persistence, so there is no row, `investigation_id` is `None`, and refusals cannot be reviewed [SRC].
 - *Fix:* add an `outcome` column (`answered`, `refused_guard`, `abstained_model`, `error`) via Alembic migration `0002`. Store a row for refusals with the evidence check and a retrieval summary. The API returns an ID for refusals. Also persist provider, validation and MCP errors (sanitized error class, terminal status).
 - *Done when:* a refused POST returns an ID and `GET /investigations/{id}` returns the refusal reason.
+- **Status:** 2026-10-24; branch fix/07-persist-every-outcome; changed migrations/versions/20261024_0002_investigation_outcome.py, app/db/models/investigation.py, app/investigation/persistence.py, scripts/investigate.py, app/api.py, tests/unit/test_investigation_persistence.py, tests/unit/test_investigate_limits.py, tests/unit/test_api.py, tests/unit/test_db_models.py, README.md, docs/architecture/01-architecture-overview.md, docs/architecture/02-high-level-design.md, docs/architecture/03-low-level-design.md and docs/architecture-review/03-fix-checklist.md; ruff check .: All checks passed!; pytest -q: 107 passed in 55.23s.
 
 **8. Store a replayable audit.**
 - *Why:* only the parsed diagnosis is stored. Missing: raw model text, raw confidence, prompt, model and embedding versions, generation settings, thresholds [SRC].

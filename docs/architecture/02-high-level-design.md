@@ -11,7 +11,7 @@ This document describes the implementation on the `main` branch, not an aspirati
 - Keep repository evidence ahead of generation: retrieval and an evidence-sufficiency check occur before Gemini generation.
 - Keep the service small: one FastAPI process, one PostgreSQL + pgvector database, and direct Gemini REST calls.
 - Keep workflow behavior bounded: one expanded-retrieval retry, then return `INSUFFICIENT_EVIDENCE` if evidence is still insufficient; the model does not choose tools.
-- Record successful generated investigations with their retrieved evidence scores and tool trace.
+- Persist answer, refusal, model-abstention, and error outcomes on Investigation rows, with corresponding Audit records.
 - Provide local developer workflows and a CI pipeline that exercises PostgreSQL + pgvector, migrations, tests, linting, and Docker build.
 
 ## 3. Technology stack
@@ -148,7 +148,7 @@ The items below are current implementation facts, not planned components:
 - **Small-corpus retrieval posture:** the schema has B-tree repository/path indexes but no pgvector ANN index and no persisted/generated FTS vector with a GIN index. FTS computes `to_tsvector` at query time.
 - **Bounded local workflow only:** after one widened retrieval retry, insufficient evidence returns `INSUFFICIENT_EVIDENCE`. The MCP server still exposes a grep tool, but the investigation graph does not invoke it.
 - **Local-grade access control:** protected API routes use one shared secret and a process-local, per-IP limiter. There are no user accounts, key rotation, per-user quotas, or distributed rate-limit storage.
-- **Selective audit persistence:** generated, sufficient-evidence paths persist `Investigation` and `Audit`; the guard’s `INSUFFICIENT_EVIDENCE` return is not persisted by the current orchestration path.
+- **Outcome persistence:** answers, guard refusals, model abstentions, and embedding/graph errors persist `Investigation` and `Audit` rows when `persist=True`; the outcome is stored on the Investigation, and errors store only the exception class name.
 - **No future component is assumed:** the approved README roadmap ends at Phase 9. Deferred options in existing documentation should not be read as implemented architecture.
 
 ## 8. Source map
