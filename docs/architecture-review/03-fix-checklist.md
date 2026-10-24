@@ -31,8 +31,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 8 | Done | #33 | Replayable audit record. |
 | 11 | Done | #34 | Structured output and citation validation. |
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
-| 13a | In progress | pending | Span labels, statistics, offline retrieval evaluation. |
-| 13b | Not started | n/a | CI gate and generation settings after 13a. |
+| 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
+| 13b | In progress | pending | CI gate and generation settings. |
 
 ## 1. Fix-order checklist (summary)
 
