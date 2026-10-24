@@ -61,7 +61,7 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | Capability | Implementation |
 |---|---|
 | **Repository ingestion** | Traverses eligible local `*.py` files, excludes VCS/cache/tool directories, and creates non-redundant 60-line chunks with 10-line overlap. Chunks matching supported secret patterns are skipped. Each run records `chunker_version`; matching path/range/hash identities keep chunk IDs and embeddings, while changed chunks are added. |
-| **Embeddings** | Calls Gemini `gemini-embedding-001`, requests 768 dimensions, validates the vector length, and stores it in `VECTOR(768)`. |
+| **Embeddings** | Calls Gemini `gemini-embedding-001` through an async HTTP client, requests 768 dimensions, validates vectors, and batches missing repository chunks in groups of 50 with concurrency capped at 4. |
 | **Hybrid retrieval** | Combines pgvector cosine-distance results with PostgreSQL full-text results through Reciprocal Rank Fusion (RRF). |
 | **Evidence gate** | Requires at least one retrieved chunk with vector distance at or below the provisional 0.5 cutoff; RRF is for ranking and reporting, not a gate. A chunk without vector distance cannot make evidence sufficient. The cutoff will be re-validated on the held-out split in checklist item 3b. |
 | **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores inside tagged, explicitly untrusted evidence sections to Gemini `gemini-3.5-flash-lite`; evidence content is bounded by the prompt budget. Generation requests JSON-schema output with outcome, diagnosis, self-rating, uncertainty note, and claims. |
@@ -70,6 +70,8 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | **API & tooling** | Protected HTTP endpoints, local CLI entry points, a stdio MCP server, Docker Compose, Alembic migrations, pytest, Ruff, and CI. |
 
 Ingest runs record the source path and available Git metadata, and each investigation audit links to the latest run. Chunks no longer present in a later ingest are deleted rather than archived, so historical evidence text is preserved only after checklist item 8.
+
+Provider execution uses bounded asynchronous HTTP calls with retries on selected transient failures. Batch size 50, concurrency 4, the 90-second generation deadline, and the 120-second investigation deadline are initial defaults. No throughput figure is claimed until the maintainer runs `scripts/benchmark_embeddings.py` against the live provider and records the measurements; the benchmark makes live calls but does not write to the database.
 
 ## Technology stack
 

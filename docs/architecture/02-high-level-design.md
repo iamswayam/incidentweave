@@ -87,13 +87,15 @@ flowchart TD
     I --> J[(chunks table)]
     J --> K
     K[embed_chunks CLI: repository name] --> L[Select chunks without embeddings]
-    L --> M[Gemini embedContent]
+    L --> M[Gemini batchEmbedContents: groups of 50, concurrency 4]
     M --> N[Validate 768 values]
     N --> O[Store VECTOR(768) embedding]
     O --> J
 ```
 
-`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type, content hash, and the creating ingest-run ID. Each run records its resolved source path, available Git commit/dirty/remote metadata, and `chunker_version="lines-60-10-v1"`; remote URL userinfo is stripped. Before hashing, it skips nonblank chunks matching supported secret patterns and prints a warning with the pattern name and source location, never the match. Existing chunks with identical repository/path/range/hash identities keep their IDs and embeddings. New identities are inserted, and chunks absent from the latest ingest are deleted. The latter are not archived, so historical evidence text is preserved only after checklist item 8. `scripts/embed_chunks.py` processes only missing embeddings, continues after an individual provider failure, and commits at the end.
+`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type, content hash, and the creating ingest-run ID. Each run records its resolved source path, available Git commit/dirty/remote metadata, and `chunker_version="lines-60-10-v1"`; remote URL userinfo is stripped. Before hashing, it skips nonblank chunks matching supported secret patterns and prints a warning with the pattern name and source location, never the match. Existing chunks with identical repository/path/range/hash identities keep their IDs and embeddings. New identities are inserted, and chunks absent from the latest ingest are deleted. The latter are not archived, so historical evidence text is preserved only after checklist item 8. `scripts/embed_chunks.py` processes only missing embeddings in batches of 50, runs at most four batches concurrently, reports failed batches, and commits successful embeddings after all batches finish.
+
+Provider requests use an async HTTP client, bounded retries with jitter for selected transient failures, a 90-second generation deadline, and a 120-second end-to-end investigation deadline. Batch size 50, concurrency 4, and both deadlines are initial defaults. No throughput claim is made until the maintainer runs the live `scripts/benchmark_embeddings.py` benchmark and records measured results; the script reads existing chunk content and does not write to the database.
 
 ### 5.2 Synchronous API investigation
 
@@ -137,7 +139,7 @@ Vector retrieval scopes by repository ID and orders by cosine distance. Full-tex
 | Boundary | Implemented behavior |
 |---|---|
 | Local filesystem | Ingestion reads a supplied local directory and records its resolved source path plus available Git revision metadata in an IngestRun row. |
-| Gemini | API key is read from `GEMINI_API_KEY`; embedding and generation use REST over HTTPS. |
+| Gemini | API key is read from `GEMINI_API_KEY` and sent in `x-goog-api-key`; asynchronous embedding and generation use REST over HTTPS with retry and deadline limits. |
 | PostgreSQL | The application converts a `postgresql://` URL to Psycopg’s async SQLAlchemy dialect, registers pgvector per connection, and uses async sessions. |
 | HTTP | `/health` is open. `/investigations`, `/investigations/{id}`, and `/repositories` require `X-API-Secret`. |
 | MCP | Local stdio subprocess only; there is no remote MCP deployment or model-directed tool selection. |

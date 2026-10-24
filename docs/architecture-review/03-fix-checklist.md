@@ -30,7 +30,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 9 | Done | #30 | Ingest runs and upsert ingestion. |
 | 8 | Done | #33 | Replayable audit record. |
 | 11 | Done | #34 | Structured output and citation validation. |
-| 10 | In progress | pending | Async, batched provider client. |
+| 10 | Done | pending | Async, batched provider client; benchmark script added, measured numbers pending a live run by the maintainer. |
 
 ## 1. Fix-order checklist (summary)
 
@@ -47,7 +47,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 7 | ☑ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
 | 8 | ☑ | Store a replayable audit (raw output, raw confidence, prompt, versions, thresholds) | High | M | Both |
 | 9 | ☑ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
-| 10 | ☐ | Async, batched provider client with deadlines and retries | High | M | Both |
+| 10 | ☑ | Async, batched provider client with deadlines and retries | High | M | Both |
 | 11 | ☑ | Structured output and server-side citation validation | High | M | Both (Codex stronger) |
 | 12a | ☑ | Injection and secret controls, early: evidence tags, secret skip, short threat-model note | Medium | S–M | Codex (Claude minor) |
 | 12b | ☐ | Wider prompt-injection testing (later) | Low | M | Codex |
@@ -144,9 +144,10 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
 ### Phase 3: answer contract
 
 **10. Async, batched provider client.**
-- *Why:* `embed_text` and `generate_investigation` use blocking `urllib` calls on async paths (up to 60 s per attempt plus `time.sleep` backoff). Embedding is one chunk per request with a 1.5 s sleep, about 4.2 hours of sleep for 10,000 chunks [SRC]. A batch embedding endpoint exists [per Google docs].
-- *Fix:* use `httpx.AsyncClient` or the `google-genai` async client; batch embeddings with a bounded-concurrency semaphore; retries with jitter on 429 and 5xx; one end-to-end deadline per request.
-- *Done when:* a test with a slow fake provider shows other requests stay responsive, and a measured batch-embedding benchmark is recorded (no throughput promise before measuring).
+- *Why:* blocking provider calls and per-chunk embedding requests constrained responsiveness and throughput. A Gemini batch embedding endpoint is available.
+- *Fix:* use an `httpx.AsyncClient`; batch embeddings with a bounded-concurrency semaphore; retry selected HTTP statuses and timeout/network failures with jitter; enforce provider and end-to-end deadlines. Add a live benchmark script that reads existing chunk contents without writing to the database.
+- *Done when:* a test with a slow fake provider shows other requests stay responsive, batching and concurrency are tested, and the benchmark script is added. No throughput promise is made; measured numbers remain pending the maintainer's live run.
+- **Status:** 2026-10-24; branch `fix/10-async-provider-client`; changed `app/api.py`, `app/investigation/generation.py`, `app/investigation/graph.py`, `app/providers/__init__.py`, `app/providers/gemini.py`, `evaluation/runner.py`, `pyproject.toml`, `scripts/benchmark_embeddings.py`, `scripts/embed_chunks.py`, `scripts/investigate.py`, `scripts/search_repo.py`, `tests/integration/test_ingest_repo_integration.py`, `tests/unit/test_api.py`, `tests/unit/test_embed_chunks_async.py`, `tests/unit/test_evaluation.py`, `tests/unit/test_gemini_api_key_header.py`, `tests/unit/test_gemini_provider.py`, `tests/unit/test_investigate_limits.py`, `tests/unit/test_investigation_graph.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 141 passed in 73.61s; benchmark script added; measured numbers pending a live run by the maintainer.
 
 **11. Structured output and server-side citation validation.**
 - *Why:* citations are string mentions. A response calling `app/config.py` "unrelated" still cites it, and a nonexistent line range still cites every chunk from that file [EXEC]. In the final run only 9 of 22 and 9 of 31 cited chunks matched a labeled-relevant substring [ART].
