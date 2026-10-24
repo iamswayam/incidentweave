@@ -28,8 +28,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 7 | Done | #26 | Every outcome is persisted. |
 | 12a | Done | #29 | Evidence tags and secret skip. |
 | 9 | Done | #30 | Ingest runs and upsert ingestion. |
-| 8 | Done | pending | Replayable audit record. |
-| 11 | In progress | pending | Structured output and citation validation. |
+| 8 | Done | #33 | Replayable audit record. |
+| 11 | Done | #34 | Structured output and citation validation. |
+| 10 | In progress | pending | Async, batched provider client. |
 
 ## 1. Fix-order checklist (summary)
 
