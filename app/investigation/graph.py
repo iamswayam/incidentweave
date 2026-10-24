@@ -41,6 +41,11 @@ class InvestigationState(TypedDict):
     response_payload: NotRequired[Mapping[str, object]]
     retrieved_before_budget: NotRequired[list[dict[str, object]]]
     raw_self_rating: NotRequired[str]
+    claims: NotRequired[list[dict[str, object]]]
+    uncertainty_note: NotRequired[str]
+    submitted_citation_count: NotRequired[int]
+    valid_citation_count: NotRequired[int]
+    citation_validity_rate: NotRequired[float | None]
 
 
 ConfidenceCalibrator = Callable[
@@ -169,9 +174,14 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         return {
             "diagnosis": str(parsed["diagnosis"]),
             "confidence": str(parsed["confidence"]),
-            "raw_self_rating": str(parsed["confidence"]),
+            "raw_self_rating": str(parsed["raw_self_rating"]),
             "raw_response": str(parsed["raw_text"]),
             "cited_chunk_ids": list(parsed["cited_chunk_ids"]),
+            "claims": list(parsed["claims"]),
+            "uncertainty_note": str(parsed["uncertainty_note"]),
+            "submitted_citation_count": int(parsed["submitted_citation_count"]),
+            "valid_citation_count": int(parsed["valid_citation_count"]),
+            "citation_validity_rate": parsed["citation_validity_rate"],
         }
 
     def calibrate(state: InvestigationState) -> dict[str, object]:

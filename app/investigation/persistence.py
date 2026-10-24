@@ -95,6 +95,8 @@ async def persist_investigation(
     session.add(investigation)
     await session.flush()
 
+    replay_columns = _replay_columns(replay)
+    replay_columns["raw_self_rating"] = str(parsed["raw_self_rating"])
     audit = Audit(
         investigation_id=investigation.id,
         query=query,
@@ -120,13 +122,20 @@ async def persist_investigation(
             "attempts": [dict(item) for item in (tool_call_trace or [])],
             "cited_chunk_ids": cited_chunk_ids,
             "retrieval_results": _retrieval_summary(retrieval_results),
+            "claims": parsed["claims"],
+            "uncertainty_note": parsed["uncertainty_note"],
+            "citation_validation": {
+                "submitted": parsed["submitted_citation_count"],
+                "valid": parsed["valid_citation_count"],
+                "rate": parsed["citation_validity_rate"],
+            },
         },
         model=model,
         response=diagnosis,
         latency_ms=latency_ms,
         token_usage=token_usage,
         confidence=str(confidence) if confidence else None,
-        **_replay_columns(replay),
+        **replay_columns,
     )
     session.add(audit)
     await session.commit()
@@ -187,6 +196,14 @@ async def persist_refusal(
             "attempts": [dict(item) for item in tool_call_trace],
             "cited_chunk_ids": [],
             "retrieval_results": _retrieval_summary(retrieval_results),
+            "claims": [],
+            "uncertainty_note": (
+                str(tool_call_trace[-1].get("outcome", {}).get("reason") or "")
+                if tool_call_trace
+                and isinstance(tool_call_trace[-1].get("outcome"), Mapping)
+                else ""
+            ),
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
         },
         model=None,
         response="INSUFFICIENT_EVIDENCE",
@@ -233,7 +250,14 @@ async def persist_error(
         vector_scores=[],
         fts_scores=[],
         rrf_scores=[],
-        tool_calls={"attempts": [], "cited_chunk_ids": [], "retrieval_results": []},
+        tool_calls={
+            "attempts": [],
+            "cited_chunk_ids": [],
+            "retrieval_results": [],
+            "claims": [],
+            "uncertainty_note": "",
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+        },
         model=None,
         response=None,
         latency_ms=None,

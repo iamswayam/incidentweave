@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 import hashlib
-import re
+import json
 from collections.abc import Mapping, Sequence
 
-_CONFIDENCE_PATTERN = re.compile(
-    r"^\s*confidence\s*:\s*(high|medium|low)\s*$",
-    re.IGNORECASE | re.MULTILINE,
-)
-_DIAGNOSIS_PATTERN = re.compile(
-    r"^\s*diagnosis\s*:\s*(.+?)(?=\n\s*(?:confidence|evidence used)\s*:|\Z)",
-    re.IGNORECASE | re.DOTALL | re.MULTILINE,
-)
-_CHUNK_PATTERN = re.compile(r"chunk_id\s*[=:]\s*([A-Za-z0-9_-]+)", re.IGNORECASE)
+
+class ModelOutputError(RuntimeError):
+    """Raised when provider output does not match the required JSON contract."""
 
 
 def _response_text(response_payload: Mapping[str, object]) -> str:
@@ -41,34 +35,53 @@ def _response_text(response_payload: Mapping[str, object]) -> str:
     ).strip()
 
 
-def _matches_retrieved_citation(response_text: str, result: Mapping[str, object]) -> bool:
-    """Return whether the model cited the result by ID or exact file path."""
+def _normalized_whitespace(text: str) -> str:
+    return " ".join(text.split())
 
-    if not isinstance(result, Mapping):
-        return False
 
-    chunk_id = str(result.get("id"))
-    if _CHUNK_PATTERN.search(response_text) and any(
-        matched == chunk_id for matched in _CHUNK_PATTERN.findall(response_text)
-    ):
-        return True
-
-    file_path = str(result.get("file_path") or "").strip()
-    if not file_path:
-        return False
-    if file_path in response_text:
-        return True
-
-    line_start = result.get("line_start")
-    line_end = result.get("line_end")
-    if line_start is None or line_end is None:
-        return False
-
-    pattern = (
-        rf"{re.escape(file_path)}.*?(?:lines?|line range)\s*[:=]?\s*"
-        rf"{re.escape(str(line_start))}\s*[-–]\s*{re.escape(str(line_end))}"
-    )
-    return bool(re.search(pattern, response_text, re.IGNORECASE | re.DOTALL))
+def _structured_response(response_text: str) -> Mapping[str, object]:
+    try:
+        response = json.loads(response_text)
+    except json.JSONDecodeError as exc:
+        raise ModelOutputError("The model response was not valid JSON.") from exc
+    if not isinstance(response, Mapping):
+        raise ModelOutputError("The model response must be a JSON object.")
+    outcome = response.get("outcome")
+    if not isinstance(outcome, str) or outcome not in {
+        "answered",
+        "insufficient_evidence",
+    }:
+        raise ModelOutputError("The model response has an invalid outcome.")
+    if not isinstance(response.get("diagnosis"), str):
+        raise ModelOutputError("The model response diagnosis must be a string.")
+    self_rating = response.get("self_rating")
+    if not isinstance(self_rating, str) or self_rating not in {
+        "low",
+        "medium",
+        "high",
+    }:
+        raise ModelOutputError("The model response self_rating is invalid.")
+    if not isinstance(response.get("uncertainty_note"), str):
+        raise ModelOutputError("The model response uncertainty_note must be a string.")
+    claims = response.get("claims")
+    if not isinstance(claims, list):
+        raise ModelOutputError("The model response claims must be an array.")
+    for claim in claims:
+        if not isinstance(claim, Mapping):
+            raise ModelOutputError("Each model claim must be an object.")
+        if not isinstance(claim.get("text"), str):
+            raise ModelOutputError("Each model claim text must be a string.")
+        evidence = claim.get("evidence")
+        if not isinstance(evidence, list):
+            raise ModelOutputError("Each model claim evidence must be an array.")
+        for item in evidence:
+            if not isinstance(item, Mapping):
+                raise ModelOutputError("Each evidence item must be an object.")
+            if not isinstance(item.get("chunk_id"), str) or not isinstance(
+                item.get("quote"), str
+            ):
+                raise ModelOutputError("Evidence chunk_id and quote must be strings.")
+    return response
 
 
 def extract_generation_trace(
@@ -119,28 +132,92 @@ def parse_investigation_response(
     response_payload: Mapping[str, object],
     retrieved_results: Sequence[Mapping[str, object]],
 ) -> dict[str, object]:
-    """Extract diagnosis, categorical confidence, and cited retrieved chunk IDs."""
+    """Parse structured output and retain only claims with verifiable evidence."""
 
-    response_text = _response_text(response_payload)
-    cited_ids = [
-        str(result.get("id"))
+    raw_text = _response_text(response_payload)
+    response = _structured_response(raw_text)
+
+    retrieved_by_id = {
+        str(result.get("id")): result
         for result in retrieved_results
-        if _matches_retrieved_citation(response_text, result)
-    ]
+        if result.get("id") is not None
+    }
+    submitted_citations = 0
+    valid_citations = 0
+    cited_ids: list[str] = []
+    validated_claims: list[dict[str, object]] = []
+    claims = response.get("claims")
+    if isinstance(claims, list):
+        for claim in claims:
+            if not isinstance(claim, Mapping):
+                continue
+            claim_text = claim.get("text")
+            evidence = claim.get("evidence")
+            if not isinstance(claim_text, str) or not claim_text.strip():
+                continue
+            valid_evidence: list[dict[str, str]] = []
+            if isinstance(evidence, list):
+                submitted_citations += len(evidence)
+                for item in evidence:
+                    chunk_id = item.get("chunk_id")
+                    quote = item.get("quote")
+                    result = retrieved_by_id.get(chunk_id)
+                    content = (
+                        str(result.get("content") or "")
+                        if result is not None
+                        else ""
+                    )
+                    normalized_quote = _normalized_whitespace(quote)
+                    if (
+                        len(normalized_quote) < 10
+                        or normalized_quote not in _normalized_whitespace(content)
+                    ):
+                        continue
+                    valid_evidence.append(
+                        {"chunk_id": chunk_id, "quote": quote}
+                    )
+                    valid_citations += 1
+                    if chunk_id not in cited_ids:
+                        cited_ids.append(chunk_id)
+            if valid_evidence:
+                validated_claims.append(
+                    {"text": claim_text.strip(), "evidence": valid_evidence}
+                )
 
-    confidence_match = _CONFIDENCE_PATTERN.search(response_text)
-    confidence = confidence_match.group(1).lower() if confidence_match else "low"
-
-    diagnosis_match = _DIAGNOSIS_PATTERN.search(response_text)
-    diagnosis = diagnosis_match.group(1).strip() if diagnosis_match else "INSUFFICIENT_EVIDENCE"
-    diagnosis = diagnosis or "INSUFFICIENT_EVIDENCE"
-    if diagnosis.rstrip(".").strip().upper() == "INSUFFICIENT_EVIDENCE":
-        # An abstention can never carry a confident rating (checklist item 4).
+    requested_outcome = response.get("outcome")
+    diagnosis_value = response.get("diagnosis")
+    diagnosis = (
+        diagnosis_value.strip()
+        if isinstance(diagnosis_value, str) and diagnosis_value.strip()
+        else "INSUFFICIENT_EVIDENCE"
+    )
+    raw_self_rating = str(response["self_rating"])
+    is_model_abstention = (
+        requested_outcome == "insufficient_evidence"
+        or diagnosis.rstrip(".").strip().upper() == "INSUFFICIENT_EVIDENCE"
+    )
+    no_valid_claims = not validated_claims
+    if is_model_abstention or no_valid_claims:
+        diagnosis = "INSUFFICIENT_EVIDENCE"
         confidence = "low"
+        outcome = "insufficient_evidence"
+    else:
+        confidence = raw_self_rating
+        outcome = "answered"
 
+    uncertainty_note = response.get("uncertainty_note")
     return {
+        "outcome": outcome,
         "diagnosis": diagnosis,
         "confidence": confidence,
+        "raw_self_rating": raw_self_rating,
         "cited_chunk_ids": cited_ids,
-        "raw_text": response_text,
+        "claims": validated_claims,
+        "uncertainty_note": uncertainty_note.strip(),
+        "submitted_citation_count": submitted_citations,
+        "valid_citation_count": valid_citations,
+        "citation_validity_rate": (
+            valid_citations / submitted_citations if submitted_citations else None
+        ),
+        "raw_text": raw_text,
     }

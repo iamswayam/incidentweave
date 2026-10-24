@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.db.models import Audit
@@ -68,11 +70,30 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
                 "content": {
                     "parts": [
                         {
-                            "text": (
-                                "Diagnosis: Async sessions are configured using "
-                                "async_sessionmaker.\n\n"
-                                "Confidence: high\n\n"
-                                "Evidence used:\n- app/db/session.py, lines 1-46"
+                            "text": json.dumps(
+                                {
+                                    "outcome": "answered",
+                                    "diagnosis": (
+                                        "Async sessions are configured using "
+                                        "async_sessionmaker."
+                                    ),
+                                    "self_rating": "high",
+                                    "claims": [
+                                        {
+                                            "text": (
+                                                "Async sessions are configured using "
+                                                "async_sessionmaker."
+                                            ),
+                                            "evidence": [
+                                                {
+                                                    "chunk_id": "105",
+                                                    "quote": "async_sessionmaker",
+                                                }
+                                            ],
+                                        }
+                                    ],
+                                    "uncertainty_note": "",
+                                }
                             )
                         }
                     ]
@@ -115,10 +136,29 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
         ingest_run_id=231,
         replay=ReplayRecord(
             prompt="grounded prompt",
-            prompt_version="grounded-v2",
+            prompt_version="grounded-v3",
             raw_response=(
-                "Diagnosis: Async sessions are configured using async_sessionmaker.\n"
-                "Confidence: high\nEvidence used: app/db/session.py"
+                json.dumps(
+                    {
+                        "outcome": "answered",
+                        "diagnosis": (
+                            "Async sessions are configured using async_sessionmaker."
+                        ),
+                        "self_rating": "high",
+                        "claims": [
+                            {
+                                "text": (
+                                    "Async sessions are configured using "
+                                    "async_sessionmaker."
+                                ),
+                                "evidence": [
+                                    {"chunk_id": "105", "quote": "async_sessionmaker"}
+                                ],
+                            }
+                        ],
+                        "uncertainty_note": "",
+                    }
+                )
             ),
             raw_self_rating="high",
             generation_params={"timeout_seconds": 60, "max_attempts": 3},
@@ -161,7 +201,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit_rows[0].ingest_run_id == 231
     audit = audit_rows[0]
     assert audit.prompt == "grounded prompt"
-    assert audit.prompt_version == "grounded-v2"
+    assert audit.prompt_version == "grounded-v3"
     assert audit.raw_self_rating == "high"
     assert audit.chunk_records[0]["kept_in_prompt"] is True
     reparsed = parse_investigation_response(
@@ -188,7 +228,17 @@ async def test_persist_investigation_marks_model_abstention() -> None:
                 {
                     "content": {
                         "parts": [
-                            {"text": "Diagnosis: insufficient_evidence.\nConfidence: medium"}
+                            {
+                                "text": json.dumps(
+                                    {
+                                        "outcome": "insufficient_evidence",
+                                        "diagnosis": "INSUFFICIENT_EVIDENCE",
+                                        "self_rating": "high",
+                                        "claims": [],
+                                        "uncertainty_note": "Insufficient evidence.",
+                                    }
+                                )
+                            }
                         ]
                     }
                 }
@@ -201,9 +251,11 @@ async def test_persist_investigation_marks_model_abstention() -> None:
     )
 
     assert investigation.outcome == OUTCOME_ABSTAINED_MODEL
+    assert investigation.confidence == "low"
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
     assert len(audit_rows) == 1
     assert audit_rows[0].ingest_run_id == 234
+    assert audit_rows[0].raw_self_rating == "high"
 
 
 @pytest.mark.anyio
@@ -324,6 +376,9 @@ async def test_persist_error_stores_only_exception_class_name() -> None:
         "attempts": [],
         "cited_chunk_ids": [],
         "retrieval_results": [],
+        "claims": [],
+        "uncertainty_note": "",
+        "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
     }
     assert audit_rows[0].ingest_run_id == 233
     assert audit_rows[0].trace["error_class"] == "SecretError"

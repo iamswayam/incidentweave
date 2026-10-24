@@ -51,6 +51,9 @@ class InvestigationResponse(BaseModel):
     evidence_check: dict[str, Any]
     retry_used: bool
     tool_calls: list[dict[str, Any]]
+    claims: list[dict[str, Any]] = Field(default_factory=list)
+    uncertainty_note: str = ""
+    citation_validation: dict[str, Any] = Field(default_factory=dict)
     model: str
     latency_ms: int | None
     evaluation_note: str
@@ -130,6 +133,15 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
         evidence_check=evidence_check,
         retry_used=bool(result.get("retry_used")),
         tool_calls=tool_calls,
+        claims=[
+            claim for claim in result.get("claims", []) if isinstance(claim, dict)
+        ],
+        uncertainty_note=str(result.get("uncertainty_note") or ""),
+        citation_validation=(
+            result.get("citation_validation")
+            if isinstance(result.get("citation_validation"), dict)
+            else {"submitted": 0, "valid": 0, "rate": None}
+        ),
         model=str(result.get("model") or ""),
         latency_ms=(
             int(result["latency_ms"])
@@ -185,6 +197,9 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
         "best_rrf_score": latest_check.get("best_rrf_score"),
         "best_vector_score": latest_check.get("best_vector_score"),
     }
+    citation_validation = audit_payload.get("citation_validation")
+    if not isinstance(citation_validation, dict):
+        citation_validation = {"submitted": 0, "valid": 0, "rate": None}
 
     return InvestigationResponse(
         investigation_id=investigation.id,
@@ -198,6 +213,9 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
         evidence_check=evidence_check,
         retry_used=any(attempt.get("stage") == "widened_retry" for attempt in tool_calls),
         tool_calls=tool_calls,
+        claims=[claim for claim in audit_payload.get("claims", []) if isinstance(claim, dict)],
+        uncertainty_note=str(audit_payload.get("uncertainty_note") or ""),
+        citation_validation=citation_validation,
         model=investigation.model or "",
         latency_ms=investigation.latency_ms,
         evaluation_note=EVALUATION_NOTE,

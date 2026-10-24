@@ -37,7 +37,7 @@ def test_build_grounded_prompt_under_budget_is_unchanged() -> None:
         "ANSWER = 42\n"
         "</evidence>\n\n"
         "Grounding requirement: base every statement on the evidence above. "
-        "If it does not establish a diagnosis, return INSUFFICIENT_EVIDENCE "
+        "If it does not establish a diagnosis, return structured insufficient_evidence "
         "and do not present a speculative explanation as fact."
     )
 

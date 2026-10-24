@@ -197,6 +197,9 @@ async def investigate_repository(
             "confidence_calibrated": result["confidence_calibrated"],
             "calibration_note": result["calibration_note"],
             "tool_calls": result["tool_calls"],
+            "claims": [],
+            "uncertainty_note": result["evidence_check"]["reason"],
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
             "generation_trace": extract_generation_trace(
                 result.get("prompt"), result.get("response_payload")
             ),
@@ -217,6 +220,8 @@ async def investigate_repository(
         generation_params={
             "timeout_seconds": GENERATION_TIMEOUT_SECONDS,
             "max_attempts": MAX_GENERATION_ATTEMPTS,
+            "response_mime_type": "application/json",
+            "response_schema_version": "grounded-v3",
         },
         thresholds=_current_thresholds(),
         embedding_model=GEMINI_MODEL,
@@ -277,6 +282,13 @@ async def investigate_repository(
         "confidence_calibrated": result["confidence_calibrated"],
         "calibration_note": result["calibration_note"],
         "tool_calls": result["tool_calls"],
+        "claims": result.get("claims", []),
+        "uncertainty_note": result.get("uncertainty_note", ""),
+        "citation_validation": {
+            "submitted": result.get("submitted_citation_count", 0),
+            "valid": result.get("valid_citation_count", 0),
+            "rate": result.get("citation_validity_rate"),
+        },
         "generation_trace": extract_generation_trace(
             result.get("prompt"), result.get("response_payload")
         ),

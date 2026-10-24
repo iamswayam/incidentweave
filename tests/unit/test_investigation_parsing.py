@@ -1,24 +1,80 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.investigation.confidence import calibrate_confidence
 from app.investigation.guard import evaluate_evidence_sufficiency
-from app.investigation.parsing import parse_investigation_response
+from app.investigation.parsing import ModelOutputError, parse_investigation_response
 
 
-def test_parse_investigation_response_handles_nonmatching_header_casing() -> None:
+def structured_payload(
+    *,
+    chunk_id: str = "105",
+    quote: str = "async_sessionmaker",
+    outcome: str = "answered",
+    diagnosis: str = "Async sessions use async_sessionmaker.",
+    self_rating: str = "high",
+) -> dict[str, object]:
+    return {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": json.dumps(
+                                {
+                                    "outcome": outcome,
+                                    "diagnosis": diagnosis,
+                                    "self_rating": self_rating,
+                                    "claims": [
+                                        {
+                                            "text": diagnosis,
+                                            "evidence": [
+                                                {"chunk_id": chunk_id, "quote": quote}
+                                            ],
+                                        }
+                                    ],
+                                    "uncertainty_note": "",
+                                }
+                            )
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+
+
+def test_parse_structured_response_validates_retrieved_id_and_whitespace_quote() -> None:
     payload = {
         "candidates": [
             {
                 "content": {
                     "parts": [
                         {
-                            "text": (
-                                "diagnosis: Async sessions use async_sessionmaker\n\n"
-                                "confidence: high\n\n"
-                                "evidence used:\n"
-                                "- app/db/session.py, lines 1-46"
+                            "text": json.dumps(
+                                {
+                                    "outcome": "answered",
+                                    "diagnosis": "Async sessions use async_sessionmaker.",
+                                    "self_rating": "high",
+                                    "claims": [
+                                        {
+                                            "text": "Async sessions use async_sessionmaker.",
+                                            "evidence": [
+                                                {
+                                                    "chunk_id": "105",
+                                                    "quote": "AsyncSessionLocal =  \n "
+                                                    "async_sessionmaker(bind=engine, "
+                                                    "class_=AsyncSession, "
+                                                    "expire_on_commit=False)",
+                                                }
+                                            ],
+                                        }
+                                    ],
+                                    "uncertainty_note": "",
+                                }
                             )
                         }
                     ]
@@ -42,29 +98,15 @@ def test_parse_investigation_response_handles_nonmatching_header_casing() -> Non
 
     parsed = parse_investigation_response(payload, results)
 
-    assert parsed["diagnosis"] == "Async sessions use async_sessionmaker"
+    assert parsed["diagnosis"] == "Async sessions use async_sessionmaker."
     assert parsed["confidence"] == "high"
     assert parsed["cited_chunk_ids"] == ["105"]
+    assert parsed["valid_citation_count"] == 1
+    assert parsed["citation_validity_rate"] == 1.0
+    assert parsed["claims"][0]["evidence"][0]["chunk_id"] == "105"
 
 
-def test_parse_investigation_response_matches_exact_file_path_without_lines() -> None:
-    payload = {
-        "candidates": [
-            {
-                "content": {
-                    "parts": [
-                        {
-                            "text": (
-                                "Diagnosis: AsyncSessionLocal is configured in "
-                                "app/db/session.py using async_sessionmaker.\n"
-                                "Confidence: high"
-                            )
-                        }
-                    ]
-                }
-            }
-        ]
-    }
+def test_parse_structured_response_rejects_hallucinated_chunk_id() -> None:
     retrieved_results = [
         {
             "id": 136,
@@ -74,9 +116,69 @@ def test_parse_investigation_response_matches_exact_file_path_without_lines() ->
         }
     ]
 
-    parsed = parse_investigation_response(payload, retrieved_results)
+    parsed = parse_investigation_response(
+        structured_payload(chunk_id="999"), retrieved_results
+    )
 
-    assert parsed["cited_chunk_ids"] == ["136"]
+    assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert parsed["outcome"] == "insufficient_evidence"
+    assert parsed["cited_chunk_ids"] == []
+    assert parsed["valid_citation_count"] == 0
+    assert parsed["submitted_citation_count"] == 1
+
+
+def test_parse_structured_response_rejects_quote_missing_from_retrieved_chunk() -> None:
+    parsed = parse_investigation_response(
+        structured_payload(quote="not actually present"),
+        [{"id": 105, "content": "AsyncSessionLocal uses async_sessionmaker."}],
+    )
+
+    assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert parsed["claims"] == []
+    assert parsed["citation_validity_rate"] == 0.0
+
+
+def test_parse_structured_response_drops_invalid_evidence_but_keeps_valid_claim() -> None:
+    payload = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": json.dumps(
+                                {
+                                    "outcome": "answered",
+                                    "diagnosis": "Supported claim.",
+                                    "self_rating": "medium",
+                                    "claims": [
+                                        {
+                                            "text": "Supported claim.",
+                                            "evidence": [
+                                                {"chunk_id": "missing", "quote": "text"},
+                                                {"chunk_id": "105", "quote": "valid quote"},
+                                            ],
+                                        }
+                                    ],
+                                    "uncertainty_note": "Some uncertainty remains.",
+                                }
+                            )
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+    parsed = parse_investigation_response(
+        payload,
+        [{"id": 105, "content": "A valid quote is present."}],
+    )
+
+    assert parsed["diagnosis"] == "Supported claim."
+    assert parsed["cited_chunk_ids"] == ["105"]
+    assert parsed["submitted_citation_count"] == 2
+    assert parsed["valid_citation_count"] == 1
+    assert parsed["citation_validity_rate"] == 0.5
+    assert parsed["uncertainty_note"] == "Some uncertainty remains."
 
 
 def test_evaluate_evidence_sufficiency_rejects_empty_and_weak_results() -> None:
@@ -145,98 +247,67 @@ def test_evaluate_evidence_sufficiency_rejects_evidence_source_argument() -> Non
         evaluate_evidence_sufficiency([], evidence_source="literal")
 
 
-def test_parse_investigation_response_forces_low_confidence_on_abstention() -> None:
-    payload = {
-        "candidates": [
-            {
-                "content": {
-                    "parts": [
-                        {
-                            "text": (
-                                "Diagnosis: INSUFFICIENT_EVIDENCE\n"
-                                "Confidence: high\n"
-                                "Evidence used: app/db/session.py, lines 1-46"
-                            )
-                        }
-                    ]
-                }
-            }
-        ]
-    }
-    retrieved_results = [
-        {
-            "id": 105,
-            "file_path": "app/db/session.py",
-            "line_start": 1,
-            "line_end": 46,
-        }
-    ]
-
-    parsed = parse_investigation_response(payload, retrieved_results)
+def test_parse_insufficient_evidence_keeps_valid_claims_and_raw_rating() -> None:
+    parsed = parse_investigation_response(
+        structured_payload(
+            outcome="insufficient_evidence",
+            diagnosis="insufficient_evidence.",
+            self_rating="high",
+        ),
+        [{"id": 105, "content": "async_sessionmaker configured for app."}],
+    )
 
     assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
     assert parsed["confidence"] == "low"
+    assert parsed["raw_self_rating"] == "high"
+    assert parsed["claims"][0]["text"] == "insufficient_evidence."
     assert parsed["cited_chunk_ids"] == ["105"]
 
 
-def test_parse_investigation_response_normalizes_punctuated_abstention() -> None:
-    payload = {
-        "candidates": [
-            {
-                "content": {
-                    "parts": [
-                        {"text": "Diagnosis: insufficient_evidence.\nConfidence: medium"}
-                    ]
-                }
-            }
-        ]
-    }
+def test_parse_invalid_json_raises_model_output_error() -> None:
+    payload = {"candidates": [{"content": {"parts": [{"text": "not json"}]}}]}
 
-    parsed = parse_investigation_response(payload, [])
-
-    assert parsed["confidence"] == "low"
+    with pytest.raises(ModelOutputError, match="valid JSON"):
+        parse_investigation_response(payload, [])
 
 
-def test_parse_investigation_response_preserves_non_abstention_confidence() -> None:
-    payload = {
-        "candidates": [
-            {
-                "content": {
-                    "parts": [
-                        {
-                            "text": (
-                                "Diagnosis: Sessions use async_sessionmaker.\n"
-                                "Confidence: high"
-                            )
-                        }
-                    ]
-                }
-            }
-        ]
-    }
+def test_parse_wrong_field_types_raise_model_output_error() -> None:
+    payload = structured_payload()
+    payload["candidates"][0]["content"]["parts"][0]["text"] = json.dumps(
+        {
+            "outcome": "answered",
+            "diagnosis": "Diagnosis",
+            "self_rating": ["high"],
+            "uncertainty_note": "",
+            "claims": [],
+        }
+    )
 
-    parsed = parse_investigation_response(payload, [])
-
-    assert parsed["confidence"] == "high"
+    with pytest.raises(ModelOutputError, match="self_rating"):
+        parse_investigation_response(payload, [])
 
 
-def test_parse_investigation_response_forces_low_confidence_without_diagnosis_header() -> None:
-    payload = {
-        "candidates": [
-            {
-                "content": {
-                    "parts": [
-                        {"text": "Confidence: high"}
-                    ]
-                }
-            }
-        ]
-    }
-
-    parsed = parse_investigation_response(payload, [])
+def test_parse_quote_under_ten_characters_is_dropped() -> None:
+    parsed = parse_investigation_response(
+        structured_payload(quote="short"),
+        [{"id": 105, "content": "A short quote is here."}],
+    )
 
     assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
-    assert parsed["confidence"] == "low"
+    assert parsed["claims"] == []
+    assert parsed["valid_citation_count"] == 0
+
+
+def test_parse_answered_without_valid_claim_is_refused() -> None:
+    parsed = parse_investigation_response(
+        structured_payload(quote="not present in source"),
+        [{"id": 105, "content": "real source content for this result"}],
+    )
+
+    assert parsed["outcome"] == "insufficient_evidence"
+    assert parsed["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert parsed["claims"] == []
+    assert parsed["cited_chunk_ids"] == []
 
 
 def test_calibrate_confidence_keeps_low_confidence_low() -> None:

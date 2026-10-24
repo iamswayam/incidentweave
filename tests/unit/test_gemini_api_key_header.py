@@ -45,6 +45,16 @@ def test_generate_investigation_sends_api_key_in_header(monkeypatch) -> None:
     generation.generate_investigation("question")
 
     _assert_key_is_in_header(captured_requests[0])
+    body = json.loads(captured_requests[0].data.decode("utf-8"))
+    assert body["generationConfig"]["responseMimeType"] == "application/json"
+    assert set(body["generationConfig"]["responseSchema"]["required"]) == {
+        "outcome",
+        "diagnosis",
+        "self_rating",
+        "claims",
+        "uncertainty_note",
+    }
+    assert body["generationConfig"]["responseSchema"] == generation.RESPONSE_SCHEMA
 
 
 def test_embed_text_sends_api_key_in_header(monkeypatch) -> None:
