@@ -84,6 +84,36 @@ def validate_golden_set(
         question_id = question.get("id", "<missing>")
         category = question.get("category")
         question_text = question.get("question")
+        if "relevant_spans" in question:
+            labels = question.get("relevant", [])
+            spans = question["relevant_spans"]
+            if not isinstance(spans, list):
+                errors.append(f"{question_id}: relevant_spans must be a list")
+            elif not isinstance(labels, list) or len(spans) != len(labels):
+                errors.append(
+                    f"{question_id}: relevant_spans must match relevant labels"
+                )
+            else:
+                for label, span in zip(labels, spans):
+                    if not isinstance(label, dict) or not isinstance(span, dict):
+                        errors.append(f"{question_id}: every relevant span must be an object")
+                        continue
+                    if span.get("file_path") != label.get("file_path"):
+                        errors.append(
+                            f"{question_id}: relevant span file_path does not match label"
+                        )
+                    line_start = span.get("line_start")
+                    line_end = span.get("line_end")
+                    if (
+                        not isinstance(line_start, int)
+                        or isinstance(line_start, bool)
+                        or not isinstance(line_end, int)
+                        or isinstance(line_end, bool)
+                        or not 1 <= line_start <= line_end
+                    ):
+                        errors.append(
+                            f"{question_id}: relevant span line range is invalid"
+                        )
         if not isinstance(question_text, str) or not question_text.strip():
             errors.append(f"{question_id}: missing question")
             question_text = ""

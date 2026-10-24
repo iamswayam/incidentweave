@@ -21,6 +21,27 @@ def is_relevant(
     )
 
 
+def is_relevant_span(
+    result: Mapping[str, object],
+    spans: Sequence[Mapping[str, object]],
+) -> bool:
+    """Return whether a result's line range intersects a same-file labeled span."""
+
+    file_path = str(result.get("file_path") or "")
+    line_start = result.get("line_start")
+    line_end = result.get("line_end")
+    if not isinstance(line_start, int) or not isinstance(line_end, int):
+        return False
+    return any(
+        file_path == str(span.get("file_path") or "")
+        and isinstance(span.get("line_start"), int)
+        and isinstance(span.get("line_end"), int)
+        and line_start <= span["line_end"]
+        and span["line_start"] <= line_end
+        for span in spans
+    )
+
+
 def first_relevant_rank(
     results: Sequence[Mapping[str, object]],
     labels: Sequence[Mapping[str, str]],
@@ -29,6 +50,18 @@ def first_relevant_rank(
 
     for rank, result in enumerate(results, start=1):
         if is_relevant(result, labels):
+            return rank
+    return None
+
+
+def first_relevant_span_rank(
+    results: Sequence[Mapping[str, object]],
+    spans: Sequence[Mapping[str, object]],
+) -> int | None:
+    """Return the one-based first result intersecting a relevance span."""
+
+    for rank, result in enumerate(results, start=1):
+        if is_relevant_span(result, spans):
             return rank
     return None
 
@@ -46,6 +79,19 @@ def hit_at_k(
     )
 
 
+def span_hit_at_k(
+    question_results: Sequence[Sequence[Mapping[str, object]]],
+    spans_by_question: Sequence[Sequence[Mapping[str, object]]],
+    k: int,
+) -> int:
+    """Count questions with a span-overlapping result in the first k results."""
+
+    return sum(
+        first_relevant_span_rank(results[:k], spans) is not None
+        for results, spans in zip(question_results, spans_by_question)
+    )
+
+
 def mean_reciprocal_rank(
     question_results: Sequence[Sequence[Mapping[str, object]]],
     labels_by_question: Sequence[Sequence[Mapping[str, str]]],
@@ -57,6 +103,21 @@ def mean_reciprocal_rank(
     reciprocal_ranks = []
     for results, labels in zip(question_results, labels_by_question):
         rank = first_relevant_rank(results, labels)
+        reciprocal_ranks.append(1 / rank if rank is not None else 0.0)
+    return sum(reciprocal_ranks) / len(reciprocal_ranks)
+
+
+def span_mrr(
+    question_results: Sequence[Sequence[Mapping[str, object]]],
+    spans_by_question: Sequence[Sequence[Mapping[str, object]]],
+) -> float:
+    """Return mean reciprocal first span rank, with misses scored as zero."""
+
+    if not question_results:
+        return 0.0
+    reciprocal_ranks = []
+    for results, spans in zip(question_results, spans_by_question):
+        rank = first_relevant_span_rank(results, spans)
         reciprocal_ranks.append(1 / rank if rank is not None else 0.0)
     return sum(reciprocal_ranks) / len(reciprocal_ranks)
 

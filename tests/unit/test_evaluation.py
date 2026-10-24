@@ -1270,6 +1270,9 @@ def _valid_golden_data(snapshot_root: Path) -> dict[str, object]:
                 "question": "How does this behavior work?",
                 "seen_before": False,
                 "relevant": [{"file_path": relative_path, "substring": content}],
+                "relevant_spans": [
+                    {"file_path": relative_path, "line_start": 1, "line_end": 1}
+                ],
                 "must_mention": [["label"]],
             }
         )
@@ -1279,6 +1282,8 @@ def _valid_golden_data(snapshot_root: Path) -> dict[str, object]:
             "category": "unanswerable_far" if index < 4 else "unanswerable_near",
             "question": "How is this absent feature handled?",
             "seen_before": False,
+            "relevant": [],
+            "relevant_spans": [],
             "absent_terms": ["feature-not-present"],
         }
         for index in range(8)
@@ -1336,6 +1341,22 @@ def test_golden_validation_rejects_missing_labels_absent_terms_and_answer_labels
     assert any("absent term appears" in error for error in errors)
     assert any("unanswerable_near requires absent_terms" in error for error in errors)
     assert any("unanswerable question has answer labels" in error for error in errors)
+
+
+def test_golden_validation_checks_relevant_span_shape_and_matching_paths(
+    tmp_path: Path,
+) -> None:
+    data = _valid_golden_data(tmp_path)
+    data["questions"][0]["relevant_spans"] = [
+        {"file_path": "wrong.py", "line_start": 0, "line_end": 2}
+    ]
+    data["questions"][1]["relevant_spans"] = []
+
+    errors = validate_golden_set(data, tmp_path, "snapshot-sha")
+
+    assert any("file_path does not match label" in error for error in errors)
+    assert any("line range is invalid" in error for error in errors)
+    assert any("must match relevant labels" in error for error in errors)
 
 
 def test_index_validation_requires_a_reachable_chunk() -> None:
