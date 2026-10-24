@@ -45,7 +45,7 @@ flowchart TB
 |---|---|---|
 | `app.main:app` | ASGI requests | Builds FastAPI, registers router and normalizes HTTP/validation/unexpected errors. |
 | `scripts/serve.py` | None | Windows-safe Uvicorn launcher that selects `WindowsSelectorEventLoopPolicy` before loading the app. |
-| `scripts/ingest_repo.py` | `<repo_path> <repo_name>` | Replace the named repository’s source chunks after skipping chunks matching supported secret patterns. |
+| `scripts/ingest_repo.py` | `<repo_path> <repo_name>` | Record an IngestRun and upsert the named repository’s source chunks by content identity, skipping chunks matching supported secret patterns. |
 | `scripts/embed_chunks.py` | `<repo_name>` | Embed only chunks with null vectors; print embedded/failed/skipped counts. |
 | `scripts/search_repo.py` | repository name, query, optional limit | Embed query, run hybrid search and print ranked evidence. |
 | `scripts/investigate.py` | repository name, query, optional limit/path | Run full investigation graph; persist generated sufficient-evidence results by default. |
@@ -68,6 +68,9 @@ erDiagram
     REPOSITORIES ||--o{ INVESTIGATIONS : receives
     INVESTIGATIONS ||--o{ AUDIT_RECORDS : has
     REPOSITORIES ||--o{ AUDIT_RECORDS : scopes
+    REPOSITORIES ||--o{ INGEST_RUNS : records
+    INGEST_RUNS ||--o{ CHUNKS : creates
+    INGEST_RUNS ||--o{ AUDIT_RECORDS : describes
 
     REPOSITORIES {
         int id PK
@@ -82,7 +85,20 @@ erDiagram
         string file_path
         int line_start
         int line_end
+        string content_hash
+        int ingest_run_id FK
         vector_768 embedding
+    }
+    INGEST_RUNS {
+        int id PK
+        int repository_id FK
+        text source_path
+        string git_remote
+        string commit_sha
+        boolean dirty
+        datetime started_at
+        string chunker_version
+        string embedding_model
     }
     INVESTIGATIONS {
         int id PK
@@ -98,6 +114,7 @@ erDiagram
         int id PK
         int investigation_id FK
         int repository_id FK
+        int ingest_run_id FK
         int_array retrieved_chunk_ids
         float_array vector_scores
         float_array fts_scores
@@ -108,13 +125,13 @@ erDiagram
     }
 ```
 
-The initial migration creates the `vector` extension and all four tables ([`20260819_0001_initial_schema.py`](../../migrations/versions/20260819_0001_initial_schema.py)). `Chunk` contains additional nullable metadata fields (`file_type`, `document_type`, `symbol`, `function_name`, `class_name`, `section`, `service`, `environment`, `incident_id`, `timestamp`) that the current Python ingester does not populate except `file_type` and `document_type`.
+Migrations `20260819_0001_initial_schema`, `20261024_0002_investigation_outcome`, and `20261025_0003_ingest_runs` define the schema. `Chunk` contains additional nullable metadata fields (`file_type`, `document_type`, `symbol`, `function_name`, `class_name`, `section`, `service`, `environment`, `incident_id`, `timestamp`) that the current Python ingester does not populate except `file_type` and `document_type`.
 
 ### 4.2 Referential behavior and indexes
 
-- `chunks.repository_id`, `investigations.repository_id`, and both `audit_records` foreign keys use `ON DELETE CASCADE`.
+- `chunks.repository_id`, `investigations.repository_id`, `audit_records.repository_id`, and `ingest_runs.repository_id` use `ON DELETE CASCADE`; chunk/audit ingest-run references use `ON DELETE SET NULL`.
 - ORM relationships cascade orphan deletion from repository to chunks/investigations and from investigation to audit records.
-- Declared indexes are `chunks(repository_id)`, `chunks(repository_id, file_path)`, and `investigations(repository_id)`.
+- Declared indexes include `chunks(repository_id)`, `chunks(repository_id, file_path)`, unique chunk identity, `ingest_runs(repository_id)`, and `investigations(repository_id)`.
 - `retrieved_chunk_ids` is an integer array, not an element-level foreign-key relationship. Scores are stored as parallel arrays; `tool_calls` JSONB contains per-attempt detail and retrieval metadata.
 
 ## 5. Ingestion and embedding internals
@@ -133,16 +150,22 @@ sequenceDiagram
     alt repository absent
         CLI->>DB: Insert Repository and flush for ID
     end
-    CLI->>DB: Delete existing chunks for repository ID
+    CLI->>DB: Create IngestRun with sanitized Git metadata
+    CLI->>DB: Read existing chunks for repository ID
     loop each file and each non-redundant window
         CLI->>CLI: Join 60 lines; next start advances 50 lines
         CLI->>CLI: Skip chunk and warn if supported secret pattern matches
-        CLI->>CLI: Queue eligible Chunk with relative path and 1-based range
+        CLI->>CLI: Hash content and compare path/range/hash identity
+        alt identity already exists
+            CLI->>CLI: Keep existing ID and embedding
+        else new identity
+            CLI->>DB: Insert Chunk linked to current IngestRun
+        end
     end
-    CLI->>DB: add_all chunks and commit
+    CLI->>DB: Delete stale identities and commit
 ```
 
-`IGNORE_DIRS` excludes `.git`, `.kilo`, `.pytest_cache`, `.ruff_cache`, `.venv`, `__pycache__`, and `migrations`. `chunk_lines()` rejects overlap greater than or equal to chunk size and skips a final window that adds no new lines. Before creating a row, the ingester applies regex checks for supported API keys, tokens, private-key headers, and quoted generic secret assignments. Matching chunks are skipped; warnings identify only the pattern and source range, never the matched text. The regex scan is not comprehensive. The transaction deletes/replaces chunks by repository name; it does not record a filesystem root, Git commit, or ingestion manifest.
+`IGNORE_DIRS` excludes `.git`, `.kilo`, `.pytest_cache`, `.ruff_cache`, `.venv`, `__pycache__`, and `migrations`. `chunk_lines()` rejects overlap greater than or equal to chunk size and skips a final window that adds no new lines. Before hashing, the ingester applies regex checks for supported API keys, tokens, private-key headers, and quoted generic secret assignments. Matching chunks are skipped; warnings identify only the pattern and source range, never the matched text. The regex scan is not comprehensive. Each run records `source_path`, available commit SHA, dirty state and sanitized Git remote, plus `chunker_version="lines-60-10-v1"`. Chunk identity is repository, relative path, line range, and SHA-256 content hash. Matching identities keep their IDs and embeddings; new chunks are linked to the current run, and stale identities are deleted. Deleted chunk text is not archived, so historical evidence text is preserved only after item 8.
 
 ### 5.2 Embedding algorithm
 
@@ -244,7 +267,7 @@ sequenceDiagram
 
 `persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count, and final model self-rating in both records; the Investigation stores the `answered` or `abstained_model` outcome. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls` ([`persistence.py`](../../app/investigation/persistence.py)).
 
-`investigate_repository()` persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace and retrieval summary. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Exceptions during embedding or graph execution are re-raised after an `error` outcome and empty Audit row are attempted. Only the exception class name is stored, never its message. `persist=False` skips these writes.
+`investigate_repository()` resolves the repository's latest IngestRun by highest ID and attaches that run ID to the Audit row for answers, model abstentions, guard refusals, and error outcomes. It persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace and retrieval summary. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Exceptions during embedding or graph execution are re-raised after an `error` outcome and empty Audit row are attempted. Only the exception class name is stored, never its message. `persist=False` skips these writes.
 
 ## 8. API design
 

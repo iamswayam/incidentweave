@@ -36,9 +36,9 @@ The two principal paths connect indexed repository content to a user investigati
 
 | Component | Responsibility and key implementation |
 |---|---|
-| `scripts/ingest_repo.py` | Selects a local root and repository name, traverses Python files, creates line-window chunks, and replaces that repository's chunk rows. [`iter_python_files`](../../scripts/ingest_repo.py#L35), [`chunk_lines`](../../scripts/ingest_repo.py#L49), [`ingest_repository`](../../scripts/ingest_repo.py#L70). |
+| `scripts/ingest_repo.py` | Selects a local root and repository name, records an IngestRun, and upserts chunks by content hash. [`iter_python_files`](../../scripts/ingest_repo.py#L35), [`chunk_lines`](../../scripts/ingest_repo.py#L49), [`ingest_repository`](../../scripts/ingest_repo.py#L93). |
 | `scripts/embed_chunks.py` | Embeds chunks that have no vector through Gemini `embedContent`; handles each chunk independently and commits after iteration. [`embed_text`](../../scripts/embed_chunks.py#L38), [`embed_repository_chunks`](../../scripts/embed_chunks.py#L77). |
-| `app/db/models/` and `migrations/` | Define Repository, Chunk, Investigation, and Audit storage and the initial schema. [Models](../../app/db/models/), [initial migration](../../migrations/versions/20260819_0001_initial_schema.py#L16). |
+| `app/db/models/` and `migrations/` | Define Repository, Chunk, IngestRun, Investigation, and Audit storage. [Models](../../app/db/models/), [initial migration](../../migrations/versions/20260819_0001_initial_schema.py#L16), [ingest-run migration](../../migrations/versions/20261025_0003_ingest_runs.py). |
 | `app/retrieval/vector_search.py` | Top-K pgvector cosine-distance query scoped by repository ID. [`search_vector`](../../app/retrieval/vector_search.py#L11). |
 | `app/retrieval/fulltext_search.py` | Query-time PostgreSQL full-text filtering and ranking. [`search_fulltext`](../../app/retrieval/fulltext_search.py#L9). |
 | `app/retrieval/hybrid_search.py` | Runs both retrievers, combines rankings with reciprocal-rank fusion (RRF), and returns fused top-K. [`hybrid_search`](../../app/retrieval/hybrid_search.py#L9). |
@@ -54,17 +54,17 @@ The two principal paths connect indexed repository content to a user investigati
 
 ## 3. Ingestion and Indexing Flow
 
-1. **Repository selection — Source-verified.** `python -m scripts.ingest_repo <repo_path> <repo_name>` takes a filesystem path and a separate database identity. It resolves the path and requires an existing directory. It looks up or creates a `Repository` by exact name; there is no stored source-root association ([argument parsing](../../scripts/ingest_repo.py#L129), [`ingest_repository`](../../scripts/ingest_repo.py#L70)).
+1. **Repository selection — Source-verified.** `python -m scripts.ingest_repo <repo_path> <repo_name>` takes a filesystem path and a separate database identity. It resolves the path and requires an existing directory. It looks up or creates a `Repository` by exact name; each ingestion run stores the resolved source path ([argument parsing](../../scripts/ingest_repo.py#L169), [`ingest_repository`](../../scripts/ingest_repo.py#L93)).
 2. **Traversal and formats — Source-verified.** Traversal is sorted `rglob("*.py")`. Excluded path components are `.git`, `.kilo`, `.pytest_cache`, `.ruff_cache`, `.venv`, `__pycache__`, and `migrations` ([`IGNORE_DIRS`](../../scripts/ingest_repo.py#L24), [`iter_python_files`](../../scripts/ingest_repo.py#L35)). No Markdown, log, PDF, or other format parser is present in this path. Files are decoded as UTF-8 with replacement.
 3. **Parsing and chunking — Source-verified.** No AST or syntax parser is used. `chunk_lines` creates 60-line windows with 10-line overlap (step 50), skips windows that add no new lines, and discards blank-only content ([`chunk_lines`](../../scripts/ingest_repo.py#L49), chunk construction at [line 101](../../scripts/ingest_repo.py#L101)). Python slices use an exclusive end index; the code stores that index as `line_end`, which is the inclusive, one-based number of the final included source line.
-4. **Metadata and provenance — Source-verified.** Each Chunk receives repository ID, exact content, relative POSIX file path, `file_type="python"`, `document_type="code"`, and line start/end. `function_name`, `class_name`, and `symbol` are explicitly `None`; additional schema fields such as section/service/environment/incident ID/timestamp are nullable and not populated by this ingester ([Chunk model](../../app/db/models/chunk.py#L17), chunk construction [line 101](../../scripts/ingest_repo.py#L101)).
-5. **Replacement behavior — Source-verified.** Ingestion deletes all existing chunks for the selected repository ID, inserts the newly generated set, and commits once ([`ingest_repository`](../../scripts/ingest_repo.py#L88)). This is clean replacement rather than append-only accumulation. There is no chunk content/path uniqueness constraint or incremental diff. **Inferred:** chunk IDs can change on re-ingestion, while audit rows hold integer ID arrays without chunk foreign keys, so historical IDs can become stale.
+4. **Metadata and provenance — Source-verified.** Each run records resolved `source_path`, available Git remote/commit/dirty state, and `chunker_version="lines-60-10-v1"`. Remote URL userinfo is removed before storage. Each eligible Chunk receives its SHA-256 `content_hash`, repository ID, relative POSIX path, line bounds, and file/document type; structural metadata remains unset ([IngestRun model](../../app/db/models/ingest_run.py), [Chunk model](../../app/db/models/chunk.py)).
+5. **Upsert and deletion behavior — Source-verified.** Chunk identity is `(repository_id, file_path, line_start, line_end, content_hash)`. Matching chunks retain their IDs and embeddings; new identities are inserted with the current run ID, and identities absent from the new ingest are deleted ([`ingest_repository`](../../scripts/ingest_repo.py#L93), [migration](../../migrations/versions/20261025_0003_ingest_runs.py)). Removed chunk text is not archived, so historical evidence text is preserved only after checklist item 8.
 6. **Embedding generation — Source-verified.** Run separately with `python -m scripts.embed_chunks <repo_name>`. It selects rows with null embeddings, calls Gemini `models/gemini-embedding-001` one chunk at a time, requests `outputDimensionality=768`, validates the response length, casts values to float, and assigns the vector ([model and dimension](../../scripts/embed_chunks.py#L25), [`embed_text`](../../scripts/embed_chunks.py#L38), [`embed_repository_chunks`](../../scripts/embed_chunks.py#L77)). Requests use `urllib`, a 60-second timeout, and a 1.5-second sleep after every chunk attempt. There is no batch API or automatic retry. Per-chunk exceptions are printed/counted; iteration continues and the session commits at the end. A failed chunk remains without an embedding and can be retried by rerunning the script.
 7. **FTS preparation — Source-verified.** No FTS column/vector is created during ingestion. Search computes `to_tsvector('english', content)` and `websearch_to_tsquery(query)` at request time and orders by `ts_rank_cd` ([`search_fulltext`](../../app/retrieval/fulltext_search.py#L9)).
 
 **Evaluation-specific exception:** `evaluation/runner.py::setup_eval_corpus` inserts pinned-snapshot chunks into one strategy-specific allowlisted evaluation repository using ranges from `evaluation/chunk_experiments.py`. If that repository already exists, its path/range/content tuples must exactly match the selected snapshot and strategy or setup fails without replacing rows. Matching rows are reused; only missing embeddings are submitted for embedding. The production `scripts.ingest_repo.chunk_lines` function is not patched or called by this evaluation setup. The inventory guard permits count changes only in the selected evaluation repository and rejects changes, creation, or disappearance elsewhere ([`setup_eval_corpus`](../../evaluation/runner.py#L274), [`ensure_non_eval_inventory_unchanged`](../../evaluation/runner.py#L241), [strategy definitions](../../evaluation/chunk_experiments.py)).
 
-**Tests:** `tests/unit/test_ingest_repo.py` covers chunk window boundaries; `tests/unit/test_evaluation.py` checks pinned snapshot counts. These tests were inspected but not run while writing this document. Path containment for symlinks, live DB replacement, and provider failure behavior are not established by those tests.
+**Tests:** `tests/unit/test_ingest_repo.py` covers chunk windows, remote credential stripping, and secret skipping. `tests/integration/test_ingest_repo_integration.py` covers stable IDs/embeddings, changed and removed chunks, run records, and audit linkage. `tests/unit/test_evaluation.py` checks pinned snapshot counts. These tests cover the listed cases only; path containment for symlinks and provider failure behavior are not established by them.
 
 ## 4. User-Query Investigation Flow
 
@@ -84,16 +84,19 @@ flowchart TD
     B --> C[Traverse sorted Python files]
     C --> D[Apply directory exclusions]
     D --> E[Read UTF-8 with replacement]
-    E --> F[Delete existing chunks for repository]
-    F --> G[Create 60-line windows, 10-line overlap]
-    G --> H[Skip chunks matching secret patterns]
-    H --> I[Insert eligible chunk content, path, line range, metadata]
-    I --> J[Commit chunk rows]
-    J --> K[Select chunks with null embeddings]
-    K --> L[Gemini embedContent, 768 dimensions, one request per chunk]
-    L --> M[Commit successful embeddings]
-    M --> N[Query-time vector search]
-    M --> O[Query-time full-text search over content]
+    E --> F[Create IngestRun with source and Git metadata]
+    F --> G[Create 60-line windows and skip secret matches]
+    G --> H[Hash content and compare chunk identities]
+    H --> I[Keep matching IDs and embeddings]
+    H --> J[Insert new chunks with this run ID]
+    I --> K[Delete identities absent from this ingest]
+    J --> K
+    K --> L[Commit chunk changes]
+    L --> M[Select chunks with null embeddings]
+    M --> N[Gemini embedContent, 768 dimensions, one request per chunk]
+    N --> O[Commit successful embeddings]
+    O --> P[Query-time vector search]
+    O --> Q[Query-time full-text search over content]
 ```
 
 ## 6. Mermaid Diagram: Investigation
@@ -125,11 +128,12 @@ flowchart TD
 | Entity | Important fields and relationships |
 |---|---|
 | `repositories` | Integer ID, unique non-null name (255 chars), created/updated timestamps. One repository has chunks and investigations. [Model](../../app/db/models/repository.py#L17). |
-| `chunks` | Repository FK with `ON DELETE CASCADE`; content, file path, line bounds, nullable file/document/symbol/function/class/section/service/environment/incident/timestamp metadata, nullable `VECTOR(768)`. B-tree indexes on repository ID and `(repository_id, file_path)`; no declared uniqueness, pgvector, or FTS index. [Model](../../app/db/models/chunk.py#L17), [migration](../../migrations/versions/20260819_0001_initial_schema.py#L38). |
+| `chunks` | Repository FK with `ON DELETE CASCADE`; nullable IngestRun FK with `ON DELETE SET NULL`; content hash, file path, line bounds, metadata, nullable `VECTOR(768)`. B-tree indexes include a unique identity on repository/path/range/content hash. [Model](../../app/db/models/chunk.py#L17), [migration](../../migrations/versions/20261025_0003_ingest_runs.py). |
+| `ingest_runs` | Repository FK with `ON DELETE CASCADE`; source path, sanitized Git remote, commit SHA, dirty state, start time, chunker version, optional embedding model. [Model](../../app/db/models/ingest_run.py). |
 | `investigations` | Repository FK, query, parsed diagnosis in `response`, model, latency, token usage, final model self-rating, outcome, optional error class, timestamp; index on repository ID. [Model](../../app/db/models/investigation.py#L17). |
-| `audit_records` | Investigation and repository FKs; integer array of retrieved chunk IDs; parallel score arrays; JSONB tool trace; model, parsed diagnosis, latency, token count, confidence, feedback. No chunk FK for elements of `retrieved_chunk_ids`. [Model](../../app/db/models/audit.py#L17). |
+| `audit_records` | Investigation and repository FKs; optional IngestRun FK; integer array of retrieved chunk IDs; parallel score arrays; JSONB tool trace; model, parsed diagnosis, latency, token count, confidence, feedback. No chunk FK for elements of `retrieved_chunk_ids`. [Model](../../app/db/models/audit.py#L17). |
 
-Migration `20260819_0001_initial_schema` creates the vector extension and initial tables/indexes; `20261024_0002_investigation_outcome` adds outcome and error-class fields. Migration execution was not performed. SQLAlchemy sessions are configured through `AsyncSessionLocal` in [app/db/session.py](../../app/db/session.py#L1). PostgreSQL full-text indexes are not declared in these migrations.
+Migrations `20260819_0001_initial_schema`, `20261024_0002_investigation_outcome`, and `20261025_0003_ingest_runs` create the schema. The latest migration adds ingestion provenance, backfills chunk content hashes, and establishes the chunk identity index. SQLAlchemy sessions are configured through `AsyncSessionLocal` in [app/db/session.py](../../app/db/session.py#L1). PostgreSQL full-text indexes are not declared in these migrations.
 
 ## 8. Retrieval, RRF, Evidence Guard, Retry and Abstention
 

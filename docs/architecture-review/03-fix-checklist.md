@@ -26,8 +26,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 5a | Done | #22 | Send the Gemini API key in a header; remove the moot MCP/grep timeout item. |
 | 19 | Done | #25 | Confidence renamed to model self-rating. |
 | 7 | Done | #26 | Every outcome is persisted. |
-| 12a | In progress | pending | Evidence tags and secret skip. |
-| 9 | In progress | pending | Ingest runs and upsert ingestion. |
+| 12a | Done | pending | Evidence tags and secret skip. |
+| 9 | Done | pending | Ingest runs and upsert ingestion. |
 
 ## 1. Fix-order checklist (summary)
 
@@ -43,7 +43,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 6 | ☐ | Keep README/docs claims matching the code (done inside each item, not a standalone phase) | Medium | S | Both |
 | 7 | ☑ | Persist every outcome (answered, refused, abstained, error) | High | M | Both |
 | 8 | ☐ | Store a replayable audit (raw output, raw confidence, prompt, versions, thresholds) | High | M | Both |
-| 9 | ☐ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
+| 9 | ☑ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
 | 10 | ☐ | Async, batched provider client with deadlines and retries | High | M | Both |
 | 11 | ☐ | Structured output and server-side citation validation | High | M | Both (Codex stronger) |
 | 12a | ☑ | Injection and secret controls, early: evidence tags, secret skip, short threat-model note | Medium | S–M | Codex (Claude minor) |
@@ -134,7 +134,8 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
 **9. Source versioning and upsert ingestion.**
 - *Why:* `ingest_repository` deletes all chunks and reinserts them, so chunk IDs change and embeddings are lost. `Audit.retrieved_chunk_ids` has no foreign key and no content snapshot. No commit SHA is stored [SRC].
 - *Fix:* an `ingest_runs` table (`repository_id`, `source_path`, `git_remote`, `commit_sha`, `dirty`, `started_at`, `chunker_version`, `embedding_model`); `chunks.ingest_run_id` and `chunks.content_hash`; upsert by (repository, file, range, content hash) so unchanged chunks keep their ID and embedding; audit rows reference the `ingest_run_id`. Make ingest runs immutable; an upsert alone cannot preserve historical evidence.
-- *Done when:* re-ingesting an unchanged repository leaves chunk IDs and embeddings intact, and an audit row shows which commit it described.
+- *Done when:* tests verify unchanged IDs/embeddings, changed and removed chunk behavior, and an audit row linked to the latest IngestRun.
+- **Status:** 2026-10-24; branch `fix/09-ingest-runs-upsert`; changed `migrations/versions/20261025_0003_ingest_runs.py`, `app/db/models/ingest_run.py`, `app/db/models/chunk.py`, `app/db/models/audit.py`, `app/db/models/__init__.py`, `scripts/ingest_repo.py`, `app/investigation/persistence.py`, `scripts/investigate.py`, `evaluation/runner.py`, `tests/integration/test_ingest_repo_integration.py`, `tests/integration/test_database.py`, `tests/integration/test_database_models_integration.py`, `tests/unit/test_db_models.py`, `tests/unit/test_ingest_repo.py`, `tests/unit/test_investigation_persistence.py`, `tests/unit/test_investigate_limits.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md` and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 121 passed in 47.58s.
 
 ### Phase 3: answer contract
 
