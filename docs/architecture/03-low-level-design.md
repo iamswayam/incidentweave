@@ -45,7 +45,7 @@ flowchart TB
 |---|---|---|
 | `app.main:app` | ASGI requests | Builds FastAPI, registers router and normalizes HTTP/validation/unexpected errors. |
 | `scripts/serve.py` | None | Windows-safe Uvicorn launcher that selects `WindowsSelectorEventLoopPolicy` before loading the app. |
-| `scripts/ingest_repo.py` | `<repo_path> <repo_name>` | Replace the named repository’s source chunks. |
+| `scripts/ingest_repo.py` | `<repo_path> <repo_name>` | Replace the named repository’s source chunks after skipping chunks matching supported secret patterns. |
 | `scripts/embed_chunks.py` | `<repo_name>` | Embed only chunks with null vectors; print embedded/failed/skipped counts. |
 | `scripts/search_repo.py` | repository name, query, optional limit | Embed query, run hybrid search and print ranked evidence. |
 | `scripts/investigate.py` | repository name, query, optional limit/path | Run full investigation graph; persist generated sufficient-evidence results by default. |
@@ -136,12 +136,13 @@ sequenceDiagram
     CLI->>DB: Delete existing chunks for repository ID
     loop each file and each non-redundant window
         CLI->>CLI: Join 60 lines; next start advances 50 lines
-        CLI->>CLI: Create Chunk with relative path and 1-based range
+        CLI->>CLI: Skip chunk and warn if supported secret pattern matches
+        CLI->>CLI: Queue eligible Chunk with relative path and 1-based range
     end
     CLI->>DB: add_all chunks and commit
 ```
 
-`IGNORE_DIRS` excludes `.git`, `.kilo`, `.pytest_cache`, `.ruff_cache`, `.venv`, `__pycache__`, and `migrations`. `chunk_lines()` rejects overlap greater than or equal to chunk size and skips a final window that adds no new lines. The transaction deletes/replaces chunks by repository name; it does not record a filesystem root, Git commit, or ingestion manifest.
+`IGNORE_DIRS` excludes `.git`, `.kilo`, `.pytest_cache`, `.ruff_cache`, `.venv`, `__pycache__`, and `migrations`. `chunk_lines()` rejects overlap greater than or equal to chunk size and skips a final window that adds no new lines. Before creating a row, the ingester applies regex checks for supported API keys, tokens, private-key headers, and quoted generic secret assignments. Matching chunks are skipped; warnings identify only the pattern and source range, never the matched text. The regex scan is not comprehensive. The transaction deletes/replaces chunks by repository name; it does not record a filesystem root, Git commit, or ingestion manifest.
 
 ### 5.2 Embedding algorithm
 
@@ -234,7 +235,7 @@ sequenceDiagram
 ### 7.3 Guard, prompt, parsing and calibration
 
 - **Guard:** `evaluate_evidence_sufficiency()` considers evidence sufficient when at least one retrieved chunk has vector distance at most `0.5`. RRF is used for ranking and reporting, not as a gate; a chunk without vector distance cannot make evidence sufficient. The cutoff is provisional until it is re-validated on the held-out split in checklist item 3b ([`guard.py`](../../app/investigation/guard.py)).
-- **Prompt:** `build_grounded_prompt()` emits the system instruction, user query, and every retrieved result’s chunk ID, path, line range, scores and content. It asks the model to use only supplied evidence and to return `INSUFFICIENT_EVIDENCE` if unsupported ([`prompt.py`](../../app/investigation/prompt.py)).
+- **Prompt:** `build_grounded_prompt()` emits the system instruction, user query, and retrieved result metadata/content inside `<evidence id="…" path="…" lines="…">` sections. It escapes closing-tag prefixes in content, identifies tagged text as untrusted, and caps evidence content at 24,000 characters by dropping lowest-ranked results or truncating an oversized first result. It asks the model to use only supplied evidence and return `INSUFFICIENT_EVIDENCE` if unsupported ([`prompt.py`](../../app/investigation/prompt.py)).
 - **Generation:** `generate_investigation()` calls Gemini with a 60-second request timeout and at most three attempts. HTTP 429/5xx and connection/timeout errors retry with 1- then 2-second backoff ([`generation.py`](../../app/investigation/generation.py)).
 - **Parsing:** only the first Gemini candidate is parsed. Regexes extract a diagnosis, `high|medium|low` confidence, and cited retrieved chunks. An `INSUFFICIENT_EVIDENCE` diagnosis forces confidence to `low`, while citation matches are kept. A matching chunk ID, exact file path, or path/range pattern marks a citation ([`parsing.py`](../../app/investigation/parsing.py)).
 - **Calibration:** only a `high` model confidence can be lowered to `medium`, when RRF is under `0.032` or vector distance exceeds `0.4` ([`confidence.py`](../../app/investigation/confidence.py)).

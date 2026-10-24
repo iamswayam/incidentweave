@@ -84,15 +84,16 @@ flowchart TD
     B --> C[Traverse sorted Python files]
     C --> D[Apply directory exclusions]
     D --> E[Read UTF-8 with replacement]
-    E --> F[60-line windows, 10-line overlap]
-    F --> G[Delete existing chunks for repository]
-    G --> H[Insert chunk content, path, line range, metadata]
-    H --> I[Commit chunk rows]
-    I --> J[Select chunks with null embeddings]
-    J --> K[Gemini embedContent, 768 dimensions, one request per chunk]
-    K --> L[Commit successful embeddings]
-    L --> M[Query-time vector search]
-    L --> N[Query-time full-text search over content]
+    E --> F[Delete existing chunks for repository]
+    F --> G[Create 60-line windows, 10-line overlap]
+    G --> H[Skip chunks matching secret patterns]
+    H --> I[Insert eligible chunk content, path, line range, metadata]
+    I --> J[Commit chunk rows]
+    J --> K[Select chunks with null embeddings]
+    K --> L[Gemini embedContent, 768 dimensions, one request per chunk]
+    L --> M[Commit successful embeddings]
+    M --> N[Query-time vector search]
+    M --> O[Query-time full-text search over content]
 ```
 
 ## 6. Mermaid Diagram: Investigation
@@ -143,7 +144,8 @@ Migration `20260819_0001_initial_schema` creates the vector extension and initia
 ## 9. LLM Integration, Prompting, Parsing and Confidence
 
 - **Provider/model — Source-verified:** generation endpoint is Gemini `generateContent`, model `gemini-3.5-flash-lite`, request body contains prompt text, timeout is 60 seconds, maximum is three attempts. HTTP 429/500/502/503/504, URL errors, timeouts, and OS errors retry with 1- and 2-second sleeps; other HTTP errors fail immediately ([generation constants and function](../../app/investigation/generation.py#L11)). No explicit generation config/sampling parameters are sent. Generation latency is measured around a successful HTTP attempt, not all retry time.
-- **Prompt — Source-verified:** retrieved hybrid chunks are included with ID, file path, line bounds, vector/FTS/RRF scores, and content. Instructions constrain statements to supplied evidence and request the exact abstention marker when evidence is insufficient ([prompt](../../app/investigation/prompt.py#L7)). No explicit context token budget or truncation is implemented there.
+- **Prompt — Source-verified:** retrieved hybrid chunks are included with ID, file path, line bounds, vector/FTS/RRF scores, and content inside `<evidence>` tags. Closing-tag prefixes in content are escaped; system instructions treat tagged content as untrusted data. Evidence content is capped at 24,000 characters, with lowest-ranked results dropped and an oversized first result truncated ([prompt](../../app/investigation/prompt.py#L7)).
+- **Ingestion secret scan — Source-verified:** each nonblank chunk is checked against supported API-key/token/private-key/assignment patterns before storage; a matching chunk is skipped and only its pattern name, relative path, and line range are warned. This regex screen can miss secrets.
 - **Parsing — Source-verified:** first candidate text is used. Diagnosis is extracted by a section regex; missing/empty diagnosis becomes `INSUFFICIENT_EVIDENCE`. An `INSUFFICIENT_EVIDENCE` diagnosis forces confidence to `low`, while citation matches are kept. Missing confidence becomes `low` ([parser](../../app/investigation/parsing.py#L118)).
 - **Citation matching — Source-verified:** a returned chunk is marked cited if response text contains its chunk ID, exact file path, or a file path plus line range ([matcher](../../app/investigation/parsing.py#L44)). This detects reference format, not whether a claim is supported by that chunk.
 - **Confidence — Source-verified:** only `high` may be downgraded, to `medium`, when RRF is below `0.032` or best vector distance exceeds `0.4`; there is no upgrade path ([calibrator](../../app/investigation/confidence.py#L9)).

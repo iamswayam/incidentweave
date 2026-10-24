@@ -81,15 +81,16 @@ flowchart TD
     C --> D[Create or find Repository]
     D --> E[Delete existing chunks for that repository]
     E --> F[Create 60-line chunks with 10-line overlap]
-    F --> G[(chunks table)]
-    H[embed_chunks CLI: repository name] --> I[Select chunks without embeddings]
-    I --> J[Gemini embedContent]
-    J --> K[Validate 768 values]
-    K --> L[Store VECTOR(768) embedding]
-    L --> G
+    F --> G[Skip chunks matching supported secret patterns]
+    G --> H[(chunks table)]
+    I[embed_chunks CLI: repository name] --> J[Select chunks without embeddings]
+    J --> K[Gemini embedContent]
+    K --> L[Validate 768 values]
+    L --> M[Store VECTOR(768) embedding]
+    M --> H
 ```
 
-`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type and content. It clears current chunks for the same repository name before inserting the replacement set. `scripts/embed_chunks.py` processes only missing embeddings, continues after an individual provider failure, and commits at the end.
+`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type and content. Before storage, it skips nonblank chunks matching the supported secret patterns and prints a warning with the pattern name and source location, never the match. It clears current chunks for the same repository name before inserting the replacement set. `scripts/embed_chunks.py` processes only missing embeddings, continues after an individual provider failure, and commits at the end.
 
 ### 5.2 Synchronous API investigation
 

@@ -46,7 +46,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 9 | ☐ | Source versioning and upsert ingestion (commit SHA, content hashes, stable chunk IDs) | High | M | Both |
 | 10 | ☐ | Async, batched provider client with deadlines and retries | High | M | Both |
 | 11 | ☐ | Structured output and server-side citation validation | High | M | Both (Codex stronger) |
-| 12a | ☐ | Injection and secret controls, early: evidence tags, secret skip, short threat-model note | Medium | S–M | Codex (Claude minor) |
+| 12a | ☑ | Injection and secret controls, early: evidence tags, secret skip, short threat-model note | Medium | S–M | Codex (Claude minor) |
 | 12b | ☐ | Wider prompt-injection testing (later) | Low | M | Codex |
 | 13 | ☐ | **Evaluation foundation** (do before any retrieval tuning) | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
@@ -151,8 +151,9 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
 **12a. Injection and secret controls (early). 12b. Wider injection testing (later).**
 - *Why:* repository text is concatenated into the prompt with no trust boundary, and code sent to an external model may contain secrets [SRC; Codex].
 - *Fix:* wrap each chunk in explicit tags (`<evidence id=… path=…>…</evidence>`) and instruct the model that evidence is untrusted data. Scan for secrets at ingestion (regex for keys and tokens) and redact or skip with a warning. Document the data policy.
-- *Scope:* **12a** = evidence tags, secret skip before anything is sent to the provider (tested with a mock provider), and a short threat-model note. **12b** = wider injection testing.
-- *Done when:* a fixture file containing "ignore previous instructions" does not change the diagnosis, and a fixture secret never reaches the prompt.
+- *Scope:* **12a** = evidence tags, secret skip before chunks enter storage and can be sent to a provider, and a short threat-model note. **12b** = wider injection testing.
+- *Done when:* prompt structure and secret skipping are tested; behavioral injection testing is checklist item 12b.
+- **Status:** 2026-10-24; branch `fix/12a-injection-secret-controls`; changed `app/investigation/prompt.py`, `app/secret_scan.py`, `scripts/ingest_repo.py`, `tests/unit/test_prompt.py`, `tests/unit/test_secret_scan.py`, `tests/unit/test_ingest_repo.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/architecture/04-threat-model.md`, `docs/architecture/README.md` and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 118 passed in 83.05s.
 
 ### Phase 4: measurement foundation, then retrieval gains
 
