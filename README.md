@@ -194,6 +194,14 @@ The recorded Phase 8 baseline on the pinned 70-chunk snapshot found vector and h
 
 These are diagnostic measurements, **not a general benchmark**: the set covers one source snapshot, labels are pending maintainer review, and answer screening uses keywords rather than human or LLM-judge adjudication. Full methodology, artifacts, and limitations are in [Phase 8](docs/phases/08-evaluation.md) and [Phase 8b](docs/phases/08b-evaluation-improvements.md).
 
+The retrieval-only offline evaluation uses cached query embeddings and a committed fixture, so it makes no Gemini calls:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/offline-baseline.json
+```
+
+It reports substring-label and source-span retrieval metrics with Wilson 95% intervals. The fixture builder and label methodology, paired exact sign-test comparison, committed baseline, and measurement limits are documented in [the offline evaluation note](docs/notes/04-offline-retrieval-evaluation.md).
+
 ## Quality checks and CI
 
 ```powershell
