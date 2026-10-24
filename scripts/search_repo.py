@@ -65,11 +65,12 @@ def main() -> None:
     if args.limit <= 0:
         raise SystemExit("--limit must be greater than zero")
 
+    async def search() -> list[dict[str, object]]:
+        query_embedding = await embed_text(args.query)
+        return await search_repository(args.repo_name, args.query, query_embedding, args.limit)
+
     try:
-        query_embedding = embed_text(args.query)
-        results = asyncio.run(
-            search_repository(args.repo_name, args.query, query_embedding, args.limit)
-        )
+        results = asyncio.run(search())
     except (RuntimeError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc

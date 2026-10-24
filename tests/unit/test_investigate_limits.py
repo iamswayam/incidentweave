@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from typing import Any
 
@@ -76,7 +77,11 @@ async def test_investigate_repository_accepts_limit_bounds_without_external_serv
 ) -> None:
     fake_graph = FakeGraph()
     monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
-    monkeypatch.setattr(investigate_module, "embed_text", lambda query: [0.1, 0.2])
+
+    async def fake_embed_text(query: str) -> list[float]:
+        return [0.1, 0.2]
+
+    monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
     monkeypatch.setattr(
         investigate_module, "create_investigation_graph", lambda calibrator: fake_graph
     )
@@ -136,7 +141,11 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
         return 42
 
     monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
-    monkeypatch.setattr(investigate_module, "embed_text", lambda query: [0.1, 0.2])
+
+    async def fake_embed_text(query: str) -> list[float]:
+        return [0.1, 0.2]
+
+    monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
     monkeypatch.setattr(
         investigate_module, "create_investigation_graph", lambda calibrator: InsufficientGraph()
     )
@@ -164,3 +173,44 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
         assert replay.chunk_records[0]["kept_in_prompt"] is False
         assert replay.trace is not None
         assert replay.trace["outcome"] == "refused_guard"
+
+
+@pytest.mark.anyio
+async def test_investigation_deadline_persists_timeout_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted_errors: list[str] = []
+
+    class SlowGraph:
+        async def ainvoke(self, state: dict[str, Any]) -> dict[str, Any]:
+            await asyncio.sleep(1)
+            return state
+
+    async def fake_embed_text(query: str) -> list[float]:
+        return [0.1, 0.2]
+
+    async def fake_persist_error(
+        session: object,
+        repository_id: int,
+        query: str,
+        error_class: str,
+        **kwargs: object,
+    ) -> None:
+        persisted_errors.append(error_class)
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
+    monkeypatch.setattr(
+        investigate_module, "create_investigation_graph", lambda calibrator: SlowGraph()
+    )
+    monkeypatch.setattr(
+        investigate_module, "persist_error", fake_persist_error
+    )
+    monkeypatch.setattr(investigate_module, "INVESTIGATION_DEADLINE_SECONDS", 0.01)
+
+    with pytest.raises(TimeoutError):
+        await investigate_module.investigate_repository(
+            "test-repo", "question", persist=True
+        )
+
+    assert persisted_errors == ["TimeoutError"]

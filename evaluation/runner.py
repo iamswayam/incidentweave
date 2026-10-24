@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -11,10 +12,8 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib import error as urllib_error
 
 from app.db.session import AsyncSessionLocal
-from app.investigation import generation
 from app.investigation.confidence import MAX_CLEAR_VECTOR_DISTANCE, MIN_CLEAR_RRF_SCORE
 from app.investigation.generation import GEMINI_GENERATION_MODEL
 from app.investigation.guard import (
@@ -23,6 +22,7 @@ from app.investigation.guard import (
     evaluate_evidence_sufficiency,
 )
 from app.investigation.prompt import SYSTEM_INSTRUCTION
+from app.providers import gemini as gemini_provider
 from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
@@ -157,7 +157,7 @@ def load_key_without_logging() -> None:
             return
 
 
-def cached_embedding(question: str) -> list[float]:
+async def cached_embedding(question: str) -> list[float]:
     """Load or create one query embedding cache entry without logging secrets."""
 
     CACHE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -166,10 +166,48 @@ def cached_embedding(question: str) -> list[float]:
     if cache_path.is_file():
         return [float(value) for value in json.loads(cache_path.read_text())]
     load_key_without_logging()
-    values = embed_chunks.embed_text(question)
+    values = await embed_chunks.embed_text(question)
     cache_path.write_text(json.dumps(values), encoding="utf-8")
-    time.sleep(MIN_API_DELAY_SECONDS)
+    await asyncio.sleep(MIN_API_DELAY_SECONDS)
     return values
+
+
+async def _counted_send_once(
+    client: Any,
+    url: str,
+    payload: Any,
+    *,
+    original_send_once: Any,
+    generation_budget: dict[str, int],
+    call_stats: dict[str, int],
+    state: dict[str, float],
+) -> Any:
+    """Count, budget, and throttle generation attempts without counting embeddings."""
+
+    if ":generateContent" not in url:
+        return await original_send_once(client, url, payload)
+
+    try:
+        now = time.monotonic()
+        last_call_at = state.get("last_call_at")
+        if last_call_at is not None:
+            delay = MIN_API_DELAY_SECONDS - (now - last_call_at)
+            if delay > 0:
+                await asyncio.sleep(delay)
+                state["question_throttle_wait_ms"] = (
+                    state.get("question_throttle_wait_ms", 0.0) + round(delay * 1000)
+                )
+        if generation_budget["http_calls"] >= MAX_GENERATION_HTTP_CALLS:
+            raise RuntimeError("Phase 8 generation HTTP call budget reached")
+        generation_budget["http_calls"] += 1
+        call_stats["http_calls"] += 1
+        response = await original_send_once(client, url, payload)
+        if response.status_code == 429:
+            generation_budget["http_429_responses"] += 1
+            call_stats["http_429_responses"] += 1
+        return response
+    finally:
+        state["last_call_at"] = time.monotonic()
 
 
 def _json_safe(value: object) -> object:
@@ -445,7 +483,7 @@ async def retrieval_records(
             raise RuntimeError(f"Evaluation repository was not created: {repository_name}")
         records = []
         for question in questions:
-            embedding = cached_embedding(question["question"])
+            embedding = await cached_embedding(question["question"])
             vector = await search_vector(session, repository.id, embedding, limit=LIMIT)
             fulltext = await search_fulltext(
                 session, repository.id, question["question"], limit=LIMIT
@@ -486,10 +524,10 @@ async def run_pipeline_once(
     repository_name = resolve_evaluation_repository(repository_name, strategy)
     original_embed = investigate.embed_text
     original_calibrator = investigate.calibrate_confidence
-    original_urlopen = generation.request.urlopen
+    original_send_once = gemini_provider.send_once
     calibration: dict[str, str] = {}
     call_stats = {"http_calls": 0, "http_429_responses": 0}
-    last_call_at: float | None = None
+    request_state = {"question_throttle_wait_ms": 0.0}
 
     def capture_calibration(
         raw_confidence: str,
@@ -505,38 +543,27 @@ async def run_pipeline_once(
         )
         return calibrated, note
 
-    def counted_urlopen(*args: Any, **kwargs: Any) -> Any:
-        nonlocal last_call_at, question_throttle_wait_ms
-        now = time.monotonic()
-        if last_call_at is not None:
-            delay = MIN_API_DELAY_SECONDS - (now - last_call_at)
-            if delay > 0:
-                time.sleep(delay)
-                question_throttle_wait_ms += round(delay * 1000)
-        if generation_budget["http_calls"] >= MAX_GENERATION_HTTP_CALLS:
-            raise RuntimeError("Phase 8 generation HTTP call budget reached")
-        generation_budget["http_calls"] += 1
-        call_stats["http_calls"] += 1
-        try:
-            return original_urlopen(*args, **kwargs)
-        except urllib_error.HTTPError as exc:
-            if exc.code == 429:
-                generation_budget["http_429_responses"] += 1
-                call_stats["http_429_responses"] += 1
-            raise
-        finally:
-            last_call_at = time.monotonic()
+    async def counted_send_once(client: Any, url: str, payload: Any) -> Any:
+        return await _counted_send_once(
+            client,
+            url,
+            payload,
+            original_send_once=original_send_once,
+            generation_budget=generation_budget,
+            call_stats=call_stats,
+            state=request_state,
+        )
 
     investigate.embed_text = cached_embedding
     investigate.calibrate_confidence = capture_calibration
-    generation.request.urlopen = counted_urlopen
+    gemini_provider.send_once = counted_send_once
     try:
         records = []
-        question_throttle_wait_ms = 0
+        request_state["question_throttle_wait_ms"] = 0
         for question in questions:
             calibration.clear()
             start_http_calls = call_stats["http_calls"]
-            question_throttle_wait_ms = 0
+            request_state["question_throttle_wait_ms"] = 0
             start_wall = time.perf_counter()
             try:
                 result = await investigate.investigate_repository(
@@ -620,11 +647,15 @@ async def run_pipeline_once(
                         "generation_ran": generation_ran,
                         "generation_trace": generation_trace,
                         "wall_ms": round((time.perf_counter() - start_wall) * 1000),
-                        "throttle_wait_ms": question_throttle_wait_ms,
+                        "throttle_wait_ms": request_state["question_throttle_wait_ms"],
                         "generation_ms": (
                             None
                             if generation_latency_ms is None
-                            else max(0, int(generation_latency_ms) - question_throttle_wait_ms)
+                            else max(
+                                0,
+                                int(generation_latency_ms)
+                                - int(request_state["question_throttle_wait_ms"]),
+                            )
                         ),
                         "generation_http_calls": call_stats["http_calls"] - start_http_calls,
                         "guard_refused": is_refused(diagnosis, generation_latency_ms),
@@ -665,7 +696,7 @@ async def run_pipeline_once(
                         "generation_ran": False,
                         "generation_trace": None,
                         "wall_ms": round((time.perf_counter() - start_wall) * 1000),
-                        "throttle_wait_ms": question_throttle_wait_ms,
+                        "throttle_wait_ms": request_state["question_throttle_wait_ms"],
                         "generation_ms": None,
                         "generation_http_calls": call_stats["http_calls"] - start_http_calls,
                         "guard_refused": False,
@@ -682,7 +713,7 @@ async def run_pipeline_once(
     finally:
         investigate.embed_text = original_embed
         investigate.calibrate_confidence = original_calibrator
-        generation.request.urlopen = original_urlopen
+        gemini_provider.send_once = original_send_once
 
 
 def classify_outcomes(records: list[dict[str, Any]], questions: list[dict[str, Any]]) -> None:

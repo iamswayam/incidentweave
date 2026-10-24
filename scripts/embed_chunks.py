@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
-import os
 import sys
 from pathlib import Path
-from urllib import error, request
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -21,60 +18,89 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.db.models import Chunk, Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
+from app.providers.gemini import make_client, post_json  # noqa: E402
 
 GEMINI_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSION = 768
+EMBED_BATCH_SIZE = 50
+EMBED_CONCURRENCY = 4
 
 
-def get_gemini_api_key() -> str:
-    """Read the Gemini API key from environment configuration."""
-
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is not set")
-    return api_key
-
-
-def embed_text(text: str) -> list[float]:
-    """Call the Gemini embeddings API for a single text value."""
-
-    api_key = get_gemini_api_key()
-    payload = json.dumps(
-        {
-            "model": GEMINI_MODEL,
-            "content": {"parts": [{"text": text}]},
-            "outputDimensionality": EMBEDDING_DIMENSION,
-        }
-    ).encode("utf-8")
-
-    url = (
+def _single_embedding_url() -> str:
+    return (
         f"https://generativelanguage.googleapis.com/v1beta/"
         f"{GEMINI_MODEL}:embedContent"
     )
-    req = request.Request(
-        url,
-        data=payload,
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        method="POST",
+
+
+def _batch_embedding_url() -> str:
+    return (
+        f"https://generativelanguage.googleapis.com/v1beta/"
+        f"{GEMINI_MODEL}:batchEmbedContents"
     )
 
-    try:
-        with request.urlopen(req, timeout=60) as response:
-            payload_data = json.loads(response.read().decode("utf-8"))
-    except error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Gemini API request failed: {detail}") from exc
 
-    values = payload_data.get("embedding", {}).get("values")
-    if not isinstance(values, list):
-        raise ValueError("Unexpected Gemini embedding response format")
+async def embed_text(text: str) -> list[float]:
+    """Call the Gemini embeddings API for a single text value."""
 
-    if len(values) != EMBEDDING_DIMENSION:
-        raise ValueError(
-            f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}, got {len(values)}"
+    payload = {
+        "model": GEMINI_MODEL,
+        "content": {"parts": [{"text": text}]},
+        "outputDimensionality": EMBEDDING_DIMENSION,
+    }
+    async with make_client() as client:
+        payload_data = await post_json(
+            client,
+            _single_embedding_url(),
+            payload,
+            deadline_seconds=60,
         )
 
+    embedding = payload_data.get("embedding")
+    values = embedding.get("values") if isinstance(embedding, dict) else None
+    if not isinstance(values, list):
+        raise ValueError("Unexpected Gemini embedding response format")
+    if len(values) != EMBEDDING_DIMENSION:
+        raise ValueError(
+            f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}, "
+            f"got {len(values)}"
+        )
     return [float(value) for value in values]
+
+
+async def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed multiple texts with Gemini's batch embedding endpoint."""
+
+    payload = {
+        "requests": [
+            {
+                "model": GEMINI_MODEL,
+                "content": {"parts": [{"text": text}]},
+                "outputDimensionality": EMBEDDING_DIMENSION,
+            }
+            for text in texts
+        ]
+    }
+    async with make_client() as client:
+        payload_data = await post_json(
+            client,
+            _batch_embedding_url(),
+            payload,
+            deadline_seconds=60,
+        )
+
+    embeddings = payload_data.get("embeddings")
+    if not isinstance(embeddings, list) or len(embeddings) != len(texts):
+        raise ValueError("Unexpected Gemini batch embedding response count")
+    vectors: list[list[float]] = []
+    for embedding in embeddings:
+        values = embedding.get("values") if isinstance(embedding, dict) else None
+        if not isinstance(values, list) or len(values) != EMBEDDING_DIMENSION:
+            raise ValueError(
+                f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}"
+            )
+        vectors.append([float(value) for value in values])
+    return vectors
 
 
 async def embed_repository_chunks(repo_name: str) -> tuple[int, int, int]:
@@ -98,19 +124,38 @@ async def embed_repository_chunks(repo_name: str) -> tuple[int, int, int]:
         embedded = 0
         failed = 0
 
-        for chunk in chunks_to_embed:
-            try:
-                chunk.embedding = embed_text(chunk.content)
-                session.add(chunk)
-                embedded += 1
-            except Exception as exc:  # pragma: no cover - runtime network/API behavior
+        semaphore = asyncio.Semaphore(EMBED_CONCURRENCY)
+        batches = [
+            chunks_to_embed[index : index + EMBED_BATCH_SIZE]
+            for index in range(0, len(chunks_to_embed), EMBED_BATCH_SIZE)
+        ]
+
+        async def embed_batch(
+            batch: list[Chunk],
+        ) -> tuple[list[list[float]] | None, Exception | None]:
+            async with semaphore:
+                try:
+                    return await embed_texts([chunk.content for chunk in batch]), None
+                except (RuntimeError, TimeoutError, ValueError) as exc:
+                    return None, exc
+
+        results = await asyncio.gather(
+            *(embed_batch(batch) for batch in batches),
+        )
+        for batch, (vectors, error) in zip(batches, results):
+            if error is not None:
                 print(
-                    f"Failed to embed chunk {chunk.id} ({chunk.file_path}): {exc}",
+                    f"Failed to embed batch ({len(batch)} chunks): "
+                    f"{type(error).__name__}",
                     file=sys.stderr,
                 )
-                failed += 1
-            finally:
-                await asyncio.sleep(1.5)
+                failed += len(batch)
+                continue
+            assert vectors is not None
+            for chunk, embedding in zip(batch, vectors):
+                chunk.embedding = embedding
+                session.add(chunk)
+                embedded += 1
 
         await session.commit()
 

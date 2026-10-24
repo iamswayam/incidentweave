@@ -6,6 +6,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 
 from app.db.models import Repository
@@ -37,6 +38,7 @@ from evaluation.metrics import (
     value_distribution,
 )
 from evaluation.runner import (
+    MAX_GENERATION_HTTP_CALLS,
     build_run_id,
     classify_outcome_v2_for_records,
     classify_outcomes,
@@ -1060,6 +1062,120 @@ def test_run_summary_reports_answered_citation_validity_rate() -> None:
     assert summarize_run(
         [{**records[0], "submitted_citation_count": 0, "valid_citation_count": 0}]
     )["citation_validity_rate"] is None
+
+
+@pytest.mark.anyio
+async def test_counted_send_once_counts_and_throttles_generation_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from evaluation import runner
+
+    delays: list[float] = []
+    state = {"last_call_at": 1.0, "question_throttle_wait_ms": 0.0}
+    budget = {"http_calls": 0, "http_429_responses": 0}
+    stats = {"http_calls": 0, "http_429_responses": 0}
+
+    async def fake_sleep(delay: float) -> None:
+        delays.append(delay)
+
+    async def original_send_once(client: object, url: str, payload: object):
+        return httpx.Response(200, json={"ok": True})
+
+    monkeypatch.setattr(runner.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(runner.time, "monotonic", lambda: 2.0)
+    response = await runner._counted_send_once(
+        object(),
+        "https://provider.test:generateContent",
+        {},
+        original_send_once=original_send_once,
+        generation_budget=budget,
+        call_stats=stats,
+        state=state,
+    )
+
+    assert response.status_code == 200
+    assert delays == [0.5]
+    assert state["question_throttle_wait_ms"] == 500
+    assert budget["http_calls"] == stats["http_calls"] == 1
+
+
+@pytest.mark.anyio
+async def test_counted_send_once_counts_429_and_returns_response() -> None:
+    from evaluation import runner
+
+    budget = {"http_calls": 0, "http_429_responses": 0}
+    stats = {"http_calls": 0, "http_429_responses": 0}
+
+    async def original_send_once(client: object, url: str, payload: object):
+        return httpx.Response(429)
+
+    response = await runner._counted_send_once(
+        object(),
+        "https://provider.test:generateContent",
+        {},
+        original_send_once=original_send_once,
+        generation_budget=budget,
+        call_stats=stats,
+        state={},
+    )
+
+    assert response.status_code == 429
+    assert budget == stats == {"http_calls": 1, "http_429_responses": 1}
+
+
+@pytest.mark.anyio
+async def test_counted_send_once_enforces_generation_budget() -> None:
+    from evaluation import runner
+
+    budget = {"http_calls": MAX_GENERATION_HTTP_CALLS, "http_429_responses": 0}
+    stats = {"http_calls": 0, "http_429_responses": 0}
+    called = False
+
+    async def original_send_once(client: object, url: str, payload: object):
+        nonlocal called
+        called = True
+        return httpx.Response(200)
+
+    with pytest.raises(RuntimeError, match="generation HTTP call budget reached"):
+        await runner._counted_send_once(
+            object(),
+            "https://provider.test:generateContent",
+            {},
+            original_send_once=original_send_once,
+            generation_budget=budget,
+            call_stats=stats,
+            state={},
+        )
+
+    assert called is False
+    assert stats["http_calls"] == 0
+
+
+@pytest.mark.anyio
+async def test_counted_send_once_passes_embeddings_without_counting() -> None:
+    from evaluation import runner
+
+    budget = {"http_calls": 0, "http_429_responses": 0}
+    stats = {"http_calls": 0, "http_429_responses": 0}
+    calls: list[str] = []
+
+    async def original_send_once(client: object, url: str, payload: object):
+        calls.append(url)
+        return httpx.Response(200)
+
+    response = await runner._counted_send_once(
+        object(),
+        "https://provider.test:batchEmbedContents",
+        {},
+        original_send_once=original_send_once,
+        generation_budget=budget,
+        call_stats=stats,
+        state={},
+    )
+
+    assert response.status_code == 200
+    assert calls == ["https://provider.test:batchEmbedContents"]
+    assert budget["http_calls"] == stats["http_calls"] == 0
 
 
 def test_mrr_averages_equal_ranks_and_counts_no_hit_as_zero() -> None:

@@ -97,7 +97,7 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
             "validation_error",
             "Request validation failed.",
         ) from exc
-    except RuntimeError as exc:
+    except (RuntimeError, TimeoutError) as exc:
         raise _http_error(
             502,
             "upstream_failure",

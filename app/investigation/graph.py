@@ -159,8 +159,8 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
             )
         }
 
-    def generate(state: InvestigationState) -> dict[str, object]:
-        response_payload, latency_ms = generate_investigation(state["prompt"])
+    async def generate(state: InvestigationState) -> dict[str, object]:
+        response_payload, latency_ms = await generate_investigation(state["prompt"])
         return {
             "response_payload": response_payload,
             "latency_ms": latency_ms,

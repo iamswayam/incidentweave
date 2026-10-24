@@ -327,6 +327,31 @@ def test_post_upstream_failure_returns_sanitized_502(
     assert "provider detail" not in response.text
 
 
+def test_post_timeout_returns_sanitized_502(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
+        raise TimeoutError("deadline detail must not be exposed")
+
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "test"},
+    )
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "error": {
+            "code": "upstream_failure",
+            "message": "The investigation provider failed after its retries.",
+        }
+    }
+    assert "deadline detail" not in response.text
+
+
 def test_post_invalid_limit_returns_sanitized_422(api_client: TestClient) -> None:
     response = api_client.post(
         "/investigations",
