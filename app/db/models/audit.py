@@ -30,6 +30,9 @@ class Audit(Base):
         ForeignKey("repositories.id", ondelete="CASCADE"),
         nullable=False,
     )
+    ingest_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ingest_runs.id", ondelete="SET NULL")
+    )
     retrieved_chunk_ids: Mapped[list[int] | None] = mapped_column(ARRAY(Integer))
     vector_scores: Mapped[list[float] | None] = mapped_column(ARRAY(Float))
     fts_scores: Mapped[list[float] | None] = mapped_column(ARRAY(Float))

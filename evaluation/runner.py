@@ -320,6 +320,7 @@ async def setup_eval_corpus(
                     Chunk(
                         repository_id=repository.id,
                         content=content,
+                        content_hash=hashlib.sha256(content.encode("utf-8")).hexdigest(),
                         file_path=relative_path,
                         file_type="python",
                         document_type="code",

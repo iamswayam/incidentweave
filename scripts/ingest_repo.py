@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -16,12 +19,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from app.db.models import Chunk, Repository  # noqa: E402
+from app.db.models import Chunk, IngestRun, Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.secret_scan import find_secret  # noqa: E402
 
 CHUNK_SIZE = 60
 OVERLAP_SIZE = 10
+CHUNKER_VERSION = "lines-60-10-v1"
 IGNORE_DIRS = {
     ".git",
     ".kilo",
@@ -31,6 +35,42 @@ IGNORE_DIRS = {
     "__pycache__",
     "migrations",
 }
+
+
+def _run_git(root: Path, *arguments: str) -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", *arguments],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return completed.stdout.strip()
+
+
+def _strip_remote_credentials(remote_url: str) -> str:
+    parts = urlsplit(remote_url)
+    if parts.scheme and parts.netloc and "@" in parts.netloc:
+        return urlunsplit(parts._replace(netloc=parts.netloc.rsplit("@", 1)[-1]))
+    return remote_url
+
+
+def _git_metadata(root: Path) -> tuple[str | None, bool | None, str | None]:
+    commit_sha = _run_git(root, "rev-parse", "HEAD") or None
+    status = _run_git(root, "status", "--porcelain")
+    dirty = None if status is None else bool(status)
+    remote = _run_git(root, "config", "--get", "remote.origin.url") or None
+    if remote is not None:
+        remote = _strip_remote_credentials(remote)
+    return commit_sha, dirty, remote
+
+
+def _chunk_identity(chunk: Chunk) -> tuple[str, int | None, int | None, str]:
+    return (chunk.file_path, chunk.line_start, chunk.line_end, chunk.content_hash)
 
 
 def iter_python_files(repo_root: Path):
@@ -85,13 +125,34 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
             session.add(repository)
             await session.flush()
 
-        await session.execute(
-            delete(Chunk).where(Chunk.repository_id == repository.id)
+        commit_sha, dirty, git_remote = _git_metadata(root)
+        ingest_run = IngestRun(
+            repository_id=repository.id,
+            source_path=str(root),
+            git_remote=git_remote,
+            commit_sha=commit_sha,
+            dirty=dirty,
+            chunker_version=CHUNKER_VERSION,
         )
+        session.add(ingest_run)
+        await session.flush()
+
+        existing_chunks = list(
+            (
+                await session.scalars(
+                    select(Chunk).where(Chunk.repository_id == repository.id)
+                )
+            ).all()
+        )
+        existing_by_identity = {
+            _chunk_identity(chunk): chunk for chunk in existing_chunks
+        }
 
         files_processed = 0
         chunks_to_create: list[Chunk] = []
         skipped_chunks: list[tuple[str, str, int, int]] = []
+        current_identities: set[tuple[str, int | None, int | None, str]] = set()
+        kept_chunks = 0
 
         for file_path in sorted(iter_python_files(root)):
             files_processed += 1
@@ -116,10 +177,21 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
                     )
                     continue
 
+                content_hash = hashlib.sha256(
+                    chunk_content.encode("utf-8")
+                ).hexdigest()
+                identity = (relative_path, line_start, line_end, content_hash)
+                current_identities.add(identity)
+                if identity in existing_by_identity:
+                    kept_chunks += 1
+                    continue
+
                 chunks_to_create.append(
                     Chunk(
                         repository_id=repository.id,
+                        ingest_run_id=ingest_run.id,
                         content=chunk_content,
+                        content_hash=content_hash,
                         file_path=relative_path,
                         file_type="python",
                         document_type="code",
@@ -131,6 +203,14 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
                     )
                 )
 
+        removed_chunk_ids = [
+            chunk.id
+            for identity, chunk in existing_by_identity.items()
+            if identity not in current_identities
+        ]
+        if removed_chunk_ids:
+            await session.execute(delete(Chunk).where(Chunk.id.in_(removed_chunk_ids)))
+
         session.add_all(chunks_to_create)
         await session.commit()
 
@@ -140,7 +220,12 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
                 f"({pattern_name}): {relative_path}:{line_start}-{line_end}"
             )
 
-        return files_processed, len(chunks_to_create)
+        added_chunks = len(chunks_to_create)
+        print(
+            "Chunks kept/added/removed: "
+            f"{kept_chunks}/{added_chunks}/{len(removed_chunk_ids)}"
+        )
+        return files_processed, kept_chunks + added_chunks
 
 
 def parse_args() -> argparse.Namespace:
@@ -160,7 +245,7 @@ def main() -> None:
     args = parse_args()
 
     try:
-        files_processed, chunks_created = asyncio.run(
+        files_processed, total_chunks = asyncio.run(
             ingest_repository(args.repo_path, args.repo_name)
         )
     except FileNotFoundError as exc:
@@ -168,7 +253,7 @@ def main() -> None:
         raise SystemExit(2)
 
     print(f"Files processed: {files_processed}")
-    print(f"Chunks created: {chunks_created}")
+    print(f"Chunks present: {total_chunks}")
 
 
 if __name__ == "__main__":

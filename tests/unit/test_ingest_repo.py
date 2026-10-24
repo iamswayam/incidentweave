@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 import scripts.ingest_repo as ingest_repo
+from app.db.models import IngestRun
 from scripts.ingest_repo import chunk_lines
 
 
@@ -30,6 +31,13 @@ class FakeSession:
     def __init__(self) -> None:
         self.chunks = []
 
+    def add(self, instance: object) -> None:
+        if isinstance(instance, IngestRun):
+            instance.id = 1
+
+    async def flush(self) -> None:
+        return None
+
     async def __aenter__(self) -> FakeSession:
         return self
 
@@ -43,11 +51,28 @@ class FakeSession:
     async def execute(self, statement: object) -> None:
         del statement
 
+    async def scalars(self, statement: object) -> FakeScalarResult:
+        del statement
+        return FakeScalarResult()
+
     def add_all(self, chunks: list[object]) -> None:
         self.chunks.extend(chunks)
 
     async def commit(self) -> None:
         return None
+
+
+class FakeScalarResult:
+    def all(self) -> list[object]:
+        return []
+
+
+def test_strip_remote_credentials_from_remote_url() -> None:
+    remote = "https://user:token@example.com/owner/repository.git"
+
+    assert ingest_repo._strip_remote_credentials(remote) == (
+        "https://example.com/owner/repository.git"
+    )
 
 
 @pytest.mark.anyio
@@ -73,3 +98,4 @@ async def test_ingest_skips_secret_chunk_without_printing_or_storing_secret(
     assert all(secret not in chunk.content for chunk in session.chunks)
     assert "Skipped chunk with possible secret (google_api_key): secret.py:1-1" in output
     assert secret not in output
+    assert "Chunks kept/added/removed: 0/1/0" in output

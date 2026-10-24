@@ -27,6 +27,7 @@ from app.investigation.persistence import (  # noqa: E402
     OUTCOME_ABSTAINED_MODEL,
     OUTCOME_ANSWERED,
     OUTCOME_REFUSED_GUARD,
+    latest_ingest_run_id,
     persist_error,
     persist_investigation,
     persist_refusal,
@@ -76,6 +77,7 @@ async def investigate_repository(
         if repository is None:
             raise ValueError(f"Repository not found: {repo_name}")
         repository_id = repository.id
+        ingest_run_id = await latest_ingest_run_id(session, repository_id)
 
     try:
         query_embedding = embed_text(query_text)
@@ -112,6 +114,7 @@ async def investigate_repository(
                         repository_id,
                         query_text,
                         type(exc).__name__,
+                        ingest_run_id=ingest_run_id,
                     )
             except Exception as persistence_error:
                 print(
@@ -130,6 +133,7 @@ async def investigate_repository(
                     query_text,
                     result["retrieval_results"],
                     result["tool_calls"],
+                    ingest_run_id=ingest_run_id,
                 )
             investigation_id = investigation.id
         return {
@@ -178,6 +182,7 @@ async def investigate_repository(
                     else None
                 ),
                 tool_call_trace=result["tool_calls"],
+                ingest_run_id=ingest_run_id,
             )
         investigation_response = investigation.response
         investigation_confidence = investigation.confidence

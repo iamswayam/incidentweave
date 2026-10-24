@@ -109,6 +109,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
         token_usage=128,
         final_confidence="medium",
         tool_call_trace=tool_call_trace,
+        ingest_run_id=231,
     )
 
     assert investigation.query == "how are async sessions configured?"
@@ -127,6 +128,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit_rows[0].tool_calls["cited_chunk_ids"] == ["105"]
     assert audit_rows[0].tool_calls["attempts"] == tool_call_trace
     assert audit_rows[0].confidence == "medium"
+    assert audit_rows[0].ingest_run_id == 231
 
 
 @pytest.mark.anyio
@@ -150,9 +152,13 @@ async def test_persist_investigation_marks_model_abstention() -> None:
         retrieval_results=[],
         model="gemini-3.5-flash-lite",
         latency_ms=1200,
+        ingest_run_id=234,
     )
 
     assert investigation.outcome == OUTCOME_ABSTAINED_MODEL
+    audit_rows = [item for item in session.added if isinstance(item, Audit)]
+    assert len(audit_rows) == 1
+    assert audit_rows[0].ingest_run_id == 234
 
 
 @pytest.mark.anyio
@@ -189,6 +195,7 @@ async def test_persist_refusal_creates_investigation_and_audit() -> None:
         query="question",
         retrieval_results=retrieval_results,
         tool_call_trace=trace,
+        ingest_run_id=232,
     )
 
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
@@ -213,6 +220,7 @@ async def test_persist_refusal_creates_investigation_and_audit() -> None:
             "rrf_score": 0.02,
         }
     ]
+    assert audit_rows[0].ingest_run_id == 232
 
 
 @pytest.mark.anyio
@@ -227,6 +235,7 @@ async def test_persist_error_stores_only_exception_class_name() -> None:
         repository_id=17,
         query="question",
         error_class=type(error).__name__,
+        ingest_run_id=233,
     )
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
 
@@ -239,6 +248,7 @@ async def test_persist_error_stores_only_exception_class_name() -> None:
         "cited_chunk_ids": [],
         "retrieval_results": [],
     }
+    assert audit_rows[0].ingest_run_id == 233
     assert "SECRET" not in repr(
         (
             investigation.error_class,
