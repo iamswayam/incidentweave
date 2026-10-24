@@ -109,7 +109,7 @@ flowchart TD
     H --> E
     F -->|no, second pass| K[Return INSUFFICIENT_EVIDENCE]
     G --> L[Gemini generation]
-    L --> M[Parse diagnosis, confidence and cited IDs]
+    L --> M[Parse structured claims and validate quoted evidence]
     M --> N[Calibrate high confidence]
     N --> O[Write Investigation and Audit]
     O --> P[Return response]
