@@ -605,6 +605,12 @@ async def run_pipeline_once(
                         "calibration_note": result.get("calibration_note", ""),
                         "cited_chunk_ids": cited_chunk_ids,
                         "cited_chunk_relevance": cited_relevance,
+                        "submitted_citation_count": result.get(
+                            "submitted_citation_count", 0
+                        ),
+                        "valid_citation_count": result.get("valid_citation_count", 0),
+                        "claims": result.get("claims", []),
+                        "uncertainty_note": result.get("uncertainty_note", ""),
                         "retrieval_results": retrieval_results,
                         "evidence_check": result.get("evidence_check", {}),
                         "retry_used": result.get("retry_used", False),
@@ -646,6 +652,10 @@ async def run_pipeline_once(
                         "calibration_note": "",
                         "cited_chunk_ids": [],
                         "cited_chunk_relevance": [],
+                        "submitted_citation_count": 0,
+                        "valid_citation_count": 0,
+                        "claims": [],
+                        "uncertainty_note": "",
                         "retrieval_results": [],
                         "evidence_check": {},
                         "retry_used": False,
@@ -723,10 +733,22 @@ def summarize_run(records: list[dict[str, Any]]) -> dict[str, Any]:
         outcome_v2 = record.get("outcome_v2")
         if outcome_v2 is not None:
             outcome_v2_counts[outcome_v2] = outcome_v2_counts.get(outcome_v2, 0) + 1
+    answered = [
+        record
+        for record in records
+        if record.get("generation_ran")
+        and not record.get("error")
+        and record.get("diagnosis") != "INSUFFICIENT_EVIDENCE"
+    ]
+    submitted = sum(
+        int(record.get("submitted_citation_count") or 0) for record in answered
+    )
+    valid = sum(int(record.get("valid_citation_count") or 0) for record in answered)
     return {
         "outcome_counts": counts,
         "outcome_v2_counts": outcome_v2_counts,
         "total_records": len(records),
+        "citation_validity_rate": valid / submitted if submitted else None,
     }
 
 

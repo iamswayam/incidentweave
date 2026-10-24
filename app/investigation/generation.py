@@ -16,6 +16,49 @@ GEMINI_GENERATION_ENDPOINT = (
 GENERATION_TIMEOUT_SECONDS = 60
 MAX_GENERATION_ATTEMPTS = 3
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+RESPONSE_SCHEMA: dict[str, object] = {
+    "type": "OBJECT",
+    "properties": {
+        "outcome": {
+            "type": "STRING",
+            "enum": ["answered", "insufficient_evidence"],
+        },
+        "diagnosis": {"type": "STRING"},
+        "self_rating": {
+            "type": "STRING",
+            "enum": ["low", "medium", "high"],
+        },
+        "uncertainty_note": {"type": "STRING"},
+        "claims": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "text": {"type": "STRING"},
+                    "evidence": {
+                        "type": "ARRAY",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "chunk_id": {"type": "STRING"},
+                                "quote": {"type": "STRING"},
+                            },
+                            "required": ["chunk_id", "quote"],
+                        },
+                    },
+                },
+                "required": ["text", "evidence"],
+            },
+        },
+    },
+    "required": [
+        "outcome",
+        "diagnosis",
+        "self_rating",
+        "uncertainty_note",
+        "claims",
+    ],
+}
 
 
 def get_gemini_api_key() -> str:
@@ -33,6 +76,10 @@ def generate_investigation(prompt: str) -> tuple[dict[str, object], int]:
     payload = json.dumps(
         {
             "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "responseSchema": RESPONSE_SCHEMA,
+            },
         }
     ).encode("utf-8")
     req = request.Request(

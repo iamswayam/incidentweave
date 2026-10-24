@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -108,8 +109,19 @@ async def test_ingest_upserts_chunks_and_links_audit_to_latest_run(
                 "evidence_check": {"is_sufficient": True},
                 "diagnosis": "The alpha value changed.",
                 "confidence": "high",
-                "cited_chunk_ids": [],
-                "retrieval_results": [],
+                "cited_chunk_ids": ["136"],
+                "retrieval_results": [
+                    {
+                        "id": 136,
+                        "file_path": "alpha.py",
+                        "line_start": 1,
+                        "line_end": 1,
+                        "vector_score": 0.2,
+                        "fts_score": None,
+                        "rrf_score": 0.05,
+                        "content": "ALPHA = 'edited'",
+                    }
+                ],
                 "model": "test-model",
                 "latency_ms": 1,
                 "retry_used": False,
@@ -122,9 +134,24 @@ async def test_ingest_upserts_chunks_and_links_audit_to_latest_run(
                             "content": {
                                 "parts": [
                                     {
-                                        "text": (
-                                            "Diagnosis: The alpha value changed.\n"
-                                            "Confidence: high\nEvidence used:"
+                                        "text": json.dumps(
+                                            {
+                                                "outcome": "answered",
+                                                "diagnosis": "The alpha value changed.",
+                                                "self_rating": "high",
+                                                "uncertainty_note": "",
+                                                "claims": [
+                                                    {
+                                                        "text": "The alpha value changed.",
+                                                        "evidence": [
+                                                            {
+                                                                "chunk_id": "136",
+                                                                "quote": "ALPHA = 'edited'",
+                                                            }
+                                                        ],
+                                                    }
+                                                ],
+                                            }
                                         )
                                     }
                                 ]

@@ -87,6 +87,14 @@ def sufficient_pipeline_result() -> dict[str, object]:
         "embedding_model": "models/gemini-embedding-001",
         "chunk_records": [{"chunk_id": "7"}],
         "trace": {"correlation_id": "private"},
+        "claims": [
+            {
+                "text": "The chunk size is 60 lines.",
+                "evidence": [{"chunk_id": "7", "quote": "CHUNK_SIZE = 60"}],
+            }
+        ],
+        "uncertainty_note": "",
+        "citation_validation": {"submitted": 1, "valid": 1, "rate": 1.0},
     }
 
 
@@ -166,7 +174,7 @@ def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
             ],
             "cited_chunk_ids": [],
         },
-        prompt_version="grounded-v2",
+        prompt_version="grounded-v3",
         prompt="must not be exposed",
         raw_response="must not be exposed",
         raw_self_rating="low",
@@ -236,6 +244,8 @@ def test_post_investigation_success_response_shape(
     assert body["rating_note"].endswith(
         "High self-rating downgraded because retrieval scores were weak."
     )
+    assert body["claims"][0]["evidence"][0]["chunk_id"] == "7"
+    assert body["citation_validation"]["rate"] == 1.0
     assert "confidence" not in body
     assert "raw_confidence" not in body
     assert AUDIT_ONLY_FIELDS.isdisjoint(body)
@@ -458,7 +468,7 @@ def test_get_investigation_and_missing_id(
             ],
             "cited_chunk_ids": ["7"],
         },
-        prompt_version="grounded-v2",
+        prompt_version="grounded-v3",
         prompt="must not be exposed",
         raw_response="must not be exposed",
         raw_self_rating="medium",

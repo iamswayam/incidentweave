@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -62,10 +63,28 @@ def response_payload() -> dict[str, object]:
                 "content": {
                     "parts": [
                         {
-                            "text": (
-                                "Diagnosis: AsyncSessionLocal uses async_sessionmaker.\n"
-                                "Confidence: high\n"
-                                "Evidence used: app/db/session.py, lines 1-46"
+                            "text": json.dumps(
+                                {
+                                    "outcome": "answered",
+                                    "diagnosis": (
+                                        "AsyncSessionLocal uses async_sessionmaker."
+                                    ),
+                                    "self_rating": "high",
+                                    "claims": [
+                                        {
+                                            "text": (
+                                                "AsyncSessionLocal uses async_sessionmaker."
+                                            ),
+                                            "evidence": [
+                                                {
+                                                    "chunk_id": "136",
+                                                    "quote": "async_sessionmaker",
+                                                }
+                                            ],
+                                        }
+                                    ],
+                                    "uncertainty_note": "",
+                                }
                             )
                         }
                     ]

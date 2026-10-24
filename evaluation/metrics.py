@@ -153,8 +153,10 @@ def answer_screen(diagnosis: str, must_mention: Sequence[Sequence[str]]) -> bool
     return all(any(option.casefold() in normalized for option in group) for group in must_mention)
 
 
-def citation_summary(records: Sequence[Mapping[str, object]]) -> dict[str, int]:
-    """Summarize how often cited chunks were actually relevant for answerable questions."""
+def citation_summary(
+    records: Sequence[Mapping[str, object]],
+) -> dict[str, int | float | None]:
+    """Summarize reference validity and relevance for answerable questions."""
 
     answerable = [
         record
@@ -171,6 +173,12 @@ def citation_summary(records: Sequence[Mapping[str, object]]) -> dict[str, int]:
         )
         for record in answerable
     )
+    submitted_citations = sum(
+        int(record.get("submitted_citation_count") or 0) for record in answerable
+    )
+    valid_citations = sum(
+        int(record.get("valid_citation_count") or 0) for record in answerable
+    )
     answers_with_zero_citations = sum(
         1
         for record in answerable
@@ -182,6 +190,11 @@ def citation_summary(records: Sequence[Mapping[str, object]]) -> dict[str, int]:
         "cited_total": cited_total,
         "cited_relevant": cited_relevant,
         "answers_with_zero_citations": answers_with_zero_citations,
+        "submitted_citations": submitted_citations,
+        "valid_citations": valid_citations,
+        "citation_validity_rate": (
+            valid_citations / submitted_citations if submitted_citations else None
+        ),
     }
 
 

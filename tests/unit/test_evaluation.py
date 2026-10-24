@@ -43,6 +43,7 @@ from evaluation.runner import (
     ensure_non_eval_inventory_unchanged,
     resolve_corpus_sha,
     run_pipeline_once,
+    summarize_run,
 )
 from scripts import ingest_repo
 from scripts.ingest_repo import chunk_lines, iter_python_files
@@ -986,11 +987,15 @@ def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
         "diagnosis": "answer",
         "cited_chunk_ids": ["a", "b"],
         "cited_chunk_relevance": [{"relevant": True}, {"relevant": False}],
+        "submitted_citation_count": 2,
+        "valid_citation_count": 2,
     }, {
         "category": "direct",
         "diagnosis": "answer",
         "cited_chunk_ids": ["c"],
         "cited_chunk_relevance": [{"relevant": False}],
+        "submitted_citation_count": 3,
+        "valid_citation_count": 1,
     }, {
         "category": "unanswerable_far",
         "diagnosis": "INSUFFICIENT_EVIDENCE",
@@ -1003,7 +1008,14 @@ def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
         "cited_chunk_relevance": [],
     }]
     summary = citation_summary(records)
-    assert summary == {"cited_total": 3, "cited_relevant": 1, "answers_with_zero_citations": 0}
+    assert summary == {
+        "cited_total": 3,
+        "cited_relevant": 1,
+        "answers_with_zero_citations": 0,
+        "submitted_citations": 5,
+        "valid_citations": 3,
+        "citation_validity_rate": 0.6,
+    }
 
 
 def test_retrieval_metrics_handle_hits_ties_and_no_hit() -> None:
@@ -1022,6 +1034,32 @@ def test_retrieval_metrics_handle_hits_ties_and_no_hit() -> None:
     assert hit_at_k(results, labels, 3) == 2
     assert mean_reciprocal_rank(results, labels) == (1 + 0.5) / 3
     assert retrieval_summary(results, labels)["hit_at_5"] == 2
+
+
+def test_run_summary_reports_answered_citation_validity_rate() -> None:
+    records = [
+        {
+            "outcome": "correct",
+            "diagnosis": "A supported answer.",
+            "generation_ran": True,
+            "error": None,
+            "submitted_citation_count": 4,
+            "valid_citation_count": 3,
+        },
+        {
+            "outcome": "refused",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "generation_ran": False,
+            "error": None,
+            "submitted_citation_count": 9,
+            "valid_citation_count": 9,
+        },
+    ]
+
+    assert summarize_run(records)["citation_validity_rate"] == 0.75
+    assert summarize_run(
+        [{**records[0], "submitted_citation_count": 0, "valid_citation_count": 0}]
+    )["citation_validity_rate"] is None
 
 
 def test_mrr_averages_equal_ranks_and_counts_no_hit_as_zero() -> None:
