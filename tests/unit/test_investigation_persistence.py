@@ -3,7 +3,15 @@ from __future__ import annotations
 import pytest
 
 from app.db.models import Audit
-from app.investigation.persistence import persist_investigation
+from app.investigation.persistence import (
+    OUTCOME_ABSTAINED_MODEL,
+    OUTCOME_ANSWERED,
+    OUTCOME_ERROR,
+    OUTCOME_REFUSED_GUARD,
+    persist_error,
+    persist_investigation,
+    persist_refusal,
+)
 
 
 class FakeSession:
@@ -109,6 +117,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert investigation.latency_ms == 2400
     assert investigation.token_usage == 128
     assert investigation.confidence == "medium"
+    assert investigation.outcome == OUTCOME_ANSWERED
     audit_rows = [item for item in session.added if isinstance(item, Audit)]
     assert len(audit_rows) == 1
     assert audit_rows[0].retrieved_chunk_ids == [105, 106]
@@ -118,3 +127,123 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit_rows[0].tool_calls["cited_chunk_ids"] == ["105"]
     assert audit_rows[0].tool_calls["attempts"] == tool_call_trace
     assert audit_rows[0].confidence == "medium"
+
+
+@pytest.mark.anyio
+async def test_persist_investigation_marks_model_abstention() -> None:
+    session = FakeSession()
+    investigation = await persist_investigation(
+        session=session,
+        repository_id=17,
+        query="question",
+        response_payload={
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {"text": "Diagnosis: insufficient_evidence.\nConfidence: medium"}
+                        ]
+                    }
+                }
+            ]
+        },
+        retrieval_results=[],
+        model="gemini-3.5-flash-lite",
+        latency_ms=1200,
+    )
+
+    assert investigation.outcome == OUTCOME_ABSTAINED_MODEL
+
+
+@pytest.mark.anyio
+async def test_persist_refusal_creates_investigation_and_audit() -> None:
+    session = FakeSession()
+    retrieval_results = [
+        {
+            "id": 105,
+            "file_path": "app/db/session.py",
+            "line_start": 1,
+            "line_end": 46,
+            "vector_score": 0.7,
+            "fts_score": None,
+            "rrf_score": 0.02,
+            "content": "source evidence",
+        }
+    ]
+    trace = [
+        {
+            "tool": "hybrid_search",
+            "stage": "widened_retry",
+            "outcome": {
+                "sufficient": False,
+                "reason": "Best vector distance is above the maximum threshold.",
+                "best_rrf_score": 0.02,
+                "best_vector_score": 0.7,
+            },
+        }
+    ]
+
+    investigation = await persist_refusal(
+        session,
+        repository_id=17,
+        query="question",
+        retrieval_results=retrieval_results,
+        tool_call_trace=trace,
+    )
+
+    audit_rows = [item for item in session.added if isinstance(item, Audit)]
+    assert investigation.outcome == OUTCOME_REFUSED_GUARD
+    assert investigation.response == "INSUFFICIENT_EVIDENCE"
+    assert investigation.confidence == "low"
+    assert investigation.model is None
+    assert investigation.latency_ms is None
+    assert len(audit_rows) == 1
+    assert audit_rows[0].retrieved_chunk_ids == [105]
+    assert audit_rows[0].vector_scores == [0.7]
+    assert audit_rows[0].tool_calls["attempts"] == trace
+    assert audit_rows[0].tool_calls["cited_chunk_ids"] == []
+    assert audit_rows[0].tool_calls["retrieval_results"] == [
+        {
+            "id": 105,
+            "file_path": "app/db/session.py",
+            "line_start": 1,
+            "line_end": 46,
+            "vector_score": 0.7,
+            "fts_score": None,
+            "rrf_score": 0.02,
+        }
+    ]
+
+
+@pytest.mark.anyio
+async def test_persist_error_stores_only_exception_class_name() -> None:
+    class SecretError(RuntimeError):
+        pass
+
+    session = FakeSession()
+    error = SecretError("SECRET must not be persisted")
+    investigation = await persist_error(
+        session,
+        repository_id=17,
+        query="question",
+        error_class=type(error).__name__,
+    )
+    audit_rows = [item for item in session.added if isinstance(item, Audit)]
+
+    assert investigation.outcome == OUTCOME_ERROR
+    assert investigation.error_class == "SecretError"
+    assert investigation.response is None
+    assert len(audit_rows) == 1
+    assert audit_rows[0].tool_calls == {
+        "attempts": [],
+        "cited_chunk_ids": [],
+        "retrieval_results": [],
+    }
+    assert "SECRET" not in repr(
+        (
+            investigation.error_class,
+            investigation.response,
+            audit_rows[0].response,
+            audit_rows[0].tool_calls,
+        )
+    )

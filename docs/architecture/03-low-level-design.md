@@ -241,9 +241,9 @@ sequenceDiagram
 
 ### 7.4 Persistence behavior
 
-`persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count and final confidence in both records. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls` ([`persistence.py`](../../app/investigation/persistence.py)).
+`persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count, and final model self-rating in both records; the Investigation stores the `answered` or `abstained_model` outcome. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, attempt trace and per-result metadata in `tool_calls` ([`persistence.py`](../../app/investigation/persistence.py)).
 
-`investigate_repository()` returns early on guard insufficiency; therefore that branch has no `Investigation` or `Audit` insert even when its `persist` argument is true. A model-level abstention after a successful guard follows the generated persistence path.
+`investigate_repository()` persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace and retrieval summary. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Exceptions during embedding or graph execution are re-raised after an `error` outcome and empty Audit row are attempted. Only the exception class name is stored, never its message. `persist=False` skips these writes.
 
 ## 8. API design
 

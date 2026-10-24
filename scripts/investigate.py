@@ -23,7 +23,14 @@ from app.investigation.generation import GEMINI_GENERATION_MODEL  # noqa: E402
 from app.investigation.graph import create_investigation_graph  # noqa: E402
 from app.investigation.limits import MAX_LIMIT, MAX_QUERY_CHARS  # noqa: E402
 from app.investigation.parsing import extract_generation_trace  # noqa: E402
-from app.investigation.persistence import persist_investigation  # noqa: E402
+from app.investigation.persistence import (  # noqa: E402
+    OUTCOME_ABSTAINED_MODEL,
+    OUTCOME_ANSWERED,
+    OUTCOME_REFUSED_GUARD,
+    persist_error,
+    persist_investigation,
+    persist_refusal,
+)
 from scripts.embed_chunks import embed_text  # noqa: E402
 
 
@@ -70,39 +77,68 @@ async def investigate_repository(
             raise ValueError(f"Repository not found: {repo_name}")
         repository_id = repository.id
 
-    query_embedding = embed_text(query_text)
-    graph = create_investigation_graph(calibrate_confidence)
-    result = await graph.ainvoke(
-        {
-            "repository_id": repository_id,
-            "repository_name": repo_name,
-            "query": query_text,
-            "query_embedding": query_embedding,
-            "search_limit": limit,
-            "retry_limit": limit * 2,
-            "retry_count": 0,
-            "retry_used": False,
-            "retrieval_results": [],
-            "evidence_check": {},
-            "diagnosis": "",
-            "confidence": "",
-            "cited_chunk_ids": [],
-            "model": GEMINI_GENERATION_MODEL,
-            "latency_ms": None,
-            "calibration_note": "",
-            "confidence_calibrated": False,
-            "evidence_source": "hybrid",
-            "tool_calls": [],
-        }
-    )
+    try:
+        query_embedding = embed_text(query_text)
+        graph = create_investigation_graph(calibrate_confidence)
+        result = await graph.ainvoke(
+            {
+                "repository_id": repository_id,
+                "repository_name": repo_name,
+                "query": query_text,
+                "query_embedding": query_embedding,
+                "search_limit": limit,
+                "retry_limit": limit * 2,
+                "retry_count": 0,
+                "retry_used": False,
+                "retrieval_results": [],
+                "evidence_check": {},
+                "diagnosis": "",
+                "confidence": "",
+                "cited_chunk_ids": [],
+                "model": GEMINI_GENERATION_MODEL,
+                "latency_ms": None,
+                "calibration_note": "",
+                "confidence_calibrated": False,
+                "evidence_source": "hybrid",
+                "tool_calls": [],
+            }
+        )
+    except Exception as exc:
+        if persist:
+            try:
+                async with AsyncSessionLocal() as session:
+                    await persist_error(
+                        session,
+                        repository_id,
+                        query_text,
+                        type(exc).__name__,
+                    )
+            except Exception as persistence_error:
+                print(
+                    "Failed to persist investigation error "
+                    f"({type(persistence_error).__name__})",
+                    file=sys.stderr,
+                )
+        raise
 
     if not result["evidence_check"]["is_sufficient"]:
+        if persist:
+            async with AsyncSessionLocal() as session:
+                investigation = await persist_refusal(
+                    session,
+                    repository_id,
+                    query_text,
+                    result["retrieval_results"],
+                    result["tool_calls"],
+                )
+            investigation_id = investigation.id
         return {
             "repository": repo_name,
-            "investigation_id": None,
+            "investigation_id": investigation_id,
             "query": query_text,
             "diagnosis": result["diagnosis"],
             "confidence": result["confidence"],
+            "outcome": OUTCOME_REFUSED_GUARD,
             "cited_chunk_ids": result["cited_chunk_ids"],
             "retrieval_results": result["retrieval_results"],
             "evidence_check": result["evidence_check"],
@@ -119,6 +155,11 @@ async def investigate_repository(
 
     investigation_response = result["diagnosis"]
     investigation_confidence = result["confidence"]
+    outcome = (
+        OUTCOME_ABSTAINED_MODEL
+        if str(result["diagnosis"]).rstrip(".").strip().upper() == "INSUFFICIENT_EVIDENCE"
+        else OUTCOME_ANSWERED
+    )
     if persist:
         response_payload = result["response_payload"]
         async with AsyncSessionLocal() as session:
@@ -148,6 +189,7 @@ async def investigate_repository(
         "query": query_text,
         "diagnosis": result["diagnosis"] or investigation_response,
         "confidence": result["confidence"] or investigation_confidence,
+        "outcome": outcome,
         "cited_chunk_ids": result["cited_chunk_ids"],
         "retrieval_results": result["retrieval_results"],
         "evidence_check": result["evidence_check"],
