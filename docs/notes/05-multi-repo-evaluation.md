@@ -47,6 +47,10 @@ fails. To run the full set locally, use `--split all`. A repository's full and s
 their baselines are individually hash-pinned in the manifest. Changing a baseline or tolerance
 requires a reviewed pull request; CI does not rebuild either.
 
+The verified IncidentWeave smoke run produced 4/5 Hit@5 and MRR 0.533 for both label types.
+The full-set run produced 11/16 Hit@5 and MRR 0.573 for both label types, matching the committed
+baseline. Unanswerable questions are excluded from these retrieval-hit denominators.
+
 ## Question-authoring protocol
 
 For each repository, maintain 24 questions: 8 direct and 8 paraphrased answerable questions, plus
