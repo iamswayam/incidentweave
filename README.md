@@ -200,20 +200,26 @@ The retrieval-only offline evaluation uses cached query embeddings and a committ
 .\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/offline-baseline.json
 ```
 
-It reports substring-label and source-span retrieval metrics with Wilson 95% intervals. The fixture builder and label methodology, paired exact sign-test comparison, committed baseline, and measurement limits are documented in [the offline evaluation note](docs/notes/04-offline-retrieval-evaluation.md).
+The versioned [evaluation manifest](evaluation/manifest.json) selects repositories, pinned
+questions, fixture hashes, explicit development/held-out/smoke splits, and per-repository gates.
+The command reports each selected repository and pooled retrieval metrics with Wilson 95%
+intervals. Use `--repo incidentweave` to select one repository or `--split smoke` to select the
+fixed development-only smoke subset. The manifest, split protections, question-authoring protocol,
+and statistical limits are described in [the multi-repository evaluation note](docs/notes/05-multi-repo-evaluation.md);
+fixture construction and span labels remain documented in [the offline evaluation note](docs/notes/04-offline-retrieval-evaluation.md).
 
-CI also runs the deterministic fixture through the retrieval regression gate:
+CI runs every manifest repository's deterministic smoke fixture through the offline retrieval gate:
 
 ```powershell
-.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate
+.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke
 ```
 
-The gate compares Hit@5 successes and MRR for both label types with
-[evaluation/gate.json](evaluation/gate.json). Its allowed drops are zero questions and 0.02 MRR;
-change the baseline or tolerance only through a reviewed PR. A failure means retrieval on the
-committed fixture fell below the configured threshold. The gate protects retrieval, not generated
-answer quality. Evaluation runs now set temperature to 0 and record the generation configuration;
-older recorded runs used the provider default and are not directly comparable.
+Each repository is checked independently before the pooled table is printed; a missing or invalid
+input, or a gate failure for any repository, fails the command. Smoke thresholds live in each
+repository's manifest-referenced gate and may change only through a reviewed PR. `--split all`
+runs the complete question sets. The gate protects retrieval only, not generated answer quality.
+Evaluation runs now set temperature to 0 and record the generation configuration; older recorded
+runs used the provider default and are not directly comparable.
 
 ## Quality checks and CI
 

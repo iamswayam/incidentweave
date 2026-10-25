@@ -12,7 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evaluation.chunk_experiments import DEFAULT_STRATEGY, STRATEGY_CHOICES  # noqa: E402
+from evaluation.chunk_experiments import (  # noqa: E402
+    DEFAULT_STRATEGY,
+    SPLIT_CHOICES,
+    STRATEGY_CHOICES,
+)
 from evaluation.runner import EVALUATION_ROOT, run_evaluation  # noqa: E402
 
 
@@ -37,12 +41,34 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_STRATEGY,
         help="Evaluation-only chunking strategy (default: baseline)",
     )
+    parser.add_argument(
+        "--repo",
+        default="incidentweave",
+        help="manifest repository ID (default: incidentweave)",
+    )
+    parser.add_argument(
+        "--split",
+        choices=SPLIT_CHOICES,
+        default="development",
+        help="question split (default: development)",
+    )
+    parser.add_argument(
+        "--confirm-frozen-heldout",
+        action="store_true",
+        help="confirm intentional evaluation of held-out questions",
+    )
     return parser.parse_args()
 
 
 async def main() -> None:
     args = parse_args()
-    report = await run_evaluation(passes=args.passes, strategy=args.strategy)
+    report = await run_evaluation(
+        passes=args.passes,
+        strategy=args.strategy,
+        repo_id=args.repo,
+        split=args.split,
+        confirm_frozen_heldout=args.confirm_frozen_heldout,
+    )
     run_dir = EVALUATION_ROOT / "results" / "runs" / report["run_id"]
     report_path = run_dir / "report.json"
     snapshot_path = EVALUATION_ROOT / "_snapshot"

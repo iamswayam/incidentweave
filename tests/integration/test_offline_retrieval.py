@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.db.models import Repository
 from app.db.session import AsyncSessionLocal
-from evaluation.retrieval_eval import FIXTURE_REPOSITORY, run_offline_retrieval
+from evaluation.retrieval_eval import fixture_repository_name, run_offline_retrieval
 
 pytestmark = pytest.mark.integration
 
@@ -19,6 +19,7 @@ async def test_offline_retrieval_fixture_runs_and_cleans_up_repository() -> None
     assert report["metadata"]["fixture"]["chunk_count"] == 70
     assert report["metadata"]["fixture"]["question_count"] == 24
     assert report["metadata"]["limit"] == 5
+    assert report["metadata"]["repo_id"] == "incidentweave"
     assert len(report["questions"]) == 24
     assert report["summary"]["substring_labels"]["count"] == 16
     assert report["summary"]["spans"]["count"] == 16
@@ -29,6 +30,8 @@ async def test_offline_retrieval_fixture_runs_and_cleans_up_repository() -> None
 
     async with AsyncSessionLocal() as session:
         leftover = await session.scalar(
-            select(Repository).where(Repository.name == FIXTURE_REPOSITORY)
+            select(Repository).where(
+                Repository.name == fixture_repository_name("incidentweave")
+            )
         )
     assert leftover is None

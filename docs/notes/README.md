@@ -6,3 +6,4 @@
 | 02 | [02-deferred-optimizations.md](02-deferred-optimizations.md) | Deferred optimization and follow-up notes (not implemented features) |
 | 03 | [03-embedding-benchmark.md](03-embedding-benchmark.md) | Measured single vs batched embedding throughput (item 10) |
 | 04 | [04-offline-retrieval-evaluation.md](04-offline-retrieval-evaluation.md) | Span labels, cached-fixture retrieval evaluation, and statistical reporting (item 13a) |
+| 05 | [05-multi-repo-evaluation.md](05-multi-repo-evaluation.md) | Manifest-driven repository selection, splits, smoke gates, and evaluation limits (item 16a) |

@@ -35,9 +35,16 @@ from .chunk_experiments import (
     expected_chunk_ranges,
     get_strategy,
     resolve_evaluation_repository,
+    resolve_split,
 )
 from .corpus import export_snapshot
 from .golden import load_golden_set, validate_golden_set, validate_index_labels
+from .manifest import (
+    MANIFEST_PATH,
+    load_manifest,
+    questions_for_split,
+    repository_entry,
+)
 from .metrics import (
     abstention_kind,
     answer_screen,
@@ -80,6 +87,9 @@ def build_run_metadata(
     generation_config: str = "provider default (none set)",
     strategy: str = DEFAULT_STRATEGY,
     evaluation_repository: str | None = None,
+    repo_id: str = "incidentweave",
+    split: str = "development",
+    confirm_frozen_heldout: bool = False,
 ) -> dict[str, Any]:
     """Build the stable metadata block used to identify a report run."""
 
@@ -114,6 +124,9 @@ def build_run_metadata(
         "chunk_size": selected_strategy.chunk_size,
         "overlap": selected_strategy.overlap,
         "evaluation_repository": evaluation_repository,
+        "repo_id": repo_id,
+        "split": split,
+        "confirm_frozen_heldout": confirm_frozen_heldout,
     }
     return {
         "run_id": run_id,
@@ -136,6 +149,9 @@ def build_run_metadata(
         "chunk_size": selected_strategy.chunk_size,
         "overlap": selected_strategy.overlap,
         "evaluation_repository": evaluation_repository,
+        "repo_id": repo_id,
+        "split": split,
+        "confirm_frozen_heldout": confirm_frozen_heldout,
         "config_sha256": hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
         ).hexdigest(),
@@ -240,14 +256,16 @@ def build_run_id(
     started_at: datetime,
     code_sha: str,
     strategy: str = DEFAULT_STRATEGY,
+    split: str = "development",
 ) -> str:
     """Build a run identifier that distinguishes chunking strategies."""
 
     selected_strategy = get_strategy(strategy)
-    return (
+    run_id = (
         f"{started_at.strftime('%Y%m%dT%H%M%SZ')}-"
         f"{code_sha[:7]}-{selected_strategy.name}"
     )
+    return run_id if split == "development" else f"{run_id}-{split}"
 
 
 def resolve_corpus_sha(data: dict[str, Any]) -> str:
@@ -794,7 +812,13 @@ async def run_evaluation(
     *,
     strategy: str = DEFAULT_STRATEGY,
     repository_name: str | None = None,
+    repo_id: str = "incidentweave",
+    split: str = "development",
+    confirm_frozen_heldout: bool = False,
 ) -> dict[str, Any]:
+    split = resolve_split(split, confirm_frozen_heldout=confirm_frozen_heldout)
+    manifest = load_manifest(MANIFEST_PATH)
+    manifest_entry = repository_entry(manifest, repo_id)
     selected_strategy = get_strategy(strategy)
     repository_name = resolve_evaluation_repository(
         repository_name,
@@ -802,7 +826,8 @@ async def run_evaluation(
     )
     load_key_without_logging()
     started = datetime.now(UTC)
-    data = load_golden_set(EVALUATION_ROOT / "golden_set.json")
+    golden_set_path = ROOT / manifest_entry["questions"]["path"]
+    data = load_golden_set(golden_set_path)
     corpus_sha = resolve_corpus_sha(data)
     code_sha = snapshot_sha()
     code_dirty = bool(
@@ -843,7 +868,7 @@ async def run_evaluation(
         selected_repository=repository_name,
     )
 
-    questions = data["questions"]
+    questions = questions_for_split(manifest_entry, data["questions"], split)
     index_errors = await validate_eval_index(
         questions,
         repository_name=repository_name,
@@ -907,7 +932,7 @@ async def run_evaluation(
     run_results = []
     generation_budget = {"http_calls": 0, "http_429_responses": 0}
     generation_calls_by_run = []
-    run_id = build_run_id(started, code_sha, selected_strategy.name)
+    run_id = build_run_id(started, code_sha, selected_strategy.name, split)
     for index in range(1, passes + 1):
         records, call_stats = await run_pipeline_once(
             questions,
@@ -945,6 +970,10 @@ async def run_evaluation(
         passes=passes,
         strategy=selected_strategy.name,
         evaluation_repository=repository_name,
+        golden_set_path=golden_set_path,
+        repo_id=repo_id,
+        split=split,
+        confirm_frozen_heldout=confirm_frozen_heldout,
         generation_config=(
             "temperature=0; responseMimeType=application/json; "
             "response schema + prompt version grounded-v3"

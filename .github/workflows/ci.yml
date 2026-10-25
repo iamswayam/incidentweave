@@ -54,7 +54,7 @@ jobs:
       - name: Offline retrieval gate
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
-        run: python -m scripts.check_retrieval_gate
+        run: python -m scripts.check_retrieval_gate --split smoke
 
       - name: Pytest
         env:

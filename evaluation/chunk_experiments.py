@@ -31,6 +31,7 @@ STRATEGIES = {
     ),
 }
 STRATEGY_CHOICES = tuple(STRATEGIES)
+SPLIT_CHOICES = ("development", "held_out", "smoke", "all")
 EVALUATION_REPOSITORIES = frozenset(
     strategy.evaluation_repository for strategy in STRATEGIES.values()
 )
@@ -68,6 +69,29 @@ def resolve_evaluation_repository(
             f"{selected.evaluation_repository!r}"
         )
     return repository
+
+
+def resolve_split(
+    split: str = "development",
+    *,
+    confirm_frozen_heldout: bool = False,
+) -> str:
+    """Validate split access and require explicit confirmation for frozen data."""
+
+    if split not in SPLIT_CHOICES:
+        choices = ", ".join(SPLIT_CHOICES)
+        raise ValueError(f"Unsupported evaluation split {split!r}; choose from: {choices}")
+    if split in {"held_out", "all"}:
+        if not confirm_frozen_heldout:
+            raise ValueError(
+                f"Split {split!r} includes frozen held-out questions; "
+                "pass --confirm-frozen-heldout to proceed"
+            )
+        print(
+            f"WARNING: evaluating split {split!r} includes frozen held-out questions; "
+            "do not use these results for design or threshold selection."
+        )
+    return split
 
 
 def expected_chunk_ranges(

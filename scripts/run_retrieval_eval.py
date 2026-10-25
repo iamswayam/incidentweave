@@ -16,7 +16,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evaluation.gate import pooled_report  # noqa: E402
+from evaluation.manifest import (  # noqa: E402
+    MANIFEST_PATH,
+    load_manifest,
+    manifest_root,
+    select_repositories,
+)
 from evaluation.retrieval_eval import run_offline_retrieval  # noqa: E402
+from evaluation.splits import SPLIT_CHOICES  # noqa: E402
 
 
 def _compact_table(report: dict[str, Any]) -> str:
@@ -42,12 +50,33 @@ def _compact_table(report: dict[str, Any]) -> str:
 
 
 async def _run(args: argparse.Namespace) -> None:
-    report = await run_offline_retrieval(limit=args.limit)
-    print(_compact_table(report))
+    asset_root = manifest_root(args.manifest)
+    manifest = load_manifest(args.manifest, root=asset_root)
+    repositories = select_repositories(manifest, args.repo)
+    reports = []
+    for entry in repositories:
+        report = await run_offline_retrieval(
+            limit=args.limit,
+            repo_id=entry["id"],
+            split=args.split,
+            entry=entry,
+            root=asset_root,
+        )
+        reports.append(report)
+        print(f"Repository: {entry['id']} (split={args.split})")
+        print(_compact_table(report))
+    pooled = pooled_report(reports)
+    print("Pooled:")
+    print(_compact_table(pooled))
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(
-            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            json.dumps(
+                {"split": args.split, "repositories": reports, "pooled": pooled},
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
             encoding="utf-8",
         )
         print(f"Report: {args.out}")
@@ -55,6 +84,9 @@ async def _run(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", type=Path, default=MANIFEST_PATH)
+    parser.add_argument("--repo", help="run one manifest repository (default: all)")
+    parser.add_argument("--split", choices=SPLIT_CHOICES, default="all")
     parser.add_argument("--out", type=Path, help="optional path for the JSON report")
     parser.add_argument("--limit", type=int, default=5, help="retrieval result limit")
     asyncio.run(_run(parser.parse_args()))

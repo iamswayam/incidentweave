@@ -527,6 +527,7 @@ def test_run_evaluation_threads_strategy_and_repository_without_live_services(
         strategy: str,
     ) -> list[dict[str, object]]:
         observed["retrieval"] = (repository_name, strategy)
+        observed["retrieval_question_count"] = len(questions)
         return [
             {
                 "id": question["id"],
@@ -605,6 +606,10 @@ def test_run_evaluation_threads_strategy_and_repository_without_live_services(
         "temperature=0; responseMimeType=application/json; "
         "response schema + prompt version grounded-v3"
     )
+    assert report["split"] == "development"
+    assert report["confirm_frozen_heldout"] is False
+    assert report["repo_id"] == "incidentweave"
+    assert observed["retrieval_question_count"] == 16
     assert report["run_id"].endswith("-w100_o20")
     assert (results_root / "runs" / report["run_id"] / "report.json").is_file()
 

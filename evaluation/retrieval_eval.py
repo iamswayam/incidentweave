@@ -11,20 +11,36 @@ from sqlalchemy import select
 from app.db.models import Chunk, Repository
 from app.db.session import AsyncSessionLocal
 from app.retrieval.hybrid_search import hybrid_search
-from evaluation.build_fixture import FIXTURE_PATH, load_fixture
+from evaluation.build_fixture import load_fixture
 from evaluation.golden import load_golden_set
+from evaluation.manifest import (
+    MANIFEST_PATH,
+    load_manifest,
+    questions_for_split,
+    repository_entry,
+)
 from evaluation.metrics import first_relevant_rank, first_relevant_span_rank
 from evaluation.stats import paired_comparison, wilson_interval
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "golden_set.json"
-FIXTURE_REPOSITORY = "incidentweave-fixture"
+DEFAULT_REPOSITORY_ID = "incidentweave"
 
 
-async def _delete_fixture_repository() -> None:
+def fixture_repository_name(repo_id: str) -> str:
+    """Return the isolated temporary DB repository name for one manifest ID."""
+
+    safe_id = "".join(
+        character if character.isalnum() or character in "-_" else "-"
+        for character in repo_id
+    )
+    return f"incidentweave-fixture-{safe_id}"
+
+
+async def _delete_fixture_repository(repository_name: str) -> None:
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
-            select(Repository).where(Repository.name == FIXTURE_REPOSITORY)
+            select(Repository).where(Repository.name == repository_name)
         )
         if repository is not None:
             await session.delete(repository)
@@ -57,24 +73,39 @@ def _summary(records: list[dict[str, Any]], rank_key: str) -> dict[str, Any]:
 
 
 async def run_offline_retrieval(
-    fixture_path: Path = FIXTURE_PATH,
-    golden_path: Path = GOLDEN_PATH,
+    fixture_path: Path | None = None,
+    golden_path: Path | None = None,
     limit: int = 5,
+    *,
+    repo_id: str = DEFAULT_REPOSITORY_ID,
+    split: str = "all",
+    entry: dict[str, Any] | None = None,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
 ) -> dict[str, Any]:
     """Evaluate vector-plus-FTS retrieval without provider calls."""
 
     question_records: list[dict[str, Any]] = []
+    if entry is None:
+        manifest = load_manifest(manifest_path, root=root)
+        entry = repository_entry(manifest, repo_id)
+    elif entry["id"] != repo_id:
+        repo_id = str(entry["id"])
+    selected_fixture_path = fixture_path or root / entry["fixture"]["path"]
+    selected_golden_path = golden_path or root / entry["questions"]["path"]
+    fixture_repository = fixture_repository_name(repo_id)
     try:
         if limit < 1:
             raise ValueError("limit must be greater than zero")
-        await _delete_fixture_repository()
-        fixture = load_fixture(fixture_path)
-        golden = load_golden_set(golden_path)
+        await _delete_fixture_repository(fixture_repository)
+        fixture = load_fixture(selected_fixture_path)
+        golden = load_golden_set(selected_golden_path)
         fixture_chunks = fixture["chunks"]
         fixture_queries = fixture["queries"]
+        questions = questions_for_split(entry, golden["questions"], split)
 
         async with AsyncSessionLocal() as session:
-            repository = Repository(name=FIXTURE_REPOSITORY)
+            repository = Repository(name=fixture_repository)
             session.add(repository)
             await session.flush()
             repository_id = repository.id
@@ -99,7 +130,7 @@ async def run_offline_retrieval(
             await session.commit()
 
         async with AsyncSessionLocal() as session:
-            for question in golden["questions"]:
+            for question in questions:
                 question_id = str(question["id"])
                 if question_id not in fixture_queries:
                     raise ValueError(
@@ -142,7 +173,7 @@ async def run_offline_retrieval(
                     }
                 )
     finally:
-        await _delete_fixture_repository()
+        await _delete_fixture_repository(fixture_repository)
 
     answerable_records = [
         record
@@ -162,6 +193,9 @@ async def run_offline_retrieval(
         }
     return {
         "metadata": {
+            "repo_id": repo_id,
+            "split": split,
+            "previously_exposed": bool(entry.get("previously_exposed")),
             "fixture": fixture["meta"],
             "golden_pinned_sha": golden["pinned_sha"],
             "limit": limit,
