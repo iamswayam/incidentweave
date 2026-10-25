@@ -18,6 +18,10 @@
 
 </div>
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
 ---
 
 ## Why IncidentWeave
