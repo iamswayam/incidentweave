@@ -22,6 +22,8 @@
       "owner": "maintainer-owned",
       "previously_exposed": true,
       "held_out_retroactive": true,
+      "review_status": "pending maintainer review",
+      "max_questions_per_file": 3,
       "indexed_python_lines": 2789,
       "database_repository": "incidentweave-eval",
       "questions": {
@@ -48,6 +50,85 @@
       "smoke_gate": {
         "path": "evaluation/smoke-gate.json",
         "sha256": "da159b538607a9d7a35601356d31e63787b93f120330446ff46602211b8a60c5"
+      },
+      "splits": {
+        "development": [
+          "direct-01",
+          "direct-02",
+          "direct-03",
+          "direct-05",
+          "direct-07",
+          "direct-08",
+          "paraphrased-01",
+          "paraphrased-03",
+          "paraphrased-04",
+          "paraphrased-05",
+          "paraphrased-07",
+          "unanswerable_far-01",
+          "unanswerable_far-02",
+          "unanswerable_far-04",
+          "unanswerable_near-01",
+          "unanswerable_near-02"
+        ],
+        "held_out": [
+          "direct-04",
+          "direct-06",
+          "paraphrased-02",
+          "paraphrased-06",
+          "paraphrased-08",
+          "unanswerable_far-03",
+          "unanswerable_near-03",
+          "unanswerable_near-04"
+        ],
+        "smoke": [
+          "direct-02",
+          "direct-05",
+          "direct-07",
+          "paraphrased-04",
+          "paraphrased-07",
+          "unanswerable_far-01",
+          "unanswerable_far-02",
+          "unanswerable_near-01"
+        ]
+      }
+    },
+    {
+      "id": "batch-processing-service",
+      "url": "https://github.com/iamswayam/batch-processing-service",
+      "pinned_sha": "1a6dc06eccf5f7ac85d96ca58e1cc054b8f476ee",
+      "license_note": "No LICENSE file at the pinned revision; maintainer-owned source, owner-authorised for embedding.",
+      "owner": "maintainer-owned",
+      "previously_exposed": false,
+      "review_status": "pending maintainer review",
+      "review_note": "reviewed by an independent AI reviewer (author: Claude); maintainer review delegated; labels pending maintainer sign-off",
+      "max_questions_per_file": 5,
+      "max_questions_per_file_reason": "The supplied rationale cites 47% concentration in engine.py and routes.py. Measured indexed files are app/worker/engine.py and app/api/routes.py: 438/838 (52.3%) of app-only Python lines, or 438/1,527 (28.7%) of all indexed Python lines including tests and mock_vendor.",
+      "indexed_python_lines": 1527,
+      "database_repository": "batch-processing-service-eval",
+      "questions": {
+        "path": "evaluation/repos/batch-processing-service/questions.json",
+        "sha256": "dffe7fec891d637ed4291b043669fcfd00cab4b6e59737597f70e74ab5e1f230"
+      },
+      "fixture": {
+        "path": "evaluation/repos/batch-processing-service/retrieval_fixture.json.gz",
+        "sha256": "71d32e142a0b92b648ea7c8c53e17bbbcbadfcbfc5ad745a87836e3b67dcab9e",
+        "max_bytes": 1572864
+      },
+      "full_gate": {
+        "path": "evaluation/repos/batch-processing-service/gate.json",
+        "sha256": "0e82b6a611ec508b8ca4419d8bec45c9871596621bba15b7c87d0431cfc7365f"
+      },
+      "full_baseline": {
+        "path": "evaluation/repos/batch-processing-service/offline-baseline.json",
+        "sha256": "cef98f845892959d1c0082bae5bbefbcc71cd9fe5caf889ceb5395337dfea26f"
+      },
+      "smoke_baseline": {
+        "path": "evaluation/repos/batch-processing-service/smoke-baseline.json",
+        "sha256": "9f71837ac08cb90f04e787a11842b784d5cf851b2a2b2de2525c93a0ba4a9be2"
+      },
+      "smoke_gate": {
+        "path": "evaluation/repos/batch-processing-service/smoke-gate.json",
+        "sha256": "e70b1aab66720d4cf7db1d0514aed8497f034bc30f8e776839b5ef33c4e2f76f"
       },
       "splits": {
         "development": [

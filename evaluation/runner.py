@@ -851,7 +851,15 @@ async def run_evaluation(
     if snapshot_parent.exists():
         shutil.rmtree(snapshot_parent)
     snapshot_root = export_snapshot(ROOT, corpus_sha, snapshot_parent)
-    errors = validate_golden_set(data, snapshot_root, corpus_sha)
+    errors = validate_golden_set(
+        data,
+        snapshot_root,
+        corpus_sha,
+        required_review_status=manifest_entry.get(
+            "review_status", "pending maintainer review"
+        ),
+        max_questions_per_file=manifest_entry.get("max_questions_per_file", 3),
+    )
     if errors:
         raise ValueError("Golden set validation failed: " + "; ".join(errors))
 

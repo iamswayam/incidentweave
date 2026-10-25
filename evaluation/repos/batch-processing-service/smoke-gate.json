@@ -1,0 +1,17 @@
+{
+  "baseline_report": "evaluation/repos/batch-processing-service/smoke-baseline.json",
+  "baselines": {
+    "substring_labels": {
+      "hit_at_5_successes": 4,
+      "mrr": 0.7
+    },
+    "spans": {
+      "hit_at_5_successes": 4,
+      "mrr": 0.7
+    }
+  },
+  "tolerance": {
+    "hit_at_5_successes_max_drop": 0,
+    "mrr_max_drop": 0.02
+  }
+}
