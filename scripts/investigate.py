@@ -81,6 +81,8 @@ async def investigate_repository(
     query_text: str,
     limit: int = 5,
     persist: bool = True,
+    *,
+    temperature: float | None = None,
 ) -> dict[str, object]:
     """Perform the end-to-end grounded investigation flow for one query."""
 
@@ -126,6 +128,7 @@ async def investigate_repository(
                     "confidence_calibrated": False,
                     "evidence_source": "hybrid",
                     "tool_calls": [],
+                    "temperature": temperature,
                 }
             )
     except Exception as exc:
@@ -223,6 +226,7 @@ async def investigate_repository(
         generation_params={
             "timeout_seconds": GENERATION_TIMEOUT_SECONDS,
             "max_attempts": MAX_GENERATION_ATTEMPTS,
+            "temperature": temperature,
             "response_mime_type": "application/json",
             "response_schema_version": "grounded-v3",
         },

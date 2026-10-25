@@ -51,6 +51,11 @@ jobs:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
         run: alembic upgrade head
 
+      - name: Offline retrieval gate
+        env:
+          DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
+        run: python -m scripts.check_retrieval_gate
+
       - name: Pytest
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave

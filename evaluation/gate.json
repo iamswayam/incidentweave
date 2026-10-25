@@ -1,0 +1,18 @@
+{
+  "baseline_report": "evaluation/results/offline-baseline.json",
+  "baselines": {
+    "substring_labels": {
+      "hit_at_5_successes": 11,
+      "mrr": 0.5729166666666666
+    },
+    "spans": {
+      "hit_at_5_successes": 11,
+      "mrr": 0.5729166666666666
+    }
+  },
+  "tolerance": {
+    "hit_at_5_successes_max_drop": 0,
+    "mrr_max_drop": 0.02
+  },
+  "note": "Retrieval on the committed fixture is deterministic, so any drop is a real change; changing the tolerance or baseline requires a reviewed PR."
+}

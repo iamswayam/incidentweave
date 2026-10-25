@@ -62,15 +62,22 @@ RESPONSE_SCHEMA: dict[str, object] = {
 }
 
 
-async def generate_investigation(prompt: str) -> tuple[dict[str, object], int]:
+async def generate_investigation(
+    prompt: str,
+    *,
+    temperature: float | None = None,
+) -> tuple[dict[str, object], int]:
     """Send a grounded prompt to Gemini and return its payload and latency."""
 
+    generation_config: dict[str, object] = {
+        "responseMimeType": "application/json",
+        "responseSchema": RESPONSE_SCHEMA,
+    }
+    if temperature is not None:
+        generation_config["temperature"] = temperature
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": RESPONSE_SCHEMA,
-        },
+        "generationConfig": generation_config,
     }
     started_at = perf_counter()
     async with make_client() as client:

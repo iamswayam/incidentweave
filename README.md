@@ -202,6 +202,19 @@ The retrieval-only offline evaluation uses cached query embeddings and a committ
 
 It reports substring-label and source-span retrieval metrics with Wilson 95% intervals. The fixture builder and label methodology, paired exact sign-test comparison, committed baseline, and measurement limits are documented in [the offline evaluation note](docs/notes/04-offline-retrieval-evaluation.md).
 
+CI also runs the deterministic fixture through the retrieval regression gate:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate
+```
+
+The gate compares Hit@5 successes and MRR for both label types with
+[evaluation/gate.json](evaluation/gate.json). Its allowed drops are zero questions and 0.02 MRR;
+change the baseline or tolerance only through a reviewed PR. A failure means retrieval on the
+committed fixture fell below the configured threshold. The gate protects retrieval, not generated
+answer quality. Evaluation runs now set temperature to 0 and record the generation configuration;
+older recorded runs used the provider default and are not directly comparable.
+
 ## Quality checks and CI
 
 ```powershell

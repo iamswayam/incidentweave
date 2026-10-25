@@ -57,6 +57,22 @@ async def test_generate_investigation_sends_key_in_header_and_schema(
 
 
 @pytest.mark.anyio
+async def test_generate_investigation_adds_temperature_only_when_given(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"candidates": []})
+
+    requests = mock_client(monkeypatch, handler)
+    await generation.generate_investigation("question", temperature=0)
+
+    body = json.loads(requests[0].content)
+    assert body["generationConfig"]["temperature"] == 0
+
+
+@pytest.mark.anyio
 async def test_embed_text_sends_key_in_header(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

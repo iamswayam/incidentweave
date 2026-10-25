@@ -477,6 +477,7 @@ def test_run_pipeline_once_routes_selected_evaluation_repository(
 
     assert observed["repository_name"] == "incidentweave-eval-w100_20"
     assert observed["persist"] is False
+    assert observed["temperature"] == 0
 
 
 def test_run_evaluation_threads_strategy_and_repository_without_live_services(
@@ -600,6 +601,10 @@ def test_run_evaluation_threads_strategy_and_repository_without_live_services(
     assert report["evaluation_repository"] == "incidentweave-eval-w100_20"
     assert report["chunk_size"] == 100
     assert report["overlap"] == 20
+    assert report["generation_config"] == (
+        "temperature=0; responseMimeType=application/json; "
+        "response schema + prompt version grounded-v3"
+    )
     assert report["run_id"].endswith("-w100_o20")
     assert (results_root / "runs" / report["run_id"] / "report.json").is_file()
 

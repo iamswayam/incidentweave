@@ -87,12 +87,13 @@ async def test_investigate_repository_accepts_limit_bounds_without_external_serv
     )
 
     result = await investigate_module.investigate_repository(
-        "test-repo", "test query", limit=limit, persist=False
+        "test-repo", "test query", limit=limit, persist=False, temperature=0
     )
 
     assert result["diagnosis"] == "test diagnosis"
     assert fake_graph.state is not None
     assert fake_graph.state["search_limit"] == limit
+    assert fake_graph.state["temperature"] == 0
 
 
 @pytest.mark.anyio
