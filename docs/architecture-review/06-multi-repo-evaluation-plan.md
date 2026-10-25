@@ -91,7 +91,7 @@ The amended 16a/16b/16c split is correct. It establishes a data contract before 
 
 ### Open decisions for the maintainer
 
-- Which two repositories meet the amended selection criteria. Record whether each is maintainer-owned or third-party and the resulting independence/training-contamination limitation before selection.
+- Decided (maintainer): repository 2 = iamswayam/batch-processing-service pinned at 1a6dc06eccf5f7ac85d96ca58e1cc054b8f476ee; repository 3 = iamswayam/lifeos pinned at 407ab87476cab88375994ff6e4bee6dda3a7076a. Both are maintainer-owned, have no LICENSE file (owner-authorised for embedding), and are measured by indexed Python lines excluding migrations. Limitation: three repositories by one author. Only *.py files are ingested, so every question must be answerable from Python code. Fallback: if lifeos cannot yield 16 grounded answerable questions, opsmind-ai replaces it by maintainer decision.
 
 ### Order
 

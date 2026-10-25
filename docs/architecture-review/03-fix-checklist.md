@@ -32,7 +32,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 11 | Done | #34 | Structured output and citation validation. |
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
 | 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
-| 13b | In progress | pending | CI gate and generation settings. |
+| 13b | Done | #40 | CI gate and generation settings. |
+| 16a | In progress | pending | multi-repo harness |
 | Plan 06 added | Done | n/a | docs commit |
 
 ## 1. Fix-order checklist (summary)
@@ -59,8 +60,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
 | 15a | ☐ | Chunking upgrade, staged comparison, after 16a and 16b: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
 | 16a | ☐ | Multi-repo evaluation harness: manifest, split-aware reports, smoke/held-out selection and per-repository gate | High | M | Both |
-| 16b | ☐ | Multi-repo evaluation data: first new repository’s approved questions, fixture and baseline | High | M | Both |
-| 16c | ☐ | Multi-repo evaluation data: second new repository’s approved questions, fixture and baseline | High | M | Both |
+| 16b | ☐ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
+| 16c | ☐ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Tracing, cost and latency telemetry | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
@@ -197,11 +198,11 @@ Item 15a (chunking upgrade) is scheduled after items 9, 13, 16a and 16b, so chun
 - *Fix:* generalise the evaluation harness with a versioned manifest, per-repository question/split/fixture/baseline selection, per-repository and pooled reporting, fixed development-only smoke selection, and one fail-closed offline gate per repository. The manifest records pinned source, content hashes, versions and fixture-size limits. This item contains code and synthetic/unit-test fixtures only.
 - *Done when:* unit and integration tests show that the harness rejects missing or mismatched manifest, question, fixture and baseline inputs; reports each selected repository and the pooled total; keeps held-out questions out of tuning paths; and fails the overall gate when any selected repository fails or is missing.
 
-**16b. First new-repository evaluation data.**
-- *Fix:* select one approved Python repository under `06-multi-repo-evaluation-plan.md`, then add its reviewed 24-question set, explicit development/held-out/smoke assignments, pinned snapshot, offline fixture and reviewed baseline.
+**16b. First new-repository evaluation data: `iamswayam/batch-processing-service`.**
+- *Fix:* add the approved Python repository under `06-multi-repo-evaluation-plan.md` with its reviewed 24-question set, explicit development/held-out/smoke assignments, pinned snapshot, offline fixture and reviewed baseline.
 - *Done when:* the approved manifest entry, questions, label/span and absence review, fixture and baseline pass 16a’s validation and its smoke gate runs without provider calls.
 
-**16c. Second new-repository evaluation data.**
+**16c. Second new-repository evaluation data: `iamswayam/lifeos`.**
 - *Fix:* add the second approved Python repository with the same reviewed inputs as 16b. Run it in parallel with 15a if ready, but do not use its results to revise the 15a design.
 - *Done when:* both new-repository entries pass 16a’s validation and gates; their frozen held-out results can be reported as a two-repository external-replication result with stated denominators and limitations.
 
