@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "split_seed": 20261025,
+  "counts": {
+    "questions": 24,
+    "development": 16,
+    "held_out": 8,
+    "smoke": 8,
+    "development_answerable": 11,
+    "development_unanswerable": 5,
+    "held_out_answerable": 5,
+    "held_out_unanswerable": 3,
+    "smoke_answerable": 5,
+    "smoke_unanswerable": 3
+  },
+  "repositories": [
+    {
+      "id": "incidentweave",
+      "url": "https://github.com/iamswayam/incidentweave",
+      "pinned_sha": "62d0e58593bb22d187ec7930274b0457afd3be74",
+      "license_note": "No LICENSE file was found at the pinned revision; maintainer-owned source is owner-authorized for embedding.",
+      "owner": "maintainer-owned",
+      "previously_exposed": true,
+      "held_out_retroactive": true,
+      "indexed_python_lines": 2789,
+      "database_repository": "incidentweave-eval",
+      "questions": {
+        "path": "evaluation/golden_set.json",
+        "sha256": "e0ac9f20b88654133142f1cc4a99bd0e3005e51223a58d2d599a47aff9d654ce"
+      },
+      "fixture": {
+        "path": "evaluation/fixtures/retrieval_fixture.json.gz",
+        "sha256": "98e446a4ef5c312c45e5ff1f07bc89567be3a0687b2f8b5fc4d7ee72c01e416a",
+        "max_bytes": 1572864
+      },
+      "full_gate": {
+        "path": "evaluation/gate.json",
+        "sha256": "3d510631ab7344eca2cdae88f48da40d7002b476b8697bb90236fedd61fde18d"
+      },
+      "full_baseline": {
+        "path": "evaluation/results/offline-baseline.json",
+        "sha256": "d22c6ddc8b65beefa7c7f261ab076f0651cf675ef88de295be9a45828e65d6c5"
+      },
+      "smoke_baseline": {
+        "path": "evaluation/results/incidentweave-smoke-baseline.json",
+        "sha256": "a692ef9c5dc9e8b6c93e11eb0de4af3cdd620e679856143b91de4d379d8add6b"
+      },
+      "smoke_gate": {
+        "path": "evaluation/smoke-gate.json",
+        "sha256": "da159b538607a9d7a35601356d31e63787b93f120330446ff46602211b8a60c5"
+      },
+      "splits": {
+        "development": [
+          "direct-01",
+          "direct-02",
+          "direct-03",
+          "direct-05",
+          "direct-07",
+          "direct-08",
+          "paraphrased-01",
+          "paraphrased-03",
+          "paraphrased-04",
+          "paraphrased-05",
+          "paraphrased-07",
+          "unanswerable_far-01",
+          "unanswerable_far-02",
+          "unanswerable_far-04",
+          "unanswerable_near-01",
+          "unanswerable_near-02"
+        ],
+        "held_out": [
+          "direct-04",
+          "direct-06",
+          "paraphrased-02",
+          "paraphrased-06",
+          "paraphrased-08",
+          "unanswerable_far-03",
+          "unanswerable_near-03",
+          "unanswerable_near-04"
+        ],
+        "smoke": [
+          "direct-02",
+          "direct-05",
+          "direct-07",
+          "paraphrased-04",
+          "paraphrased-07",
+          "unanswerable_far-01",
+          "unanswerable_far-02",
+          "unanswerable_near-01"
+        ]
+      }
+    }
+  ]
+}

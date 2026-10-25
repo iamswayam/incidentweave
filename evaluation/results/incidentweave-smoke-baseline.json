@@ -1,0 +1,205 @@
+{
+  "metadata": {
+    "fixture": {
+      "built_at": "2026-10-24T18:08:22.160740+00:00",
+      "chunk_count": 70,
+      "chunker_version": "lines-60-10-v1",
+      "embedding_model": "models/gemini-embedding-001",
+      "pinned_sha": "62d0e58593bb22d187ec7930274b0457afd3be74",
+      "question_count": 24,
+      "strategy": "baseline"
+    },
+    "golden_pinned_sha": "62d0e58593bb22d187ec7930274b0457afd3be74",
+    "limit": 5,
+    "repo_id": "incidentweave",
+    "split": "smoke"
+  },
+  "questions": [
+    {
+      "id": "direct-02",
+      "category": "direct",
+      "label_rank": 1,
+      "span_rank": 1,
+      "label_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "direct-05",
+      "category": "direct",
+      "label_rank": 3,
+      "span_rank": 3,
+      "label_hits": {
+        "1": false,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": false,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "direct-07",
+      "category": "direct",
+      "label_rank": 1,
+      "span_rank": 1,
+      "label_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "paraphrased-04",
+      "category": "paraphrased",
+      "label_rank": 3,
+      "span_rank": 3,
+      "label_hits": {
+        "1": false,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": false,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "paraphrased-07",
+      "category": "paraphrased",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    },
+    {
+      "id": "unanswerable_far-01",
+      "category": "unanswerable_far",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    },
+    {
+      "id": "unanswerable_far-02",
+      "category": "unanswerable_far",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    },
+    {
+      "id": "unanswerable_near-01",
+      "category": "unanswerable_near",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    }
+  ],
+  "summary": {
+    "substring_labels": {
+      "count": 5,
+      "hit_at_1": {
+        "successes": 2,
+        "rate": 0.4,
+        "wilson_95": [
+          0.1176182311592533,
+          0.769280067791163
+        ]
+      },
+      "hit_at_3": {
+        "successes": 4,
+        "rate": 0.8,
+        "wilson_95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "hit_at_5": {
+        "successes": 4,
+        "rate": 0.8,
+        "wilson_95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "mrr": 0.5333333333333333
+    },
+    "spans": {
+      "count": 5,
+      "hit_at_1": {
+        "successes": 2,
+        "rate": 0.4,
+        "wilson_95": [
+          0.1176182311592533,
+          0.769280067791163
+        ]
+      },
+      "hit_at_3": {
+        "successes": 4,
+        "rate": 0.8,
+        "wilson_95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "hit_at_5": {
+        "successes": 4,
+        "rate": 0.8,
+        "wilson_95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "mrr": 0.5333333333333333
+    }
+  }
+}

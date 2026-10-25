@@ -28,23 +28,31 @@ review.” The offline result is a retrieval-only diagnostic, not answer-quality
 throughput evidence. The committed baseline run produced substring and span Hit@1/3/5 of 8/16,
 11/16, and 11/16, respectively, with MRR 0.573 for each label type.
 
-## CI retrieval gate
+## Manifest-driven retrieval gate
 
-Run the gate locally with:
+The retrieval fixture, questions, full baseline, and full gate are selected and hash-checked
+through [the evaluation manifest](../../evaluation/manifest.json). For the fixed smoke subset,
+run:
 
 ```powershell
-.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate
+.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke
 ```
 
-It reruns offline retrieval on the committed fixture and compares Hit@5 successes and MRR for
-substring labels and spans against [evaluation/gate.json](../../evaluation/gate.json). The
-configured maximum drops are zero Hit@5 successes and 0.02 MRR. A failure means retrieval on this
-fixture fell below its allowed baseline. Retrieval on the committed fixture is deterministic, so
-any drop is a real change; changing the tolerance or baseline requires a reviewed PR.
+The gate evaluates every selected repository separately, then prints pooled Hit@1/3/5 and MRR
+with denominators and Wilson intervals. Missing or invalid inputs fail the selected repository;
+the overall gate fails if any selected repository fails or is absent, and pooled output is not
+calculated from an incomplete selection. The fixed smoke subset has a separate baseline and
+tolerance in its manifest-referenced smoke gate. The full gate compares Hit@5 successes and MRR
+against each repository's full baseline. Retrieval on the committed fixture is deterministic, so
+any drop is a real change; changing a tolerance or baseline requires a reviewed PR.
+
+Use `--repo ID` to select one repository or `--split all` to run the full question sets. For the
+split model, held-out protections, authoring protocol, and the limits of the small sample sizes,
+see [the multi-repository evaluation note](./05-multi-repo-evaluation.md).
 
 Evaluation generations now use temperature 0, and run metadata records
 `temperature=0; responseMimeType=application/json; response schema + prompt version grounded-v3`.
 Earlier recorded runs used the provider default, so they are not directly comparable. The gate
-protects retrieval only, not generation or answer quality. Its limits remain 24 questions, one
-repository, labels pending maintainer review, and a fixture reflecting 60/10 chunking at build
-time.
+protects retrieval only, not generation or answer quality. The current manifest contains only
+IncidentWeave, with 24 questions whose labels remain pending maintainer review; its fixture
+reflects 60/10 chunking at build time.

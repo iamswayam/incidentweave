@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import gzip
 import hashlib
@@ -20,6 +21,12 @@ from app.db.models import Chunk, Repository
 from app.db.session import AsyncSessionLocal
 from evaluation.chunk_experiments import DEFAULT_STRATEGY, get_strategy
 from evaluation.golden import load_golden_set
+from evaluation.manifest import (
+    MANIFEST_PATH,
+    load_manifest,
+    manifest_root,
+    repository_entry,
+)
 from scripts.embed_chunks import GEMINI_MODEL
 from scripts.ingest_repo import CHUNKER_VERSION
 
@@ -43,14 +50,18 @@ def serialize_fixture(fixture: dict[str, Any]) -> bytes:
     return gzip.compress(payload, mtime=0)
 
 
-def write_fixture(fixture: dict[str, Any], path: Path) -> int:
+def write_fixture(
+    fixture: dict[str, Any],
+    path: Path,
+    max_bytes: int = MAX_FIXTURE_BYTES,
+) -> int:
     """Write a compressed fixture only if it is below the committed-size limit."""
 
     compressed = serialize_fixture(fixture)
-    if len(compressed) >= MAX_FIXTURE_BYTES:
+    if len(compressed) >= max_bytes:
         raise ValueError(
             f"retrieval fixture is {len(compressed)} bytes; "
-            f"must be under {MAX_FIXTURE_BYTES} bytes"
+            f"must be under {max_bytes} bytes"
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(compressed)
@@ -67,18 +78,32 @@ def _round_embedding(embedding: list[float]) -> list[float]:
     return [round(float(value), 6) for value in embedding]
 
 
-async def build_fixture(path: Path = FIXTURE_PATH) -> int:
+async def build_fixture(
+    path: Path | None = None,
+    *,
+    repo_id: str = "incidentweave",
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> int:
     """Read existing evaluation chunks and cached question vectors, then write fixture."""
 
-    golden = load_golden_set(GOLDEN_PATH)
+    manifest = load_manifest(manifest_path, root=root)
+    entry = repository_entry(manifest, repo_id)
+    golden_path = root / entry["questions"]["path"]
+    fixture_path = path or root / entry["fixture"]["path"]
+    golden = load_golden_set(golden_path)
     strategy = get_strategy(DEFAULT_STRATEGY)
+    database_repository = entry.get(
+        "database_repository", strategy.evaluation_repository
+    )
+    cache_root = root / "evaluation" / "cache"
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
-            select(Repository).where(Repository.name == strategy.evaluation_repository)
+            select(Repository).where(Repository.name == database_repository)
         )
         if repository is None:
             raise RuntimeError(
-                f"Evaluation repository {strategy.evaluation_repository!r} was not found"
+                f"Evaluation repository {database_repository!r} was not found"
             )
         rows = (
             await session.execute(
@@ -106,7 +131,7 @@ async def build_fixture(path: Path = FIXTURE_PATH) -> int:
     missing_queries: list[str] = []
     for question in golden["questions"]:
         key = hashlib.sha256(question["question"].encode("utf-8")).hexdigest()
-        cache_path = CACHE_ROOT / f"{key}.json"
+        cache_path = cache_root / f"{key}.json"
         if not cache_path.is_file():
             missing_queries.append(str(question["id"]))
             continue
@@ -140,14 +165,24 @@ async def build_fixture(path: Path = FIXTURE_PATH) -> int:
         ],
         "queries": queries,
     }
-    size = write_fixture(fixture, path)
+    size = write_fixture(fixture, fixture_path, int(entry["fixture"]["max_bytes"]))
     print(f"Fixture size: {size} bytes")
     return size
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--repo", default="incidentweave", help="manifest repository id")
+    parser.add_argument("--manifest", type=Path, default=MANIFEST_PATH)
+    args = parser.parse_args()
     try:
-        asyncio.run(build_fixture())
+        asyncio.run(
+            build_fixture(
+                repo_id=args.repo,
+                manifest_path=args.manifest,
+                root=manifest_root(args.manifest),
+            )
+        )
     except (OSError, RuntimeError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc

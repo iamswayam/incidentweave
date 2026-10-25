@@ -650,16 +650,46 @@ def compare_runs(
     baseline_dir: Path,
     experiment_dir: Path,
     source_reader: Callable[[str, str], str] | None = None,
+    *,
+    split: str = "development",
+    confirm_frozen_heldout: bool = False,
 ) -> dict[str, Any]:
+    from .chunk_experiments import resolve_split
+    from .golden import load_golden_set
+    from .manifest import load_manifest, questions_for_split, repository_entry
+
+    split = resolve_split(split, confirm_frozen_heldout=confirm_frozen_heldout)
     baseline_metadata, baseline_passes = load_run(baseline_dir)
     experiment_metadata, experiment_passes = load_run(experiment_dir)
-    return compare_run_data(
+    repo_id = str(baseline_metadata.get("repo_id", "incidentweave"))
+    if experiment_metadata.get("repo_id", repo_id) != repo_id:
+        raise ValueError("Cannot compare runs from different manifest repositories")
+    manifest = load_manifest()
+    entry = repository_entry(manifest, repo_id)
+    golden = load_golden_set(ROOT / entry["questions"]["path"])
+    selected_ids = {
+        question["id"]
+        for question in questions_for_split(entry, golden["questions"], split)
+    }
+    baseline_passes = {
+        name: [record for record in records if record.get("id") in selected_ids]
+        for name, records in baseline_passes.items()
+    }
+    experiment_passes = {
+        name: [record for record in records if record.get("id") in selected_ids]
+        for name, records in experiment_passes.items()
+    }
+    report = compare_run_data(
         baseline_metadata,
         baseline_passes,
         experiment_metadata,
         experiment_passes,
         source_reader=source_reader,
     )
+    report["repo_id"] = repo_id
+    report["split"] = split
+    report["confirm_frozen_heldout"] = confirm_frozen_heldout
+    return report
 
 
 def _under_runs_root(path: Path) -> Path:
@@ -679,6 +709,9 @@ def format_report(report: dict[str, Any]) -> str:
         f"Baseline: {report['baseline_run_id']}",
         f"Experiment: {report['experiment_run_id']}",
         f"Pinned SHA: {report['pinned_sha']}",
+        f"Repository: {report.get('repo_id', 'unknown')}",
+        f"Split: {report.get('split', 'unknown')}",
+        f"Frozen held-out confirmation: {report.get('confirm_frozen_heldout', False)}",
         "",
         "Pass-1 answerable paired retrieval (rank and hit indicators):",
         "id | baseline rank | experiment rank | baseline @1/@3/@5 | "
@@ -744,10 +777,19 @@ def main() -> None:
     )
     parser.add_argument("baseline_run", type=Path)
     parser.add_argument("experiment_run", type=Path)
+    from .chunk_experiments import SPLIT_CHOICES
+
+    parser.add_argument("--split", choices=SPLIT_CHOICES, default="development")
+    parser.add_argument("--confirm-frozen-heldout", action="store_true")
     args = parser.parse_args()
     baseline_dir = _under_runs_root(args.baseline_run)
     experiment_dir = _under_runs_root(args.experiment_run)
-    report = compare_runs(baseline_dir, experiment_dir)
+    report = compare_runs(
+        baseline_dir,
+        experiment_dir,
+        split=args.split,
+        confirm_frozen_heldout=args.confirm_frozen_heldout,
+    )
     output_path = experiment_dir / "chunking-comparison.json"
     output_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
