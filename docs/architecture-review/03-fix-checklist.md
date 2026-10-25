@@ -33,6 +33,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
 | 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
 | 13b | In progress | pending | CI gate and generation settings. |
+| Plan 06 added | Done | n/a | docs commit |
 
 ## 1. Fix-order checklist (summary)
 
@@ -56,8 +57,10 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13a | ☑ | Evaluation foundation, part a: span labels, statistics, offline retrieval evaluation | High | M | Both |
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
-| 15 | ☐ | Chunking upgrade, staged comparison: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
-| 16 | ☐ | Held-out evaluation set: second repository, 30 independent questions first, 60+ later | High | M–L | Both |
+| 15a | ☐ | Chunking upgrade, staged comparison, after 16a and 16b: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
+| 16a | ☐ | Multi-repo evaluation harness: manifest, split-aware reports, smoke/held-out selection and per-repository gate | High | M | Both |
+| 16b | ☐ | Multi-repo evaluation data: first new repository’s approved questions, fixture and baseline | High | M | Both |
+| 16c | ☐ | Multi-repo evaluation data: second new repository’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Tracing, cost and latency telemetry | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
@@ -75,13 +78,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 |---|---|---|
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
-| 3 | **13**, **16** (30 questions, staged), **17**, **3b** | Measurement you can trust before tuning |
-| 4 | **14**, **15** (staged), **10**, **5b**, **21** | Retrieval, chunking and provider execution, measured against step 3 |
+| 3 | **13**, **16a**, **16b**, **15a** (**16c** in parallel), **17**, **3b** | Measurement you can trust before tuning |
+| 4 | **14**, **10**, **5b**, **21** | Retrieval and provider execution, measured against step 3 |
 | 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
-Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker versions can be compared on a fair evaluation.
+Item 15a (chunking upgrade) is scheduled after items 9, 13, 16a and 16b, so chunker versions can be selected on development data from two repositories and evaluated fairly. Item 3b follows 16b and 16c so its held-out evidence covers both new repositories.
 
 ---
 
@@ -101,7 +104,7 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
 - *Done when:* a test with a repository other than IncidentWeave, and a query matching IncidentWeave's source, shows no literal search runs and no IncidentWeave source appears as evidence.
 - **Status:** 2026-10-22; branch `fix/02-remove-literal-grep`; changed `app/investigation/graph.py`, `app/investigation/guard.py`, `scripts/investigate.py`, `evaluation/runner.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigation_mcp_tools.py`, `tests/unit/test_investigation_parsing.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 88 passed in 37.69s.
 
-**3a. Fix the evidence guard (now). 3b. Re-validate the thresholds (after item 16).**
+**3a. Fix the evidence guard (now). 3b. Re-validate the thresholds (after items 16b and 16c).**
 - *Why:* (a) `MIN_ACCEPTABLE_RRF_SCORE = 0.016` is below `1/61 = 0.016393`, so any rank-1 vector hit passes; I executed this [EXEC]. (b) The guard takes the best RRF and best vector distance from *different* chunks independently (`max` and `min` over all results), so no single chunk has to satisfy both [SRC; found by Codex]. Result: 4 of 8 unanswerable questions pass the guard [ART].
 - *Fix:* decide sufficiency per chunk; the RRF number is for ranking, not a gate. Literal (grep) evidence never counts as sufficient by itself. Example rule: the top chunk's own vector distance ≤ T, or it has a lexical match and distance ≤ T2. T is provisional and must not be tuned on the same 24 questions; 3b re-validates it on the item 16 split. Update the README sentence about "both an RRF threshold and a vector-distance threshold".
 - *Done when:* unit tests show the guard accepts only if one chunk passes, including: RRF and vector success on different chunks (accepted when the chunk with the close distance qualifies on its own; refused when no chunk has a distance within the cutoff), a rank-one vector-only hit, an FTS-only hit, and a literal-only result (never sufficient); the README matches the code. The evaluation re-run (false accepts, new threshold) belongs to 3b, because it needs the held-out split and live provider calls. On the current 24 questions the guard's behaviour is unchanged (4 of 8 unanswerable questions still pass).
@@ -186,13 +189,21 @@ Item 15 (chunking upgrade) is scheduled after items 9, 13, 16 and 10, so chunker
   - (c) Build an OR query from extracted identifiers and keywords, split `snake_case` and `camelCase` into extra searchable text, and add a generated `tsvector` column with a GIN index.
 - *Done when:* a committed ablation table with confidence intervals; keep only changes that help without hurting. One change per run, with re-embedding versioned. Report test-file recall and precision, not only aggregate Hit@5. HNSW and GIN indexes are scale work, not a quality ablation at 70 chunks.
 
-**15. Chunking upgrade (staged).** See Part A. First compare 60/10, 100/20, function-aware, and function-aware with parent expansion under one fixed test-file policy; function-aware is a strong candidate, not a proven winner. *Done when:* the comparison runs on the item 13 metrics and the winner is chosen by a rule fixed in advance.
+**15a. Chunking upgrade (staged, after 16a and 16b).** See Part A. First compare 60/10, 100/20, function-aware, and function-aware with parent expansion under one fixed test-file policy on development data from IncidentWeave and repository 2; function-aware is a strong candidate, not a proven winner. Freeze the choice before evaluating either repository’s held-out split. *Done when:* the comparison runs on the item 13 metrics and the winner is chosen by a rule fixed in advance.
 
 ### Phase 5: scale and breadth
 
-**16. Held-out evaluation set.**
-- *Fix:* add a second repository (a small open-source Python service; your other repository only once non-Python ingestion exists) and start with 30 questions written independently of the system's own retrieval output and independently reviewed, drawn from two sources. Freeze a smaller test split and grow to 60+ later. Include multi-file questions; add config and error-message questions only after item 20 ingests those artifact types. Split into a dev set and a frozen test set. Record a human review before the label status changes from "pending maintainer review".
-- *Done when:* the frozen test set is used only for final reporting.
+**16a. Multi-repo evaluation harness.**
+- *Fix:* generalise the evaluation harness with a versioned manifest, per-repository question/split/fixture/baseline selection, per-repository and pooled reporting, fixed development-only smoke selection, and one fail-closed offline gate per repository. The manifest records pinned source, content hashes, versions and fixture-size limits. This item contains code and synthetic/unit-test fixtures only.
+- *Done when:* unit and integration tests show that the harness rejects missing or mismatched manifest, question, fixture and baseline inputs; reports each selected repository and the pooled total; keeps held-out questions out of tuning paths; and fails the overall gate when any selected repository fails or is missing.
+
+**16b. First new-repository evaluation data.**
+- *Fix:* select one approved Python repository under `06-multi-repo-evaluation-plan.md`, then add its reviewed 24-question set, explicit development/held-out/smoke assignments, pinned snapshot, offline fixture and reviewed baseline.
+- *Done when:* the approved manifest entry, questions, label/span and absence review, fixture and baseline pass 16a’s validation and its smoke gate runs without provider calls.
+
+**16c. Second new-repository evaluation data.**
+- *Fix:* add the second approved Python repository with the same reviewed inputs as 16b. Run it in parallel with 15a if ready, but do not use its results to revise the 15a design.
+- *Done when:* both new-repository entries pass 16a’s validation and gates; their frozen held-out results can be reported as a two-repository external-replication result with stated denominators and limitations.
 
 **17. LLM judge and a larger abstention set.**
 - *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement (30 labels is a pilot, not proof of reliability; temperature 0 does not guarantee determinism). Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).
