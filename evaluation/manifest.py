@@ -38,9 +38,12 @@ HASHED_PATH_FIELDS = (
 
 
 def sha256_file(path: Path) -> str:
-    """Return a file's SHA-256 digest."""
+    """Hash file contents, normalizing JSON line endings across operating systems."""
 
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    content = path.read_bytes()
+    if path.suffix.lower() == ".json":
+        content = content.replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
 
 
 def manifest_root(path: Path) -> Path:

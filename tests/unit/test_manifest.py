@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from evaluation.manifest import load_manifest
+from evaluation.manifest import load_manifest, sha256_file
 from evaluation.splits import assign_splits
 
 COUNTS = {
@@ -31,7 +31,17 @@ def _write_json(path: Path, value: object) -> None:
 
 
 def _digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha256_file(path)
+
+
+def test_json_hash_normalizes_line_endings(tmp_path: Path) -> None:
+    lf_path = tmp_path / "lf.json"
+    crlf_path = tmp_path / "crlf.json"
+    lf_path.write_bytes(b'{"key":"value"}\n')
+    crlf_path.write_bytes(b'{"key":"value"}\r\n')
+
+    assert sha256_file(lf_path) == sha256_file(crlf_path)
+    assert sha256_file(lf_path) == hashlib.sha256(b'{"key":"value"}\n').hexdigest()
 
 
 def valid_manifest(tmp_path: Path) -> tuple[Path, dict[str, Any]]:

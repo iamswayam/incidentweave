@@ -7,8 +7,10 @@ evaluation repositories. Each entry records the repository URL and pinned commit
 licence note, indexed Python-line count, question/fixture/baseline/gate paths and SHA-256 hashes,
 and the fixture-size ceiling. The loader rejects unknown schema versions, duplicate repository
 IDs, missing or mismatched files, inconsistent pins, invalid split assignments, and fixtures
-over their declared size limit. `--repo ID` selects one entry; by default, retrieval evaluation
-and the gate select every manifest entry.
+over their declared size limit. SHA-256 checks normalize CRLF to LF for JSON resources, while
+binary fixtures are hashed as stored, so manifest validation is consistent across operating
+systems. `--repo ID` selects one entry; by default, retrieval evaluation and the gate select every
+manifest entry.
 
 The manifest currently contains IncidentWeave only. Items 16b and 16c add reviewed question sets,
 fixtures, baselines, and gates for the two approved repositories. The existing IncidentWeave
