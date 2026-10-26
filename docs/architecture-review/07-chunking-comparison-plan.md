@@ -110,3 +110,27 @@ Paired statistics versus S0 (reported, not gating): S1 11 wins, 2 losses, 20 tie
 Interpretation, with limits: S1 met four of the five conditions and failed only the p95 context limit; its gain came with about 45% more context on average and its interval includes zero, which is the size effect the cost limit exists to catch. The sign test is one of three comparisons and does not gate. AST chunking (S2) matched S0 on Hit@5 and MRR using about 40% less context, but lost 0.091 MRR on batch-processing-service while gaining 0.073 on lifeos; adding path and symbol text (S3) lowered MRR further. These results do not show that AST chunking is better or worse in general: there are only 33 development questions, three repositories by one author, IncidentWeave was previously exposed, and lifeos is at its Hit@5 ceiling. The rule and thresholds were not changed after seeing the results.
 
 What follows: 15b is closed with no change (S0 stays in production ingestion). Any new comparison (for example at an equal context budget, or with more questions) would need a new, separately registered protocol and fresh data; it must not reuse these development results to choose thresholds. Item 3b will use the held-out questions with the S0 chunker.
+
+## 6. Addendum (item 13d): tie-order re-check
+
+Retrieval tie order was nondeterministic when the item 15a-2 numbers above were recorded. The
+development comparison was recomputed after deterministic ordering; the existing protocol,
+fixtures, and thresholds were unchanged.
+
+| Strategy | Recorded pooled MRR | Recomputed pooled MRR | Recorded Hit@5 | Recomputed Hit@5 |
+|---|---:|---:|---:|---:|
+| S0 60/10 | 0.668 | 0.673737 | 27/33 | 28/33 |
+| S1 100/20 | 0.723 | 0.724747 | 31/33 | 31/33 |
+| S2 AST | 0.664 | 0.664141 | 28/33 | 28/33 |
+| S3 AST + path/symbol text | 0.630 | 0.629798 | 28/33 | 28/33 |
+
+The decision is unchanged: S0 remains selected. S1 still fails the p95 context-cost condition;
+S2 and S3 still fail the pooled MRR-gain condition. Their remaining per-condition results are
+recorded in the generated re-check.
+
+The batch-processing-service aggregate baselines were refreshed after deterministic ordering:
+full substring Hit@5/MRR changed from 13/16 and 0.625000 to 14/16 and 0.637500, full span from
+14/16 and 0.640625 to 15/16 and 0.653125, and smoke (both label types) from 4/5 and 0.700000 to
+5/5 and 0.740000. The other repository baselines are unchanged and gate tolerances were preserved.
+Item 3b's held-out independence is unchanged because the committed baselines already contained
+these held-out outcomes; no held-out results were used to choose a strategy or threshold.

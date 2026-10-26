@@ -46,6 +46,37 @@ tolerance in its manifest-referenced smoke gate. The full gate compares Hit@5 su
 against each repository's full baseline. Retrieval on the committed fixture is deterministic, so
 any drop is a real change; changing a tolerance or baseline requires a reviewed PR.
 
+## Ordering ties and determinism
+
+The hybrid search previously formed candidates from a set of database-generated chunk IDs, while
+vector and full-text SQL left equal-score ordering unspecified. This allowed tied results to move
+between runs. Item 13d orders SQL ties by file and line coordinates, then applies explicit RRF,
+source-rank and coordinate tie-breaks without using chunk IDs.
+
+Twenty S0 runs per repository and split were measured before and after the change. Every measured
+repository/split had one distinct `(Hit@5, MRR)` outcome at each stage, and no question rank varied
+within those 20-run batches.
+
+| Repository | Split | Before: distinct outcome | After: distinct outcome | Question ranks varying within runs |
+|---|---|---|---|---|
+| incidentweave | development | 1 (7/11, 0.515152) | 1 (7/11, 0.515152) | none |
+| incidentweave | smoke | 1 (4/5, 0.533333) | 1 (4/5, 0.533333) | none |
+| batch-processing-service | development | 1 (9/11, 0.666667) | 1 (10/11, 0.684848) | none |
+| batch-processing-service | smoke | 1 (4/5, 0.700000) | 1 (5/5, 0.740000) | none |
+| lifeos | development | 1 (11/11, 0.821212) | 1 (11/11, 0.821212) | none |
+| lifeos | smoke | 1 (5/5, 0.900000) | 1 (5/5, 0.900000) | none |
+
+For batch-processing-service smoke, `direct-02` moved from a miss to rank 5; the other four
+answerable question ranks did not change. Its full baseline also changed: substring Hit@5/MRR
+went from 13/16 and 0.625000 to 14/16 and 0.637500; span Hit@5/MRR went from 14/16 and 0.640625
+to 15/16 and 0.653125. The batch-processing-service full and smoke aggregate baselines, gates and
+manifest pins were regenerated; all other baseline sets remain unchanged.
+
+The full re-check used aggregates only. Item 3b's held-out independence is unchanged because the
+committed baselines already contained these held-out outcomes; none were used for a design or
+threshold decision. Results recorded before item 13d could vary slightly when scores tied; see
+[item 13d in the fix checklist](../architecture-review/03-fix-checklist.md).
+
 Use `--repo ID` to select one repository or `--split all` to run the full question sets. For the
 split model, held-out protections, authoring protocol, and the limits of the small sample sizes,
 see [the multi-repository evaluation note](./05-multi-repo-evaluation.md).

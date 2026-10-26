@@ -33,6 +33,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
 | 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
 | 13b | Done | #40 | CI gate and generation settings. |
+| 13d | In progress | pending | deterministic retrieval ordering |
 | 16a | Done | #42 | multi-repo harness |
 | 16b | Done | #44 | batch-processing-service data |
 | 16c | Done | #46 | lifeos data |
@@ -63,6 +64,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 12b | ☐ | Wider prompt-injection testing (later) | Low | M | Codex |
 | 13a | ☑ | Evaluation foundation, part a: span labels, statistics, offline retrieval evaluation | High | M | Both |
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
+| 13d | ☑ | Deterministic tie-break in hybrid, vector and full-text search; measured tie noise | High | S | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
 | 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
 | 15a-2 | ☑ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
@@ -94,7 +96,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
-Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker.
+Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker. Item 13d precedes 13c so the inspection report is reproducible.
 
 ---
 
@@ -190,6 +192,12 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 - **Status:** 2026-10-24; branch `fix/13a-evaluation-foundation`; changed `evaluation/stats.py`, `evaluation/span_labels.py`, `evaluation/golden.py`, `evaluation/golden_set.json`, `evaluation/metrics.py`, `evaluation/build_fixture.py`, `evaluation/fixtures/retrieval_fixture.json.gz`, `evaluation/retrieval_eval.py`, `evaluation/results/offline-baseline.json`, `scripts/run_retrieval_eval.py`, `tests/unit/test_evaluation.py`, `tests/unit/test_evaluation_foundation.py`, `tests/integration/test_offline_retrieval.py`, `README.md`, `docs/notes/README.md`, `docs/notes/04-offline-retrieval-evaluation.md`, and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -m "not integration" -q`: 148 passed, 5 deselected in 109.49s; `pytest tests/integration/test_offline_retrieval.py -q`: 1 passed in 125.64s; offline retrieval baseline: Hit@1/3/5 = 8/16, 11/16, 11/16 and MRR 0.573 for both substring labels and spans.
 
 **Status (13b):** 2026-10-25; branch `fix/13b-retrieval-gate`; changed `.github/workflows/ci.yml`, `README.md`, `app/investigation/generation.py`, `app/investigation/graph.py`, `evaluation/gate.json`, `evaluation/gate.py`, `evaluation/runner.py`, `scripts/check_retrieval_gate.py`, `scripts/investigate.py`, `tests/unit/test_evaluation.py`, `tests/unit/test_gemini_api_key_header.py`, `tests/unit/test_investigate_limits.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_retrieval_gate.py`, `docs/notes/04-offline-retrieval-evaluation.md`, and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 163 passed in 143.96s; offline gate: all four checks passed, with Hit@5 11 and MRR 0.5729166666666666 for both label types.
+
+**13d. Deterministic retrieval ordering (after 15a-2).**
+- *Why:* equal-score results returned in a run-dependent order, making evaluation, the CI gate and production ordering non-reproducible.
+- *Fix:* add stable file/line tie-breaks to vector and full-text SQL and order hybrid results by RRF score, vector rank, text rank and file coordinates, never chunk ID.
+- *Done when:* 20 repeated runs give one outcome per repository and split; only baseline aggregates that differ under deterministic ordering are refreshed, with gate tolerances unchanged; the 15a-2 decision is re-checked.
+- **Status:** Done; PR pending.
 
 **14. Cheap retrieval ablations (each is one row in an ablation table).**
 - *Why:* full-text returned nothing for 14 of 16 answerable questions [ART], consistent with and likely amplified by `websearch_to_tsquery` ANDing all words [PostgreSQL docs] (the SQL has not been traced to rule out stemming, stop words or query wording; sub-experiment (c) includes a one-query check); no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs]; 44% of top-5 results come from `tests/` [EXEC on the committed `baseline.json`].

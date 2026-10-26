@@ -66,20 +66,22 @@ intervals. Unanswerable questions are excluded from retrieval-hit and MRR denomi
 | IncidentWeave full | Substring | 16 | 11/16 | 0.444–0.858 | 0.572917 |
 | IncidentWeave full | Span | 16 | 11/16 | 0.444–0.858 | 0.572917 |
 | IncidentWeave smoke | Substring and span | 5 | 4/5 | 0.376–0.964 | 0.533333 |
-| batch-processing-service full | Substring | 16 | 13/16 | 0.570–0.934 | 0.625000 |
-| batch-processing-service full | Span | 16 | 14/16 | 0.640–0.965 | 0.640625 |
-| batch-processing-service smoke | Substring and span | 5 | 4/5 | 0.376–0.964 | 0.700000 |
+| batch-processing-service full | Substring | 16 | 14/16 | 0.640–0.965 | 0.637500 |
+| batch-processing-service full | Span | 16 | 15/16 | 0.717–0.989 | 0.653125 |
+| batch-processing-service smoke | Substring and span | 5 | 5/5 | 0.566–1.000 | 0.740000 |
 | lifeos full | Substring | 16 | 16/16 | 0.806–1.000 | 0.804167 |
 | lifeos full | Span | 16 | 16/16 | 0.806–1.000 | 0.804167 |
 | lifeos smoke | Substring and span | 5 | 5/5 | 0.566–1.000 | 0.900000 |
-| Pooled full | Substring | 48 | 40/48 | 0.700–0.910 | 0.667 |
-| Pooled full | Span | 48 | 41/48 | 0.730–0.930 | 0.673 |
-| Pooled smoke | Substring | 15 | 13/15 | 0.620–0.960 | 0.711 |
-| Pooled smoke | Span | 15 | 13/15 | 0.620–0.960 | 0.711 |
+| Pooled full | Substring | 48 | 41/48 | 0.728–0.928 | 0.672 |
+| Pooled full | Span | 48 | 42/48 | 0.753–0.941 | 0.677 |
+| Pooled smoke | Substring | 15 | 14/15 | 0.702–0.988 | 0.724 |
+| Pooled smoke | Span | 15 | 14/15 | 0.702–0.988 | 0.724 |
 
-All three repositories passed their smoke and full gates with observed results equal to their
+After item 13d's deterministic tie ordering, the batch-processing-service full and smoke aggregate
+baselines were refreshed; all three repositories passed both gates with results equal to their
 committed baselines. The pooled rows combine answerable questions only; each repository's gate is
-still checked independently.
+still checked independently. See [item 13d in the fix checklist](../architecture-review/03-fix-checklist.md)
+for the tie-order measurement and baseline changes.
 
 ## Question-authoring protocol
 
