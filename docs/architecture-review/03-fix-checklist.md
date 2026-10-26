@@ -63,7 +63,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15a | ☐ | Chunking upgrade, staged comparison, after 16a and 16b: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
 | 16a | ☑ | Multi-repo evaluation harness: manifest, split-aware reports, smoke/held-out selection and per-repository gate | High | M | Both |
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
-| 16c | ☐ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
+| 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Tracing, cost and latency telemetry | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
@@ -209,6 +209,7 @@ Item 15a (chunking upgrade) is scheduled after items 9, 13, 16a and 16b, so chun
 **16c. Second new-repository evaluation data: `iamswayam/lifeos`.**
 - *Fix:* add the second approved Python repository with the same reviewed inputs as 16b. Run it in parallel with 15a if ready, but do not use its results to revise the 15a design.
 - *Done when:* both new-repository entries pass 16a’s validation and gates; their frozen held-out results can be reported as a two-repository external-replication result with stated denominators and limitations.
+- **Status:** 2026-10-26; branch `fix/16c-lifeos`; changed `evaluation/manifest.json`, `evaluation/repos/lifeos/questions.json`, `evaluation/repos/lifeos/retrieval_fixture.json.gz`, `evaluation/repos/lifeos/offline-baseline.json`, `evaluation/repos/lifeos/smoke-baseline.json`, `evaluation/repos/lifeos/gate.json`, `evaluation/repos/lifeos/smoke-gate.json`, `docs/notes/05-multi-repo-evaluation.md`, and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 195 passed in 85.97s; smoke and full offline gates passed for all three repositories.
 
 **17. LLM judge and a larger abstention set.**
 - *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement (30 labels is a pilot, not proof of reliability; temperature 0 does not guarantee determinism). Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).

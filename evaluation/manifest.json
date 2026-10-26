@@ -170,6 +170,83 @@
           "unanswerable_near-01"
         ]
       }
+    },
+    {
+      "id": "lifeos",
+      "url": "https://github.com/iamswayam/lifeos",
+      "pinned_sha": "407ab87476cab88375994ff6e4bee6dda3a7076a",
+      "license_note": "No LICENSE file at the pinned revision (the README states MIT License); maintainer-owned source, owner-authorised for embedding.",
+      "owner": "maintainer-owned",
+      "previously_exposed": false,
+      "review_status": "pending maintainer review",
+      "review_note": "reviewed by two independent AI reviewers (author: Claude; reviewers: a separate Claude agent and GitHub Copilot); maintainer review delegated; labels pending maintainer sign-off",
+      "indexed_python_lines": 1303,
+      "database_repository": "lifeos-eval",
+      "questions": {
+        "path": "evaluation/repos/lifeos/questions.json",
+        "sha256": "345021166b4cb6dcea69f9f48e95dcffcfce2416fffc396a8b73ce8fd9bb0775"
+      },
+      "fixture": {
+        "path": "evaluation/repos/lifeos/retrieval_fixture.json.gz",
+        "sha256": "eff720d62f421d530843b1f3f803a19550d1edb93f0975494c75059c2c63b540",
+        "max_bytes": 1572864
+      },
+      "full_gate": {
+        "path": "evaluation/repos/lifeos/gate.json",
+        "sha256": "398e8109bb2d1e6a1f9a2fc12595cb274b087fdc4b9ba5dde74e1c9c5e4b55eb"
+      },
+      "full_baseline": {
+        "path": "evaluation/repos/lifeos/offline-baseline.json",
+        "sha256": "9d3515f8184ac7c3be1f06a98bdb5e3408380cb8605d17517b84c285a00214e6"
+      },
+      "smoke_baseline": {
+        "path": "evaluation/repos/lifeos/smoke-baseline.json",
+        "sha256": "b7e0f303a6946151af44eac2a9ecf75abef7ab53e3520bfa0d27d168514af3f4"
+      },
+      "smoke_gate": {
+        "path": "evaluation/repos/lifeos/smoke-gate.json",
+        "sha256": "a62eb5265536810c254fe3adbf580cff36d8de49285815be4f948b45b44e9d55"
+      },
+      "splits": {
+        "development": [
+          "direct-01",
+          "direct-02",
+          "direct-03",
+          "direct-05",
+          "direct-07",
+          "direct-08",
+          "paraphrased-01",
+          "paraphrased-03",
+          "paraphrased-04",
+          "paraphrased-05",
+          "paraphrased-07",
+          "unanswerable_far-01",
+          "unanswerable_far-02",
+          "unanswerable_far-04",
+          "unanswerable_near-01",
+          "unanswerable_near-02"
+        ],
+        "held_out": [
+          "direct-04",
+          "direct-06",
+          "paraphrased-02",
+          "paraphrased-06",
+          "paraphrased-08",
+          "unanswerable_far-03",
+          "unanswerable_near-03",
+          "unanswerable_near-04"
+        ],
+        "smoke": [
+          "direct-02",
+          "direct-05",
+          "direct-07",
+          "paraphrased-04",
+          "paraphrased-07",
+          "unanswerable_far-01",
+          "unanswerable_far-02",
+          "unanswerable_near-01"
+        ]
+      }
     }
   ]
 }
