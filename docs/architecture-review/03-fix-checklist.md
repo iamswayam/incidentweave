@@ -38,6 +38,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16c | Done | #46 | lifeos data |
 | Plan 06 added | Done | n/a | docs commit |
 | Plan 07 added | Done | n/a | docs commit |
+| 15a-1 | In progress | pending | chunking comparison foundation |
 
 ## 1. Fix-order checklist (summary)
 
