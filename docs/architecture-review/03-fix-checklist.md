@@ -35,8 +35,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13b | Done | #40 | CI gate and generation settings. |
 | 16a | Done | #42 | multi-repo harness |
 | 16b | Done | #44 | batch-processing-service data |
-| 16c | In progress | pending | lifeos data |
+| 16c | Done | #46 | lifeos data |
 | Plan 06 added | Done | n/a | docs commit |
+| Plan 07 added | Done | n/a | docs commit |
 
 ## 1. Fix-order checklist (summary)
 
@@ -60,7 +61,10 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13a | ☑ | Evaluation foundation, part a: span labels, statistics, offline retrieval evaluation | High | M | Both |
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
-| 15a | ☐ | Chunking upgrade, staged comparison, after 16a and 16b: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
+| 15a-1 | ☐ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
+| 15a-2 | ☐ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
+| 15b | ☐ | Adopt the selected chunker in production ingestion, version it and re-ingest | High | M | New (data-driven, see Part A) |
+| 15c | ☐ | Parent expansion after item 17 answer-quality evaluation | Medium | M | New (data-driven, see Part A) |
 | 16a | ☑ | Multi-repo evaluation harness: manifest, split-aware reports, smoke/held-out selection and per-repository gate | High | M | Both |
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
 | 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
@@ -81,13 +85,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 |---|---|---|
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
-| 3 | **13**, **16a**, **16b**, **15a** (**16c** in parallel), **17**, **3b** | Measurement you can trust before tuning |
+| 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17**, **3b** | Measurement you can trust before tuning |
 | 4 | **14**, **10**, **5b**, **21** | Retrieval and provider execution, measured against step 3 |
 | 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
-Item 15a (chunking upgrade) is scheduled after items 9, 13, 16a and 16b, so chunker versions can be selected on development data from two repositories and evaluated fairly. Item 3b follows 16b and 16c so its held-out evidence covers both new repositories.
+Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15b so its held-out evidence measures the adopted production chunker across both new repositories.
 
 ---
 
@@ -192,7 +196,25 @@ Item 15a (chunking upgrade) is scheduled after items 9, 13, 16a and 16b, so chun
   - (c) Build an OR query from extracted identifiers and keywords, split `snake_case` and `camelCase` into extra searchable text, and add a generated `tsvector` column with a GIN index.
 - *Done when:* a committed ablation table with confidence intervals; keep only changes that help without hurting. One change per run, with re-embedding versioned. Report test-file recall and precision, not only aggregate Hit@5. HNSW and GIN indexes are scale work, not a quality ablation at 70 chunks.
 
-**15a. Chunking upgrade (staged, after 16a and 16b).** See Part A. First compare 60/10, 100/20, function-aware, and function-aware with parent expansion under one fixed test-file policy on development data from IncidentWeave and repository 2; function-aware is a strong candidate, not a proven winner. Freeze the choice before evaluating either repository’s held-out split. *Done when:* the comparison runs on the item 13 metrics and the winner is chosen by a rule fixed in advance.
+**15a-1. Chunking comparison foundation (after 16a).**
+- *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
+- *Done when:* unit tests cover the fixed strategies, AST descriptors and parse fallback; strategy metadata is reproducible; and stored raw content, line ranges and quote-validation inputs are unchanged by S3 enrichment.
+- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
+
+**15a-2. Chunking comparison experiment (after 16b and 16c).**
+- *Fix:* build immutable strategy-specific fixtures for every manifest repository with document embedding calls only, reuse cached query embeddings, run the precommitted development comparison and record the complete per-repository/pooled decision report. Freeze a choice before any held-out run.
+- *Done when:* the committed report includes the precommitted rule, artifact hashes, span-MRR/Hit@1/3/5, raw-context cost, span coverage/evidence density, paired statistics and the selected strategy (or S0 retained); all held-out inputs remain unobserved during selection.
+- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
+
+**15b. Adopt the selected chunker (after 15a-2 held-out confirmation).**
+- *Fix:* adopt only the recorded winner in production ingestion, bump the chunker version, re-ingest the target repository and update the relevant fixture/baseline lifecycle through review.
+- *Done when:* production ingestion records the selected version; the frozen held-out report is recorded before adoption; and the default offline smoke gate remains a reviewed S0-or-successor baseline, not an experiment side effect.
+- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
+
+**15c. Parent expansion (after item 17).**
+- *Fix:* add parent/context expansion as a separate answer-context experiment only after answer-quality, citation and faithfulness evaluation exists.
+- *Done when:* retrieval ranking and answer-context effects are reported separately against item 17’s answer-quality measures and a fixed prompt budget.
+- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
 
 ### Phase 5: scale and breadth
 

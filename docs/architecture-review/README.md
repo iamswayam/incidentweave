@@ -10,6 +10,7 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 | 04 | [04-fix-checklist-review-codex.md](04-fix-checklist-review-codex.md) | Codex | Independent review of 03 | Frozen |
 | 05 | [05-implementation-workflow.md](05-implementation-workflow.md) | Maintainer | How every checklist item is implemented, reviewed and merged | Living |
 | 06 | [06-multi-repo-evaluation-plan.md](06-multi-repo-evaluation-plan.md) | Claude, reviewed by Codex | Multi-repo evaluation plan and review | Living |
+| 07 | [07-chunking-comparison-plan.md](07-chunking-comparison-plan.md) | Claude, reviewed by Codex | Chunking comparison plan and review | Living |
 
 ## Conventions
 - Files are named `NN-kebab-case.md` in reading order. A new document takes the next number.
