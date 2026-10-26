@@ -204,7 +204,7 @@ def _plan(manifest_path: Path) -> int:
     return 0
 
 
-async def _embed(manifest_path: Path) -> int:
+async def _embed(manifest_path: Path, batch_delay_seconds: float) -> int:
     manifest, asset_root = _manifest_inputs(manifest_path)
     all_chunks, _skipped, baselines = _build_plan_inputs(manifest, asset_root)
     texts = plan_embeddings(all_chunks, baselines, CACHE_ROOT)
@@ -217,7 +217,12 @@ async def _embed(manifest_path: Path) -> int:
         raise ValueError("GEMINI_API_KEY is required for the confirmed embed command")
     from scripts.embed_chunks import embed_texts
 
-    await embed_missing(texts, CACHE_ROOT, embed_texts)
+    await embed_missing(
+        texts,
+        CACHE_ROOT,
+        embed_texts,
+        batch_delay_seconds=batch_delay_seconds,
+    )
     print(f"Cached embeddings: {len(texts)}")
     return 0
 
@@ -549,6 +554,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="explicitly authorize the embed command to call the embedding provider",
     )
+    parser.add_argument(
+        "--batch-delay-seconds",
+        type=float,
+        default=0.0,
+        help="delay between embedding batches (embed command only)",
+    )
     return parser
 
 
@@ -560,13 +571,18 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.command == "embed" and args.batch_delay_seconds < 0:
+        print("--batch-delay-seconds must be non-negative.", file=sys.stderr)
+        return 2
     try:
         if args.command == "prepare-sources":
             return _prepare_sources(args.manifest)
         if args.command == "plan":
             return _plan(args.manifest)
         if args.command == "embed":
-            return asyncio.run(_embed(args.manifest))
+            return asyncio.run(
+                _embed(args.manifest, args.batch_delay_seconds)
+            )
         return asyncio.run(_evaluate(args.manifest))
     except (OSError, RuntimeError, ValueError, SQLAlchemyError) as exc:
         print(f"Error: {exc}", file=sys.stderr)

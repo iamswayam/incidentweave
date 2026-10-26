@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import math
@@ -238,6 +239,9 @@ async def embed_missing(
     texts: Sequence[str],
     cache_dir: Path,
     embed_fn: Callable[[list[str]], Awaitable[list[list[float]]]],
+    *,
+    batch_delay_seconds: float = 0.0,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> None:
     """Embed bounded sequential batches and cache each returned vector at once."""
 
@@ -259,8 +263,11 @@ async def embed_missing(
         raise ValueError("Embedding texts must be strings")
 
     cache_dir.mkdir(parents=True, exist_ok=True)
-    for offset in range(0, len(texts), batch_size):
-        batch = list(texts[offset : offset + batch_size])
+    batches = [
+        list(texts[offset : offset + batch_size])
+        for offset in range(0, len(texts), batch_size)
+    ]
+    for batch_index, batch in enumerate(batches):
         vectors = await embed_fn(batch)
         if len(vectors) != len(batch):
             raise ValueError(
@@ -279,6 +286,8 @@ async def embed_missing(
                 json.dumps(vector, separators=(",", ":")),
                 encoding="utf-8",
             )
+        if batch_delay_seconds > 0 and batch_index < len(batches) - 1:
+            await sleep(batch_delay_seconds)
 
 
 def write_protocol(

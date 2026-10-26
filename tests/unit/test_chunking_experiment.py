@@ -203,6 +203,139 @@ def test_embed_missing_batches_by_fifty_and_keeps_completed_cache(
     assert len(list(tmp_path.glob("*.json"))) == 105
 
 
+def test_embed_missing_waits_between_batches_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        experiment,
+        "load_protocol",
+        lambda: {
+            "embedding": {
+                "batch_size": 50,
+                "max_texts": 700,
+                "max_batch_requests": 20,
+            }
+        },
+    )
+    calls: list[list[str]] = []
+    sleeps: list[float] = []
+
+    async def fake_embed(batch: list[str]) -> list[list[float]]:
+        calls.append(batch)
+        return [[1.0] for _ in batch]
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    asyncio.run(
+        experiment.embed_missing(
+            [f"text-{index}" for index in range(120)],
+            tmp_path,
+            fake_embed,
+            batch_delay_seconds=70,
+            sleep=fake_sleep,
+        )
+    )
+
+    assert [len(batch) for batch in calls] == [50, 50, 20]
+    assert sleeps == [70, 70]
+
+
+def test_embed_missing_zero_delay_does_not_sleep(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        experiment,
+        "load_protocol",
+        lambda: {
+            "embedding": {
+                "batch_size": 50,
+                "max_texts": 700,
+                "max_batch_requests": 20,
+            }
+        },
+    )
+    calls: list[list[str]] = []
+    sleeps: list[float] = []
+
+    async def fake_embed(batch: list[str]) -> list[list[float]]:
+        calls.append(batch)
+        return [[1.0] for _ in batch]
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    asyncio.run(
+        experiment.embed_missing(
+            [f"text-{index}" for index in range(120)],
+            tmp_path,
+            fake_embed,
+            sleep=fake_sleep,
+        )
+    )
+
+    assert [len(batch) for batch in calls] == [50, 50, 20]
+    assert sleeps == []
+
+
+def test_embed_missing_single_batch_does_not_sleep(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        experiment,
+        "load_protocol",
+        lambda: {
+            "embedding": {
+                "batch_size": 50,
+                "max_texts": 700,
+                "max_batch_requests": 20,
+            }
+        },
+    )
+    calls: list[list[str]] = []
+    sleeps: list[float] = []
+
+    async def fake_embed(batch: list[str]) -> list[list[float]]:
+        calls.append(batch)
+        return [[1.0] for _ in batch]
+
+    async def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    asyncio.run(
+        experiment.embed_missing(
+            ["one"],
+            tmp_path,
+            fake_embed,
+            batch_delay_seconds=70,
+            sleep=fake_sleep,
+        )
+    )
+
+    assert calls == [["one"]]
+    assert sleeps == []
+
+
+def test_embed_command_rejects_negative_delay(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert (
+        run_chunking_experiment.main(
+            [
+                "embed",
+                "--confirm-embedding-calls",
+                "--batch-delay-seconds",
+                "-1",
+            ]
+        )
+        == 2
+    )
+    assert "must be non-negative" in capsys.readouterr().err
+
+
 def test_build_candidate_fixture_keeps_raw_content_and_is_deterministic(
     tmp_path: Path,
 ) -> None:
