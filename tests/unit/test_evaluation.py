@@ -584,7 +584,7 @@ def test_run_evaluation_threads_strategy_and_repository_without_live_services(
         lambda *args, **kwargs: SimpleNamespace(stdout=""),
     )
     monkeypatch.setattr(runner, "export_snapshot", lambda *args: tmp_path / "snapshot")
-    monkeypatch.setattr(runner, "validate_golden_set", lambda *args: [])
+    monkeypatch.setattr(runner, "validate_golden_set", lambda *args, **kwargs: [])
     monkeypatch.setattr(runner, "inventory", fake_inventory)
     monkeypatch.setattr(runner, "setup_eval_corpus", fake_setup_eval_corpus)
     monkeypatch.setattr(runner, "validate_eval_index", fake_validate_eval_index)
@@ -1315,6 +1315,116 @@ def test_golden_validation_accepts_valid_schema_and_snapshot(tmp_path: Path) -> 
     data = _valid_golden_data(tmp_path)
 
     assert validate_golden_set(data, tmp_path, "snapshot-sha") == []
+
+
+def test_golden_validation_uses_repository_review_status(tmp_path: Path) -> None:
+    data = _valid_golden_data(tmp_path)
+    data["review_status"] = "reviewed by an independent AI reviewer"
+
+    assert any(
+        "review_status must be" in error
+        for error in validate_golden_set(data, tmp_path, "snapshot-sha")
+    )
+    assert validate_golden_set(
+        data,
+        tmp_path,
+        "snapshot-sha",
+        required_review_status="reviewed by an independent AI reviewer",
+    ) == []
+
+
+def test_golden_file_cap_counts_distinct_questions_not_label_entries(
+    tmp_path: Path,
+) -> None:
+    data = _valid_golden_data(tmp_path)
+    shared_path = "shared.py"
+    labels = data["questions"][0]["relevant"]
+    labels.append(dict(labels[0]))
+    data["questions"][0]["relevant_spans"].append(
+        dict(data["questions"][0]["relevant_spans"][0])
+    )
+    assigned = [0, 1, 2]
+    for index in assigned:
+        question = data["questions"][index]
+        for label in question["relevant"]:
+            label["file_path"] = shared_path
+        for span in question["relevant_spans"]:
+            span["file_path"] = shared_path
+    content = " ".join(
+        label["substring"]
+        for index in assigned
+        for label in data["questions"][index]["relevant"]
+    )
+    (tmp_path / shared_path).write_text(content, encoding="utf-8")
+
+    errors = validate_golden_set(data, tmp_path, "snapshot-sha")
+
+    assert not any("answerable questions label shared.py" in error for error in errors)
+
+    question = data["questions"][3]
+    for label in question["relevant"]:
+        label["file_path"] = shared_path
+    for span in question["relevant_spans"]:
+        span["file_path"] = shared_path
+    (tmp_path / shared_path).write_text(
+        content + " " + " ".join(label["substring"] for label in question["relevant"]),
+        encoding="utf-8",
+    )
+
+    errors = validate_golden_set(data, tmp_path, "snapshot-sha")
+
+    assert any("more than 3 answerable questions label shared.py" in error for error in errors)
+
+
+def test_golden_file_cap_can_be_increased_for_repository(tmp_path: Path) -> None:
+    data = _valid_golden_data(tmp_path)
+    shared_path = "shared.py"
+    assigned = range(5)
+    for index in assigned:
+        question = data["questions"][index]
+        for label in question["relevant"]:
+            label["file_path"] = shared_path
+        for span in question["relevant_spans"]:
+            span["file_path"] = shared_path
+    content = " ".join(
+        label["substring"]
+        for index in assigned
+        for label in data["questions"][index]["relevant"]
+    )
+    (tmp_path / shared_path).write_text(content, encoding="utf-8")
+
+    errors = validate_golden_set(
+        data,
+        tmp_path,
+        "snapshot-sha",
+        max_questions_per_file=5,
+    )
+
+    assert not any("answerable questions label shared.py" in error for error in errors)
+
+
+def test_golden_validation_still_requires_six_labeled_files(tmp_path: Path) -> None:
+    data = _valid_golden_data(tmp_path)
+    shared_paths = [f"shared-{index}.py" for index in range(5)]
+    labels_by_path = {path: [] for path in shared_paths}
+    for index, question in enumerate(data["questions"][:16]):
+        path = shared_paths[index % len(shared_paths)]
+        for label in question["relevant"]:
+            label["file_path"] = path
+            labels_by_path[path].append(label["substring"])
+        for span in question["relevant_spans"]:
+            span["file_path"] = path
+    for path, labels in labels_by_path.items():
+        (tmp_path / path).write_text(" ".join(labels), encoding="utf-8")
+
+    errors = validate_golden_set(
+        data,
+        tmp_path,
+        "snapshot-sha",
+        max_questions_per_file=20,
+    )
+
+    assert "answerable questions must span at least six labeled files" in errors
 
 
 def test_golden_validation_rejects_duplicate_ids_invalid_category_and_counts(

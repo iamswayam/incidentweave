@@ -12,9 +12,16 @@ binary fixtures are hashed as stored, so manifest validation is consistent acros
 systems. `--repo ID` selects one entry; by default, retrieval evaluation and the gate select every
 manifest entry.
 
-The manifest currently contains IncidentWeave only. Items 16b and 16c add reviewed question sets,
-fixtures, baselines, and gates for the two approved repositories. The existing IncidentWeave
-fixture, golden set, baseline, and gate stay at their existing paths.
+The manifest currently contains IncidentWeave and the pinned
+`iamswayam/batch-processing-service` snapshot. Item 16c will add the reviewed data for the
+approved `iamswayam/lifeos` repository. The existing IncidentWeave fixture, golden set, baseline,
+and gate stay at their existing paths.
+
+The per-file answerable-question cap defaults to three and is set per repository through
+`max_questions_per_file`; batch-processing-service uses five. The supplied rationale cited 47%
+concentration in `engine.py` and `routes.py`; the recorded measurement is 438/838 lines (52.3%)
+within indexed `app/` Python files, or 438/1,527 (28.7%) across all indexed Python files,
+including tests and `mock_vendor`. The minimum remains six distinct labeled files.
 
 ## Splits and running evaluations
 
@@ -49,9 +56,20 @@ fails. To run the full set locally, use `--split all`. A repository's full and s
 their baselines are individually hash-pinned in the manifest. Changing a baseline or tolerance
 requires a reviewed pull request; CI does not rebuild either.
 
-The verified IncidentWeave smoke run produced 4/5 Hit@5 and MRR 0.533 for both label types.
-The full-set run produced 11/16 Hit@5 and MRR 0.573 for both label types, matching the committed
-baseline. Unanswerable questions are excluded from these retrieval-hit denominators.
+Hit@5 intervals below are 95% Wilson intervals. Unanswerable questions are excluded from
+retrieval-hit and MRR denominators.
+
+| Repository / split | Label type | Hit@5 | Hit@5 interval | MRR |
+|---|---|---:|---:|---:|
+| IncidentWeave full | Substring | 11/16 | 0.444–0.858 | 0.573 |
+| IncidentWeave full | Span | 11/16 | 0.444–0.858 | 0.573 |
+| IncidentWeave smoke | Substring and span | 4/5 | 0.376–0.964 | 0.533 |
+| batch-processing-service full | Substring | 13/16 | 0.570–0.934 | 0.625 |
+| batch-processing-service full | Span | 14/16 | 0.640–0.965 | 0.641 |
+| batch-processing-service smoke | Substring and span | 4/5 | 0.376–0.964 | 0.700 |
+
+Both repositories passed their smoke and full gates with observed results equal to the committed
+baselines.
 
 ## Question-authoring protocol
 
@@ -82,8 +100,8 @@ eight-question smoke scale, 4/8 has an interval of 21.5%–78.5% and 7/8 has an 
 signal, not evidence of broad generalisation. Paired comparisons use a two-sided exact sign test
 on discordant question pairs, with ties excluded.
 
-The current committed manifest has one repository, so it does not yet establish cross-repository
-generalisation. The planned three repositories are all by one author, and IncidentWeave's
-held-out questions were previously exposed. Results are limited to pinned Python source and
-committed embeddings; they do not establish language-generalisation, answer quality, or absence
-of training-data contamination.
+The current committed manifest has two repositories and is not yet the planned three-repository
+evaluation. The repositories are by one author, and IncidentWeave's held-out questions were
+previously exposed. Results are limited to pinned Python source and committed embeddings; they
+do not establish language-generalisation, answer quality, or absence of training-data
+contamination.

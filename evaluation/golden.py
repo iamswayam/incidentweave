@@ -43,16 +43,28 @@ def validate_golden_set(
     data: dict[str, Any],
     snapshot_root: Path,
     expected_sha: str | None = None,
+    *,
+    required_review_status: str = "pending maintainer review",
+    max_questions_per_file: int = 3,
 ) -> list[str]:
     """Return schema, coverage, source-label, and leakage validation errors."""
 
     errors: list[str] = []
+    if not isinstance(required_review_status, str) or not required_review_status:
+        errors.append("required_review_status must be a non-empty string")
+    invalid_file_cap = (
+        not isinstance(max_questions_per_file, int)
+        or isinstance(max_questions_per_file, bool)
+        or max_questions_per_file < 1
+    )
+    if invalid_file_cap:
+        errors.append("max_questions_per_file must be a positive integer")
     if not isinstance(data.get("pinned_sha"), str) or not data["pinned_sha"]:
         errors.append("pinned_sha must be a non-empty string")
     elif expected_sha is not None and data["pinned_sha"] != expected_sha:
         errors.append("pinned_sha does not match the exported snapshot")
-    if data.get("review_status") != "pending maintainer review":
-        errors.append("review_status must be 'pending maintainer review'")
+    if data.get("review_status") != required_review_status:
+        errors.append(f"review_status must be {required_review_status!r}")
 
     questions = data.get("questions")
     if not isinstance(questions, list):
@@ -77,7 +89,7 @@ def validate_golden_set(
         errors.append("header counts do not match the required category counts")
 
     prior_questions = 0
-    labels_per_file: Counter[str] = Counter()
+    questions_per_file: dict[str, set[str]] = {}
     seen_before_count = 0
 
     for question in questions:
@@ -152,7 +164,7 @@ def validate_golden_set(
                 if not file_path.is_file():
                     errors.append(f"{question_id}: missing label file {relative_path}")
                     continue
-                labels_per_file[relative_path] += 1
+                questions_per_file.setdefault(relative_path, set()).add(str(question_id))
                 content = file_path.read_text(encoding="utf-8", errors="replace")
                 if substring.casefold() not in content.casefold():
                     errors.append(f"{question_id}: missing label substring")
@@ -199,11 +211,14 @@ def validate_golden_set(
         errors.append("more than four questions repeat known prior-phase prompts")
     if seen_before_count > 4:
         errors.append("more than four questions are marked seen_before")
-    if len(labels_per_file) < 6:
+    if len(questions_per_file) < 6:
         errors.append("answerable questions must span at least six labeled files")
-    for relative_path, count in labels_per_file.items():
-        if count > 3:
-            errors.append(f"more than three answerable questions label {relative_path}")
+    for relative_path, question_ids in questions_per_file.items():
+        if not invalid_file_cap and len(question_ids) > max_questions_per_file:
+            errors.append(
+                f"more than {max_questions_per_file} answerable questions label "
+                f"{relative_path}"
+            )
 
     return errors
 

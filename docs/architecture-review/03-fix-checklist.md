@@ -61,7 +61,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
 | 15a | ☐ | Chunking upgrade, staged comparison, after 16a and 16b: function-aware chunks, enriched embedding text, parent expansion | High | M | New (data-driven, see Part A) |
 | 16a | ☑ | Multi-repo evaluation harness: manifest, split-aware reports, smoke/held-out selection and per-repository gate | High | M | Both |
-| 16b | ☐ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
+| 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
 | 16c | ☐ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Tracing, cost and latency telemetry | Medium | M | Both |
@@ -203,6 +203,7 @@ Item 15a (chunking upgrade) is scheduled after items 9, 13, 16a and 16b, so chun
 **16b. First new-repository evaluation data: `iamswayam/batch-processing-service`.**
 - *Fix:* add the approved Python repository under `06-multi-repo-evaluation-plan.md` with its reviewed 24-question set, explicit development/held-out/smoke assignments, pinned snapshot, offline fixture and reviewed baseline.
 - *Done when:* the approved manifest entry, questions, label/span and absence review, fixture and baseline pass 16a’s validation and its smoke gate runs without provider calls.
+- **Status:** 2026-10-25; branch `fix/16b-batch-processing-service`; changed `evaluation/golden.py`, `evaluation/manifest.py`, `evaluation/manifest.json`, `evaluation/repos/batch-processing-service/questions.json`, `evaluation/repos/batch-processing-service/retrieval_fixture.json.gz`, `evaluation/repos/batch-processing-service/gate.json`, `evaluation/repos/batch-processing-service/offline-baseline.json`, `evaluation/repos/batch-processing-service/smoke-baseline.json`, `evaluation/repos/batch-processing-service/smoke-gate.json`, `evaluation/runner.py`, `tests/unit/test_evaluation.py`, `docs/notes/05-multi-repo-evaluation.md`, and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 195 passed in 78.39s; smoke and full offline gates passed for both repositories.
 
 **16c. Second new-repository evaluation data: `iamswayam/lifeos`.**
 - *Fix:* add the second approved Python repository with the same reviewed inputs as 16b. Run it in parallel with 15a if ready, but do not use its results to revise the 15a design.

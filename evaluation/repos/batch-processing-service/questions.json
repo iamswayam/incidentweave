@@ -1,0 +1,663 @@
+{
+  "repository_id": "batch-processing-service",
+  "pinned_sha": "1a6dc06eccf5f7ac85d96ca58e1cc054b8f476ee",
+  "review_status": "pending maintainer review",
+  "counts": {
+    "direct": 8,
+    "paraphrased": 8,
+    "unanswerable_far": 4,
+    "unanswerable_near": 4
+  },
+  "questions": [
+    {
+      "id": "direct-01",
+      "category": "direct",
+      "question": "How does claim_pending_items prevent two workers from claiming the same item?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "        .with_for_update(of=BatchItem, skip_locked=True)\n    )\n    rows = result.all()  # list of Row(BatchItem, tenant_id)\n\n    if not rows:\n        return []\n\n    item_ids = [row[0].id for row in rows]\n    await db.execute(\n        update(BatchItem)\n        .where(BatchItem.id.in_(item_ids))\n        .values(status=\"in_progress\", lease_expires_at=lease_until)\n    )"
+        }
+      ],
+      "must_mention": [
+        [
+          "skip_locked"
+        ],
+        [
+          "in_progress"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 42,
+          "line_end": 54
+        }
+      ]
+    },
+    {
+      "id": "direct-02",
+      "category": "direct",
+      "question": "What does derive_batch_status return when every item is either done or failed?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/api/routes.py",
+          "substring": "    if done + failed == total:\n        return \"completed\" if failed == 0 else \"partially_failed\""
+        }
+      ],
+      "must_mention": [
+        [
+          "completed"
+        ],
+        [
+          "partially_failed"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/api/routes.py",
+          "line_start": 46,
+          "line_end": 47
+        }
+      ]
+    },
+    {
+      "id": "direct-03",
+      "category": "direct",
+      "question": "How does acquire_token decide whether a request is granted?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/rate_limiter/lua_limiter.py",
+          "substring": "RATE_LIMIT_SCRIPT = \"\"\"\nlocal data    = redis.call('HMGET', KEYS[1], 'tokens', 'ts')\nlocal tokens  = tonumber(data[1]) or tonumber(ARGV[1])\nlocal ts      = tonumber(data[2]) or tonumber(ARGV[3])\nlocal elapsed = math.max(0, (tonumber(ARGV[3]) - ts) / 1000)\ntokens = math.min(tonumber(ARGV[1]), tokens + elapsed * tonumber(ARGV[2]))\nlocal allowed = 0\nif tokens >= tonumber(ARGV[4]) then\n    tokens  = tokens - tonumber(ARGV[4])\n    allowed = 1\nend\nredis.call('HMSET', KEYS[1], 'tokens', tokens, 'ts', ARGV[3])\nredis.call('EXPIRE', KEYS[1], 3600)\nreturn allowed\n\"\"\""
+        },
+        {
+          "file_path": "app/rate_limiter/lua_limiter.py",
+          "substring": "    result = await redis.eval(\n        RATE_LIMIT_SCRIPT,\n        1,           # number of keys\n        key,         # KEYS[1]\n        capacity,     # ARGV[1] capacity\n        refill_rate,  # ARGV[2] refill per second\n        now_ms,      # ARGV[3] current time in ms\n        1,           # ARGV[4] tokens requested\n    )\n\n    granted = bool(result)"
+        }
+      ],
+      "must_mention": [
+        [
+          "RATE_LIMIT_SCRIPT",
+          "Lua",
+          "eval",
+          "token bucket"
+        ],
+        [
+          "refill",
+          "elapsed",
+          "capacity"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/rate_limiter/lua_limiter.py",
+          "line_start": 12,
+          "line_end": 26
+        },
+        {
+          "file_path": "app/rate_limiter/lua_limiter.py",
+          "line_start": 49,
+          "line_end": 59
+        }
+      ]
+    },
+    {
+      "id": "direct-04",
+      "category": "direct",
+      "question": "What does backoff_seconds compute and what is its upper cap?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/adapters/vendor_client.py",
+          "substring": "def backoff_seconds(attempt: int) -> float:\n    \"\"\"Exponential backoff with jitter: 2^attempt seconds ± 20% jitter, capped at 60s.\"\"\"\n    base = min(2 ** attempt, 60)\n    jitter = base * 0.2 * random.random()\n    return base + jitter"
+        }
+      ],
+      "must_mention": [
+        [
+          "60"
+        ],
+        [
+          "jitter"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/adapters/vendor_client.py",
+          "line_start": 58,
+          "line_end": 62
+        }
+      ]
+    },
+    {
+      "id": "direct-05",
+      "category": "direct",
+      "question": "What status code and message does get_tenant_id return when the X-Tenant-ID header is blank?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/api/dependencies.py",
+          "substring": "async def get_tenant_id(x_tenant_id: str = Header(...)) -> str:\n    if not x_tenant_id.strip():\n        raise HTTPException(status_code=400, detail=\"X-Tenant-ID header is required\")\n    return x_tenant_id.strip()"
+        }
+      ],
+      "must_mention": [
+        [
+          "400"
+        ],
+        [
+          "X-Tenant-ID header is required"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/api/dependencies.py",
+          "line_start": 4,
+          "line_end": 7
+        }
+      ]
+    },
+    {
+      "id": "direct-06",
+      "category": "direct",
+      "question": "What unique constraint does BatchItem declare, and which columns does it cover?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/db/models.py",
+          "substring": "    __table_args__ = (UniqueConstraint(\"batch_id\", \"seq\", name=\"uq_batch_item_seq\"),)"
+        }
+      ],
+      "must_mention": [
+        [
+          "UniqueConstraint",
+          "uq_batch_item_seq"
+        ],
+        [
+          "batch_id"
+        ],
+        [
+          "seq"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/db/models.py",
+          "line_start": 41,
+          "line_end": 41
+        }
+      ]
+    },
+    {
+      "id": "direct-07",
+      "category": "direct",
+      "question": "What does call_vendor raise when the vendor answers with HTTP 429?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/adapters/vendor_client.py",
+          "substring": "        if response.status_code == 429:\n            retry_after = float(response.headers.get(\"Retry-After\", 5))\n            raise VendorRateLimited(retry_after=retry_after)"
+        }
+      ],
+      "must_mention": [
+        [
+          "VendorRateLimited"
+        ],
+        [
+          "Retry-After",
+          "retry_after"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/adapters/vendor_client.py",
+          "line_start": 45,
+          "line_end": 47
+        }
+      ]
+    },
+    {
+      "id": "direct-08",
+      "category": "direct",
+      "question": "How does the limit_body_size middleware respond when Content-Length is larger than the maximum?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/main.py",
+          "substring": "        if body_size > max_body:\n            return JSONResponse(\n                status_code=413,\n                content={\"detail\": \"Request body too large\"},\n            )"
+        }
+      ],
+      "must_mention": [
+        [
+          "413"
+        ],
+        [
+          "Request body too large"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/main.py",
+          "line_start": 35,
+          "line_end": 39
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-01",
+      "category": "paraphrased",
+      "question": "If a worker crashes halfway through handling an item, how does the system get that item processed again?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "async def sweep_stale_leases(db: AsyncSession) -> None:\n    \"\"\"Reset in_progress items whose lease has expired back to pending.\"\"\"\n    now = datetime.now(timezone.utc)\n    result = await db.execute(\n        update(BatchItem)\n        .where(BatchItem.status == \"in_progress\", BatchItem.lease_expires_at <= now)\n        .values(status=\"pending\", lease_expires_at=None)\n    )\n    await db.commit()\n    if result.rowcount:\n        logger.warning(\"Sweeper reset %d stale items\", result.rowcount)"
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "    while True:\n        async with AsyncSessionLocal() as db:\n            await sweep_stale_leases(db)\n            items = await claim_pending_items(db)"
+        }
+      ],
+      "must_mention": [
+        [
+          "pending"
+        ],
+        [
+          "expire",
+          "stale"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 176,
+          "line_end": 186
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 196,
+          "line_end": 199
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-02",
+      "category": "paraphrased",
+      "question": "When a client sends the same request key again but with a different body, what does the API answer?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/api/routes.py",
+          "substring": "        raise HTTPException(status_code=409, detail=\"Idempotency key reused with different payload\")"
+        },
+        {
+          "file_path": "app/api/routes.py",
+          "substring": "            raise HTTPException(status_code=409, detail=\"Idempotency key reused with different payload\")"
+        },
+        {
+          "file_path": "app/idempotency/manager.py",
+          "substring": "    if record.payload_hash != payload_hash:\n        logger.warning(\"Idempotency conflict: tenant=%s\", tenant_id)\n        return None, True"
+        }
+      ],
+      "must_mention": [
+        [
+          "409"
+        ],
+        [
+          "different payload",
+          "conflict"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/api/routes.py",
+          "line_start": 68,
+          "line_end": 68
+        },
+        {
+          "file_path": "app/api/routes.py",
+          "line_start": 111,
+          "line_end": 111
+        },
+        {
+          "file_path": "app/idempotency/manager.py",
+          "line_start": 44,
+          "line_end": 46
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-03",
+      "category": "paraphrased",
+      "question": "How are customers prevented from seeing each other's jobs when they ask for progress?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/api/routes.py",
+          "substring": "    # Verify batch exists and belongs to tenant\n    result = await db.execute(\n        select(Batch).where(Batch.id == batch_id, Batch.tenant_id == tenant_id)\n    )\n    batch = result.scalar_one_or_none()\n    if batch is None:\n        raise HTTPException(status_code=404, detail=\"Batch not found\")"
+        }
+      ],
+      "must_mention": [
+        [
+          "tenant"
+        ],
+        [
+          "404",
+          "not found"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/api/routes.py",
+          "line_start": 131,
+          "line_end": 137
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-04",
+      "category": "paraphrased",
+      "question": "When the external provider says it is receiving too many requests, how does the service wait before retrying?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "            except VendorRateLimited as exc:\n                # Respect Retry-After — return to pending, don't count as failure attempt\n                if await mark_retry(db, item.id, claimed_lease, item.attempt_count, exc.retry_after):\n                    logger.info(\"Item rate limited by vendor, retry after %.1fs: item=%s\", exc.retry_after, item.id)\n                else:\n                    logger.warning(\"Lost lease before mark_retry, skipping: item=%s\", item.id)"
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "async def mark_retry(\n    db: AsyncSession, item_id: uuid.UUID, claimed_lease: datetime, attempt_count: int, delay: float\n) -> bool:\n    next_retry = datetime.now(timezone.utc) + timedelta(seconds=delay)\n    update_result = await db.execute(\n        update(BatchItem)\n        .where(*_lease_owner_where(item_id, claimed_lease))\n        .values(\n            status=\"pending\",\n            attempt_count=attempt_count,\n            next_retry_at=next_retry,\n            lease_expires_at=None,\n        )\n    )\n    await db.commit()\n    return update_result.rowcount > 0"
+        },
+        {
+          "file_path": "app/adapters/vendor_client.py",
+          "substring": "        if response.status_code == 429:\n            retry_after = float(response.headers.get(\"Retry-After\", 5))\n            raise VendorRateLimited(retry_after=retry_after)"
+        }
+      ],
+      "must_mention": [
+        [
+          "retry_after",
+          "Retry-After"
+        ],
+        [
+          "pending",
+          "mark_retry"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 112,
+          "line_end": 117
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 158,
+          "line_end": 173
+        },
+        {
+          "file_path": "app/adapters/vendor_client.py",
+          "line_start": 45,
+          "line_end": 47
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-05",
+      "category": "paraphrased",
+      "question": "What decides that an item is given up on for good instead of being tried again?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "            except VendorServerError as exc:\n                new_attempt = item.attempt_count + 1\n                if new_attempt >= settings.max_retry_count:\n                    if await mark_failed(db, item.id, claimed_lease, new_attempt, str(exc)):\n                        logger.warning(\"Item permanently failed: item=%s error=%s\", item.id, exc)\n                    else:\n                        logger.warning(\"Lost lease before mark_failed, skipping: item=%s\", item.id)"
+        },
+        {
+          "file_path": "app/config.py",
+          "substring": "    max_retry_count: int = 5"
+        }
+      ],
+      "must_mention": [
+        [
+          "max_retry_count"
+        ],
+        [
+          "mark_failed",
+          "failed"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 119,
+          "line_end": 125
+        },
+        {
+          "file_path": "app/config.py",
+          "line_start": 22,
+          "line_end": 22
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-06",
+      "category": "paraphrased",
+      "question": "How does the system make sure that two clients racing with the same request key still end up with a single job?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/api/routes.py",
+          "substring": "    try:\n        await db.commit()\n    except IntegrityError:\n        # Lost a race: another concurrent request with the same\n        # (tenant_id, idempotency_key) committed first. Re-run the exact\n        # same idempotency check used on the normal path — single source\n        # of truth for \"same payload -> return batch\" vs \"different\n        # payload -> 409\" — rather than assuming the collision means\n        # success.\n        await db.rollback()\n        existing_batch_id, conflict = await check_idempotency(\n            db, tenant_id, idempotency_key, payload_hash\n        )\n        if conflict:\n            raise HTTPException(status_code=409, detail=\"Idempotency key reused with different payload\")\n        if existing_batch_id:\n            logger.info(\n                \"Idempotency race resolved: tenant=%s batch=%s\", tenant_id, existing_batch_id\n            )\n            return BatchSubmitResponse(batch_id=existing_batch_id)\n        # Unexpected integrity violation unrelated to idempotency.\n        # Surface for investigation.\n        raise"
+        },
+        {
+          "file_path": "app/db/models.py",
+          "substring": "    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True)\n    idempotency_key: Mapped[str] = mapped_column(String(255), primary_key=True)"
+        }
+      ],
+      "must_mention": [
+        [
+          "IntegrityError",
+          "rollback",
+          "unique",
+          "primary key"
+        ],
+        [
+          "same key",
+          "re-check",
+          "check_idempotency"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/api/routes.py",
+          "line_start": 97,
+          "line_end": 119
+        },
+        {
+          "file_path": "app/db/models.py",
+          "line_start": 47,
+          "line_end": 48
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-07",
+      "category": "paraphrased",
+      "question": "What happens when a worker finishes the external call after another worker has already taken over that item?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "            if not await item_lease_owner(db, item.id, claimed_lease):\n                logger.warning(\"Lost lease before vendor call, skipping: item=%s\", item.id)\n                return"
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "                if await mark_done(db, item.id, claimed_lease, result):\n                    logger.info(\"Item done: item=%s\", item.id)\n                else:\n                    logger.warning(\"Lost lease before mark_done, skipping: item=%s\", item.id)"
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "substring": "async def mark_done(\n    db: AsyncSession, item_id: uuid.UUID, claimed_lease: datetime, result: str\n) -> bool:\n    update_result = await db.execute(\n        update(BatchItem)\n        .where(*_lease_owner_where(item_id, claimed_lease))\n        .values(status=\"done\", result=result, lease_expires_at=None)\n    )\n    await db.commit()\n    return update_result.rowcount > 0"
+        }
+      ],
+      "must_mention": [
+        [
+          "lease"
+        ],
+        [
+          "skipping",
+          "skip",
+          "rowcount",
+          "False"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 100,
+          "line_end": 102
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 107,
+          "line_end": 110
+        },
+        {
+          "file_path": "app/worker/engine.py",
+          "line_start": 134,
+          "line_end": 143
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-08",
+      "category": "paraphrased",
+      "question": "How can a client find out which items could not be processed, and what details does it get for each one?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "app/api/routes.py",
+          "substring": "@router.get(\"/batches/{batch_id}/failures\", response_model=BatchFailuresResponse)\nasync def get_batch_failures(\n    batch_id: uuid.UUID,\n    tenant_id: str = Depends(get_tenant_id),\n    db: AsyncSession = Depends(get_db),\n) -> BatchFailuresResponse:\n    # Verify batch belongs to tenant\n    result = await db.execute(\n        select(Batch).where(Batch.id == batch_id, Batch.tenant_id == tenant_id)\n    )\n    if result.scalar_one_or_none() is None:\n        raise HTTPException(status_code=404, detail=\"Batch not found\")\n\n    # Return only permanently failed items\n    items_result = await db.execute(\n        select(BatchItem.seq, BatchItem.attempt_count, BatchItem.error_message)\n        .where(BatchItem.batch_id == batch_id, BatchItem.status == \"failed\")\n        .order_by(BatchItem.seq)\n    )\n\n    return BatchFailuresResponse(\n        batch_id=batch_id,\n        items=[\n            BatchFailureItem(\n                seq=row.seq,\n                attempt_count=row.attempt_count,\n                last_error=row.error_message,\n            )\n            for row in items_result\n        ],\n    )"
+        },
+        {
+          "file_path": "app/api/schemas.py",
+          "substring": "class BatchFailureItem(BaseModel):\n    seq: int\n    attempt_count: int\n    last_error: str | None"
+        }
+      ],
+      "must_mention": [
+        [
+          "failures",
+          "/failures"
+        ],
+        [
+          "attempt_count",
+          "attempts",
+          "retries"
+        ],
+        [
+          "error_message",
+          "last_error"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "app/api/routes.py",
+          "line_start": 192,
+          "line_end": 222
+        },
+        {
+          "file_path": "app/api/schemas.py",
+          "line_start": 43,
+          "line_end": 46
+        }
+      ]
+    },
+    {
+      "id": "unanswerable_far-01",
+      "category": "unanswerable_far",
+      "question": "How do I bake sourdough bread at high altitude?",
+      "seen_before": false,
+      "absent_terms": [
+        "sourdough",
+        "bread"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_far-02",
+      "category": "unanswerable_far",
+      "question": "Which airline offers the most legroom on transatlantic flights?",
+      "seen_before": false,
+      "absent_terms": [
+        "airline",
+        "legroom"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_far-03",
+      "category": "unanswerable_far",
+      "question": "How does React useEffect cleanup work on unmount?",
+      "seen_before": false,
+      "absent_terms": [
+        "useEffect",
+        "react"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_far-04",
+      "category": "unanswerable_far",
+      "question": "How do I tune the JVM garbage collector for a large heap?",
+      "seen_before": false,
+      "absent_terms": [
+        "garbage collector",
+        "jvm"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-01",
+      "category": "unanswerable_near",
+      "question": "How does the service send a webhook callback to the client when a batch finishes?",
+      "seen_before": false,
+      "absent_terms": [
+        "webhook",
+        "callback"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-02",
+      "category": "unanswerable_near",
+      "question": "How can a client cancel a batch whose items are still pending?",
+      "seen_before": false,
+      "absent_terms": [
+        "cancel"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-03",
+      "category": "unanswerable_near",
+      "question": "Which dead-letter queue receives items that have used up all their retries?",
+      "seen_before": false,
+      "absent_terms": [
+        "dead-letter",
+        "dead_letter",
+        "dlq"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-04",
+      "category": "unanswerable_near",
+      "question": "Which signing key and algorithm are used to verify a tenant's JWT?",
+      "seen_before": false,
+      "absent_terms": [
+        "jwt",
+        "signing key"
+      ],
+      "relevant_spans": []
+    }
+  ]
+}

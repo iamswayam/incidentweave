@@ -212,6 +212,18 @@ def validate_manifest(
             )
         if not isinstance(entry.get("previously_exposed"), bool):
             errors.append(f"{repo_id or '<unknown>'}: previously_exposed must be boolean")
+        review_status = entry.get("review_status", "pending maintainer review")
+        if not isinstance(review_status, str) or not review_status:
+            errors.append(f"{repo_id or '<unknown>'}: review_status must be a non-empty string")
+        max_questions_per_file = entry.get("max_questions_per_file", 3)
+        if (
+            not isinstance(max_questions_per_file, int)
+            or isinstance(max_questions_per_file, bool)
+            or max_questions_per_file < 1
+        ):
+            errors.append(
+                f"{repo_id or '<unknown>'}: max_questions_per_file must be a positive integer"
+            )
         if (
             not isinstance(entry.get("indexed_python_lines"), int)
             or isinstance(entry.get("indexed_python_lines"), bool)
