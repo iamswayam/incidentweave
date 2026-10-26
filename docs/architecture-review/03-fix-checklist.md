@@ -62,7 +62,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13a | ☑ | Evaluation foundation, part a: span labels, statistics, offline retrieval evaluation | High | M | Both |
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
-| 15a-1 | ☐ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
+| 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
 | 15a-2 | ☐ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
 | 15b | ☐ | Adopt the selected chunker in production ingestion, version it and re-ingest | High | M | New (data-driven, see Part A) |
 | 15c | ☐ | Parent expansion after item 17 answer-quality evaluation | Medium | M | New (data-driven, see Part A) |
@@ -200,7 +200,7 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 **15a-1. Chunking comparison foundation (after 16a).**
 - *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
 - *Done when:* unit tests cover the fixed strategies, AST descriptors and parse fallback; strategy metadata is reproducible; and stored raw content, line ranges and quote-validation inputs are unchanged by S3 enrichment.
-- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
+- **Status:** Done; PR pending.
 
 **15a-2. Chunking comparison experiment (after 16b and 16c).**
 - *Fix:* build immutable strategy-specific fixtures for every manifest repository with document embedding calls only, reuse cached query embeddings, run the precommitted development comparison and record the complete per-repository/pooled decision report. Freeze a choice before any held-out run.

@@ -5,6 +5,13 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from app.retrieval.chunking import (
+    ChunkSpec,
+    ast_chunk_specs,
+    embedding_text,
+    line_window_specs,
+)
+
 DEFAULT_STRATEGY = "baseline"
 
 
@@ -35,6 +42,65 @@ SPLIT_CHOICES = ("development", "held_out", "smoke", "all")
 EVALUATION_REPOSITORIES = frozenset(
     strategy.evaluation_repository for strategy in STRATEGIES.values()
 )
+
+
+@dataclass(frozen=True)
+class CandidateStrategy:
+    name: str
+    chunker: str
+    line_size: int | None
+    line_overlap: int | None
+    embedding_text: str
+
+
+CANDIDATE_STRATEGIES = {
+    "s0_lines_60_10": CandidateStrategy(
+        "s0_lines_60_10", "lines", 60, 10, "raw"
+    ),
+    "s1_lines_100_20": CandidateStrategy(
+        "s1_lines_100_20", "lines", 100, 20, "raw"
+    ),
+    "s2_ast_v1": CandidateStrategy("s2_ast_v1", "ast", None, None, "raw"),
+    "s3_ast_v1_embed_text": CandidateStrategy(
+        "s3_ast_v1_embed_text",
+        "ast",
+        None,
+        None,
+        "embed-path-symbol-v1",
+    ),
+}
+
+
+def get_candidate_strategy(name: str) -> CandidateStrategy:
+    try:
+        return CANDIDATE_STRATEGIES[name]
+    except KeyError as exc:
+        choices = ", ".join(CANDIDATE_STRATEGIES)
+        raise ValueError(
+            f"Unsupported candidate strategy {name!r}; choose from: {choices}"
+        ) from exc
+
+
+def candidate_chunk_specs(name: str, source: str) -> list[ChunkSpec]:
+    strategy = get_candidate_strategy(name)
+    if strategy.chunker == "lines":
+        return line_window_specs(
+            source,
+            size=strategy.line_size or 60,
+            overlap=strategy.line_overlap or 10,
+        )
+    return ast_chunk_specs(source)
+
+
+def candidate_embedding_text(
+    name: str,
+    spec: ChunkSpec,
+    file_path: str,
+) -> str:
+    strategy = get_candidate_strategy(name)
+    if strategy.embedding_text == "raw":
+        return spec.content
+    return embedding_text(spec, file_path)
 
 
 def get_strategy(name: str = DEFAULT_STRATEGY) -> ChunkingStrategy:

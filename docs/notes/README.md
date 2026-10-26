@@ -7,3 +7,4 @@
 | 03 | [03-embedding-benchmark.md](03-embedding-benchmark.md) | Measured single vs batched embedding throughput (item 10) |
 | 04 | [04-offline-retrieval-evaluation.md](04-offline-retrieval-evaluation.md) | Span labels, cached-fixture retrieval evaluation, and statistical reporting (item 13a) |
 | 05 | [05-multi-repo-evaluation.md](05-multi-repo-evaluation.md) | Manifest-driven repository selection, splits, smoke gates, and evaluation limits (item 16a) |
+| 06 | [06-chunking-strategies.md](06-chunking-strategies.md) | Deterministic candidate chunkers and the S3 embedding text (item 15a-1) |
