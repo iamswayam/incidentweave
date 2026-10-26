@@ -228,6 +228,42 @@ def test_syntax_error_falls_back_to_line_windows() -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import os\n# page\x0c break\n\n\ndef a():\n    return 1\n",
+        'X = "a\u2028b"\n\n\ndef a():\n    return 1\n',
+    ],
+)
+def test_parser_and_splitlines_break_mismatch_falls_back(source: str) -> None:
+    specs = ast_chunk_specs(source)
+
+    assert specs
+    assert all(spec.fallback for spec in specs)
+    assert [
+        (spec.line_start, spec.line_end) for spec in specs
+    ] == [
+        (spec.line_start, spec.line_end)
+        for spec in line_window_specs(source)
+    ]
+
+
+def test_ast_source_without_trailing_newline_does_not_fall_back() -> None:
+    specs = ast_chunk_specs("def a():\n    return 1")
+
+    assert len(specs) == 1
+    assert specs[0].fallback is False
+    assert specs[0].symbol == "a"
+
+
+def test_ast_crlf_source_does_not_fall_back() -> None:
+    specs = ast_chunk_specs("def a():\r\n    return 1\r\n")
+
+    assert len(specs) == 1
+    assert specs[0].fallback is False
+    assert specs[0].symbol == "a"
+
+
 def test_ast_chunking_is_deterministic() -> None:
     source = "def one():\n    return 1\n\nclass Two:\n    def method(self):\n        return 2\n"
 

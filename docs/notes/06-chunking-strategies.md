@@ -20,7 +20,9 @@ They are comparison inputs only; production ingestion and evaluation runners do 
 4. Adjacent unsplit units merge greedily when either is under 8 lines and their combined range is
    at most 80 lines.
 5. Blank-only units are omitted; source that fails AST parsing falls back to 60/10 line windows.
-6. Chunk ranges are 1-based and inclusive, and S3 enrichment never changes stored content.
+6. If parser line breaks differ from `splitlines` (form feed, U+2028 and similar), the whole file
+   falls back to 60/10 line windows, as for a syntax error.
+7. Chunk ranges are 1-based and inclusive, and S3 enrichment never changes stored content.
 
 These candidates have no database repository name and make no provider calls. Fixtures, runner
 wiring, and production ingestion changes are **not** part of this foundation step. Candidate

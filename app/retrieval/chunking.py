@@ -80,6 +80,13 @@ def line_window_specs(
     return specs
 
 
+def _fallback_specs(source: str) -> list[ChunkSpec]:
+    return [
+        replace(spec, fallback=True)
+        for spec in line_window_specs(source)
+    ]
+
+
 def _definition_start(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
     if node.decorator_list:
         return min(decorator.lineno for decorator in node.decorator_list)
@@ -146,13 +153,15 @@ def ast_chunk_specs(source: str) -> list[ChunkSpec]:
     lines = source.splitlines()
     if not any(line.strip() for line in lines):
         return []
+    parser_line_count = source.count("\n") + (
+        0 if (source.endswith("\n") or not source) else 1
+    )
+    if parser_line_count != len(lines):
+        return _fallback_specs(source)
     try:
         tree = ast.parse(source)
     except (SyntaxError, ValueError, RecursionError, MemoryError):
-        return [
-            replace(spec, fallback=True)
-            for spec in line_window_specs(source)
-        ]
+        return _fallback_specs(source)
 
     classes = [
         node for node in tree.body if isinstance(node, ast.ClassDef)
