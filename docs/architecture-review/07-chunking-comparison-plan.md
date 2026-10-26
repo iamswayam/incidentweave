@@ -91,3 +91,22 @@ None.
 ## 4. Checklist impact
 
 Changed `03-fix-checklist.md` entries are: line 40 (Progress log row); lines 64-67 (summary-table 15a-1, 15a-2, 15b and 15c rows); line 88 (recommended order); line 94 (15/3b dependency wording); and lines 199-217 (the replacement 15a-1, 15a-2, 15b and 15c details, Done-when and Status lines).
+
+## 5. Result of the development comparison (item 15a-2)
+
+Decision: S0 retained. The precommitted rule (protocol.json, committed before any embedding) was applied unchanged. The held-out questions were not run, because the plan runs them only to confirm a selected candidate; they remain unobserved.
+
+Table (development split, 33 answerable questions, span labels):
+
+| Strategy | Pooled MRR | Pooled Hit@5 | Mean top-5 context (chars) | p95 context (chars) | Qualifies |
+|---|---:|---:|---:|---:|---|
+| S0 60/10 | 0.668 | 27/33 | 7,608 | 10,592 | reference |
+| S1 100/20 | 0.723 | 31/33 | 11,000 (x1.45) | 16,632 (x1.57) | No: p95 context above the 1.5 limit |
+| S2 AST | 0.664 | 28/33 | 4,434 (x0.58) | 6,620 (x0.63) | No: pooled MRR gain below 0.03; batch-processing-service MRR lost 0.091 (limit 0.03) |
+| S3 AST + path/symbol text | 0.630 | 28/33 | 4,194 (x0.55) | 6,620 (x0.63) | No: same two conditions as S2 |
+
+Paired statistics versus S0 (reported, not gating): S1 11 wins, 2 losses, 20 ties, exact sign-test p=0.022, delta-MRR +0.056, bootstrap 95% interval [-0.022, 0.129]; S2 6 wins, 4 losses, 23 ties, p=0.754, delta-MRR -0.004, interval [-0.121, 0.114]; S3 4 wins, 8 losses, 21 ties, p=0.388, delta-MRR -0.038, interval [-0.169, 0.101].
+
+Interpretation, with limits: S1 met four of the five conditions and failed only the p95 context limit; its gain came with about 45% more context on average and its interval includes zero, which is the size effect the cost limit exists to catch. The sign test is one of three comparisons and does not gate. AST chunking (S2) matched S0 on Hit@5 and MRR using about 40% less context, but lost 0.091 MRR on batch-processing-service while gaining 0.073 on lifeos; adding path and symbol text (S3) lowered MRR further. These results do not show that AST chunking is better or worse in general: there are only 33 development questions, three repositories by one author, IncidentWeave was previously exposed, and lifeos is at its Hit@5 ceiling. The rule and thresholds were not changed after seeing the results.
+
+What follows: 15b is closed with no change (S0 stays in production ingestion). Any new comparison (for example at an equal context budget, or with more questions) would need a new, separately registered protocol and fresh data; it must not reuse these development results to choose thresholds. Item 3b will use the held-out questions with the S0 chunker.

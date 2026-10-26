@@ -1,0 +1,64 @@
+{
+  "baseline_artifacts": {
+    "batch-processing-service": "71d32e142a0b92b648ea7c8c53e17bbbcbadfcbfc5ad745a87836e3b67dcab9e",
+    "incidentweave": "98e446a4ef5c312c45e5ff1f07bc89567be3a0687b2f8b5fc4d7ee72c01e416a",
+    "lifeos": "eff720d62f421d530843b1f3f803a19550d1edb93f0975494c75059c2c63b540"
+  },
+  "chunkers": {
+    "ast": {
+      "chunker": "ast",
+      "max_lines": 80,
+      "min_lines": 8,
+      "version": "ast-v1",
+      "window_overlap": 10,
+      "window_size": 60
+    },
+    "embedding_text_version": "embed-path-symbol-v1",
+    "lines": {
+      "chunker": "lines",
+      "overlap": 10,
+      "size": 60
+    }
+  },
+  "embedding": {
+    "batch_size": 50,
+    "dimension": 768,
+    "max_batch_requests": 20,
+    "max_texts": 700,
+    "model": "models/gemini-embedding-001",
+    "reuse_baseline_vectors_by_text_hash": true
+  },
+  "label_type": "spans",
+  "repositories": [
+    "incidentweave",
+    "batch-processing-service",
+    "lifeos"
+  ],
+  "rule": {
+    "max_cost_ratio_mean": 1.5,
+    "max_cost_ratio_p95": 1.5,
+    "max_repo_hit5_loss": 1,
+    "max_repo_mrr_loss": 0.03,
+    "min_pooled_delta_mrr": 0.03,
+    "tie_epsilon": 1e-09
+  },
+  "schema_version": 1,
+  "selection_split": "development",
+  "simplicity_order": [
+    "s0_lines_60_10",
+    "s1_lines_100_20",
+    "s2_ast_v1",
+    "s3_ast_v1_embed_text"
+  ],
+  "statistics": {
+    "bootstrap_interval": 0.95,
+    "bootstrap_resamples": 10000,
+    "bootstrap_seed": 20261026
+  },
+  "strategies": [
+    "s0_lines_60_10",
+    "s1_lines_100_20",
+    "s2_ast_v1",
+    "s3_ast_v1_embed_text"
+  ]
+}

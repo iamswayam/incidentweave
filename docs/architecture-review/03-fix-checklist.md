@@ -38,7 +38,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16c | Done | #46 | lifeos data |
 | Plan 06 added | Done | n/a | docs commit |
 | Plan 07 added | Done | n/a | docs commit |
-| 15a-1 | In progress | pending | chunking comparison foundation |
+| 15a-1 | Done | #48 | chunking comparison foundation |
+| 15a-2 | In progress | pending | chunking comparison experiment: S0 retained |
+| 15b | Closed | n/a | no change, S0 retained |
 
 ## 1. Fix-order checklist (summary)
 
@@ -63,8 +65,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
 | 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
-| 15a-2 | ☐ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
-| 15b | ☐ | Adopt the selected chunker in production ingestion, version it and re-ingest | High | M | New (data-driven, see Part A) |
+| 15a-2 | ☑ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
+| 15b | ☑ | Adopt the selected chunker in production ingestion, version it and re-ingest | High | M | New (data-driven, see Part A) |
 | 15c | ☐ | Parent expansion after item 17 answer-quality evaluation | Medium | M | New (data-driven, see Part A) |
 | 16a | ☑ | Multi-repo evaluation harness: manifest, split-aware reports, smoke/held-out selection and per-repository gate | High | M | Both |
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
@@ -92,7 +94,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
-Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15b so its held-out evidence measures the adopted production chunker across both new repositories.
+Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker.
 
 ---
 
@@ -200,17 +202,16 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 **15a-1. Chunking comparison foundation (after 16a).**
 - *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
 - *Done when:* unit tests cover the fixed strategies, AST descriptors and parse fallback; strategy metadata is reproducible; and stored raw content, line ranges and quote-validation inputs are unchanged by S3 enrichment.
-- **Status:** Done; PR pending.
+- **Status:** Done (PR #48).
 
 **15a-2. Chunking comparison experiment (after 16b and 16c).**
 - *Fix:* build immutable strategy-specific fixtures for every manifest repository with document embedding calls only, reuse cached query embeddings, run the precommitted development comparison and record the complete per-repository/pooled decision report. Freeze a choice before any held-out run.
 - *Done when:* the committed report includes the precommitted rule, artifact hashes, span-MRR/Hit@1/3/5, raw-context cost, span coverage/evidence density, paired statistics and the selected strategy (or S0 retained); all held-out inputs remain unobserved during selection.
-- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
+- **Status:** Done; PR pending. Result: S0 retained (plan 07 section 5).
 
-**15b. Adopt the selected chunker (after 15a-2 held-out confirmation).**
-- *Fix:* adopt only the recorded winner in production ingestion, bump the chunker version, re-ingest the target repository and update the relevant fixture/baseline lifecycle through review.
-- *Done when:* production ingestion records the selected version; the frozen held-out report is recorded before adoption; and the default offline smoke gate remains a reviewed S0-or-successor baseline, not an experiment side effect.
-- **Status:** Not started; planned by `07-chunking-comparison-plan.md`.
+**15b. Adopt the selected chunker (closed, no change).**
+Closed: plan 07 section 5 retained S0 under the precommitted rule, so production ingestion keeps lines-60-10-v1. Reopen only after a new, separately registered comparison.
+- **Status:** Closed, no change.
 
 **15c. Parent expansion (after item 17).**
 - *Fix:* add parent/context expansion as a separate answer-context experiment only after answer-quality, citation and faithfulness evaluation exists.
@@ -239,7 +240,7 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 - *Done when:* the report shows judge agreement with humans.
 
 **18. Tracing, cost, latency.**
-- *Fix:* the minimal terminal trace event is built inside items 7 and 8. Then OpenTelemetry spans per graph node, tokens and estimated cost per request, p50/p95 per stage; self-hosted Langfuse or Grafana.
+- *Fix:* the minimal terminal trace event is built inside items 7 and 8. Then OpenTelemetry spans per graph node, tokens and estimated cost per request, p50/p95 per stage; self-hosted Langfuse or Grafana. Honour Retry-After and surface the HTTP status (never the key) in provider errors; during 15a-2 the free-tier embedding limits (100 requests per minute, 30K tokens per minute, 1,000 per day) stopped an unpaced run, which was resolved with --batch-delay-seconds.
 - *Done when:* one request shows every stage with timings and cost.
 
 **19. Model self-rating.**
