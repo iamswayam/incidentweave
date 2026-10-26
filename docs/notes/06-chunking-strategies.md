@@ -28,3 +28,15 @@ These candidates have no database repository name and make no provider calls. Fi
 wiring, and production ingestion changes are **not** part of this foundation step. Candidate
 parameters are frozen before the experiment; changing them requires a new protocol version in
 [the chunking comparison plan](../architecture-review/07-chunking-comparison-plan.md).
+
+## Result and embedding pacing
+
+The development comparison retained S0 under the precommitted rule; no candidate met every
+selection condition. See [section 5 of the chunking comparison plan](../architecture-review/07-chunking-comparison-plan.md#5-result-of-the-development-comparison-item-15a-2)
+and the [full development report](../../evaluation/experiments/chunking/report-development.md).
+
+The free-tier Gemini embedding limits shown on the maintainer's dashboard were 100 requests per
+minute (each text counts as one), 30K tokens per minute, and 1,000 requests per day. An unpaced
+481-text run failed on the per-minute limit; the embed command now accepts
+`--batch-delay-seconds` (used with 70) to send one batch of 50 about every 70 seconds. The delay
+affects pacing only, not vectors.
