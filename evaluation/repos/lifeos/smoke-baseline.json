@@ -1,0 +1,324 @@
+{
+  "metadata": {
+    "repo_id": "lifeos",
+    "split": "smoke",
+    "previously_exposed": false,
+    "fixture": {
+      "built_at": "2026-10-26T03:44:40.773876+00:00",
+      "chunk_count": 49,
+      "chunker_version": "lines-60-10-v1",
+      "embedding_model": "models/gemini-embedding-001",
+      "pinned_sha": "407ab87476cab88375994ff6e4bee6dda3a7076a",
+      "question_count": 24,
+      "strategy": "baseline"
+    },
+    "golden_pinned_sha": "407ab87476cab88375994ff6e4bee6dda3a7076a",
+    "limit": 5
+  },
+  "questions": [
+    {
+      "id": "direct-02",
+      "category": "direct",
+      "label_rank": 1,
+      "span_rank": 1,
+      "label_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "direct-05",
+      "category": "direct",
+      "label_rank": 1,
+      "span_rank": 1,
+      "label_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "direct-07",
+      "category": "direct",
+      "label_rank": 1,
+      "span_rank": 1,
+      "label_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "paraphrased-04",
+      "category": "paraphrased",
+      "label_rank": 2,
+      "span_rank": 2,
+      "label_hits": {
+        "1": false,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": false,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "paraphrased-07",
+      "category": "paraphrased",
+      "label_rank": 1,
+      "span_rank": 1,
+      "label_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      },
+      "span_hits": {
+        "1": true,
+        "3": true,
+        "5": true
+      }
+    },
+    {
+      "id": "unanswerable_far-01",
+      "category": "unanswerable_far",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    },
+    {
+      "id": "unanswerable_far-02",
+      "category": "unanswerable_far",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    },
+    {
+      "id": "unanswerable_near-01",
+      "category": "unanswerable_near",
+      "label_rank": null,
+      "span_rank": null,
+      "label_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      },
+      "span_hits": {
+        "1": false,
+        "3": false,
+        "5": false
+      }
+    }
+  ],
+  "summary": {
+    "substring_labels": {
+      "count": 5,
+      "hit_at_1": {
+        "successes": 4,
+        "rate": 0.8,
+        "wilson_95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "hit_at_3": {
+        "successes": 5,
+        "rate": 1.0,
+        "wilson_95": [
+          0.5655085052479191,
+          1.0000000000000002
+        ]
+      },
+      "hit_at_5": {
+        "successes": 5,
+        "rate": 1.0,
+        "wilson_95": [
+          0.5655085052479191,
+          1.0000000000000002
+        ]
+      },
+      "mrr": 0.9
+    },
+    "spans": {
+      "count": 5,
+      "hit_at_1": {
+        "successes": 4,
+        "rate": 0.8,
+        "wilson_95": [
+          0.3755282641185388,
+          0.9637768390302125
+        ]
+      },
+      "hit_at_3": {
+        "successes": 5,
+        "rate": 1.0,
+        "wilson_95": [
+          0.5655085052479191,
+          1.0000000000000002
+        ]
+      },
+      "hit_at_5": {
+        "successes": 5,
+        "rate": 1.0,
+        "wilson_95": [
+          0.5655085052479191,
+          1.0000000000000002
+        ]
+      },
+      "mrr": 0.9
+    }
+  },
+  "breakdown_by_category": {
+    "direct": {
+      "substring_labels": {
+        "count": 3,
+        "hit_at_1": {
+          "successes": 3,
+          "rate": 1.0,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ]
+        },
+        "hit_at_3": {
+          "successes": 3,
+          "rate": 1.0,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ]
+        },
+        "hit_at_5": {
+          "successes": 3,
+          "rate": 1.0,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ]
+        },
+        "mrr": 1.0
+      },
+      "spans": {
+        "count": 3,
+        "hit_at_1": {
+          "successes": 3,
+          "rate": 1.0,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ]
+        },
+        "hit_at_3": {
+          "successes": 3,
+          "rate": 1.0,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ]
+        },
+        "hit_at_5": {
+          "successes": 3,
+          "rate": 1.0,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ]
+        },
+        "mrr": 1.0
+      }
+    },
+    "paraphrased": {
+      "substring_labels": {
+        "count": 2,
+        "hit_at_1": {
+          "successes": 1,
+          "rate": 0.5,
+          "wilson_95": [
+            0.09452865480086614,
+            0.9054713451991339
+          ]
+        },
+        "hit_at_3": {
+          "successes": 2,
+          "rate": 1.0,
+          "wilson_95": [
+            0.34237195288961925,
+            1.0
+          ]
+        },
+        "hit_at_5": {
+          "successes": 2,
+          "rate": 1.0,
+          "wilson_95": [
+            0.34237195288961925,
+            1.0
+          ]
+        },
+        "mrr": 0.75
+      },
+      "spans": {
+        "count": 2,
+        "hit_at_1": {
+          "successes": 1,
+          "rate": 0.5,
+          "wilson_95": [
+            0.09452865480086614,
+            0.9054713451991339
+          ]
+        },
+        "hit_at_3": {
+          "successes": 2,
+          "rate": 1.0,
+          "wilson_95": [
+            0.34237195288961925,
+            1.0
+          ]
+        },
+        "hit_at_5": {
+          "successes": 2,
+          "rate": 1.0,
+          "wilson_95": [
+            0.34237195288961925,
+            1.0
+          ]
+        },
+        "mrr": 0.75
+      }
+    }
+  }
+}

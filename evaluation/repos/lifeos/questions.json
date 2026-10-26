@@ -1,0 +1,598 @@
+{
+  "repository_id": "lifeos",
+  "pinned_sha": "407ab87476cab88375994ff6e4bee6dda3a7076a",
+  "review_status": "pending maintainer review",
+  "counts": {
+    "direct": 8,
+    "paraphrased": 8,
+    "unanswerable_far": 4,
+    "unanswerable_near": 4
+  },
+  "questions": [
+    {
+      "id": "direct-01",
+      "category": "direct",
+      "question": "What does the toggle_status action do to a todo's status, and in what order do the states cycle?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/todos/views.py",
+          "substring": "    @action(detail=True, methods=['patch'], url_path='toggle_status')\n    def toggle_status(self, request, pk=None):\n        \"\"\"Cycle through pending → in_progress → done → pending.\"\"\"\n        todo = self.get_object()\n        cycle = {\n            'pending':     'in_progress',\n            'in_progress': 'done',\n            'done':        'pending',\n        }\n        todo.status = cycle[todo.status]\n        todo.save()\n        self._invalidate_cache()\n        return Response(TodoStatusSerializer(todo).data)"
+        }
+      ],
+      "must_mention": [
+        [
+          "in_progress"
+        ],
+        [
+          "pending"
+        ],
+        [
+          "done"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/todos/views.py",
+          "line_start": 51,
+          "line_end": 63
+        }
+      ]
+    },
+    {
+      "id": "direct-02",
+      "category": "direct",
+      "question": "How does InterviewSerializer.validate treat result values of selected or rejected?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/interviews/serializers.py",
+          "substring": "    def validate(self, attrs):\n        # If result is selected/rejected, status should be completed\n        result = attrs.get('result', None)\n        status = attrs.get('status', None)\n        if result in ['selected', 'rejected'] and status != 'completed':\n            raise serializers.ValidationError({\n                \"status\": \"Status must be 'completed' when result is selected or rejected.\"\n            })\n        return attrs"
+        }
+      ],
+      "must_mention": [
+        [
+          "completed"
+        ],
+        [
+          "validation",
+          "error",
+          "reject",
+          "raise",
+          "invalid",
+          "must be"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/interviews/serializers.py",
+          "line_start": 27,
+          "line_end": 35
+        }
+      ]
+    },
+    {
+      "id": "direct-03",
+      "category": "direct",
+      "question": "How long do access and refresh tokens last according to SIMPLE_JWT, and is refresh-token rotation enabled?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "lifeos/settings/base.py",
+          "substring": "SIMPLE_JWT = {\n    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),\n    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),\n    'ROTATE_REFRESH_TOKENS': True,\n    'BLACKLIST_AFTER_ROTATION': True,\n    'AUTH_HEADER_TYPES': ('Bearer',),\n}"
+        }
+      ],
+      "must_mention": [
+        [
+          "60",
+          "1 hour",
+          "hour"
+        ],
+        [
+          "7",
+          "seven"
+        ],
+        [
+          "True",
+          "enabled"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "lifeos/settings/base.py",
+          "line_start": 67,
+          "line_end": 73
+        }
+      ]
+    },
+    {
+      "id": "direct-04",
+      "category": "direct",
+      "question": "What does LogoutView do with the refresh token it receives, and what does it return if the token is invalid?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/accounts/views.py",
+          "substring": "class LogoutView(APIView):\n    permission_classes = [IsAuthenticated]\n\n    def post(self, request):\n        try:\n            refresh_token = request.data['refresh']\n            token = RefreshToken(refresh_token)\n            token.blacklist()\n            return Response({'message': 'Logout successful.'}, status=status.HTTP_200_OK)\n        except Exception:\n            return Response({'error': 'Invalid token.'}, status=status.HTTP_400_BAD_REQUEST)"
+        }
+      ],
+      "must_mention": [
+        [
+          "blacklist"
+        ],
+        [
+          "400",
+          "Invalid token"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/accounts/views.py",
+          "line_start": 65,
+          "line_end": 75
+        }
+      ]
+    },
+    {
+      "id": "direct-05",
+      "category": "direct",
+      "question": "How is the is_overdue property of Todo computed?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/todos/models.py",
+          "substring": "    @property\n    def is_overdue(self):\n        if self.due_date and self.status != 'done':\n            return self.due_date < date.today()\n        return False"
+        }
+      ],
+      "must_mention": [
+        [
+          "due_date"
+        ],
+        [
+          "done"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/todos/models.py",
+          "line_start": 42,
+          "line_end": 46
+        }
+      ]
+    },
+    {
+      "id": "direct-06",
+      "category": "direct",
+      "question": "What does google_login do when no token is supplied, and how does it verify a supplied one?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/accounts/social_auth.py",
+          "substring": "def google_login(request):\n    token = request.data.get('token')\n    if not token:\n        return Response({'error': 'Token required'}, status=status.HTTP_400_BAD_REQUEST)"
+        },
+        {
+          "file_path": "apps/accounts/social_auth.py",
+          "substring": "    try:\n        idinfo = id_token.verify_oauth2_token(\n            token,\n            google_requests.Request(),\n            os.environ.get('GOOGLE_CLIENT_ID')\n        )"
+        }
+      ],
+      "must_mention": [
+        [
+          "400",
+          "Token required"
+        ],
+        [
+          "verify_oauth2_token",
+          "id_token"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/accounts/social_auth.py",
+          "line_start": 22,
+          "line_end": 25
+        },
+        {
+          "file_path": "apps/accounts/social_auth.py",
+          "line_start": 27,
+          "line_end": 32
+        }
+      ]
+    },
+    {
+      "id": "direct-07",
+      "category": "direct",
+      "question": "Which fields can InterviewViewSet filter on and which can it search on?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/interviews/views.py",
+          "substring": "    filter_backends    = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]\n    filterset_fields   = ['status', 'result', 'round_type', 'mode']\n    search_fields      = ['company_name', 'role', 'hr_name']\n    ordering_fields    = ['scheduled_at', 'created_at', 'round_number']"
+        }
+      ],
+      "must_mention": [
+        [
+          "round_type"
+        ],
+        [
+          "mode"
+        ],
+        [
+          "company_name"
+        ],
+        [
+          "hr_name"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/interviews/views.py",
+          "line_start": 15,
+          "line_end": 18
+        }
+      ]
+    },
+    {
+      "id": "direct-08",
+      "category": "direct",
+      "question": "How long is a user's list of todos cached for, and under what cache key?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/todos/views.py",
+          "substring": "    def list(self, request, *args, **kwargs):\n        cache_key = f\"todo_list_{request.user.id}\"\n        cached    = cache.get(cache_key)\n\n        if cached:\n            return Response(cached)\n\n        response = super().list(request, *args, **kwargs)\n        cache.set(cache_key, response.data, timeout=300)\n        return response"
+        }
+      ],
+      "must_mention": [
+        [
+          "300",
+          "5 minutes",
+          "five minutes"
+        ],
+        [
+          "todo_list"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/todos/views.py",
+          "line_start": 40,
+          "line_end": 49
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-01",
+      "category": "paraphrased",
+      "question": "How does the app make sure a user can only reach their own interview records?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/interviews/views.py",
+          "substring": "    def get_queryset(self):\n        return Interview.objects.filter(user=self.request.user)\n\n    def perform_create(self, serializer):\n        serializer.save(user=self.request.user)"
+        }
+      ],
+      "must_mention": [
+        [
+          "user"
+        ],
+        [
+          "filter",
+          "queryset"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/interviews/views.py",
+          "line_start": 20,
+          "line_end": 24
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-02",
+      "category": "paraphrased",
+      "question": "What does a person get back after successfully registering with an email and password?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/accounts/views.py",
+          "substring": "    def create(self, request, *args, **kwargs):\n        serializer = self.get_serializer(data=request.data)\n        serializer.is_valid(raise_exception=True)\n        user   = serializer.save()\n        tokens = get_tokens_for_user(user)\n        return Response({\n            'user':    UserProfileSerializer(user).data,\n            'tokens':  tokens,\n            'message': 'Account created successfully.'\n        }, status=status.HTTP_201_CREATED)"
+        }
+      ],
+      "must_mention": [
+        [
+          "201",
+          "created"
+        ],
+        [
+          "tokens"
+        ],
+        [
+          "user"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/accounts/views.py",
+          "line_start": 28,
+          "line_end": 37
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-03",
+      "category": "paraphrased",
+      "question": "Which of a person's job meetings count as coming up soon?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/interviews/views.py",
+          "substring": "    @action(detail=False, methods=['get'], url_path='upcoming')\n    def upcoming(self, request):\n        \"\"\"Return interviews scheduled in the next 7 days.\"\"\"\n        from datetime import timedelta\n        now      = timezone.now()\n        next_week = now + timedelta(days=7)\n        upcoming  = Interview.objects.filter(\n            user=request.user,\n            scheduled_at__gte=now,\n            scheduled_at__lte=next_week,\n            status='scheduled'\n        ).order_by('scheduled_at')\n        serializer = self.get_serializer(upcoming, many=True)\n        return Response(serializer.data)"
+        }
+      ],
+      "must_mention": [
+        [
+          "7"
+        ],
+        [
+          "scheduled"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/interviews/views.py",
+          "line_start": 26,
+          "line_end": 39
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-04",
+      "category": "paraphrased",
+      "question": "What stops someone from planning a task for a day that has already passed?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/todos/serializers.py",
+          "substring": "    def validate_due_date(self, value):\n        if value and value < date.today():\n            raise serializers.ValidationError(\"Due date cannot be in the past.\")\n        return value"
+        }
+      ],
+      "must_mention": [
+        [
+          "past"
+        ],
+        [
+          "due"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/todos/serializers.py",
+          "line_start": 20,
+          "line_end": 23
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-05",
+      "category": "paraphrased",
+      "question": "How does the system stop a diary entry from being dated tomorrow or later?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/journal/serializers.py",
+          "substring": "    def validate_date(self, value):\n        from datetime import date\n        if value > date.today():\n            raise serializers.ValidationError(\"Journal date cannot be in the future.\")\n        return value"
+        }
+      ],
+      "must_mention": [
+        [
+          "future"
+        ],
+        [
+          "today",
+          "current date",
+          "date.today"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/journal/serializers.py",
+          "line_start": 18,
+          "line_end": 22
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-06",
+      "category": "paraphrased",
+      "question": "What happens to a person's cached task list when a task is created, edited or deleted?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/todos/views.py",
+          "substring": "    def perform_create(self, serializer):\n        serializer.save(user=self.request.user)\n        self._invalidate_cache()\n\n    def perform_update(self, serializer):\n        serializer.save()\n        self._invalidate_cache()\n\n    def perform_destroy(self, instance):\n        instance.delete()\n        self._invalidate_cache()\n\n    def _invalidate_cache(self):\n        cache_key = f\"todo_list_{self.request.user.id}\"\n        cache.delete(cache_key)"
+        }
+      ],
+      "must_mention": [
+        [
+          "invalidate",
+          "cache.delete",
+          "delete the cache",
+          "clear the cache",
+          "cache is cleared",
+          "deleted",
+          "cleared"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/todos/views.py",
+          "line_start": 24,
+          "line_end": 38
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-07",
+      "category": "paraphrased",
+      "question": "How is the number of words in an entry worked out?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/journal/models.py",
+          "substring": "    @property\n    def word_count(self):\n        return len(self.content.split())"
+        }
+      ],
+      "must_mention": [
+        [
+          "split",
+          "whitespace"
+        ],
+        [
+          "content"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/journal/models.py",
+          "line_start": 37,
+          "line_end": 39
+        }
+      ]
+    },
+    {
+      "id": "paraphrased-08",
+      "category": "paraphrased",
+      "question": "What must be supplied to change a password, what is checked about the old one, and how long must the new one be?",
+      "seen_before": false,
+      "relevant": [
+        {
+          "file_path": "apps/accounts/serializers.py",
+          "substring": "class ChangePasswordSerializer(serializers.Serializer):\n    old_password = serializers.CharField(write_only=True)\n    new_password = serializers.CharField(write_only=True, min_length=8)\n\n    def validate_old_password(self, value):\n        user = self.context['request'].user\n        if not user.check_password(value):\n            raise serializers.ValidationError('Old password is incorrect.')\n        return value"
+        },
+        {
+          "file_path": "apps/accounts/views.py",
+          "substring": "class ChangePasswordView(APIView):\n    permission_classes = [IsAuthenticated]\n\n    def post(self, request):\n        serializer = ChangePasswordSerializer(data=request.data, context={'request': request})\n        serializer.is_valid(raise_exception=True)\n        request.user.set_password(serializer.validated_data['new_password'])\n        request.user.save()\n        return Response({'message': 'Password changed successfully.'}, status=status.HTTP_200_OK)"
+        }
+      ],
+      "must_mention": [
+        [
+          "old_password",
+          "current password",
+          "old password"
+        ],
+        [
+          "check_password",
+          "incorrect"
+        ],
+        [
+          "8",
+          "min_length"
+        ]
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "apps/accounts/serializers.py",
+          "line_start": 48,
+          "line_end": 56
+        },
+        {
+          "file_path": "apps/accounts/views.py",
+          "line_start": 87,
+          "line_end": 95
+        }
+      ]
+    },
+    {
+      "id": "unanswerable_far-01",
+      "category": "unanswerable_far",
+      "question": "What is the capital city of Australia?",
+      "seen_before": false,
+      "absent_terms": [
+        "canberra",
+        "australia"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_far-02",
+      "category": "unanswerable_far",
+      "question": "How do I fix a flat bicycle tire?",
+      "seen_before": false,
+      "absent_terms": [
+        "bicycle",
+        "tire"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_far-03",
+      "category": "unanswerable_far",
+      "question": "How does the Rust borrow checker decide which lifetimes are valid?",
+      "seen_before": false,
+      "absent_terms": [
+        "borrow checker",
+        "rustc"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_far-04",
+      "category": "unanswerable_far",
+      "question": "How do I configure Kubernetes ingress annotations for TLS?",
+      "seen_before": false,
+      "absent_terms": [
+        "kubernetes",
+        "ingress"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-01",
+      "category": "unanswerable_near",
+      "question": "How does the app send email reminders before a scheduled interview?",
+      "seen_before": false,
+      "absent_terms": [
+        "send_mail",
+        "smtp",
+        "reminder"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-02",
+      "category": "unanswerable_near",
+      "question": "How are journal entries exported to a PDF file?",
+      "seen_before": false,
+      "absent_terms": [
+        "pdf",
+        "reportlab",
+        "weasyprint"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-03",
+      "category": "unanswerable_near",
+      "question": "How does the todo list support recurring tasks?",
+      "seen_before": false,
+      "absent_terms": [
+        "recurring",
+        "recurrence"
+      ],
+      "relevant_spans": []
+    },
+    {
+      "id": "unanswerable_near-04",
+      "category": "unanswerable_near",
+      "question": "How is rate limiting applied to the login endpoint?",
+      "seen_before": false,
+      "absent_terms": [
+        "throttle",
+        "throttling",
+        "ratelimit"
+      ],
+      "relevant_spans": []
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "baseline_report": "evaluation/repos/lifeos/offline-baseline.json",
+  "baselines": {
+    "substring_labels": {
+      "hit_at_5_successes": 16,
+      "mrr": 0.8041666666666667
+    },
+    "spans": {
+      "hit_at_5_successes": 16,
+      "mrr": 0.8041666666666667
+    }
+  },
+  "tolerance": {
+    "hit_at_5_successes_max_drop": 0,
+    "mrr_max_drop": 0.02
+  }
+}
