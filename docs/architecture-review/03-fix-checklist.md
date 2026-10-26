@@ -38,7 +38,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16c | Done | #46 | lifeos data |
 | Plan 06 added | Done | n/a | docs commit |
 | Plan 07 added | Done | n/a | docs commit |
-| 15a-1 | In progress | pending | chunking comparison foundation |
+| 15a-1 | Done | #48 | chunking comparison foundation |
+| 15a-2 | In progress | pending | chunking comparison experiment |
 
 ## 1. Fix-order checklist (summary)
 
@@ -200,7 +201,7 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 **15a-1. Chunking comparison foundation (after 16a).**
 - *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
 - *Done when:* unit tests cover the fixed strategies, AST descriptors and parse fallback; strategy metadata is reproducible; and stored raw content, line ranges and quote-validation inputs are unchanged by S3 enrichment.
-- **Status:** Done; PR pending.
+- **Status:** Done (PR #48).
 
 **15a-2. Chunking comparison experiment (after 16b and 16c).**
 - *Fix:* build immutable strategy-specific fixtures for every manifest repository with document embedding calls only, reuse cached query embeddings, run the precommitted development comparison and record the complete per-repository/pooled decision report. Freeze a choice before any held-out run.
