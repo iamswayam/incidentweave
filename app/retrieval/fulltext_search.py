@@ -33,7 +33,7 @@ async def search_fulltext(
         FROM chunks AS c
         WHERE c.repository_id = :repository_id
           AND to_tsvector('english', c.content) @@ websearch_to_tsquery(:query_text)
-        ORDER BY score DESC
+        ORDER BY score DESC, c.file_path, c.line_start, c.line_end
         LIMIT :limit
         """
     )

@@ -34,7 +34,7 @@ async def search_vector(
             Chunk.repository_id == repository_id,
             Chunk.embedding.is_not(None),
         )
-        .order_by(distance)
+        .order_by(distance, Chunk.file_path, Chunk.line_start, Chunk.line_end)
         .limit(limit)
     )
 
