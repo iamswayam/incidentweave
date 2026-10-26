@@ -97,7 +97,9 @@ Changed `03-fix-checklist.md` entries are: line 40 (Progress log row); lines 64-
 Decision: S0 retained. The precommitted rule (protocol.json, committed before any embedding) was applied unchanged. The held-out questions were not run, because the plan runs them only to confirm a selected candidate; they remain unobserved.
 
 Table (development split, 33 answerable questions, span labels):
+
 | Strategy | Pooled MRR | Pooled Hit@5 | Mean top-5 context (chars) | p95 context (chars) | Qualifies |
+|---|---:|---:|---:|---:|---|
 | S0 60/10 | 0.668 | 27/33 | 7,608 | 10,592 | reference |
 | S1 100/20 | 0.723 | 31/33 | 11,000 (x1.45) | 16,632 (x1.57) | No: p95 context above the 1.5 limit |
 | S2 AST | 0.664 | 28/33 | 4,434 (x0.58) | 6,620 (x0.63) | No: pooled MRR gain below 0.03; batch-processing-service MRR lost 0.091 (limit 0.03) |
