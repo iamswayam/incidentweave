@@ -82,6 +82,7 @@ async def run_offline_retrieval(
     entry: dict[str, Any] | None = None,
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
+    record_retrieved: bool = False,
 ) -> dict[str, Any]:
     """Evaluate vector-plus-FTS retrieval without provider calls."""
 
@@ -156,22 +157,30 @@ async def run_offline_retrieval(
                     if answerable
                     else None
                 )
-                question_records.append(
-                    {
-                        "id": question_id,
-                        "category": question["category"],
-                        "label_rank": label_rank,
-                        "span_rank": span_rank,
-                        "label_hits": {
-                            str(k): label_rank is not None and label_rank <= k
-                            for k in (1, 3, 5)
-                        },
-                        "span_hits": {
-                            str(k): span_rank is not None and span_rank <= k
-                            for k in (1, 3, 5)
-                        },
-                    }
-                )
+                record = {
+                    "id": question_id,
+                    "category": question["category"],
+                    "label_rank": label_rank,
+                    "span_rank": span_rank,
+                    "label_hits": {
+                        str(k): label_rank is not None and label_rank <= k
+                        for k in (1, 3, 5)
+                    },
+                    "span_hits": {
+                        str(k): span_rank is not None and span_rank <= k
+                        for k in (1, 3, 5)
+                    },
+                }
+                if record_retrieved:
+                    record["retrieved"] = [
+                        {
+                            "file_path": result["file_path"],
+                            "line_start": result["line_start"],
+                            "line_end": result["line_end"],
+                        }
+                        for result in results[:limit]
+                    ]
+                question_records.append(record)
     finally:
         await _delete_fixture_repository(fixture_repository)
 
