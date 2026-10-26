@@ -34,7 +34,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
 | 13b | Done | #40 | CI gate and generation settings. |
 | 16a | Done | #42 | multi-repo harness |
-| 16b | In progress | pending | batch-processing-service data |
+| 16b | Done | #44 | batch-processing-service data |
+| 16c | In progress | pending | lifeos data |
 | Plan 06 added | Done | n/a | docs commit |
 
 ## 1. Fix-order checklist (summary)
