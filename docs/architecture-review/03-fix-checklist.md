@@ -33,6 +33,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
 | 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
 | 13b | Done | #40 | CI gate and generation settings. |
+| 13c | In progress | pending | retrieval inspection report |
 | 13d | In progress | pending | deterministic retrieval ordering |
 | 16a | Done | #42 | multi-repo harness |
 | 16b | Done | #44 | batch-processing-service data |
@@ -40,7 +41,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | Plan 06 added | Done | n/a | docs commit |
 | Plan 07 added | Done | n/a | docs commit |
 | 15a-1 | Done | #48 | chunking comparison foundation |
-| 15a-2 | In progress | pending | chunking comparison experiment: S0 retained |
+| 15a-2 | Done | #50 | chunking comparison experiment: S0 retained |
 | 15b | Closed | n/a | no change, S0 retained |
 
 ## 1. Fix-order checklist (summary)
@@ -64,6 +65,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 12b | ☐ | Wider prompt-injection testing (later) | Low | M | Codex |
 | 13a | ☑ | Evaluation foundation, part a: span labels, statistics, offline retrieval evaluation | High | M | Both |
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
+| 13c | ☑ | Retrieval inspection report: per-question cards (evidence, top 5 chunks, scores, guard decision) generated offline from the fixtures | High | S | Both |
 | 13d | ☑ | Deterministic tie-break in hybrid, vector and full-text search; measured tie noise | High | S | Both |
 | 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
 | 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
@@ -91,10 +93,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17**, **3b** | Measurement you can trust before tuning |
-| 4 | **14**, **10**, **5b**, **21** | Retrieval and provider execution, measured against step 3 |
+| 4 | **13c**, **14**, **10**, **5b**, **21** | Retrieval and provider execution, measured against step 3 |
 | 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
+
+Item 13c precedes 14 so ablation results can be judged with the inspection report.
 
 Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker. Item 13d precedes 13c so the inspection report is reproducible.
 
@@ -193,6 +197,12 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 
 **Status (13b):** 2026-10-25; branch `fix/13b-retrieval-gate`; changed `.github/workflows/ci.yml`, `README.md`, `app/investigation/generation.py`, `app/investigation/graph.py`, `evaluation/gate.json`, `evaluation/gate.py`, `evaluation/runner.py`, `scripts/check_retrieval_gate.py`, `scripts/investigate.py`, `tests/unit/test_evaluation.py`, `tests/unit/test_gemini_api_key_header.py`, `tests/unit/test_investigate_limits.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_retrieval_gate.py`, `docs/notes/04-offline-retrieval-evaluation.md`, and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 163 passed in 143.96s; offline gate: all four checks passed, with Hit@5 11 and MRR 0.5729166666666666 for both label types.
 
+**13c. Retrieval inspection report (after 15a-2).**
+- *Why:* aggregate metrics hide why questions fail; in 15a-2 four of S0's six development misses stayed missed under every AST strategy and looked like single-line labels or conceptual questions rather than chunk-shape problems.
+- *Fix:* render offline Markdown cards and a per-repository strategy summary from the committed fixtures; make no provider calls.
+- *Done when:* one command produces cards for all repositories and strategies deterministically; held-out is refused without confirmation; default evaluation output is unchanged.
+- **Status:** Done; PR pending.
+
 **13d. Deterministic retrieval ordering (after 15a-2).**
 - *Why:* equal-score results returned in a run-dependent order, making evaluation, the CI gate and production ordering non-reproducible.
 - *Fix:* add stable file/line tie-breaks to vector and full-text SQL and order hybrid results by RRF score, vector rank, text rank and file coordinates, never chunk ID.
@@ -215,7 +225,7 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 **15a-2. Chunking comparison experiment (after 16b and 16c).**
 - *Fix:* build immutable strategy-specific fixtures for every manifest repository with document embedding calls only, reuse cached query embeddings, run the precommitted development comparison and record the complete per-repository/pooled decision report. Freeze a choice before any held-out run.
 - *Done when:* the committed report includes the precommitted rule, artifact hashes, span-MRR/Hit@1/3/5, raw-context cost, span coverage/evidence density, paired statistics and the selected strategy (or S0 retained); all held-out inputs remain unobserved during selection.
-- **Status:** Done; PR pending. Result: S0 retained (plan 07 section 5).
+- **Status:** Done (PR #50). Result: S0 retained (plan 07 section 5).
 
 **15b. Adopt the selected chunker (closed, no change).**
 Closed: plan 07 section 5 retained S0 under the precommitted rule, so production ingestion keeps lines-60-10-v1. Reopen only after a new, separately registered comparison.
