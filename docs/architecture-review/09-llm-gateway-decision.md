@@ -107,11 +107,12 @@ fallback is equivalent to Gemini or that any listed quota will remain available.
 
 ## Sequence
 
-1. **18a — gateway foundation:** pinned LiteLLM sidecar, Gemini-only routing, safe retry/pacing,
+1. **18a-1 — gateway design and inventory:** call-site inventory, placement, secrets and runtime decision list for the LiteLLM gateway.
+2. **18a-2 — gateway foundation:** pinned LiteLLM sidecar, Gemini-only routing, safe retry/pacing,
    usage visibility, secret-free config, and application/telemetry integration.
-2. **18b — generation fallback:** ordered Gemini, Groq, then Cerebras or OpenRouter free routes,
+3. **18b — generation fallback:** ordered Gemini, Groq, then Cerebras or OpenRouter free routes,
    with cooldowns, config-driven limits, and golden-set output/citation validation.
-3. **18c — local embeddings:** register a development-only model comparison protocol, build a
+4. **18c — local embeddings:** register a development-only model comparison protocol, build a
    separate fixture and index labelled by `embedding_model`, and adopt only if its rule passes.
    There is no automatic cross-model embedding fallback.
 
