@@ -36,7 +36,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13c | In progress | pending | retrieval inspection report |
 | 13d | In progress | pending | deterministic retrieval ordering |
 | 14c-1 | In progress | pending | full-text diagnostic and preregistered ablation protocol |
-| 14c-2 | In progress | pending | c1/c2 failed the registered rule; c3 equivalence confirmed |
+| 14c-2 | Done | #61 | c1/c2 failed the registered rule; c3 equivalence confirmed; no variant adopted |
+| 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
 | 18 | Superseded | n/a | split into 18a, 18b and 18c; see [decision record](09-llm-gateway-decision.md) |
 | 18a | Not started | pending | LiteLLM gateway foundation |
 | 18b | Not started | pending | ordered generation fallback |
@@ -74,8 +75,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13c | ☑ | Retrieval inspection report: per-question cards (evidence, top 5 chunks, scores, guard decision) generated offline from the fixtures | High | S | Both |
 | 13d | ☑ | Deterministic tie-break in hybrid, vector and full-text search; measured tie noise | High | S | Both |
 | 14c-1 | ☐ | Diagnose full-text matching and preregister the ablation protocol | High | S | Both |
-| 14c-2 | ☐ | Compare c1/c2 under the registered rule; c3 equivalence only | High | M | Both |
-| 14c-3 | ☐ | Adopt a qualifying lexical variant; refresh baselines in the adoption PR | High | M | Both |
+| 14c-2 | ☑ | Compare c1/c2 under the registered rule; c3 equivalence only | High | M | Both |
+| 14c-3 | ☑ | Closed, no change: registered rule retained current retrieval; reopen only after a separately registered comparison | High | M | Both |
 | 14d | ☐ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
 | 14b | ☐ | Evaluate a test-file retrieval policy | High | S–M | Both |
 | 14a | ☐ | Evaluate embedding task type after lexical and test-file ablations | Medium | M | Both |
@@ -107,7 +108,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
-| 4 | **13c**, **14c-1**, **14c-2**, **14c-3**, **18a**, **14b**, **14a**, **14d**, **18b**, **18c**, **3b**, **10**, **5b**, **21** | Settle retrieval, then gateway fallback and embedding options |
+| 4 | **13c**, **14c-1**, **14c-2**, **18a**, **14b**, **14a**, **14d**, **18b**, **18c**, **3b**, **10**, **5b**, **21** | Settle retrieval, then gateway fallback and embedding options |
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
@@ -116,7 +117,7 @@ Item 13c precedes 14c-1 so ablation results can be judged with the inspection re
 
 Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker. Item 13d precedes 13c so the inspection report is reproducible.
 
-Item 3b follows 14c-3, 14d, 14b and 14a because retrieval changes can move vector distances; re-validate the guard only after retrieval settles.
+Item 3b follows the remaining retrieval changes (14d, 14b and 14a) because retrieval changes can move vector distances; re-validate the guard only after retrieval settles. Item 14c-3 is closed with no change.
 
 ---
 
@@ -235,27 +236,29 @@ Item 3b follows 14c-3, 14d, 14b and 14a because retrieval changes can move vecto
 - *Why:* the 14c-1 diagnostic can show whether a lexical branch is empty and whether broad OR matching reaches labeled spans, but it does not establish a retrieval-quality improvement.
 - *Fix:* compare c1 (sanitized-token OR queries) and c2 (c1 plus snake_case/camelCase splitting in searchable chunk text) as separate changes. Evaluate c3 only for generated-vector equivalence and performance; do not make a quality claim for the index.
 - *Done when:* one variant per run is compared against the fixed control on development data; the report contains the protocol metrics, paired bootstrap interval and descriptive exact sign test; only variants meeting every precommitted quality condition can advance.
-- **Status:** In progress; PR pending. Control matched every committed development baseline question. Neither c1 nor c2 met all four conditions; c3 was equivalent for all 48 development questions. No variant is adopted. See [the results note](../notes/09-fulltext-ablation-results.md) and [machine-readable report](../../evaluation/experiments/fulltext/results.json).
+- **Status:** Done (PR #61). Control matched every committed development baseline question. Neither c1 nor c2 met all four conditions; c3 was equivalent for all 48 development questions. No variant is adopted. See [the results note](../notes/09-fulltext-ablation-results.md) and [machine-readable report](../../evaluation/experiments/fulltext/results.json).
 
-**14c-3. Adopt a qualifying lexical variant.**
+**14c-3. Adopt a qualifying lexical variant (closed, no change).**
 - *Why:* lexical changes can affect both matching and ranking, so adoption requires frozen evidence and an explicit comparison rather than the diagnostic alone.
 - *Fix:* adopt only a qualifying 14c-2 variant. Refresh affected baselines in this adoption PR only, preserve gate tolerances, and update the retrieval documentation.
 - *Done when:* the selected variant and rationale are recorded before adoption, all repository gates pass against refreshed baselines if needed, and docs describe the resulting behavior. If no variant qualifies, retain current retrieval.
+- Closed: the registered 14c-2 rule retained current behavior. Reopen only after a separately registered comparison.
+- **Status:** Closed, no change.
 
 **14d. Offline Python BM25 versus `ts_rank` (after 14c).**
 - *Why:* the current lexical rank may not be the best fit for small code repositories, but an additional ranking method should be justified by measured gains.
 - *Fix:* compare offline Python-side BM25 with PostgreSQL `ts_rank` on the same development fixtures. Do not add a PostgreSQL extension for this experiment.
-- *Done when:* a paired development comparison reports ranking and cost; adopt in production only if BM25 wins clearly and an extension is justified.
+- *Done when:* a paired development comparison reports ranking and cost; adopt in production only if BM25 wins clearly and an extension is justified; state per-repository tolerances in whole questions.
 
 **14b. Test-file retrieval policy.**
 - *Why:* tests accounted for 44% of top-five results in the original baseline [EXEC], and may compete with source evidence.
 - *Fix:* tag tests with `document_type="test"` and compare keep / downweight / exclude without changing chunking or lexical settings from the selected 14c control.
-- *Done when:* a committed comparison reports retrieval effects plus test-source recall and precision; retain a policy only if it helps without harming the registered safeguards.
+- *Done when:* a committed comparison reports retrieval effects plus test-source recall and precision; retain a policy only if it helps without harming the registered safeguards; state per-repository tolerances in whole questions.
 
 **14a. Embedding task type (last).**
 - *Why:* no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs].
 - *Fix:* compare document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY` task types after 14c and 14b, versioning and rebuilding embeddings as a distinct run.
-- *Done when:* one embedding change is compared with the selected lexical and test-file control using paired frozen development results; keep it only if it helps without harming the safeguards. Provider quota use is explicit and bounded.
+- *Done when:* one embedding change is compared with the selected lexical and test-file control using paired frozen development results; keep it only if it helps without harming the safeguards. Provider quota use is explicit and bounded; state per-repository tolerances in whole questions.
 
 **15a-1. Chunking comparison foundation (after 16a).**
 - *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
@@ -344,7 +347,8 @@ terminal trace; per-stage telemetry and gateway/provider usage visibility are as
   cross-model fallback because vectors from different embedding models are incomparable.
 - *Done when:* the committed protocol fixes the development split, metrics, and decision rule
   before evaluation; a separate model-labelled fixture and index are produced; adoption occurs
-  only if that rule passes. Held-out questions remain unobserved during selection.
+  only if that rule passes. Held-out questions remain unobserved during selection; state
+  per-repository tolerances in whole questions.
 
 **19. Model self-rating.**
 - *Why:* in the committed baseline the model labeled 15 of 16 answers `high`, and retrieval calibration moved 13 to `medium` [EXEC]. The label has not been checked against correctness.
