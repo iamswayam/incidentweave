@@ -12,7 +12,7 @@ P6 A paired exact sign test on per-question rank changes is reported but does no
 P7 Held-out questions are run once, after the choice is frozen, for confirmation only (15 answerable held-out questions in total; only large effects are visible).
 P8 Reported but not gated: chunk counts, chunk-size distribution, and the distance gap between answerable and unanswerable questions; the guard threshold (0.5) is re-checked afterwards in item 3b.
 P9 Steps: 15a-1 code only (chunker interface, AST chunker, strategy registry made repository-independent, unit tests, no provider calls); 15a-2 the experiment (per-strategy fixtures built with embedding calls only, comparison, rule applied, result recorded); 15b adopt the winner in production ingestion (bump chunker version, re-ingest); parent expansion becomes item 15c after item 17.
-P10 Tests stay indexed as today with no downweighting; that is item 14's job.
+P10 Tests stay indexed as today with no downweighting; test-policy changes are item 14b.
 
 ## 2. Codex review
 
@@ -31,7 +31,7 @@ The reviewed checkout has a three-entry, hash-validated manifest and explicit de
 | P7 | AMEND | Replace P7 with: “After the selected strategy, artifact hashes and report are committed, run each held-out question once through deterministic offline retrieval and report the 15 answerable results separately by repository. Treat only the 10 answerable questions from the two new repositories as external-replication evidence; IncidentWeave is retrospective.” |
 | P8 | AMEND | Replace P8 with: “Report, but do not gate on, chunk count, chunk-size distribution, answerable/unanswerable distance distributions, and the span-coverage and evidence-density diagnostics defined below. Re-check the guard threshold in item 3b using the chosen production strategy and frozen evidence; do not tune it during 15a-2.” |
 | P9 | AMEND | Replace P9 with: “15a-1 is code only: strategy-independent chunk descriptors, deterministic AST/S3 embedding-text builders, manifest-independent strategy registry, fixture/report schema support and unit tests, with no provider calls. 15a-2 builds strategy-specific chunks and document embeddings for every manifest repository, reuses the unchanged cached query embeddings, produces immutable comparison artifacts, applies the precommitted rule and records the result. 15b adopts the committed winner in production only after held-out reporting. 15c is parent expansion after item 17.” Current fixture building reads one default strategy from one evaluation database, so per-strategy artifacts need an explicit lifecycle. |
-| P10 | AMEND | Replace P10 with: “Keep test files indexed and unweighted for every candidate. Report their share of top-five retrieval and preserve the identical policy across strategies; test downweighting/exclusion remains item 14.” Current ingestion labels all chunks `document_type=code`, so the experiment must not imply a test policy that does not exist. |
+| P10 | AMEND | Replace P10 with: “Keep test files indexed and unweighted for every candidate. Report their share of top-five retrieval and preserve the identical policy across strategies; test downweighting/exclusion remains item 14b.” Current ingestion labels all chunks `document_type=code`, so the experiment must not imply a test policy that does not exist. |
 
 ### a) Selection rule at 33 development questions
 
@@ -82,7 +82,7 @@ Existing manifest fixtures are each capped at 1.5 MiB. S0 already has one fixtur
 7. Commit the chosen strategy and its development report, then run held-out offline retrieval once. Report all 15 answerables by repository, but treat only the two new repositories’ 10 answerables as external replication. (amended by Codex review)
 8. Report non-gating chunk/count/distance diagnostics plus de-duplicated span coverage and evidence density; defer threshold selection to 3b after adoption. (amended by Codex review)
 9. Implement 15a-1 as provider-free strategy/descriptor/artifact support and tests; run 15a-2 as the explicit embedding/artifact/comparison phase; perform 15b production adoption only after held-out reporting; reserve 15c for parent expansion after 17. (amended by Codex review)
-10. Keep test files indexed and unweighted for every candidate, and report their top-five share; leave policy changes to item 14. (amended by Codex review)
+10. Keep test files indexed and unweighted for every candidate, and report their top-five share; leave policy changes to item 14b. (amended by Codex review)
 
 ### Open decisions for the maintainer
 
