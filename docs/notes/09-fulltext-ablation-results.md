@@ -77,7 +77,17 @@ The protocol requires all four conditions, evaluated against control:
 | c2 | Pass | Fail | Fail | Pass | No |
 
 The rule therefore retains current behavior. **This item adopts nothing.** Any future
-adoption belongs to item 14c-3, which must make and document that separate decision.
+adoption under this result is closed with no change; reopen only after a separately
+registered comparison.
+
+## Protocol lesson
+
+With 11 development answerable questions per repository, moving one question from rank 1
+to rank 2 changes span MRR by about 0.045. The per-repository MRR-loss limit of 0.03 is
+finer than this dataset can resolve, so almost any such change fails it. The 14c decision
+does not depend on that limit: the pooled gain of +0.004 fails the +0.02 condition on its
+own. The registered rule is not rewritten. Future protocols should state per-repository
+tolerances in whole questions.
 
 ## c3 equivalence and timing
 
@@ -101,6 +111,8 @@ There are only 33 development answerable questions across three tiny, single-aut
 repositories. The results may not transfer to other repositories or query distributions.
 Held-out questions were not used. c1 and c2 remain opt-in evaluation variants; production
 defaults, baselines, gates, manifest and the binding protocol were not changed.
+The opt-in c1/c2 code remains in `app/retrieval` to reproduce the committed results; it is
+not adopted.
 
 Machine-readable report and full per-question details:
 [evaluation/experiments/fulltext/results.json](../../evaluation/experiments/fulltext/results.json).
