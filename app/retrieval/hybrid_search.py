@@ -27,7 +27,12 @@ async def hybrid_search(
     vector_result_by_id = {result["id"]: result for result in vector_results}
     fts_result_by_id = {result["id"]: result for result in fts_results}
 
-    candidate_ids = set(vector_rank_by_id) | set(fts_rank_by_id)
+    candidate_ids = list(vector_rank_by_id)
+    candidate_ids.extend(
+        chunk_id
+        for chunk_id in fts_rank_by_id
+        if chunk_id not in vector_rank_by_id
+    )
     fused: list[dict[str, object]] = []
 
     for chunk_id in candidate_ids:
@@ -66,5 +71,22 @@ async def hybrid_search(
             }
         )
 
-    fused.sort(key=lambda item: item["rrf_score"], reverse=True)
+    fused.sort(
+        key=lambda item: (
+            -float(item["rrf_score"]),
+            vector_rank_by_id.get(item["id"], float("inf")),
+            fts_rank_by_id.get(item["id"], float("inf")),
+            str(item.get("file_path") or ""),
+            (
+                int(item["line_start"])
+                if isinstance(item.get("line_start"), int)
+                else float("inf")
+            ),
+            (
+                int(item["line_end"])
+                if isinstance(item.get("line_end"), int)
+                else float("inf")
+            ),
+        )
+    )
     return fused[:limit]

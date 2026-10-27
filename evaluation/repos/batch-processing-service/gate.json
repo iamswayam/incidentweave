@@ -2,12 +2,12 @@
   "baseline_report": "evaluation/repos/batch-processing-service/offline-baseline.json",
   "baselines": {
     "substring_labels": {
-      "hit_at_5_successes": 13,
-      "mrr": 0.625
+      "hit_at_5_successes": 14,
+      "mrr": 0.6375
     },
     "spans": {
-      "hit_at_5_successes": 14,
-      "mrr": 0.640625
+      "hit_at_5_successes": 15,
+      "mrr": 0.653125
     }
   },
   "tolerance": {

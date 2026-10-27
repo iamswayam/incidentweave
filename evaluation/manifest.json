@@ -116,19 +116,19 @@
       },
       "full_gate": {
         "path": "evaluation/repos/batch-processing-service/gate.json",
-        "sha256": "0e82b6a611ec508b8ca4419d8bec45c9871596621bba15b7c87d0431cfc7365f"
+        "sha256": "952b4d51b1eb562fae65dcb0cccc11a9d42a17e33373e354f19f1c75e657b000"
       },
       "full_baseline": {
         "path": "evaluation/repos/batch-processing-service/offline-baseline.json",
-        "sha256": "cef98f845892959d1c0082bae5bbefbcc71cd9fe5caf889ceb5395337dfea26f"
+        "sha256": "7bda02bb802eb726482bd438eb0ee2d27cd740abd9b5e6c82ec2d7cd33246558"
       },
       "smoke_baseline": {
         "path": "evaluation/repos/batch-processing-service/smoke-baseline.json",
-        "sha256": "9f71837ac08cb90f04e787a11842b784d5cf851b2a2b2de2525c93a0ba4a9be2"
+        "sha256": "ab3bfa89de2e0cf1d920695af138e21ac4f29ed55c3cb3a52cc09261811e2804"
       },
       "smoke_gate": {
         "path": "evaluation/repos/batch-processing-service/smoke-gate.json",
-        "sha256": "e70b1aab66720d4cf7db1d0514aed8497f034bc30f8e776839b5ef33c4e2f76f"
+        "sha256": "9f0d7eb3e990be2923e4687685499cff40aeaa9e7ba22f1f6f498ca6123bc0c7"
       },
       "splits": {
         "development": [

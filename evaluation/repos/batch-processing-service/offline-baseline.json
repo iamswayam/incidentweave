@@ -35,17 +35,17 @@
     {
       "id": "direct-02",
       "category": "direct",
-      "label_rank": null,
-      "span_rank": null,
+      "label_rank": 5,
+      "span_rank": 5,
       "label_hits": {
         "1": false,
         "3": false,
-        "5": false
+        "5": true
       },
       "span_hits": {
         "1": false,
         "3": false,
-        "5": false
+        "5": true
       }
     },
     {
@@ -421,14 +421,14 @@
         ]
       },
       "hit_at_5": {
-        "successes": 13,
-        "rate": 0.8125,
+        "successes": 14,
+        "rate": 0.875,
         "wilson_95": [
-          0.5699064013154177,
-          0.9340852122641324
+          0.6397666856325173,
+          0.9650232506629428
         ]
       },
-      "mrr": 0.625
+      "mrr": 0.6375
     },
     "spans": {
       "count": 16,
@@ -449,14 +449,14 @@
         ]
       },
       "hit_at_5": {
-        "successes": 14,
-        "rate": 0.875,
+        "successes": 15,
+        "rate": 0.9375,
         "wilson_95": [
-          0.6397666856325173,
-          0.9650232506629428
+          0.7167073163197013,
+          0.9888809426916687
         ]
       },
-      "mrr": 0.640625
+      "mrr": 0.653125
     }
   },
   "breakdown_by_category": {
