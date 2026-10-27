@@ -37,8 +37,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13d | In progress | pending | deterministic retrieval ordering |
 | 14c-1 | In progress | pending | full-text diagnostic and preregistered ablation protocol |
 | 14c-2 | In progress | pending | c1/c2 failed the registered rule; c3 equivalence confirmed |
-| 18 | Superseded | n/a | split into 18a, 18b and 18c; see [decision record](09-llm-gateway-decision.md) |
-| 18a | Not started | pending | LiteLLM gateway foundation |
+| 18 | Superseded | n/a | split into 18a-1, 18a-2, 18b and 18c; see [decision record](09-llm-gateway-decision.md) |
+| 18a-1 | In progress | pending | call-site inventory and gateway design note |
+| 18a-2 | Not started | pending | implement the approved gateway foundation |
 | 18b | Not started | pending | ordered generation fallback |
 | 18c | Not started | pending | local embedding model experiment |
 | 16a | Done | #42 | multi-repo harness |
@@ -87,8 +88,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
 | 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
-| 18 | ☐ | Superseded: tracing, cost and latency telemetry split across items 18a–18c | Medium | M | Both |
-| 18a | ☐ | LiteLLM sidecar, Gemini routing, retries, pacing, usage dashboard, secrets and telemetry | High | M–L | Both |
+| 18 | ☐ | Superseded: tracing, cost and latency telemetry split across items 18a-1, 18a-2, 18b and 18c | Medium | M | Both |
+| 18a-1 | ☐ | Call-site inventory and design note for the LiteLLM gateway foundation | High | S–M | Both |
+| 18a-2 | ☐ | Implement the approved LiteLLM sidecar, gating, retries, pacing, usage dashboard, secrets and telemetry | High | M–L | Both |
 | 18b | ☐ | Ordered generation fallback with cooldowns and golden-set validation | Medium | M | Both |
 | 18c | ☐ | Registered local embedding-model experiment with a separate model-labelled fixture and index | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
@@ -107,7 +109,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
-| 4 | **13c**, **14c-1**, **14c-2**, **14c-3**, **18a**, **14b**, **14a**, **14d**, **18b**, **18c**, **3b**, **10**, **5b**, **21** | Settle retrieval, then gateway fallback and embedding options |
+| 4 | **13c**, **14c-1**, **14c-2**, **14c-3**, **18a-1**, **18a-2**, **14b**, **14a**, **14d**, **18b**, **18c**, **3b**, **10**, **5b**, **21** | Settle retrieval, then gateway fallback and embedding options |
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
@@ -169,7 +171,7 @@ Item 3b follows 14c-3, 14d, 14b and 14a because retrieval changes can move vecto
 
 **8. Store a replayable audit.**
 - *Why:* only the parsed diagnosis is stored. Missing: raw model text, raw confidence, prompt, model and embedding versions, generation settings, thresholds [SRC].
-- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, outcome, model, generation latency, error class); per-stage timings are assigned to item 18a.
+- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, outcome, model, generation latency, error class); per-stage timings are assigned to item 18a-2.
 - *Done when:* an old investigation can be explained from its stored data alone.
 - **Status:** 2026-10-27; branch `fix/08-replayable-audit`; changed `migrations/versions/20261026_0004_replayable_audit.py`, `app/db/models/audit.py`, `app/investigation/graph.py`, `app/investigation/persistence.py`, `app/investigation/prompt.py`, `app/investigation/replay.py`, `scripts/investigate.py`, `tests/unit/test_api.py`, `tests/unit/test_investigate_limits.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigation_persistence.py`, `tests/unit/test_investigation_replay.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/architecture/04-threat-model.md` and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 122 passed in 38.84s.
 
@@ -297,15 +299,28 @@ Closed: plan 07 section 5 retained S0 under the precommitted rule, so production
 - *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement (30 labels is a pilot, not proof of reliability; temperature 0 does not guarantee determinism). Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).
 - *Done when:* the report shows judge agreement with humans.
 
-**18. Tracing, cost, latency (superseded by 18a–18c).**
+**18. Tracing, cost, latency (superseded by 18a-1, 18a-2, 18b and 18c).**
 The original item 18 commitments are split below. Items 7 and 8 already provide the minimal
-terminal trace; per-stage telemetry and gateway/provider usage visibility are assigned to 18a.
+terminal trace; per-stage telemetry and gateway/provider usage visibility are assigned to 18a-2.
 - *Fix:* replace direct provider calls with a self-hosted LiteLLM gateway; add ordered generation
   fallback only after validation; evaluate local embeddings under a separate registered protocol.
-- *Done when:* the applicable requirements in 18a, 18b and 18c are met independently.
-- **Status:** Superseded; work is tracked in 18a, 18b and 18c.
+- *Done when:* the applicable requirements in 18a-1, 18a-2, 18b and 18c are met independently.
+- **Status:** Superseded; work is tracked in 18a-1, 18a-2, 18b and 18c.
 
-**18a. LiteLLM gateway foundation.**
+**18a-1. Gateway design and call-site inventory.**
+- *Why:* before any implementation, the team needs a complete view of every provider call site,
+  how the app, scripts, evaluation and tests use Gemini today, and what the gateway must replace.
+  The design doc records the current environment, the placement of the gateway, and the decisions
+  that still need a maintainer choice.
+- *Fix:* inventory the current generation and embedding call sites, how keys are loaded, how
+  retries and pacing are handled today, how tests replace the provider, what the current compose
+  layout is, and what the gateway must do to replace those call paths without a silent bypass.
+- *Done when:* the architecture review note is committed, the call-site table is complete, the
+  gateway placement, secrets and runtime behavior are described, and the maintainer has a
+  decision list for the remaining implementation choices.
+- **Status:** In progress; PR pending.
+
+**18a-2. LiteLLM gateway foundation (original 18a commitment).**
 - *Why:* rate limits and repeated embedding work have interrupted experiments; the application
   currently has no shared usage dashboard or provider gateway. The `gemini-embedding-001`
   free-tier numbers recorded in [the gateway decision](09-llm-gateway-decision.md) are
@@ -324,6 +339,7 @@ terminal trace; per-stage telemetry and gateway/provider usage visibility are as
   have no cross-model fallback; unit tests mock the gateway; CI requires neither gateway nor key;
   offline evaluation and embedding cache are unchanged; security rules are documented; the
   existing terminal trace and the promised per-stage latency/cost telemetry are covered.
+- **Status:** Not started; PR pending.
 
 **18b. Ordered generation fallback.**
 - *Why:* a provider quota or outage can block generation, but fallback output can differ in
