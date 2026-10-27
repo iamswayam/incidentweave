@@ -9,3 +9,4 @@
 | 05 | [05-multi-repo-evaluation.md](05-multi-repo-evaluation.md) | Manifest-driven repository selection, splits, smoke gates, and evaluation limits (item 16a) |
 | 06 | [06-chunking-strategies.md](06-chunking-strategies.md) | Deterministic candidate chunkers and the S3 embedding text (item 15a-1) |
 | 07 | [07-retrieval-inspection-report.md](07-retrieval-inspection-report.md) | Per-question retrieval inspection cards and how to read them (item 13c) |
+| 08 | [08-fulltext-diagnostic.md](08-fulltext-diagnostic.md) | Full-text query, token, and OR-match diagnostic (item 14c-1) |
