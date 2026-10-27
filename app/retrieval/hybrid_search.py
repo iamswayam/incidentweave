@@ -12,6 +12,9 @@ async def hybrid_search(
     query_text: str,
     query_embedding: list[float],
     limit: int = 10,
+    *,
+    fulltext_query_text: str | None = None,
+    searchable_text_version: str | None = None,
 ) -> list[dict[str, object]]:
     """Fuse vector and FTS results using reciprocal rank fusion (RRF)."""
 
@@ -19,7 +22,19 @@ async def hybrid_search(
         return []
 
     vector_results = await search_vector(session, repository_id, query_embedding, limit=limit)
-    fts_results = await search_fulltext(session, repository_id, query_text, limit=limit)
+    if fulltext_query_text is None and searchable_text_version is None:
+        fts_results = await search_fulltext(
+            session, repository_id, query_text, limit=limit
+        )
+    else:
+        fts_results = await search_fulltext(
+            session,
+            repository_id,
+            query_text,
+            limit=limit,
+            query_text_override=fulltext_query_text,
+            searchable_text_version=searchable_text_version,
+        )
 
     vector_rank_by_id = {result["id"]: index + 1 for index, result in enumerate(vector_results)}
     fts_rank_by_id = {result["id"]: index + 1 for index, result in enumerate(fts_results)}

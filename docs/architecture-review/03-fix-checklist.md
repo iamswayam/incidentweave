@@ -36,6 +36,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13c | In progress | pending | retrieval inspection report |
 | 13d | In progress | pending | deterministic retrieval ordering |
 | 14c-1 | In progress | pending | full-text diagnostic and preregistered ablation protocol |
+| 14c-2 | In progress | pending | c1/c2 failed the registered rule; c3 equivalence confirmed |
 | 18 | Superseded | n/a | split into 18a, 18b and 18c; see [decision record](09-llm-gateway-decision.md) |
 | 18a | Not started | pending | LiteLLM gateway foundation |
 | 18b | Not started | pending | ordered generation fallback |
@@ -73,7 +74,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13c | ☑ | Retrieval inspection report: per-question cards (evidence, top 5 chunks, scores, guard decision) generated offline from the fixtures | High | S | Both |
 | 13d | ☑ | Deterministic tie-break in hybrid, vector and full-text search; measured tie noise | High | S | Both |
 | 14c-1 | ☐ | Diagnose full-text matching and preregister the ablation protocol | High | S | Both |
-| 14c-2 | ☐ | Compare OR-query and searchable-text variants under the registered rule | High | M | Both |
+| 14c-2 | ☐ | Compare c1/c2 under the registered rule; c3 equivalence only | High | M | Both |
 | 14c-3 | ☐ | Adopt a qualifying lexical variant; refresh baselines in the adoption PR | High | M | Both |
 | 14d | ☐ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
 | 14b | ☐ | Evaluate a test-file retrieval policy | High | S–M | Both |
@@ -234,6 +235,7 @@ Item 3b follows 14c-3, 14d, 14b and 14a because retrieval changes can move vecto
 - *Why:* the 14c-1 diagnostic can show whether a lexical branch is empty and whether broad OR matching reaches labeled spans, but it does not establish a retrieval-quality improvement.
 - *Fix:* compare c1 (sanitized-token OR queries) and c2 (c1 plus snake_case/camelCase splitting in searchable chunk text) as separate changes. Evaluate c3 only for generated-vector equivalence and performance; do not make a quality claim for the index.
 - *Done when:* one variant per run is compared against the fixed control on development data; the report contains the protocol metrics, paired bootstrap interval and descriptive exact sign test; only variants meeting every precommitted quality condition can advance.
+- **Status:** In progress; PR pending. Control matched every committed development baseline question. Neither c1 nor c2 met all four conditions; c3 was equivalent for all 48 development questions. No variant is adopted. See [the results note](../notes/09-fulltext-ablation-results.md) and [machine-readable report](../../evaluation/experiments/fulltext/results.json).
 
 **14c-3. Adopt a qualifying lexical variant.**
 - *Why:* lexical changes can affect both matching and ranking, so adoption requires frozen evidence and an explicit comparison rather than the diagnostic alone.
