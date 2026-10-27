@@ -35,6 +35,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13b | Done | #40 | CI gate and generation settings. |
 | 13c | In progress | pending | retrieval inspection report |
 | 13d | In progress | pending | deterministic retrieval ordering |
+| 14c-1 | In progress | pending | full-text diagnostic and preregistered ablation protocol |
 | 16a | Done | #42 | multi-repo harness |
 | 16b | Done | #44 | batch-processing-service data |
 | 16c | Done | #46 | lifeos data |
@@ -67,7 +68,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 13c | ☑ | Retrieval inspection report: per-question cards (evidence, top 5 chunks, scores, guard decision) generated offline from the fixtures | High | S | Both |
 | 13d | ☑ | Deterministic tie-break in hybrid, vector and full-text search; measured tie noise | High | S | Both |
-| 14 | ☐ | Cheap retrieval ablations: embedding task type, test-file policy, full-text fix | High | S–M each | Both |
+| 14c-1 | ☐ | Diagnose full-text matching and preregister the ablation protocol | High | S | Both |
+| 14c-2 | ☐ | Compare OR-query and searchable-text variants under the registered rule | High | M | Both |
+| 14c-3 | ☐ | Adopt a qualifying lexical variant; refresh baselines in the adoption PR | High | M | Both |
+| 14d | ☐ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
+| 14b | ☐ | Evaluate a test-file retrieval policy | High | S–M | Both |
+| 14a | ☐ | Evaluate embedding task type after lexical and test-file ablations | Medium | M | Both |
 | 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
 | 15a-2 | ☑ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
 | 15b | ☑ | Adopt the selected chunker in production ingestion, version it and re-ingest | High | M | New (data-driven, see Part A) |
@@ -93,12 +99,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17**, **3b** | Measurement you can trust before tuning |
-| 4 | **13c**, **14**, **10**, **5b**, **21** | Retrieval and provider execution, measured against step 3 |
+| 4 | **13c**, **14c-1**, **14c-2**, **14c-3**, **14d**, **14b**, **14a**, **10**, **5b**, **21** | Retrieval and provider execution, measured against step 3 |
 | 5 | **20**, **12b**, **18** (rest), **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
-Item 13c precedes 14 so ablation results can be judged with the inspection report.
+Item 13c precedes 14c-1 so ablation results can be judged with the inspection report.
 
 Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker. Item 13d precedes 13c so the inspection report is reproducible.
 
@@ -209,13 +215,36 @@ Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15
 - *Done when:* 20 repeated runs give one outcome per repository and split; only baseline aggregates that differ under deterministic ordering are refreshed, with gate tolerances unchanged; the 15a-2 decision is re-checked.
 - **Status:** Done; PR pending.
 
-**14. Cheap retrieval ablations (each is one row in an ablation table).**
-- *Why:* full-text returned nothing for 14 of 16 answerable questions [ART], consistent with and likely amplified by `websearch_to_tsquery` ANDing all words [PostgreSQL docs] (the SQL has not been traced to rule out stemming, stop words or query wording; sub-experiment (c) includes a one-query check); no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs]; 44% of top-5 results come from `tests/` [EXEC on the committed `baseline.json`].
-- *Fix, as three separate experiments:*
-  - (a) Add `task_type` (documents `RETRIEVAL_DOCUMENT`, queries `CODE_RETRIEVAL_QUERY`) and re-embed.
-  - (b) Tag tests `document_type="test"`, then compare keep / downweight / exclude.
-  - (c) Build an OR query from extracted identifiers and keywords, split `snake_case` and `camelCase` into extra searchable text, and add a generated `tsvector` column with a GIN index.
-- *Done when:* a committed ablation table with confidence intervals; keep only changes that help without hurting. One change per run, with re-embedding versioned. Report test-file recall and precision, not only aggregate Hit@5. HNSW and GIN indexes are scale work, not a quality ablation at 70 chunks.
+**14c-1. Full-text diagnostic and preregistered protocol.**
+- *Why:* full-text returned nothing for 14 of 16 answerable questions in the original single-repository baseline [ART]. That result is consistent with `websearch_to_tsquery` requiring multiple terms, but the prior diagnosis did not isolate query semantics from stop words, stemming, absent terms or phrasing. The three-repository development diagnostic is recorded in [note 08](../notes/08-fulltext-diagnostic.md).
+- *Fix:* report exact current queries, PostgreSQL tsquery output, current and OR match counts, evidence-span overlap, stop words, stemming, identifier decomposition and terms absent from each repository. Commit [the item 14 protocol](08-retrieval-ablation-protocol.md) before implementing variants.
+- *Done when:* all answerable development questions in the three repositories are reported, conclusions distinguish observed results from hypotheses, and the protocol fixes control, variants, metrics, safety constraints and decision rule before any variant exists.
+- **Status:** In progress; PR pending.
+
+**14c-2. Run the registered lexical variants.**
+- *Why:* the 14c-1 diagnostic can show whether a lexical branch is empty and whether broad OR matching reaches labeled spans, but it does not establish a retrieval-quality improvement.
+- *Fix:* compare c1 (sanitized-token OR queries) and c2 (c1 plus snake_case/camelCase splitting in searchable chunk text) as separate changes. Evaluate c3 only for generated-vector equivalence and performance; do not make a quality claim for the index.
+- *Done when:* one variant per run is compared against the fixed control on development data; the report contains the protocol metrics, paired bootstrap interval and descriptive exact sign test; only variants meeting every precommitted quality condition can advance.
+
+**14c-3. Adopt a qualifying lexical variant.**
+- *Why:* lexical changes can affect both matching and ranking, so adoption requires frozen evidence and an explicit comparison rather than the diagnostic alone.
+- *Fix:* adopt only a qualifying 14c-2 variant. Refresh affected baselines in this adoption PR only, preserve gate tolerances, and update the retrieval documentation.
+- *Done when:* the selected variant and rationale are recorded before adoption, all repository gates pass against refreshed baselines if needed, and docs describe the resulting behavior. If no variant qualifies, retain current retrieval.
+
+**14d. Offline Python BM25 versus `ts_rank` (after 14c).**
+- *Why:* the current lexical rank may not be the best fit for small code repositories, but an additional ranking method should be justified by measured gains.
+- *Fix:* compare offline Python-side BM25 with PostgreSQL `ts_rank` on the same development fixtures. Do not add a PostgreSQL extension for this experiment.
+- *Done when:* a paired development comparison reports ranking and cost; adopt in production only if BM25 wins clearly and an extension is justified.
+
+**14b. Test-file retrieval policy.**
+- *Why:* tests accounted for 44% of top-five results in the original baseline [EXEC], and may compete with source evidence.
+- *Fix:* tag tests with `document_type="test"` and compare keep / downweight / exclude without changing chunking or lexical settings from the selected 14c control.
+- *Done when:* a committed comparison reports retrieval effects plus test-source recall and precision; retain a policy only if it helps without harming the registered safeguards.
+
+**14a. Embedding task type (last).**
+- *Why:* no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs].
+- *Fix:* compare document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY` task types after 14c and 14b, versioning and rebuilding embeddings as a distinct run.
+- *Done when:* one embedding change is compared with the selected lexical and test-file control using paired frozen development results; keep it only if it helps without harming the safeguards. Provider quota use is explicit and bounded.
 
 **15a-1. Chunking comparison foundation (after 16a).**
 - *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
@@ -393,7 +422,7 @@ Closed: plan 07 section 5 retained S0 under the precommitted rule, so production
 **A practical learning path (tied to the checklist)**
 1. Implement nDCG and context precision in `metrics.py` with unit tests (item 13).
 2. Write the function-aware chunker and print how the chunk boundaries change for two files (item 15).
-3. Run the ablation and read the table (item 14).
+3. Run the registered lexical ablation and read the table (item 14c-2).
 4. Write the judge prompt, label 30 answers yourself, compare (item 17).
 5. Learn just enough statistics to read an interval and a paired test.
 
