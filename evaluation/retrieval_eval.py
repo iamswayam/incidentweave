@@ -10,8 +10,11 @@ from sqlalchemy import select
 
 from app.db.models import Chunk, Repository
 from app.db.session import AsyncSessionLocal
+from app.retrieval.fulltext_search import search_fulltext
+from app.retrieval.fulltext_variants import SEARCHABLE_TEXT_VERSION
 from app.retrieval.hybrid_search import hybrid_search
 from evaluation.build_fixture import load_fixture
+from evaluation.fulltext_ablation import build_protocol_query
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
     MANIFEST_PATH,
@@ -84,10 +87,14 @@ async def run_offline_retrieval(
     root: Path = ROOT,
     record_retrieved: bool = False,
     record_details: bool = False,
+    variant: str = "control",
+    record_variant_details: bool = False,
 ) -> dict[str, Any]:
     """Evaluate vector-plus-FTS retrieval without provider calls."""
 
     question_records: list[dict[str, Any]] = []
+    if variant not in {"control", "c1", "c2"}:
+        raise ValueError(f"Unknown full-text variant: {variant}")
     if entry is None:
         manifest = load_manifest(manifest_path, root=root)
         entry = repository_entry(manifest, repo_id)
@@ -138,13 +145,52 @@ async def run_offline_retrieval(
                     raise ValueError(
                         f"Fixture lacks cached query embedding for {question_id}"
                     )
-                results = await hybrid_search(
-                    session,
-                    repository_id,
-                    question["question"],
-                    fixture_queries[question_id],
-                    limit=limit,
-                )
+                fulltext_query_text: str | None = None
+                searchable_text_version: str | None = None
+                query_metadata: dict[str, Any] | None = None
+                if variant in {"c1", "c2"}:
+                    built_query = await build_protocol_query(
+                        session,
+                        str(question["question"]),
+                    )
+                    fulltext_query_text = built_query.query_text
+                    query_metadata = {
+                        "query_token_count": len(built_query.tokens),
+                        "query_truncated": built_query.truncated,
+                    }
+                    if variant == "c2":
+                        searchable_text_version = SEARCHABLE_TEXT_VERSION
+
+                text_branch_nonempty: bool | None = None
+                if record_variant_details:
+                    branch_results = await search_fulltext(
+                        session,
+                        repository_id,
+                        str(question["question"]),
+                        limit=limit,
+                        query_text_override=fulltext_query_text,
+                        searchable_text_version=searchable_text_version,
+                    )
+                    text_branch_nonempty = bool(branch_results)
+
+                if fulltext_query_text is None and searchable_text_version is None:
+                    results = await hybrid_search(
+                        session,
+                        repository_id,
+                        question["question"],
+                        fixture_queries[question_id],
+                        limit=limit,
+                    )
+                else:
+                    results = await hybrid_search(
+                        session,
+                        repository_id,
+                        question["question"],
+                        fixture_queries[question_id],
+                        limit=limit,
+                        fulltext_query_text=fulltext_query_text,
+                        searchable_text_version=searchable_text_version,
+                    )
                 answerable = question["category"] in {"direct", "paraphrased"}
                 label_rank = (
                     first_relevant_rank(results, question.get("relevant", []))
@@ -195,6 +241,10 @@ async def run_offline_retrieval(
                         }
                         for result in results[:limit]
                     ]
+                if query_metadata is not None:
+                    record.update(query_metadata)
+                if text_branch_nonempty is not None:
+                    record["text_branch_nonempty"] = text_branch_nonempty
                 question_records.append(record)
     finally:
         await _delete_fixture_repository(fixture_repository)
