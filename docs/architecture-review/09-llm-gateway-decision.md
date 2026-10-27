@@ -1,5 +1,11 @@
 # LLM gateway decision (item 18)
 
+## Revision (2026-10-28)
+
+DIRECTION (approved 2026-10-28): do not deploy the LiteLLM proxy now. Build our own thin provider layer, written so a gateway can be plugged in later. Reasons: the failures that hurt this app are not solved by a gateway (a Gemini outage should still return cited retrieved evidence; pacing is a manual flag today; no caching); a proxy adds a container, a database and a single point of failure on the critical path for one app run by one developer; it puts a translation layer between us and Gemini (our structured JSON output and embedding task_type, which item 14a needs and which LiteLLM's proxy docs do not confirm: https://docs.litellm.ai/blog/gemini_embedding_2_ga); every fallback model needs our own golden-set and citation validation either way. LiteLLM facts that stay true: its spend tracking, admin UI, virtual keys, rate limits and fallbacks are open source and SSO is free up to 5 users, audit logs are enterprise (https://docs.litellm.ai/docs/enterprise.md); in March 2026 PyPI releases 1.82.7 and 1.82.8 were compromised, Docker proxy users were not affected, v1.83.0 is the clean release (https://docs.litellm.ai/blog/security-update-march-2026). Gateway revisit triggers: three or more providers in real use, a wish for its dashboard and key management, or a second service needing LLM access. If adopted later, the security rules in 09 apply (official image, pinned by digest, 1.83.0 or later, no unpinned pip install).
+
+## Historical decision record (superseded in part)
+
 ## Context
 
 Provider quotas constrain both request rate and total usage. Reported free-tier limits for
@@ -107,14 +113,16 @@ fallback is equivalent to Gemini or that any listed quota will remain available.
 
 ## Sequence
 
-1. **18a-1 — gateway design and inventory:** call-site inventory, placement, secrets and runtime decision list for the LiteLLM gateway.
-2. **18a-2 — gateway foundation:** pinned LiteLLM sidecar, Gemini-only routing, safe retry/pacing,
-   usage visibility, secret-free config, and application/telemetry integration.
-3. **18b — generation fallback:** ordered Gemini, Groq, then Cerebras or OpenRouter free routes,
-   with cooldowns, config-driven limits, and golden-set output/citation validation.
-4. **18c — local embeddings:** register a development-only model comparison protocol, build a
+1. **18a-1 — provider-layer design and inventory:** call-site inventory, placement, secrets and runtime decision list for the own-provider layer.
+2. **18a-2 — provider layer foundation:** own thin provider interfaces, Gemini adapter, rate limiter and cooldown, no default behavior change.
+3. **18a-3 — usage log and report:** store provider telemetry without prompt or response bodies, plus a small report script.
+4. **18b — generation fallback:** ordered Groq, then Cerebras or OpenRouter free routes via OpenAI-compatible HTTP, with cooldowns, config-driven limits, and golden-set output/citation validation.
+5. **18c — local embeddings:** register a development-only model comparison protocol, build a
    separate fixture and index labelled by `embedding_model`, and adopt only if its rule passes.
    There is no automatic cross-model embedding fallback.
+6. **18d — graceful degradation:** return retrieved cited evidence with an explicit unavailable-answer flag when generation fails, or lexical-only degraded retrieval with a flag when embeddings fail. This design requires maintainer approval before implementation.
+
+External claims and prices, terms, limits, incident details, and LiteLLM documentation points cited above are not independently verified in this documentation-only record beyond the explicitly named sources. Re-check applicable sources before implementation and deployment.
 
 External claims and prices, terms, limits, and incident details cited above are not independently
 verified in this documentation-only decision record. Re-check applicable sources before
