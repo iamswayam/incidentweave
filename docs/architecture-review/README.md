@@ -12,6 +12,7 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 | 06 | [06-multi-repo-evaluation-plan.md](06-multi-repo-evaluation-plan.md) | Claude, reviewed by Codex | Multi-repo evaluation plan and review | Living |
 | 07 | [07-chunking-comparison-plan.md](07-chunking-comparison-plan.md) | Claude, reviewed by Codex | Chunking comparison plan and review | Living |
 | 08 | [08-retrieval-ablation-protocol.md](08-retrieval-ablation-protocol.md) | Maintainer | Preregistered retrieval ablation protocol (item 14) | Living |
+| 09 | [09-llm-gateway-decision.md](09-llm-gateway-decision.md) | Maintainer | LLM gateway decision and item 18 sequence | Living |
 
 ## Conventions
 - Files are named `NN-kebab-case.md` in reading order. A new document takes the next number.
