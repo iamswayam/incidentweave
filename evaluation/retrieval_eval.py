@@ -83,6 +83,7 @@ async def run_offline_retrieval(
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
     record_retrieved: bool = False,
+    record_details: bool = False,
 ) -> dict[str, Any]:
     """Evaluate vector-plus-FTS retrieval without provider calls."""
 
@@ -171,7 +172,21 @@ async def run_offline_retrieval(
                         for k in (1, 3, 5)
                     },
                 }
-                if record_retrieved:
+                if record_details:
+                    record["retrieved"] = [
+                        {
+                            "rank": rank,
+                            "file_path": result["file_path"],
+                            "line_start": result["line_start"],
+                            "line_end": result["line_end"],
+                            "content": result["content"],
+                            "vector_score": result["vector_score"],
+                            "fts_score": result["fts_score"],
+                            "rrf_score": result["rrf_score"],
+                        }
+                        for rank, result in enumerate(results[:limit], start=1)
+                    ]
+                elif record_retrieved:
                     record["retrieved"] = [
                         {
                             "file_path": result["file_path"],
