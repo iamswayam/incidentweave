@@ -1276,7 +1276,7 @@ outcome_changes               : paraphrased-03
 
 This report is a valid fresh run: its `code_sha` is the committed `305200f` that contains the exact-match implementation, and `code_dirty` is false. The one untracked file is the pre-existing `evaluation/results/run-2.json`; it is counted separately and was not staged or committed.
 
-The current implementation checked in [evaluation/metrics.py](/D:/Projects/incidentweave/evaluation/metrics.py) is:
+The current implementation checked in [evaluation/metrics.py](../../evaluation/metrics.py) is:
 
 ```python
 if not generation_ran:
