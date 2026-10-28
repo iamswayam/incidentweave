@@ -134,8 +134,8 @@ The usage log is the provider-layer telemetry table. It must store provider-leve
 | `provider` | string | e.g. `gemini` |
 | `model` | string | provider model name |
 | `operation_tag` | string | `query_embedding`, `document_embedding`, `generation`, `experiment_embedding`, `evaluation` |
-| `status` | string | success, rate_limited, server_error, timeout, auth, bad_request, safety_blocked, schema_invalid |
-| `error_class` | string or null | null on success |
+| `status` | string | `success` or `failure` only |
+| `error_class` | string or null | one of the provider error-taxonomy values; null on success |
 | `attempt_count` | integer | number of retries attempted |
 | `latency_ms` | integer or null | provider call latency |
 | `input_tokens` | integer or null | if the provider reports it |
@@ -157,11 +157,26 @@ Supported operation tags in the provider layer are:
 
 These tags differentiate offline evaluation, runtime queries, generation, and long-running embedding experiments. The report script can aggregate usage by tag to measure cost and failure patterns without storing human-code content.
 
-## How schema changes are managed in this repo
+## LLM response schema
 
-Schema changes are managed explicitly in code rather than by implicit model output. In this repo the generation schema is defined in `RESPONSE_SCHEMA` inside [app/investigation/generation.py](C:/Projects/incidentweave/app/investigation/generation.py), and the tests assert the exact schema and payload shape in [tests/unit/test_gemini_api_key_header.py](C:/Projects/incidentweave/tests/unit/test_gemini_api_key_header.py) and [tests/unit/test_gemini_provider.py](C:/Projects/incidentweave/tests/unit/test_gemini_provider.py).
+LLM response schema changes are managed explicitly in code rather than by implicit model output. In this repo the generation schema is defined in `RESPONSE_SCHEMA` inside [../../app/investigation/generation.py](../../app/investigation/generation.py), and the tests assert the exact schema and payload shape in [../../tests/unit/test_gemini_api_key_header.py](../../tests/unit/test_gemini_api_key_header.py) and [../../tests/unit/test_gemini_provider.py](../../tests/unit/test_gemini_provider.py).
 
 That means a provider schema change is recorded in code, checked by tests, and reviewed as a deliberate contract change. The repo does not rely on unspecified model drift or runtime-only schema assumptions.
+
+## Database schema changes
+
+Database schema changes are managed through Alembic migrations, not through ad hoc SQL or code-generated tables. The repository-specific settings are in [../../alembic.ini](../../alembic.ini), and the migration runner is [../../migrations/env.py](../../migrations/env.py). It reads the configured `DATABASE_URL`, converts PostgreSQL URLs to the async SQLAlchemy driver the app uses, and then runs `context.run_migrations()` against the project metadata defined from [../../app/db/base.py](../../app/db/base.py) and the modules under [../../app/db/models](../../app/db/models).
+
+The migration revisions are numbered and named in timestamp order, for example:
+
+- `20260819_0001_initial_schema.py`
+- `20261024_0002_investigation_outcome.py`
+- `20261025_0003_ingest_runs.py`
+- `20261026_0004_replayable_audit.py`
+
+Each file uses an Alembic `revision` and `down_revision` pair, so the history is linear and auditable. The latest revision in this repo is `20261026_0004_replayable_audit.py`; it added the replayable audit fields (`prompt`, `prompt_version`, `raw_response`, `raw_self_rating`, `generation_params`, `thresholds`, `embedding_model`, `chunk_records`, `trace`), and the current ORM model in [../../app/db/models/audit.py](../../app/db/models/audit.py) matches that migration history.
+
+CI applies the migrations before test execution. In [../../.github/workflows/ci.yml](../../.github/workflows/ci.yml), the workflow provisions a PostgreSQL service, then runs `alembic upgrade head` before the offline retrieval gate and pytest. That is the verified CI path in this repo. The usage log table for 18a-3 is a new database change and should follow the same pattern: add an Alembic migration revision numbered `0005` and a corresponding ORM model in the app DB models package, with no prompt or response text columns stored in the usage table.
 
 ## Embeddings
 
@@ -169,7 +184,7 @@ The direct REST call supports Gemini task types natively. That is the contract t
 
 What we could verify in this repo:
 
-- the current direct embedding flow in [scripts/embed_chunks.py](C:/Projects/incidentweave/scripts/embed_chunks.py) posts a model plus `outputDimensionality` and expects a 768-length vector
+- the current direct embedding flow in [../../scripts/embed_chunks.py](../../scripts/embed_chunks.py) posts a model plus `outputDimensionality` and expects a 768-length vector
 - the app currently calls the direct Gemini REST API, not a proxy or gateway, for both query and document embeddings
 - the project already records the need for `task_type` in item 14a and the design expects a native provider-level task-type contract
 
