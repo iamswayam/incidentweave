@@ -38,10 +38,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-1 | In progress | pending | full-text diagnostic and preregistered ablation protocol |
 | 14c-2 | Done | #61 | c1/c2 failed the registered rule; c3 equivalence confirmed; no variant adopted |
 | 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
-| 18 | Superseded | n/a | split into 18a, 18b and 18c; see [decision record](09-llm-gateway-decision.md) |
-| 18a | Not started | pending | LiteLLM gateway foundation |
-| 18b | Not started | pending | ordered generation fallback |
-| 18c | Not started | pending | local embedding model experiment |
+| 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
+| 18a-1 | In progress | pending | Provider layer design (this PR) |
+| 18a-2 | Not started | pending | Provider interfaces, Gemini adapter, rate limiter and cooldown |
+| 18a-3 | Not started | pending | Usage log table and report |
+| 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
+| 18c | Not started | pending | Local open embedding model experiment |
+| 18d | Not started | pending | Graceful degradation and degraded-response API contract |
 | 16a | Done | #42 | multi-repo harness |
 | 16b | Done | #44 | batch-processing-service data |
 | 16c | Done | #46 | lifeos data |
@@ -88,10 +91,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
 | 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
-| 18 | ☐ | Superseded: tracing, cost and latency telemetry split across items 18a–18c | Medium | M | Both |
-| 18a | ☐ | LiteLLM sidecar, Gemini routing, retries, pacing, usage dashboard, secrets and telemetry | High | M–L | Both |
-| 18b | ☐ | Ordered generation fallback with cooldowns and golden-set validation | Medium | M | Both |
+| 18 | ☐ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
+| 18a-1 | ☐ | Provider layer design and call-site inventory | High | S–M | Both |
+| 18a-2 | ☐ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
+| 18a-3 | ☐ | Usage log table and report without prompt or response text | High | M | Both |
+| 18b | ☐ | Ordered generation fallback through Groq and Cerebras over OpenAI-compatible HTTP | Medium | M | Both |
 | 18c | ☐ | Registered local embedding-model experiment with a separate model-labelled fixture and index | Medium | M | Both |
+| 18d | ☐ | Graceful degradation and degraded-response API contract | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
 | 20 | ☐ | Multi-artifact ingestion (docs, configs, logs) with metadata | Medium | L | Both |
 | 21 | ☐ | Reranker experiment | Low | M | Both |
@@ -108,7 +114,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
-| 4 | **13c**, **14c-1**, **14c-2**, **18a**, **14b**, **14a**, **14d**, **18b**, **18c**, **3b**, **10**, **5b**, **21** | Settle retrieval, then gateway fallback and embedding options |
+| 4 | **14c-2**, **14c-3**, **18a**, **14b**, **14a**, **14d**, **18b**, **18d**, **18c**, **3b** | Settle retrieval and provider/fallback design before the final guard validation |
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
@@ -170,7 +176,7 @@ Item 3b follows the remaining retrieval changes (14d, 14b and 14a) because retri
 
 **8. Store a replayable audit.**
 - *Why:* only the parsed diagnosis is stored. Missing: raw model text, raw confidence, prompt, model and embedding versions, generation settings, thresholds [SRC].
-- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, outcome, model, generation latency, error class); per-stage timings are assigned to item 18a.
+- *Fix:* one versioned per-chunk record (chunk ID, content hash, rank, scores, kept or dropped) instead of parallel score arrays. Store the raw response, raw confidence, prompt template version, generation parameters, thresholds, embedding model and a source reference. A prompt hash alone is not replayable. The prompt contains source code, so restrict who can read stored prompts. Include a minimal terminal trace event (correlation ID, outcome, model, generation latency, error class); per-stage timings are assigned to item 18a-2.
 - *Done when:* an old investigation can be explained from its stored data alone.
 - **Status:** 2026-10-27; branch `fix/08-replayable-audit`; changed `migrations/versions/20261026_0004_replayable_audit.py`, `app/db/models/audit.py`, `app/investigation/graph.py`, `app/investigation/persistence.py`, `app/investigation/prompt.py`, `app/investigation/replay.py`, `scripts/investigate.py`, `tests/unit/test_api.py`, `tests/unit/test_investigate_limits.py`, `tests/unit/test_investigation_graph.py`, `tests/unit/test_investigation_persistence.py`, `tests/unit/test_investigation_replay.py`, `README.md`, `docs/architecture/01-architecture-overview.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/architecture/04-threat-model.md` and `docs/architecture-review/03-fix-checklist.md`; `ruff check .`: All checks passed!; `pytest -q`: 122 passed in 38.84s.
 
@@ -300,55 +306,85 @@ Closed: plan 07 section 5 retained S0 under the precommitted rule, so production
 - *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement (30 labels is a pilot, not proof of reliability; temperature 0 does not guarantee determinism). Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).
 - *Done when:* the report shows judge agreement with humans.
 
-**18. Tracing, cost, latency (superseded by 18a–18c).**
+**18. Tracing, cost, latency (superseded by 18a-1, 18a-2, 18a-3, 18b, 18c and 18d).**
 The original item 18 commitments are split below. Items 7 and 8 already provide the minimal
-terminal trace; per-stage telemetry and gateway/provider usage visibility are assigned to 18a.
-- *Fix:* replace direct provider calls with a self-hosted LiteLLM gateway; add ordered generation
+terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 and 18a-3.
+- *Fix:* replace the direct proxy-like assumptions with a thin provider layer; add ordered generation
   fallback only after validation; evaluate local embeddings under a separate registered protocol.
-- *Done when:* the applicable requirements in 18a, 18b and 18c are met independently.
-- **Status:** Superseded; work is tracked in 18a, 18b and 18c.
+- *Done when:* the applicable requirements in 18a-1, 18a-2, 18a-3, 18b, 18c and 18d are met independently.
+- **Status:** Superseded; work is tracked in 18a-1, 18a-2, 18a-3, 18b, 18c and 18d.
 
-**18a. LiteLLM gateway foundation.**
-- *Why:* rate limits and repeated embedding work have interrupted experiments; the application
-  currently has no shared usage dashboard or provider gateway. The `gemini-embedding-001`
-  free-tier numbers recorded in [the gateway decision](09-llm-gateway-decision.md) are
-  unconfirmed and must be re-verified.
-- *Fix:* run the official LiteLLM Docker sidecar, pinned by digest at version 1.83.0 or later,
-  initially routing Gemini only. Use bounded retries with capped exponential backoff and jitter;
-  honor `Retry-After` when present but never depend on it. Classify 429, 5xx, timeout and bad
-  request errors; pace requests and expose provider HTTP status without logging keys. Put
-  secret-free configuration in the repository and load keys from ignored `.env` for local
-  development or Docker secrets in deployment. Route generation and document/query embeddings
-  through the gateway on the same configured model only. Add OpenTelemetry spans, per-request
-  token/cost estimates and p50/p95 per-stage latency; the existing terminal trace remains in
-  items 7–8. Use LiteLLM's usage dashboard for provider/model/user/tag/key spend.
-- *Done when:* Compose service and secret-free config are committed; the app calls the gateway
-  for generation and document/query embeddings; app usage is visible in the dashboard; embeddings
-  have no cross-model fallback; unit tests mock the gateway; CI requires neither gateway nor key;
-  offline evaluation and embedding cache are unchanged; security rules are documented; the
-  existing terminal trace and the promised per-stage latency/cost telemetry are covered.
+**18a-1. Provider layer design (this PR).**
+- *Why:* before any implementation, the team needs a complete view of every provider call site,
+  how the app, scripts, evaluation and tests use Gemini today, and what the provider layer must
+  wrap or replace without a silent bypass.
+- *Fix:* inventory the current generation and embedding call sites, how keys are loaded, how retries
+  and pacing are handled today, how tests replace the provider, what the current compose layout is,
+  and what the provider layer must do to keep the app stable and later allow a gateway.
+- *Done when:* the architecture review note is committed, the call-site table is complete, the
+  placement, configuration, error taxonomy and provider policy are described, and the maintainer has
+  a decision list for the remaining implementation choices.
+- **Status:** In progress; PR pending.
 
-**18b. Ordered generation fallback.**
-- *Why:* a provider quota or outage can block generation, but fallback output can differ in
-  quality and structured-output behavior.
-- *Fix:* configure ordered Gemini, Groq, then Cerebras or OpenRouter free routes, with cooldowns,
-  explicit error classification and defined terminal failure behavior. Read provider limits from
-  gateway configuration; never hard-code assumed free-tier quotas.
-- *Done when:* every fallback model passes schema validity and citation-quote validation on the
-  golden set; each answer records its provider and model; limits are configuration-driven; and
-  exhausted routes fail explicitly rather than returning a success-shaped fallback.
+**18a-2. Provider interfaces, Gemini adapter, rate limiter, cooldown (no behaviour change by default).**
+- *Why:* the app needs a thin provider abstraction without changing default behavior. A later gateway
+  can plug into the same interface without rewriting graph, scripts or tests.
+- *Fix:* define provider interfaces for generation and embeddings, wrap `app/providers/gemini.py` as
+  the first adapter, keep the existing `generate_investigation`, `embed_text` and `embed_texts`
+  signatures unchanged, and add config-driven async rate limiting and a cooldown/circuit breaker. Use
+  `httpx` only; no new dependency.
+- *Done when:* the shared provider interfaces exist, the Gemini adapter is the first adapter, retry,
+  cooldown and rate limiting are configurable, tests remain mocked/offline, and the app's runtime
+  behavior remains unchanged by default.
+- **Status:** Not started.
 
-**18c. Local open embedding model experiment.**
-- *Why:* free hosted embedding tiers are not dependable permanent options, while local model
-  quality on this code corpus is unknown.
-- *Fix:* register a protocol before running an experiment. Build a separate development-only
-  fixture and index labelled by `embedding_model`; use the same precommitted-rule discipline as
-  [the item 14 ablation protocol](08-retrieval-ablation-protocol.md). Never use automatic
-  cross-model fallback because vectors from different embedding models are incomparable.
-- *Done when:* the committed protocol fixes the development split, metrics, and decision rule
-  before evaluation; a separate model-labelled fixture and index are produced; adoption occurs
-  only if that rule passes. Held-out questions remain unobserved during selection; state
-  per-repository tolerances in whole questions.
+**18a-3. Usage log table and report.**
+- *Why:* runtime telemetry must distinguish provider, model, operation, failure class and latency without
+  recording prompts or responses that contain source code.
+- *Fix:* add a usage log schema (provider, model, operation tag, status, error class, attempt count,
+  latency, token counts when present, correlation id) and a small report script to summarize provider
+  failures and usage by model/status. Do not store prompt text or response text.
+- *Done when:* the log table and report script are documented, the schema is reviewed, and the data is
+  sufficient to diagnose provider outages without retaining code or secret-bearing payloads.
+- **Status:** Not started.
+
+**18b. Generation fallback: Groq and Cerebras over OpenAI-compatible HTTP.**
+- *Why:* a provider quota or outage can block generation, but fallback output can differ in quality and
+  structured-output behavior. The fallback router must fail explicitly and never on answer quality.
+- *Fix:* configure an ordered generation router using OpenAI-compatible `httpx` requests to Groq and
+  Cerebras. Fallback only on classified failures (rate limit, 5xx, timeout, open cooldown), never on
+  answer quality. Every fallback model must pass schema validity and citation-quote validation on the
+  golden set before it is enabled. Each answer records provider and model. Private code goes only to
+  providers with no-training terms after their current terms are verified. All routes exhausted fail
+  explicitly. State per-repository tolerances in whole questions where a comparison is made.
+- *Done when:* the fallback order is committed with the shared validation rules, provider/model labels
+  are recorded for each answer, no-training terms are checked for private-code routes, and exhausted
+  routes fail explicitly with no success-shaped fallback.
+- **Status:** Not started.
+
+**18c. Local open embedding model experiment (unchanged).**
+- *Why:* free hosted embedding tiers are not dependable permanent options, while local model quality on
+  this code corpus is unknown.
+- *Fix:* keep the existing local-model experiment separate from the main retrieval path. Build a
+  development-only fixture and index labelled by `embedding_model`; do not add automatic cross-model
+  fallback because vectors from different embedding models are incomparable.
+- *Done when:* the protocol fixes the development split, metrics and decision rule before evaluation; a
+  separate model-labelled fixture and index are produced; adoption occurs only if the rule passes.
+  Held-out questions remain unobserved during selection; state per-repository tolerances in whole
+  questions.
+- **Status:** Not started.
+
+**18d. Graceful degradation and API contract design.**
+- *Why:* generation and embedding failures need explicit degraded behavior that is understood by the API
+  contract before implementation.
+- *Fix:* when generation fails, return the retrieved cited evidence with an explicit
+  `unavailable_answer` flag; when embedding fails, fall back to lexical-only retrieval flagged as
+  degraded. Define what the evidence guard does in that mode since it relies on vector distance. Add a
+  query-embedding cache. This changes the API response, so maintainer approval is required before
+  implementation.
+- *Done when:* the degraded-response API contract, guard behavior and cache semantics are approved by the
+  maintainer and the design record states the exact failure behavior before implementation.
+- **Status:** Not started.
 
 **19. Model self-rating.**
 - *Why:* in the committed baseline the model labeled 15 of 16 answers `high`, and retrieval calibration moved 13 to `medium` [EXEC]. The label has not been checked against correctness.
