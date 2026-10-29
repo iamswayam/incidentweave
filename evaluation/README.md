@@ -9,22 +9,20 @@ This guide points to the relevant commands, data, modules, and evaluation record
 
 ## 2. Commands
 
-Evaluation commands that would write data or call a provider are marked **not run here**. CLI help was checked where it completed.
+| Command | What it does | Needs database | Needs Gemini key | Writes tracked files | Source |
+|---|---|---:|---:|---:|---|
+| `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/offline-baseline.json` | Runs retrieval-only evaluation using committed fixtures and cached question vectors; makes no provider calls. This documented invocation overwrites the committed baseline at `evaluation/results/offline-baseline.json`. Safe alternative: `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/runs/offline-check.json` (ignored output). | No | No | Yes | [Root README](../README.md), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md), [CLI](../scripts/run_retrieval_eval.py) |
+| `.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke` | Runs each manifest repository's deterministic smoke gate. It exits 0 when every repository meets its baseline minimums. CI starts PostgreSQL, but this gate reads only committed inputs. | No | No | No | [Root README](../README.md), [CI workflow](../.github/workflows/ci.yml), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
+| `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/fixtures/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
+| `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` | Writes per-question retrieval cards and repository summaries under ignored `evaluation/inspection/`; defaults to development. | No | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
+| `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI](../scripts/run_chunking_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_fulltext_ablation` | Rewrites tracked `evaluation/experiments/fulltext/results.json` and `report.md`. No help mode; do not run it to check usage. | Yes | No | Yes | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
+| `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` | Has `--help`; writes tracked `docs/notes/08-fulltext-diagnostic.md` by default; pass `--output` to write elsewhere. | Yes | No | Yes by default | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
+| `.\.venv\Scripts\python.exe scripts\run_eval.py` | Runs the two-pass answer evaluation against an allowlisted repository and writes run artifacts under ignored `evaluation/results/runs/`. | Yes | Yes | No | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
 
-| Command | What it does | Needs database | Needs Gemini key | Source |
-|---|---|---:|---:|---|
-| `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/offline-baseline.json` — tracked output; not run here | Runs retrieval-only evaluation using the committed fixtures and cached question vectors; makes no provider calls. This documented invocation overwrites the committed baseline at `evaluation/results/offline-baseline.json`. Safe alternative: `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/runs/offline-check.json` (ignored output). | No | No | [Root README](../README.md), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md), [CLI](../scripts/run_retrieval_eval.py) |
-| `.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke` — run (exit 0) | Runs each manifest repository's deterministic smoke gate and reports repository and pooled retrieval metrics. Pooled Hit@1/3/5 was 9/15, 13/15, 14/15; pooled MRR was 0.724 for substring labels and spans. The CI job provisions PostgreSQL for the job, but this gate reads committed evaluation inputs. | No for the gate command | No | [Root README](../README.md), [CI workflow](../.github/workflows/ci.yml), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
-| `.\.venv\Scripts\python.exe -m evaluation.build_fixture` — tracked output; not run here | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/fixtures/retrieval_fixture.json.gz`. | Yes | No | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
-| `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` — not run here | Writes per-question retrieval cards and repository summaries from committed fixtures; defaults to development. | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
-| `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` — help only; `evaluate` has tracked outputs | Shows the `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands for the registered chunking comparison. The `embed` subcommand calls the embedding provider and supports `--batch-delay-seconds` pacing; `evaluate` rewrites the tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI help](../scripts/run_chunking_experiment.py) |
-| `scripts.run_fulltext_ablation` — tracked outputs; not run here | Rewrites `evaluation/experiments/fulltext/results.json` and `report.md` (tracked). No help mode; do not run it to check usage. | Yes | No | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
-| `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` — help only; default output tracked | Has `--help`; writes `docs/notes/08-fulltext-diagnostic.md` by default (tracked); pass `--output` to write elsewhere. The diagnostic was not run here. | Yes | No | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
-| `.\.venv\Scripts\python.exe scripts\run_eval.py` — not run here | Runs the two-pass answer evaluation against an allowlisted repository and records evaluation run artifacts. | Yes | Yes | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
+The fixture builder needs existing database embeddings and cached question embeddings; it does not fetch embeddings.
 
-The fixture builder needs existing database embeddings and cached question embeddings; it does not fetch embeddings. The answer runner and chunking `embed` subcommand can make live provider calls, so they were not run.
-
-Commands that write to tracked files are marked; rerunning them changes registered artifacts.
+Commands with Writes tracked files = Yes change registered artifacts when rerun.
 
 ## 3. Directory and file map
 
@@ -33,30 +31,10 @@ Commands that write to tracked files are marked; rerunning them changes register
 | Path | Role | Status |
 |---|---|---|
 | [`README.md`](README.md) | Entry point for evaluation commands, organization, data, and rules. | Versioned |
-| [`__init__.py`](__init__.py) | Marks the evaluation package and describes its scope. | Versioned |
-| [`build_fixture.py`](build_fixture.py) | Builds and reads the offline retrieval fixtures. | Versioned |
-| [`chunk_experiments.py`](chunk_experiments.py) | Defines evaluation-only chunking strategies. | Versioned |
-| [`chunking_experiment.py`](chunking_experiment.py) | Prepares and analyzes the chunking comparison. | Versioned |
-| [`compare.py`](compare.py) | Compares saved evaluation reports. | Versioned |
-| [`compare_chunking_runs.py`](compare_chunking_runs.py) | Compares saved chunking-evaluation runs. | Versioned |
-| [`corpus.py`](corpus.py) | Sets up the pinned evaluation corpus. | Versioned |
-| [`fulltext_ablation.py`](fulltext_ablation.py) | Implements fixture-backed full-text ablation helpers and metrics. | Versioned |
-| [`fulltext_diagnostic.py`](fulltext_diagnostic.py) | Provides pure helpers for full-text query-term diagnostics. | Versioned |
-| [`fulltext_experiment.py`](fulltext_experiment.py) | Executes and renders the registered full-text ablation. | Versioned |
 | [`gate.json`](gate.json) | IncidentWeave full retrieval-gate configuration. | Versioned |
-| [`gate.py`](gate.py) | Loads and evaluates the offline retrieval regression gate. | Versioned |
-| [`golden.py`](golden.py) | Loads and validates question sets. | Versioned |
 | [`golden_set.json`](golden_set.json) | IncidentWeave questions and their labels. | Versioned |
-| [`inspection.py`](inspection.py) | Renders offline retrieval-inspection reports. | Versioned |
 | [`manifest.json`](manifest.json) | Selects the repositories and pins their evaluation inputs. | Versioned |
-| [`manifest.py`](manifest.py) | Loads and validates the multi-repository manifest and its assets. | Versioned |
-| [`metrics.py`](metrics.py) | Implements deterministic evaluation metrics. | Versioned |
-| [`retrieval_eval.py`](retrieval_eval.py) | Runs offline hybrid-retrieval evaluation. | Versioned |
-| [`runner.py`](runner.py) | Runs the Phase 8 retrieval and investigation evaluation. | Versioned |
 | [`smoke-gate.json`](smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
-| [`span_labels.py`](span_labels.py) | Derives chunk-independent relevance spans from question labels. | Versioned |
-| [`splits.py`](splits.py) | Defines deterministic stratified question assignments. | Versioned |
-| [`stats.py`](stats.py) | Provides dependency-free retrieval statistics. | Versioned |
 | `cache/` | Local embedding cache used by fixture construction and experiments. | Ignored/generated |
 | [`experiments/`](experiments/) | Chunking and full-text experiment protocols, fixtures, and reports. | Versioned |
 | [`fixtures/`](fixtures/) | Shared IncidentWeave offline retrieval fixture. | Versioned |
@@ -66,19 +44,23 @@ Commands that write to tracked files are marked; rerunning them changes register
 | `_snapshot/` | Local source snapshots and experiment working data. | Ignored/generated |
 | `__pycache__/` | Python bytecode cache. | Ignored/generated |
 
+Python modules are listed by role in section 4.
+
 The IncidentWeave questions and full gate are at the evaluation root; its retrieval fixture is in `fixtures/`, and its baselines are in `results/`. The `batch-processing-service` and `lifeos` questions, fixtures, gates, and baselines are grouped under [`repos/`](repos/) by repository name. This asymmetry is a known layout issue handled in item 27b.
 
 ## 4. Module map
 
 The descriptions below are taken from each module's docstring.
 
-### Manifest and data
+### Data and labels
 
-- [`__init__.py`](__init__.py) — Evaluation utilities for the IncidentWeave retrieval and investigation pipeline.
 - [`manifest.py`](manifest.py) — Loading and fail-closed validation for the multi-repository evaluation manifest.
 - [`golden.py`](golden.py) — Golden-set loading and validation.
 - [`splits.py`](splits.py) — Deterministic stratified question assignments for repository evaluations.
 - [`span_labels.py`](span_labels.py) — Derive stable, chunk-independent relevance spans from golden substring labels.
+
+### Metrics and statistics
+
 - [`metrics.py`](metrics.py) — Pure, deterministic metrics for Phase 8 evaluation.
 - [`stats.py`](stats.py) — Small, dependency-free statistics for retrieval evaluation.
 
@@ -127,8 +109,6 @@ Each retrieval fixture contains the pinned source chunks and the question vector
 
 These safeguards are described in the [multi-repository plan](../docs/architecture-review/06-multi-repo-evaluation-plan.md), [chunking comparison plan](../docs/architecture-review/07-chunking-comparison-plan.md), [retrieval ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), and [multi-repository evaluation note](../docs/notes/05-multi-repo-evaluation.md).
 
-The earlier multi-repository and chunking plans describe a one-time held-out report after a design is fixed. The no-run/no-inspection rule above is the current instruction for this guide; it does not authorize that evaluation.
-
 ## 7. Documentation map
 
 | Document | Question it answers |
@@ -162,10 +142,9 @@ The earlier multi-repository and chunking plans describe a one-time held-out rep
 | `cache/` | Local cached embeddings used by fixture construction and experiments. | Generated and ignored |
 | `_snapshot/` | Local pinned-source snapshots and experiment working copies. | Generated and ignored |
 | `inspection/` | Generated per-question cards and repository summaries. | Generated and ignored |
-| `results/runs/` | Timestamped run reports and related artifacts; `.gitkeep` is retained. | Generated and ignored, except tracked `.gitkeep` |
+| `results/runs/` | Timestamped run reports and related artifacts; `.gitkeep` is the only tracked file under this directory. | Generated and ignored, except tracked `.gitkeep` |
 | `results/run-*.json` and `results/evaluation_report.json` | Non-baseline run output. | Generated and ignored |
 | `results/baseline.json`, `results/offline-baseline.json`, `results/incidentweave-smoke-baseline.json` | Versioned evaluation baseline reports. | Committed |
-| Other files under `results/` | Includes any additional tracked report files; check the manifest before treating a report as a gate baseline. | Versioned if tracked; run outputs follow the ignore rules above |
 | `experiments/`, `fixtures/`, `repos/`, `manifest.json`, question files, gates, and Python modules | Registered experiment artifacts, evaluation inputs, baselines/gates, and implementation. | Committed |
 | `__pycache__/` | Python bytecode cache. | Generated and ignored |
 
