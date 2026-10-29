@@ -211,6 +211,7 @@ intervals. Use `--repo incidentweave` to select one repository or `--split smoke
 fixed development-only smoke subset. The manifest, split protections, question-authoring protocol,
 and statistical limits are described in [the multi-repository evaluation note](docs/notes/05-multi-repo-evaluation.md);
 fixture construction and span labels remain documented in [the offline evaluation note](docs/notes/04-offline-retrieval-evaluation.md).
+See the [evaluation directory guide](evaluation/README.md) for the module map, data layout, and artifact lifecycle.
 
 CI runs every manifest repository's deterministic smoke fixture through the offline retrieval gate:
 

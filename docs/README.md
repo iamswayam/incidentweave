@@ -3,6 +3,7 @@
 | Folder | Contents |
 |--------|----------|
 | [architecture/](architecture/README.md) | System architecture, high-level design and low-level design |
+| [evaluation/](../evaluation/README.md) | Evaluation commands, manifest, data layout and artifact lifecycle |
 | [phases/](phases/README.md) | Phase 1-9 build logs: task specifications and verification records |
 | [learning/](learning/README.md) | Interview-oriented learning writeups, one per major concept |
 | [architecture-review/](architecture-review/README.md) | Independent audits and the prioritized fix checklist |
