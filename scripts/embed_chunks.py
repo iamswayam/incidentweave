@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.db.models import Chunk, Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
-from app.providers.gemini import make_client, post_json  # noqa: E402
+from app.providers.gemini import guarded_post_json, make_client  # noqa: E402
 
 GEMINI_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSION = 768
@@ -49,7 +49,7 @@ async def embed_text(text: str) -> list[float]:
         "outputDimensionality": EMBEDDING_DIMENSION,
     }
     async with make_client() as client:
-        payload_data = await post_json(
+        payload_data = await guarded_post_json(
             client,
             _single_embedding_url(),
             payload,
@@ -82,7 +82,7 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
         ]
     }
     async with make_client() as client:
-        payload_data = await post_json(
+        payload_data = await guarded_post_json(
             client,
             _batch_embedding_url(),
             payload,

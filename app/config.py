@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     api_protection_secret: str | None = None
 
+    provider_rate_limit_rpm: float | None = None
+    provider_rate_limit_tpm: float | None = None
+    provider_rate_limit_rpd: float | None = None
+    provider_cooldown_failures: int | None = None
+    provider_cooldown_seconds: float | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

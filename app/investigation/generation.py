@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from app.providers.gemini import (
-    make_client,
-    post_json,
-)
+from app.providers.gemini import guarded_post_json, make_client
 
 GEMINI_GENERATION_MODEL = "gemini-3.5-flash-lite"
 GEMINI_GENERATION_ENDPOINT = (
@@ -81,7 +78,7 @@ async def generate_investigation(
     }
     started_at = perf_counter()
     async with make_client() as client:
-        response_payload = await post_json(
+        response_payload = await guarded_post_json(
             client,
             GEMINI_GENERATION_ENDPOINT,
             payload,
