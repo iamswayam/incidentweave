@@ -53,6 +53,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15a-1 | Done | #48 | chunking comparison foundation |
 | 15a-2 | Done | #50 | chunking comparison experiment: S0 retained |
 | 15b | Closed | n/a | no change, S0 retained |
+| 27a | In progress | pending | Evaluation README indexes and documentation map |
+| 27b | Not started | pending | Evaluation layout normalization |
 
 ## 1. Fix-order checklist (summary)
 
@@ -106,6 +108,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
 | 25 | ☐ | Three separate decisions: grep fallback (settled by 2 and 3a), MCP/LangGraph rationale, hosted demo | Low | M | Both |
 | 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
+| 27a | ☐ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
+| 27b | ☐ | Evaluation layout normalization | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -116,6 +120,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
 | 4 | **14c-2**, **14c-3**, **18a**, **14b**, **14a**, **14d**, **18b**, **18d**, **18c**, **3b** | Settle retrieval and provider/fallback design before the final guard validation |
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
+| 6 | **27a** | Add the evaluation documentation index before normalizing the data layout |
+| 7 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
@@ -412,6 +418,18 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 **25. MCP, LangGraph, deployment.** Either remove the per-call stdio MCP grep (use in-process exact search) or expose IncidentWeave as a read-only MCP server. Keep LangGraph only if the hypothesis loop genuinely needs branching or checkpoints. Deploy a hosted demo. These are three separate decisions: (1) the grep fallback, settled by items 2 and 3a; (2) the MCP and LangGraph rationale; (3) the hosted deployment.
 
 **26. Layering cleanup.** `app/api.py` imports `scripts/investigate.py`; move the shared logic into `app/` so the API does not depend on a script. *Done when:* no module under `app/` imports from `scripts/`. Low priority.
+
+**27a. Evaluation README indexes and documentation map.**
+- *Why:* evaluation commands, modules, data, and generated outputs are spread across the root README, scripts, notes, phase logs, experiment records, and several evaluation directories.
+- *Fix:* add `evaluation/README.md` and indexes for `experiments/`, `fixtures/`, `repos/`, and `results/`. Document the module and documentation maps, current commands and their output effects, manifest relationships, and committed-versus-generated files. Link to the evaluation guide from the root README and `docs/README.md`.
+- *Done when:* all documentation links resolve; commands are verified or explicitly labelled when not run; only README content, the two index links, and this checklist bookkeeping change.
+- **Status:** In progress (PR pending).
+
+**27b. Evaluation layout normalization.**
+- *Why:* IncidentWeave evaluation data is at the evaluation root and in `fixtures/` and `results/`, while the other repositories' data is grouped under `repos/<name>/` with common filenames.
+- *Fix:* move `golden_set.json`, `gate.json`, `smoke-gate.json`, `fixtures/retrieval_fixture.json.gz`, and the IncidentWeave baselines into `evaluation/repos/incidentweave/` using `questions.json`, `gate.json`, `smoke-gate.json`, `retrieval_fixture.json.gz`, `offline-baseline.json`, and `smoke-baseline.json`. Rename `evaluation/chunk_experiments.py` to `chunk_strategies.py`; update manifest paths, code, tests, and live documentation. Check whether legacy ignore/output patterns for `results/run-*.json`, `evaluation_report.json`, and `results/baseline.json` are still needed.
+- *Done when:* every moved path is updated in the manifest, code, tests, and live documentation; the manifest validator, unit tests, and smoke gate pass; no hash, baseline, or gate value changes; binding historical documents are not edited.
+- **Status:** Not started.
 
 ---
 
