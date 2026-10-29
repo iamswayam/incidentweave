@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import random
 from collections import deque
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timezone
 from email.utils import parsedate_to_datetime
-from time import monotonic, perf_counter, time
+from time import monotonic, time
 from typing import Any
 
 import httpx
@@ -187,7 +188,7 @@ def _classify_http_error(
             f"Gemini request failed with HTTP {status_code}: {detail}",
             status_code=status_code,
         )
-    if status_code == 408 or "timeout" in lowered:
+    if status_code == 408:
         return ProviderTimeoutError(
             f"Gemini request failed with HTTP {status_code}: {detail}",
             status_code=status_code,
@@ -203,7 +204,7 @@ def _classify_http_error(
                 f"Gemini request failed with HTTP {status_code}: {detail}",
                 status_code=status_code,
             )
-        if "schema" in lowered or "response_schema" in lowered or "responseSchema" in lowered:
+        if "schema" in lowered:
             return ProviderSchemaInvalidError(
                 f"Gemini request failed with HTTP {status_code}: {detail}",
                 status_code=status_code,
@@ -242,6 +243,7 @@ class AsyncRateLimiter:
         self.rpd = float(rpd) if rpd is not None else None
         self.clock = clock or monotonic
         self.sleep = sleep or asyncio.sleep
+        self._lock: asyncio.Lock | None = None
         self._minute_requests: deque[float] = deque()
         self._minute_tokens: deque[tuple[float, float]] = deque()
         self._day_requests: deque[float] = deque()
@@ -262,33 +264,38 @@ class AsyncRateLimiter:
     async def acquire(self, *, tokens: float = 1.0) -> None:
         if self.rpm is None and self.tpm is None and self.rpd is None:
             return
-        now = self.clock()
-        self._prune(now)
-        wait_for = 0.0
-        if self.rpm is not None:
-            if len(self._minute_requests) >= self.rpm:
-                oldest = self._minute_requests[0]
-                wait_for = max(wait_for, 60.0 - (now - oldest) + 0.01)
-        if self.tpm is not None:
-            minute_tokens = sum(weight for _, weight in self._minute_tokens)
-            if minute_tokens + tokens > self.tpm:
-                if self._minute_tokens:
-                    oldest_ts, _ = self._minute_tokens[0]
-                    wait_for = max(wait_for, 60.0 - (now - oldest_ts) + 0.01)
-                else:
-                    wait_for = max(wait_for, 0.01)
-        if self.rpd is not None:
-            if len(self._day_requests) >= self.rpd:
-                oldest = self._day_requests[0]
-                wait_for = max(wait_for, 86400.0 - (now - oldest) + 0.01)
-        if wait_for > 0:
-            await self.sleep(wait_for)
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        async with self._lock:
             now = self.clock()
             self._prune(now)
-        self._minute_requests.append(now)
-        self._minute_tokens.append((now, tokens))
-        self._day_requests.append(now)
-        self._day_tokens.append((now, tokens))
+            while True:
+                wait_for = 0.0
+                if self.rpm is not None:
+                    if len(self._minute_requests) >= self.rpm:
+                        oldest = self._minute_requests[0]
+                        wait_for = max(wait_for, 60.0 - (now - oldest) + 0.01)
+                if self.tpm is not None:
+                    minute_tokens = sum(weight for _, weight in self._minute_tokens)
+                    if minute_tokens + tokens > self.tpm:
+                        if self._minute_tokens:
+                            oldest_ts, _ = self._minute_tokens[0]
+                            wait_for = max(wait_for, 60.0 - (now - oldest_ts) + 0.01)
+                        else:
+                            wait_for = max(wait_for, 0.01)
+                if self.rpd is not None:
+                    if len(self._day_requests) >= self.rpd:
+                        oldest = self._day_requests[0]
+                        wait_for = max(wait_for, 86400.0 - (now - oldest) + 0.01)
+                if wait_for <= 0:
+                    self._minute_requests.append(now)
+                    self._minute_tokens.append((now, tokens))
+                    self._day_requests.append(now)
+                    self._day_tokens.append((now, tokens))
+                    return
+                await self.sleep(wait_for)
+                now = self.clock()
+                self._prune(now)
 
 
 class CooldownStateMachine:
@@ -307,6 +314,7 @@ class CooldownStateMachine:
         self.state = "closed"
         self.consecutive_failures = 0
         self.cooldown_until = 0.0
+        self._probe_in_flight = False
 
     @property
     def enabled(self) -> bool:
@@ -319,9 +327,13 @@ class CooldownStateMachine:
         if self.state == "open":
             if now >= self.cooldown_until:
                 self.state = "half-open"
+                self._probe_in_flight = True
                 return True
             return False
         if self.state == "half-open":
+            if self._probe_in_flight:
+                return False
+            self._probe_in_flight = True
             return True
         return True
 
@@ -331,12 +343,14 @@ class CooldownStateMachine:
         self.state = "closed"
         self.consecutive_failures = 0
         self.cooldown_until = 0.0
+        self._probe_in_flight = False
 
     def record_retryable_failure(self) -> None:
         if not self.enabled:
             return
         now = self.clock()
         self.consecutive_failures += 1
+        self._probe_in_flight = False
         if self.state == "half-open":
             self.state = "open"
             self.cooldown_until = now + self.cooldown_seconds
@@ -356,9 +370,8 @@ class GeminiProviderAdapter:
         *,
         rate_limiter: AsyncRateLimiter | None = None,
         cooldown: CooldownStateMachine | None = None,
-        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
-        rng: Callable[[], float] = random.random,
-        make_client_factory: Callable[[], httpx.AsyncClient] | None = None,
+        sleep: Callable[[float], Awaitable[None]] | None = None,
+        rng: Callable[[], float] | None = None,
         post_json_fn: Callable[..., Awaitable[dict[str, Any]]] | None = None,
     ) -> None:
         self.rate_limiter = rate_limiter or AsyncRateLimiter(
@@ -372,158 +385,67 @@ class GeminiProviderAdapter:
         )
         self.sleep = sleep
         self.rng = rng
-        self.make_client_factory = make_client_factory or make_client
         self._post_json_fn = post_json_fn
 
-    async def _before_request(self) -> None:
+    async def post_json(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        payload: Mapping[str, Any],
+        *,
+        deadline_seconds: float,
+        max_attempts: int = 3,
+    ) -> dict[str, Any]:
+        """Guard the direct helper with rate limiting, cooldown, and typed retries."""
         if not self.cooldown.allow_request():
             raise ProviderRateLimitedError("Gemini provider cooldown is active")
-        await self.rate_limiter.acquire(tokens=1)
-
-    def _after_success(self) -> None:
-        self.cooldown.record_success()
-
-    def _after_retryable_failure(self) -> None:
-        self.cooldown.record_retryable_failure()
-
-    async def generate_investigation(
-        self,
-        prompt: str,
-        *,
-        temperature: float | None = None,
-    ) -> tuple[dict[str, object], int]:
-        """Generate a grounded response while preserving the current contract."""
-
-        from app.investigation.generation import RESPONSE_SCHEMA
-
-        generation_config: dict[str, object] = {
-            "responseMimeType": "application/json",
-            "responseSchema": RESPONSE_SCHEMA,
-        }
-        if temperature is not None:
-            generation_config["temperature"] = temperature
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": generation_config,
-        }
-        deadline_seconds = float(settings.provider_retry_deadline_seconds)
-        max_attempts = int(settings.provider_retry_max_attempts)
-        started_at = perf_counter()
-        async with make_client() as client:
-            await self._before_request()
-            fn = self._post_json_fn or post_json
-            try:
-                response_payload = await fn(
-                    client,
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
-                    payload,
-                    deadline_seconds=deadline_seconds,
-                    max_attempts=max_attempts,
-                    sleep=self.sleep,
-                    rng=self.rng,
-                )
-            except ProviderError as exc:
-                if exc.retryable:
-                    self._after_retryable_failure()
-                raise
-            self._after_success()
-        latency_ms = round((perf_counter() - started_at) * 1000)
-        return response_payload, latency_ms
-
-    async def embed_text(self, text: str) -> list[float]:
-        """Embed a single text value using the existing request shape."""
-
-        from scripts.embed_chunks import (
-            EMBEDDING_DIMENSION,
-            GEMINI_MODEL,
-            _single_embedding_url,
-        )
-
-        payload = {
-            "model": GEMINI_MODEL,
-            "content": {"parts": [{"text": text}]},
-            "outputDimensionality": EMBEDDING_DIMENSION,
-        }
-        async with make_client() as client:
-            await self._before_request()
-            fn = self._post_json_fn or post_json
-            try:
-                payload_data = await fn(
-                    client,
-                    _single_embedding_url(),
-                    payload,
-                    deadline_seconds=float(settings.provider_retry_deadline_seconds),
-                    max_attempts=int(settings.provider_retry_max_attempts),
-                    sleep=self.sleep,
-                    rng=self.rng,
-                )
-            except ProviderError as exc:
-                if exc.retryable:
-                    self._after_retryable_failure()
-                raise
-            self._after_success()
-        embedding = payload_data.get("embedding")
-        values = embedding.get("values") if isinstance(embedding, dict) else None
-        if not isinstance(values, list):
-            raise ValueError("Unexpected Gemini embedding response format")
-        if len(values) != EMBEDDING_DIMENSION:
-            raise ValueError(
-                f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}, got {len(values)}"
+        # Estimate token usage; real token counts are unavailable without usage logging.
+        estimated_tokens = max(1, len(json.dumps(payload)) // 4)
+        await self.rate_limiter.acquire(tokens=estimated_tokens)
+        kwargs: dict[str, Any] = {}
+        if self.sleep is not None:
+            kwargs["sleep"] = self.sleep
+        if self.rng is not None:
+            kwargs["rng"] = self.rng
+        fn = self._post_json_fn or post_json
+        try:
+            result = await fn(
+                client,
+                url,
+                payload,
+                deadline_seconds=deadline_seconds,
+                max_attempts=max_attempts,
+                **kwargs,
             )
-        return [float(value) for value in values]
-
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Batch-embed values using the existing request shape."""
-
-        from scripts.embed_chunks import (
-            EMBEDDING_DIMENSION,
-            GEMINI_MODEL,
-            _batch_embedding_url,
-        )
-
-        payload = {
-            "requests": [
-                {
-                    "model": GEMINI_MODEL,
-                    "content": {"parts": [{"text": text}]},
-                    "outputDimensionality": EMBEDDING_DIMENSION,
-                }
-                for text in texts
-            ]
-        }
-        async with make_client() as client:
-            await self._before_request()
-            fn = self._post_json_fn or post_json
-            try:
-                payload_data = await fn(
-                    client,
-                    _batch_embedding_url(),
-                    payload,
-                    deadline_seconds=float(settings.provider_retry_deadline_seconds),
-                    max_attempts=int(settings.provider_retry_max_attempts),
-                    sleep=self.sleep,
-                    rng=self.rng,
-                )
-            except ProviderError as exc:
-                if exc.retryable:
-                    self._after_retryable_failure()
-                raise
-            self._after_success()
-        embeddings = payload_data.get("embeddings")
-        if not isinstance(embeddings, list) or len(embeddings) != len(texts):
-            raise ValueError("Unexpected Gemini batch embedding response count")
-        vectors: list[list[float]] = []
-        for embedding in embeddings:
-            values = embedding.get("values") if isinstance(embedding, dict) else None
-            if not isinstance(values, list) or len(values) != EMBEDDING_DIMENSION:
-                raise ValueError(
-                    f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}"
-                )
-            vectors.append([float(value) for value in values])
-        return vectors
+        except ProviderError as exc:
+            if exc.retryable:
+                self.cooldown.record_retryable_failure()
+            else:
+                self.cooldown.record_success()
+            raise
+        except TimeoutError:
+            self.cooldown.record_retryable_failure()
+            raise
+        self.cooldown.record_success()
+        return result
 
 
-DEFAULT_ADAPTER = GeminiProviderAdapter()
+async def guarded_post_json(
+    client: httpx.AsyncClient,
+    url: str,
+    payload: Mapping[str, Any],
+    *,
+    deadline_seconds: float,
+    max_attempts: int = 3,
+) -> dict[str, Any]:
+    """Route through the configured provider adapter."""
+    return await DEFAULT_ADAPTER.post_json(
+        client,
+        url,
+        payload,
+        deadline_seconds=deadline_seconds,
+        max_attempts=max_attempts,
+    )
 
 
 async def post_json(
@@ -588,3 +510,6 @@ async def post_json(
             await sleep(delay)
 
     raise ProviderTimeoutError(f"Gemini request failed after {max_attempts} attempts")
+
+
+DEFAULT_ADAPTER = GeminiProviderAdapter()
