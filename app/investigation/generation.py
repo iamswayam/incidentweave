@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from time import perf_counter
 
-from app.providers.gemini import (
-    make_client,
-    post_json,
-)
+from app.providers.gemini import make_client, post_json
 
 GEMINI_GENERATION_MODEL = "gemini-3.5-flash-lite"
 GEMINI_GENERATION_ENDPOINT = (
