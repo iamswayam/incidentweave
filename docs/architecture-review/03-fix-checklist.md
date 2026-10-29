@@ -40,7 +40,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
 | 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
 | 18a-1 | In progress | pending | Provider layer design (this PR) |
-| 18a-2 | Not started | pending | Provider interfaces, Gemini adapter, rate limiter and cooldown |
+| 18a-2 | In progress | pending | Provider interfaces, Gemini adapter, rate limiter and cooldown |
 | 18a-3 | Not started | pending | Usage log table and report |
 | 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
 | 18c | Not started | pending | Local open embedding model experiment |
@@ -336,7 +336,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Done when:* the shared provider interfaces exist, the Gemini adapter is the first adapter, retry,
   cooldown and rate limiting are configurable, tests remain mocked/offline, and the app's runtime
   behavior remains unchanged by default.
-- **Status:** Not started.
+- **Status:** In progress (PR pending).
 
 **18a-3. Usage log table and report.**
 - *Why:* runtime telemetry must distinguish provider, model, operation, failure class and latency without

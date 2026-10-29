@@ -221,3 +221,22 @@ When the provider layer fails, the app fails explicitly. There is no success-sha
 - Direction approved: own thin provider layer now; no LiteLLM proxy deployment now.
 - Model choices for fallbacks are decided in 18b with verification at build time.
 - The API contract for degraded responses is decided in 18d design and requires maintainer approval before implementation.
+
+## Implementation notes (item 18a-2)
+
+- Code location: `app/providers/gemini.py` holds the typed provider exceptions, `AsyncRateLimiter`, `CooldownStateMachine`, `GeminiProviderAdapter.post_json`, and `guarded_post_json`.
+- Wiring: `app/investigation/generation.py` and `scripts/embed_chunks.py` call `guarded_post_json`; the public `make_client` names and the generation/embedding function signatures remain unchanged.
+- Settings: `PROVIDER_RATE_LIMIT_RPM`, `PROVIDER_RATE_LIMIT_TPM`, `PROVIDER_RATE_LIMIT_RPD`, `PROVIDER_COOLDOWN_FAILURES`, and `PROVIDER_COOLDOWN_SECONDS` are the five config values. All default to unset, which means no pacing and no cooldown, so default behavior stays unchanged.
+- Retry behavior: the shared `post_json()` helper owns retry execution and backoff. Call sites supply the operation deadline and attempt count: generation uses `GENERATION_DEADLINE_SECONDS` and `MAX_GENERATION_ATTEMPTS`, while embeddings use `deadline_seconds=60` and the helper's default `max_attempts=3`. The earlier `provider_retry_*` settings were removed as unused.
+- Retry-After semantics: wait `max(backoff, Retry-After)`, then bound it by the remaining deadline; `Retry-After` is never required and is ignored when absent or invalid.
+- Cooldown accounting: only retryable errors (`rate_limited`, `server_error`, `timeout`) and the deadline `TimeoutError` count toward the cooldown; non-retryable errors do not.
+- Half-open behavior: the circuit breaker allows exactly one probe request at a time; a second request is refused until the probe records success or retryable failure.
+- Token estimation: tokens-per-minute throttling uses an estimate based on characters divided by four until a real usage-logging token count is available.
+- Not done here: usage logging and the usage table for 18a-3, a second provider or fallback route for 18b, and any database change.
+- Differences from earlier sections of this note:
+  - Scope and Inventory describe a design-only state and direct `post_json()` call path; this implementation exists, and generation plus `scripts/embed_chunks.py` now route through `guarded_post_json()`.
+  - Layering proposed separate `generate()`, `embed()`/`embed_many()`, `classify_error()`, and `UsageLogger` interfaces. The adapter exposes guarded `post_json()` only; it uses typed exceptions and internal HTTP classification, and has no usage logger.
+  - The earlier claim that graph, scripts, and tests remain unchanged is not true for imports and call routing, although public generation and embedding function signatures remain unchanged.
+  - The limiter is process-wide for the Gemini adapter rather than separately keyed per model and operation. Unset limits disable it rather than failing closed when limits are unknown.
+  - Usage logging, operation tags, the usage table/report, a gateway, and a second provider remain unimplemented.
+  - Retry mechanics remain in the shared `post_json()` helper, while deadlines and attempt counts are supplied by each call site.
