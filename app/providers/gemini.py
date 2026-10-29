@@ -337,6 +337,9 @@ class CooldownStateMachine:
             return True
         return True
 
+    def release_probe(self) -> None:
+        self._probe_in_flight = False
+
     def record_success(self) -> None:
         if not self.enabled:
             return
@@ -401,7 +404,6 @@ class GeminiProviderAdapter:
             raise ProviderRateLimitedError("Gemini provider cooldown is active")
         # Estimate token usage; real token counts are unavailable without usage logging.
         estimated_tokens = max(1, len(json.dumps(payload)) // 4)
-        await self.rate_limiter.acquire(tokens=estimated_tokens)
         kwargs: dict[str, Any] = {}
         if self.sleep is not None:
             kwargs["sleep"] = self.sleep
@@ -409,6 +411,7 @@ class GeminiProviderAdapter:
             kwargs["rng"] = self.rng
         fn = self._post_json_fn or post_json
         try:
+            await self.rate_limiter.acquire(tokens=estimated_tokens)
             result = await fn(
                 client,
                 url,
@@ -425,6 +428,9 @@ class GeminiProviderAdapter:
             raise
         except TimeoutError:
             self.cooldown.record_retryable_failure()
+            raise
+        except BaseException:
+            self.cooldown.release_probe()
             raise
         self.cooldown.record_success()
         return result

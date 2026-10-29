@@ -464,3 +464,126 @@ def test_default_adapter_exists_without_name_error() -> None:
     adapter = gemini.GeminiProviderAdapter()
     assert adapter is not None
     assert gemini.DEFAULT_ADAPTER is not None
+
+
+def _half_open_cooldown() -> gemini.CooldownStateMachine:
+    cooldown = gemini.CooldownStateMachine(
+        failure_threshold=1,
+        cooldown_seconds=5.0,
+        clock=lambda: 20.0,
+    )
+    cooldown.state = "open"
+    cooldown.cooldown_until = 10.0
+    return cooldown
+
+
+@pytest.mark.anyio
+async def test_value_error_releases_half_open_probe() -> None:
+    cooldown = _half_open_cooldown()
+
+    async def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        raise ValueError("invalid response")
+
+    adapter = gemini.GeminiProviderAdapter(
+        rate_limiter=gemini.AsyncRateLimiter(),
+        cooldown=cooldown,
+        post_json_fn=fail,
+    )
+
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError, match="invalid response"):
+            await adapter.post_json(
+                client,
+                "https://example.test",
+                {"a": 1},
+                deadline_seconds=10,
+            )
+
+    assert cooldown.state == "half-open"
+    assert cooldown._probe_in_flight is False
+    assert cooldown.allow_request() is True
+
+
+@pytest.mark.anyio
+async def test_cancelled_half_open_probe_is_released() -> None:
+    cooldown = _half_open_cooldown()
+
+    async def cancel(*args: object, **kwargs: object) -> dict[str, object]:
+        raise asyncio.CancelledError
+
+    adapter = gemini.GeminiProviderAdapter(
+        rate_limiter=gemini.AsyncRateLimiter(),
+        cooldown=cooldown,
+        post_json_fn=cancel,
+    )
+
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(asyncio.CancelledError):
+            await adapter.post_json(
+                client,
+                "https://example.test",
+                {"a": 1},
+                deadline_seconds=10,
+            )
+
+    assert cooldown.state == "half-open"
+    assert cooldown._probe_in_flight is False
+    assert cooldown.allow_request() is True
+
+
+@pytest.mark.anyio
+async def test_rate_limiter_error_releases_half_open_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cooldown = _half_open_cooldown()
+
+    async def fail_acquire(*, tokens: float) -> None:
+        raise RuntimeError("limiter failed")
+
+    async def unexpected_request(*args: object, **kwargs: object) -> dict[str, object]:
+        raise AssertionError("request must not be sent")
+
+    adapter = gemini.GeminiProviderAdapter(
+        rate_limiter=gemini.AsyncRateLimiter(),
+        cooldown=cooldown,
+        post_json_fn=unexpected_request,
+    )
+    monkeypatch.setattr(adapter.rate_limiter, "acquire", fail_acquire)
+
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(RuntimeError, match="limiter failed"):
+            await adapter.post_json(
+                client,
+                "https://example.test",
+                {"a": 1},
+                deadline_seconds=10,
+            )
+
+    assert cooldown.state == "half-open"
+    assert cooldown._probe_in_flight is False
+    assert cooldown.allow_request() is True
+
+
+def test_release_probe_is_harmless_when_closed_or_disabled() -> None:
+    closed = gemini.CooldownStateMachine(
+        failure_threshold=2,
+        cooldown_seconds=5.0,
+        clock=lambda: 0.0,
+    )
+    closed._probe_in_flight = True
+    closed.consecutive_failures = 1
+    closed.cooldown_until = 12.0
+    closed.release_probe()
+
+    assert closed.state == "closed"
+    assert closed._probe_in_flight is False
+    assert closed.consecutive_failures == 1
+    assert closed.cooldown_until == 12.0
+
+    disabled = gemini.CooldownStateMachine()
+    disabled._probe_in_flight = True
+    disabled.release_probe()
+
+    assert disabled.enabled is False
+    assert disabled.state == "closed"
+    assert disabled._probe_in_flight is False
