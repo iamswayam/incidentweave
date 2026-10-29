@@ -33,13 +33,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
 | 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
 | 13b | Done | #40 | CI gate and generation settings. |
-| 13c | In progress | pending | retrieval inspection report |
-| 13d | In progress | pending | deterministic retrieval ordering |
-| 14c-1 | In progress | pending | full-text diagnostic and preregistered ablation protocol |
+| 13c | Done | #55 | retrieval inspection report |
+| 13d | Done | #54 | deterministic retrieval ordering |
+| 14c-1 | Done | #57 | full-text diagnostic and preregistered ablation protocol |
 | 14c-2 | Done | #61 | c1/c2 failed the registered rule; c3 equivalence confirmed; no variant adopted |
 | 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
 | 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
-| 18a-1 | In progress | pending | Provider layer design (this PR) |
+| 18a-1 | Done | #66 | Provider layer design |
 | 18a-2 | In progress | pending | Provider interfaces, Gemini adapter, rate limiter and cooldown |
 | 18a-3 | Not started | pending | Usage log table and report |
 | 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
@@ -53,6 +53,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15a-1 | Done | #48 | chunking comparison foundation |
 | 15a-2 | Done | #50 | chunking comparison experiment: S0 retained |
 | 15b | Closed | n/a | no change, S0 retained |
+| 27a | In progress | pending | Evaluation README indexes and documentation map |
+| 27b | Not started | pending | Evaluation layout normalization |
 
 ## 1. Fix-order checklist (summary)
 
@@ -77,7 +79,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 13b | ☑ | Evaluation foundation, part b: CI regression gate, temperature 0, recorded generation settings | High | M | Both |
 | 13c | ☑ | Retrieval inspection report: per-question cards (evidence, top 5 chunks, scores, guard decision) generated offline from the fixtures | High | S | Both |
 | 13d | ☑ | Deterministic tie-break in hybrid, vector and full-text search; measured tie noise | High | S | Both |
-| 14c-1 | ☐ | Diagnose full-text matching and preregister the ablation protocol | High | S | Both |
+| 14c-1 | ☑ | Diagnose full-text matching and preregister the ablation protocol | High | S | Both |
 | 14c-2 | ☑ | Compare c1/c2 under the registered rule; c3 equivalence only | High | M | Both |
 | 14c-3 | ☑ | Closed, no change: registered rule retained current retrieval; reopen only after a separately registered comparison | High | M | Both |
 | 14d | ☐ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
@@ -92,7 +94,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
-| 18a-1 | ☐ | Provider layer design and call-site inventory | High | S–M | Both |
+| 18a-1 | ☑ | Provider layer design and call-site inventory | High | S–M | Both |
 | 18a-2 | ☐ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
 | 18a-3 | ☐ | Usage log table and report without prompt or response text | High | M | Both |
 | 18b | ☐ | Ordered generation fallback through Groq and Cerebras over OpenAI-compatible HTTP | Medium | M | Both |
@@ -106,6 +108,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
 | 25 | ☐ | Three separate decisions: grep fallback (settled by 2 and 3a), MCP/LangGraph rationale, hosted demo | Low | M | Both |
 | 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
+| 27a | ☐ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
+| 27b | ☐ | Evaluation layout normalization | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -116,6 +120,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
 | 4 | **14c-2**, **14c-3**, **18a**, **14b**, **14a**, **14d**, **18b**, **18d**, **18c**, **3b** | Settle retrieval and provider/fallback design before the final guard validation |
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
+| 6 | **27a** | Add the evaluation documentation index before normalizing the data layout |
+| 7 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
@@ -224,19 +230,19 @@ Item 3b follows the remaining retrieval changes (14d, 14b and 14a) because retri
 - *Why:* aggregate metrics hide why questions fail; in 15a-2 four of S0's six development misses stayed missed under every AST strategy and looked like single-line labels or conceptual questions rather than chunk-shape problems.
 - *Fix:* render offline Markdown cards and a per-repository strategy summary from the committed fixtures; make no provider calls.
 - *Done when:* one command produces cards for all repositories and strategies deterministically; held-out is refused without confirmation; default evaluation output is unchanged.
-- **Status:** Done; PR pending.
+- **Status:** Done (PR #55).
 
 **13d. Deterministic retrieval ordering (after 15a-2).**
 - *Why:* equal-score results returned in a run-dependent order, making evaluation, the CI gate and production ordering non-reproducible.
 - *Fix:* add stable file/line tie-breaks to vector and full-text SQL and order hybrid results by RRF score, vector rank, text rank and file coordinates, never chunk ID.
 - *Done when:* 20 repeated runs give one outcome per repository and split; only baseline aggregates that differ under deterministic ordering are refreshed, with gate tolerances unchanged; the 15a-2 decision is re-checked.
-- **Status:** Done; PR pending.
+- **Status:** Done (PR #54).
 
 **14c-1. Full-text diagnostic and preregistered protocol.**
 - *Why:* full-text returned nothing for 14 of 16 answerable questions in the original single-repository baseline [ART]. That result is consistent with `websearch_to_tsquery` requiring multiple terms, but the prior diagnosis did not isolate query semantics from stop words, stemming, absent terms or phrasing. The three-repository development diagnostic is recorded in [note 08](../notes/08-fulltext-diagnostic.md).
 - *Fix:* report exact current queries, PostgreSQL tsquery output, current and OR match counts, evidence-span overlap, stop words, stemming, identifier decomposition and terms absent from each repository. Commit [the item 14 protocol](08-retrieval-ablation-protocol.md) before implementing variants.
 - *Done when:* all answerable development questions in the three repositories are reported, conclusions distinguish observed results from hypotheses, and the protocol fixes control, variants, metrics, safety constraints and decision rule before any variant exists.
-- **Status:** In progress; PR pending.
+- **Status:** Done (PR #57).
 
 **14c-2. Run the registered lexical variants.**
 - *Why:* the 14c-1 diagnostic can show whether a lexical branch is empty and whether broad OR matching reaches labeled spans, but it does not establish a retrieval-quality improvement.
@@ -314,7 +320,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Done when:* the applicable requirements in 18a-1, 18a-2, 18a-3, 18b, 18c and 18d are met independently.
 - **Status:** Superseded; work is tracked in 18a-1, 18a-2, 18a-3, 18b, 18c and 18d.
 
-**18a-1. Provider layer design (this PR).**
+**18a-1. Provider layer design.**
 - *Why:* before any implementation, the team needs a complete view of every provider call site,
   how the app, scripts, evaluation and tests use Gemini today, and what the provider layer must
   wrap or replace without a silent bypass.
@@ -324,7 +330,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Done when:* the architecture review note is committed, the call-site table is complete, the
   placement, configuration, error taxonomy and provider policy are described, and the maintainer has
   a decision list for the remaining implementation choices.
-- **Status:** In progress; PR pending.
+- **Status:** Done (PR #66).
 
 **18a-2. Provider interfaces, Gemini adapter, rate limiter, cooldown (no behaviour change by default).**
 - *Why:* the app needs a thin provider abstraction without changing default behavior. A later gateway
@@ -412,6 +418,18 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 **25. MCP, LangGraph, deployment.** Either remove the per-call stdio MCP grep (use in-process exact search) or expose IncidentWeave as a read-only MCP server. Keep LangGraph only if the hypothesis loop genuinely needs branching or checkpoints. Deploy a hosted demo. These are three separate decisions: (1) the grep fallback, settled by items 2 and 3a; (2) the MCP and LangGraph rationale; (3) the hosted deployment.
 
 **26. Layering cleanup.** `app/api.py` imports `scripts/investigate.py`; move the shared logic into `app/` so the API does not depend on a script. *Done when:* no module under `app/` imports from `scripts/`. Low priority.
+
+**27a. Evaluation README indexes and documentation map.**
+- *Why:* evaluation commands, modules, data, and generated outputs are spread across the root README, scripts, notes, phase logs, experiment records, and several evaluation directories.
+- *Fix:* add `evaluation/README.md` and indexes for `experiments/`, `fixtures/`, `repos/`, and `results/`. Document the module and documentation maps, current commands and their output effects, manifest relationships, and committed-versus-generated files. Link to the evaluation guide from the root README and `docs/README.md`.
+- *Done when:* all documentation links resolve; commands are verified or explicitly labelled when not run; only README content, the two index links, and this checklist bookkeeping change.
+- **Status:** In progress (PR pending).
+
+**27b. Evaluation layout normalization.**
+- *Why:* IncidentWeave evaluation data is at the evaluation root and in `fixtures/` and `results/`, while the other repositories' data is grouped under `repos/<name>/` with common filenames.
+- *Fix:* move `golden_set.json`, `gate.json`, `smoke-gate.json`, `fixtures/retrieval_fixture.json.gz`, and the IncidentWeave baselines into `evaluation/repos/incidentweave/` using `questions.json`, `gate.json`, `smoke-gate.json`, `retrieval_fixture.json.gz`, `offline-baseline.json`, and `smoke-baseline.json`. Rename `evaluation/chunk_experiments.py` to `chunk_strategies.py`; update manifest paths, code, tests, and live documentation. Check whether legacy ignore/output patterns for `results/run-*.json`, `evaluation_report.json`, and `results/baseline.json` are still needed.
+- *Done when:* every moved path is updated in the manifest, code, tests, and live documentation; the manifest validator, unit tests, and smoke gate pass; no hash, baseline, or gate value changes; binding historical documents are not edited.
+- **Status:** Not started.
 
 ---
 
