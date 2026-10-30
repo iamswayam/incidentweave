@@ -16,6 +16,7 @@ This guide points to the relevant commands, data, modules, and evaluation record
 | `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/fixtures/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` | Writes per-question retrieval cards and repository summaries under ignored `evaluation/inspection/`; defaults to development. | No | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
 | `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI](../scripts/run_chunking_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_embedding_task_type_experiment --help` | Shows the development-only task-type experiment commands. `plan` is offline, `embed` requires `--confirm-provider-calls` and a Gemini key, and `evaluate` uses cached candidate vectors without provider calls. All candidate artifacts are under ignored `evaluation/cache/embedding_task_type_v1/`. | Yes, for `evaluate` only | Yes, for confirmed `embed` only | No | [Task-type experiment note](../docs/notes/14-embedding-task-type-experiment.md), [CLI](../scripts/run_embedding_task_type_experiment.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_fulltext_ablation` | Rewrites tracked `evaluation/experiments/fulltext/results.json` and `report.md`. No help mode; do not run it to check usage. | Yes | No | Yes | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
 | `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` | Has `--help`; writes tracked `docs/notes/08-fulltext-diagnostic.md` by default; pass `--output` to write elsewhere. | Yes | No | Yes by default | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
 | `.\.venv\Scripts\python.exe scripts\run_eval.py` | Runs the two-pass answer evaluation against an allowlisted repository and writes run artifacts under ignored `evaluation/results/runs/`. | Yes | Yes | No | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
@@ -35,7 +36,7 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | [`golden_set.json`](golden_set.json) | IncidentWeave questions and their labels. | Versioned |
 | [`manifest.json`](manifest.json) | Selects the repositories and pins their evaluation inputs. | Versioned |
 | [`smoke-gate.json`](smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
-| `cache/` | Local embedding cache used by fixture construction and experiments. | Ignored/generated |
+| `cache/` | Local embedding cache used by fixture construction and experiments, including the versioned item 14a task-type cache. | Ignored/generated |
 | [`experiments/`](experiments/) | Chunking and full-text experiment protocols, fixtures, and reports. | Versioned |
 | [`fixtures/`](fixtures/) | Shared IncidentWeave offline retrieval fixture. | Versioned |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
@@ -72,6 +73,7 @@ The descriptions below are taken from each module's docstring.
 ### Retrieval evaluation
 
 - [`retrieval_eval.py`](retrieval_eval.py) — Offline hybrid-retrieval evaluation using committed embeddings.
+- [`embedding_task_type.py`](embedding_task_type.py) — Typed cache identity, metrics, and decision rules for item 14a.
 - [`gate.py`](gate.py) — Pure loading and evaluation for the offline retrieval regression gate.
 - [`inspection.py`](inspection.py) — Pure Markdown rendering for offline retrieval inspection reports.
 
@@ -139,7 +141,7 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 
 | Path or pattern | Contents | Status |
 |---|---|---|
-| `cache/` | Local cached embeddings used by fixture construction and experiments. | Generated and ignored |
+| `cache/` | Local cached embeddings used by fixture construction and experiments; item 14a task-type vectors are versioned separately. | Generated and ignored |
 | `_snapshot/` | Local pinned-source snapshots and experiment working copies. | Generated and ignored |
 | `inspection/` | Generated per-question cards and repository summaries. | Generated and ignored |
 | `results/runs/` | Timestamped run reports and related artifacts; `.gitkeep` is the only tracked file under this directory. | Generated and ignored, except tracked `.gitkeep` |

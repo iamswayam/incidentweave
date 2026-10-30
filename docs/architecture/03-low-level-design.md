@@ -180,6 +180,8 @@ sequenceDiagram
 
 `embed_repository_chunks()` selects all chunks for a named repository, filters to `embedding is None`, splits the missing chunks into batches of 50, and runs at most four batches concurrently. Each batch uses Gemini `batchEmbedContents` with model `models/gemini-embedding-001` and `outputDimensionality` 768; response count and vector dimensions are validated before assignment. Failed batches are reported and counted while other batches continue. Successful assignments are committed after all batches finish ([`scripts/embed_chunks.py`](../../scripts/embed_chunks.py)).
 
+The embedding helpers accept an optional typed `task_type` and add it as the REST `taskType` field to the single or per-item batch request. The default remains `None`, which preserves the production request shape. The item 14a experiment sends `RETRIEVAL_DOCUMENT` for chunk text and `CODE_RETRIEVAL_QUERY` for development questions in a distinct cache/version; it does not write database vectors or adopt a task type before the registered comparison ([experiment note](../notes/14-embedding-task-type-experiment.md)).
+
 Provider requests use `httpx.AsyncClient`, place the API key in the `x-goog-api-key` header, and retry selected HTTP statuses and network/timeout failures with exponential backoff and jitter. The client timeout is 60 seconds, the generation deadline is 90 seconds, and the end-to-end investigation deadline is 120 seconds. Batch size 50, concurrency 4, and these deadlines are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 
 ## 6. Retrieval internals
