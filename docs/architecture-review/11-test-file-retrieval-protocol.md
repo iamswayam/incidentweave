@@ -12,6 +12,8 @@ RRF fusion and deterministic tie-breaks. Use the current 14c-3 full-text behavio
 S0 60/10 chunks, cached fixture embeddings, and a top-five result list for every question.
 Use only the frozen development split: 16 questions per repository, including 11 answerable
 questions per repository. Do not run or inspect the held-out split.
+The control's top-five lists are reconciled with the committed development baseline in the
+diagnostic note (section Control reconciliation) before any variant is run.
 
 ## Test-file definition and reviewed paths
 
@@ -19,8 +21,9 @@ Use the exact rule implemented by
 [`evaluation/test_files.py`](../../evaluation/test_files.py): normalize backslashes to forward
 slashes and lowercase the path; tag a file if any directory segment is exactly `test`, `tests`,
 `__tests__`, `spec`, or `specs`; or if its filename matches `test_*.py`, `*_test.py`,
-`conftest.py`, `*.test.*`, `*.spec.*`, `tests.py`, `*Test.java`, or `*Tests.java` (case
-insensitive).
+`conftest.py`, `*.test.*`, `*.spec.*`, or `tests.py` (case insensitive). The Java patterns
+`*Test.java` and `*Tests.java` match the original-case filename and require at least one
+character before the suffix; the other patterns are case-insensitive.
 
 The diagnostic's sorted, distinct tagged paths are:
 
@@ -57,11 +60,13 @@ line range).
 The control diagnostic found zero answerable questions with labeled evidence spans in test files
 in each repository, so the denominator for test-source recall is zero in this development set.
 
-**Maintainer review.** Keep R5's one-question tolerance exactly as registered below, but decide
-before 14b-2 whether its zero-denominator result is treated as vacuously no decrease or whether
-the comparison pauses for a reviewed test-file evidence stratum. The available diagnostic cannot
-measure a test-source-recall loss with no such questions; this paragraph does not change the
-threshold.
+**Maintainer decision (recorded before any variant runs).** The development set has no answerable
+question whose labeled evidence is in a test file, so test-source recall has a zero denominator.
+It is reported as not evaluable and can never be used to satisfy a condition. Because the question
+set cannot expose the cost of removing test files, V2 (exclude) is reported descriptively and
+cannot be retained until a separately registered test-evidence stratum exists (rule R6). A
+retained V1 therefore means no measured harm on a question set that contains no test-evidence
+questions, not evidence that test files are never needed.
 
 ## Decision rule
 
@@ -73,10 +78,11 @@ A variant is retained only if every condition holds:
 | R2 | The lower bound of the 95% paired-bootstrap confidence interval for pooled MRR difference is above `0`. |
 | R3 | In every repository, answerable Hit@5 successes do not decrease (tolerance: 0 questions). |
 | R4 | In every repository, the evidence-guard decision for every unanswerable development question is unchanged or improved (tolerance: 0 questions). A change from sufficient to insufficient is an improvement; a change from insufficient to sufficient is a regression. |
-| R5 | Pooled test-source recall decreases by at most 1 question. |
+| R5 | Pooled test-source recall decreases by at most 1 question; when the denominator is 0 it is reported as not evaluable and is not counted as satisfied or failed. |
+| R6 | V2 only: V2 may be retained only if a separately registered stratum of at least 3 answerable questions with labeled evidence in test files exists, R5 is evaluable and passes, and R1 to R4 hold. Until then V2 is reported only. |
 
-If both variants pass, retain V1 as the milder change. If neither passes, keep the control and
-close the item as no change.
+If both variants pass, retain V1 as the milder change. If only V1 passes, retain V1. If V1 fails,
+keep the control and close the item as no change; V2 never overrides this without R6.
 
 ## Statistics
 
@@ -101,4 +107,5 @@ decision.
 The comparison covers 48 development questions across three small repositories by one author:
 33 answerable questions and 15 unanswerable questions. Tolerances are in whole questions because
 one rank change moves pooled MRR by about `0.015`. Results do not generalize beyond these
-repositories.
+repositories. The development questions contain no test-evidence questions, so removal-style
+policies cannot be penalized by this set.
