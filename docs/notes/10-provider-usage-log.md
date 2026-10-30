@@ -69,8 +69,8 @@ Classified provider errors and cooldown refusals are logged as failures. Deadlin
 timeouts use the `timeout` error class. Unexpected non-provider exceptions, such
 as `ValueError`, are not recorded. Attempts count started provider attempts, and
 latency is measured around the adapter call, excluding rate-limiter waiting.
-Token counts are logged only when Gemini reports integer prompt and candidate
-token counts.
+Token counts are logged only when Gemini or Groq reports integer prompt and
+completion token counts.
 
 Treat the database report as operational metadata: restrict database access and
 avoid adding sensitive payload fields to this schema.

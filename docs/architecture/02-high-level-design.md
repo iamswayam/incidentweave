@@ -2,14 +2,14 @@
 
 ## 1. Purpose and documentation basis
 
-IncidentWeave is a repository-aware investigation service for backend systems. It ingests a local Python repository, embeds source chunks, retrieves repository evidence for a natural-language question, and conditionally asks Gemini for an evidence-grounded diagnosis. With persistence enabled, generated answers, model abstentions, guard refusals, and pipeline errors are persisted with audit records.
+IncidentWeave is a repository-aware investigation service for backend systems. It ingests a local Python repository, embeds source chunks, retrieves repository evidence for a natural-language question, and conditionally asks Gemini for an evidence-grounded diagnosis, with an optional default-off Groq generation fallback. With persistence enabled, generated answers, model abstentions, guard refusals, and pipeline errors are persisted with audit records.
 
 This document describes the implementation on the `main` branch, not an aspirational redesign. The authoritative project-plan material present in the repository is the completed Phase 1–9 build-log series in [`docs/`](../README.md) and the [nine-phase roadmap](../../README.md#roadmap); the roadmap ends at Phase 9. No standalone project-plan or chat-roles document exists in the checked-out repository, so no absent document has been inferred.
 
 ## 2. Architectural goals implemented today
 
-- Keep repository evidence ahead of generation: retrieval and an evidence-sufficiency check occur before Gemini generation.
-- Keep the service small: one FastAPI process, one PostgreSQL + pgvector database, and direct Gemini REST calls.
+- Keep repository evidence ahead of generation: retrieval and an evidence-sufficiency check occur before model generation.
+- Keep the service small: one FastAPI process and one PostgreSQL + pgvector database; provider calls remain direct REST calls with an optional Groq generation fallback.
 - Keep workflow behavior bounded: one expanded-retrieval retry, then return `INSUFFICIENT_EVIDENCE` if evidence is still insufficient; the model does not choose tools.
 - Persist answer, refusal, model-abstention, and error outcomes on Investigation rows, with corresponding Audit records.
 - Provide local developer workflows and a CI pipeline that exercises PostgreSQL + pgvector, migrations, tests, linting, and Docker build.
@@ -20,7 +20,7 @@ This document describes the implementation on the `main` branch, not an aspirati
 |---|---|---|
 | API | Python 3.12, FastAPI, Uvicorn, Pydantic | HTTP validation, error shaping, health check, protected investigation/read APIs |
 | Workflow | LangGraph | Bounded retrieval, guard, one retry, insufficient-evidence return, generation, parsing, calibration |
-| AI | Gemini REST APIs | `gemini-embedding-001` embeddings (768 dimensions) and `gemini-3.5-flash-lite` generation |
+| AI | Gemini and optional Groq REST APIs | Gemini `gemini-embedding-001` embeddings (768 dimensions) and Gemini-first `gemini-3.5-flash-lite` generation; Groq is a configured, default-off generation fallback |
 | Retrieval | pgvector cosine distance, PostgreSQL FTS, RRF | Vector and lexical candidate retrieval, rank fusion |
 | Persistence | PostgreSQL 17 + pgvector, SQLAlchemy async, Psycopg 3, Alembic | Source chunks, investigation records, audit data and schema migration |
 | Local tools | Model Context Protocol (MCP), stdio | MCP server exposes `grep_search` and `hybrid_search`; the investigation graph invokes neither |
@@ -52,6 +52,7 @@ flowchart LR
     end
 
     Gemini[Gemini APIs]
+    Groq[Groq Chat Completions]
 
     Dev --> CLI
     Repo --> CLI
@@ -62,6 +63,7 @@ flowchart LR
     API --> Flow
     Flow --> Chunks
     Flow --> Gemini
+    Flow -. opt-in fallback .-> Groq
     Flow --> Inv
     Flow --> Audit
     Eval --> Chunks
@@ -111,7 +113,9 @@ flowchart TD
     H --> E
     F -->|no, second pass| K[Return INSUFFICIENT_EVIDENCE]
     G --> L[Gemini generation]
+    L -->|eligible failure and enabled| L2[Groq generation]
     L --> M[Parse structured claims and validate quoted evidence]
+    L2 --> M
     M --> N[Calibrate high confidence]
     N --> O[Write Investigation and Audit]
     O --> P[Return response]
@@ -140,6 +144,7 @@ Vector retrieval scopes by repository ID and orders by cosine distance. Full-tex
 |---|---|
 | Local filesystem | Ingestion reads a supplied local directory and records its resolved source path plus available Git revision metadata in an IngestRun row. |
 | Gemini | API key is read from `GEMINI_API_KEY` and sent in `x-goog-api-key`; asynchronous embedding and generation use REST over HTTPS with retry and deadline limits. |
+| Groq | Optional generation-only fallback, disabled unless `GROQ_FALLBACK_ENABLED`, `GROQ_API_KEY`, and `GROQ_MODEL` are configured. It never handles embeddings. |
 | PostgreSQL | The application converts a `postgresql://` URL to Psycopg’s async SQLAlchemy dialect, registers pgvector per connection, and uses async sessions. |
 | HTTP | `/health` is open. `/investigations`, `/investigations/{id}`, and `/repositories` require `X-API-Secret`. |
 | MCP | Local stdio subprocess only; there is no remote MCP deployment or model-directed tool selection. |
