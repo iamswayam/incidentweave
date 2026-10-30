@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
 
+from app.config import settings
 from evaluation.embedding_task_type import (
     DOCUMENT_TASK_TYPE,
     QUERY_TASK_TYPE,
@@ -248,6 +250,51 @@ def test_evaluation_refuses_incomplete_development_vector_cache(
     experiment._require_cached_vectors(
         EmbeddingInputs(document_texts=("source text",), query_texts=("query",))
     )
+
+
+def test_embed_cli_shows_safe_error_message_and_redacts_key(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fake_key = "FAKE_KEY"
+    monkeypatch.setattr(settings, "gemini_api_key", fake_key)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    async def fail_without_provider_call(*args: object) -> int:
+        raise ValueError(f"simulated safe failure containing {fake_key}")
+
+    monkeypatch.setattr(experiment, "_embed", fail_without_provider_call)
+
+    assert experiment.main(
+        ["embed", "--confirm-provider-calls"]
+    ) == 2
+    error_output = capsys.readouterr().err
+    assert "simulated safe failure containing [REDACTED]" in error_output
+    assert fake_key not in error_output
+
+
+def test_embed_reports_exact_missing_api_key_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "gemini_api_key", None)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    with pytest.raises(ValueError, match=r"^GEMINI_API_KEY is missing\.$"):
+        asyncio.run(experiment._embed(Path("unused-manifest"), 0, 0))
+
+
+def test_embed_reads_key_from_settings_without_environment_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "gemini_api_key", "FAKE_KEY")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setattr(
+        experiment,
+        "_load_development_inputs",
+        lambda manifest_path: ({}, Path("."), {}, {}),
+    )
+
+    assert asyncio.run(experiment._embed(Path("unused-manifest"), 0, 0)) == 0
 
 
 def test_rendered_results_note_is_aggregate_only_and_writable(tmp_path: Path) -> None:
