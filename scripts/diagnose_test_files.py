@@ -28,6 +28,7 @@ from evaluation.manifest import (  # noqa: E402
 )
 from evaluation.test_file_diagnostic import (  # noqa: E402
     build_repository_diagnostic,
+    reconcile_control,
 )
 
 DEFAULT_OUTPUT = Path("docs/notes/11-test-file-diagnostic.md")
@@ -276,6 +277,37 @@ def _development_question_records(
     raise ValueError("Question set has no questions array")
 
 
+def _top_level_json_value(path: Path, selected_key: str) -> Any:
+    """Decode one top-level JSON value while skipping all other values."""
+
+    raw = path.read_text(encoding="utf-8")
+    decoder = json.JSONDecoder()
+    position = _skip_space(raw, 0)
+    if raw[position] != "{":
+        raise ValueError(f"{path}: expected a JSON object")
+    position += 1
+    while True:
+        position = _skip_space(raw, position)
+        if raw[position] == "}":
+            break
+        key, key_end = decoder.raw_decode(raw, position)
+        if not isinstance(key, str):
+            raise ValueError(f"{path}: top-level keys must be strings")
+        position = _skip_space(raw, key_end)
+        if raw[position] != ":":
+            raise ValueError(f"{path}: invalid top-level JSON object")
+        value_start = _skip_space(raw, position + 1)
+        value_end = _json_value_end(raw, value_start)
+        if key == selected_key:
+            return json.loads(raw[value_start:value_end])
+        position = _skip_space(raw, value_end)
+        if raw[position] == ",":
+            position += 1
+        elif raw[position] != "}":
+            raise ValueError(f"{path}: invalid top-level object separator")
+    raise ValueError(f"{path}: missing top-level {selected_key!r}")
+
+
 def _vector_literal(values: list[float]) -> str:
     if not values:
         raise ValueError("Embedding vectors must not be empty")
@@ -360,6 +392,16 @@ async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[
             )
 
         fixture_path = manifest_path.resolve().parent.parent / entry["fixture"]["path"]
+        baseline_path = manifest_path.resolve().parent.parent / entry["full_baseline"]["path"]
+        baseline_questions = questions_for_split(
+            entry,
+            _development_question_records(baseline_path, development_ids),
+            "development",
+        )
+        baseline_summary = _top_level_json_value(baseline_path, "summary")
+        if not isinstance(baseline_summary, dict):
+            raise ValueError(f"{repository_id}: baseline summary must be an object")
+
         fixture = load_fixture(fixture_path)
         chunks = fixture["chunks"]
         fixture_queries = fixture["queries"]
@@ -375,12 +417,16 @@ async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[
                 str(question["question"]),
                 fixture_queries[question_id],
             )
-        output.append(
-            {
-                "repository": repository_id,
-                **build_repository_diagnostic(chunks, questions, results_by_question),
-            }
+        repository_diagnostic = build_repository_diagnostic(
+            chunks, questions, results_by_question
         )
+        repository_diagnostic["control_reconciliation"] = reconcile_control(
+            questions,
+            results_by_question,
+            baseline_questions,
+            baseline_summary,
+        )
+        output.append({"repository": repository_id, **repository_diagnostic})
     return output
 
 
@@ -400,13 +446,56 @@ def render_diagnostic(repositories: list[dict[str, Any]]) -> str:
         "JSONB CTE; the query runs in a read-only PostgreSQL transaction and does not insert or "
         "modify rows. Cached fixture query embeddings are used; no provider is called.",
         "",
-        "## Per-repository results",
+        "## Control reconciliation",
         "",
-        "| Repository | Chunks | Tagged test chunks | Tagged share | "
-        "Top-5 tagged test results | Top-5 results | Top-5 test share | "
-        "Answerable questions with test-file evidence | Hit at rank <=5 |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "The committed baseline has per-question development rows but does not store the "
+        "retrieved top-five lists. Therefore the weaker aggregate check was used: diagnostic "
+        "substring-label hit@5 successes and MRR are compared with the committed development "
+        "aggregates. This verifies aggregate outcomes but cannot prove rank-by-rank identity.",
+        "",
+        "| Repository | Development questions compared | "
+        "Identical top-five lists | Differing question ordinals | Verdict |",
+        "|---|---:|---:|---|---|",
     ]
+    for repository in repositories:
+        reconciliation = repository["control_reconciliation"]
+        if reconciliation["mode"] == "top_five":
+            identical = str(reconciliation["identical_count"])
+            differing = (
+                ", ".join(map(str, reconciliation["differing_ordinals"]))
+                or "none"
+            )
+            verdict = reconciliation["verdict"]
+        else:
+            identical = "not available (baseline omits results)"
+            differing = "not available (aggregate-only check)"
+            verdict = (
+                f"{reconciliation['verdict']}; hit@5 successes: diagnostic "
+                f"{reconciliation['diagnostic_hit_at_5_successes']} vs baseline "
+                f"{reconciliation['baseline_hit_at_5_successes']}; MRR: diagnostic "
+                f"{reconciliation['diagnostic_mrr']:.6f} vs baseline "
+                f"{reconciliation['baseline_mrr']:.6f}"
+            )
+        lines.append(
+            f"| {repository['repository']} | "
+            f"{reconciliation['questions_compared']} | {identical} | "
+            f"{differing} | {verdict} |"
+        )
+    lines.extend(
+        [
+            "",
+        ]
+    )
+    lines.extend(
+        [
+            "## Per-repository results",
+            "",
+            "| Repository | Chunks | Tagged test chunks | Tagged share | "
+            "Top-5 tagged test results | Top-5 results | Top-5 test share | "
+            "Answerable questions with test-file evidence | Hit at rank <=5 |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
     for repository in repositories:
         lines.append(
             f"| {repository['repository']} | {repository['total_chunks']} | "

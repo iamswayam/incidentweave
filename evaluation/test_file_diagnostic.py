@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from evaluation.metrics import first_relevant_span_rank
+from evaluation.metrics import first_relevant_rank, first_relevant_span_rank
 from evaluation.test_files import is_test_path
 
 
@@ -102,4 +103,140 @@ def build_repository_diagnostic(
     return {
         **summarize_fixture_paths(chunks),
         **summarize_question_results(questions, results_by_question),
+    }
+
+
+def _result_identity(result: Mapping[str, Any]) -> tuple[str, int, int]:
+    path = result.get("file_path")
+    line_start = result.get("line_start")
+    line_end = result.get("line_end")
+    if (
+        not isinstance(path, str)
+        or not isinstance(line_start, int)
+        or isinstance(line_start, bool)
+        or not isinstance(line_end, int)
+        or isinstance(line_end, bool)
+    ):
+        raise ValueError("Retrieved results need file_path and integer line bounds")
+    return path, line_start, line_end
+
+
+def reconcile_control(
+    questions: Sequence[Mapping[str, Any]],
+    diagnostic_results: Mapping[str, Sequence[Mapping[str, Any]]],
+    baseline_questions: Sequence[Mapping[str, Any]],
+    baseline_aggregates: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Reconcile diagnostic control rankings with committed development baselines."""
+
+    baseline_by_id = {
+        row["id"]: row
+        for row in baseline_questions
+        if isinstance(row.get("id"), str)
+    }
+    if len(baseline_by_id) != len(baseline_questions):
+        raise ValueError("Every baseline development row needs a unique id")
+    if len(questions) != len(baseline_questions):
+        raise ValueError("Diagnostic and baseline development question counts differ")
+
+    question_ids: list[str] = []
+    for question in questions:
+        question_id = question.get("id")
+        if not isinstance(question_id, str) or question_id not in diagnostic_results:
+            raise ValueError("Every development question needs diagnostic results")
+        if question_id not in baseline_by_id:
+            raise ValueError("Every development question needs a baseline row")
+        question_ids.append(question_id)
+
+    baseline_has_results = all(
+        isinstance(baseline_by_id[question_id].get("retrieved"), list)
+        for question_id in question_ids
+    )
+    if baseline_has_results:
+        differing_ordinals: list[int] = []
+        identical_count = 0
+        for ordinal, question_id in enumerate(question_ids, start=1):
+            diagnostic = diagnostic_results[question_id][:5]
+            baseline = baseline_by_id[question_id]["retrieved"][:5]
+            if [_result_identity(row) for row in diagnostic] == [
+                _result_identity(row) for row in baseline
+            ]:
+                identical_count += 1
+            else:
+                differing_ordinals.append(ordinal)
+        return {
+            "mode": "top_five",
+            "questions_compared": len(question_ids),
+            "identical_count": identical_count,
+            "differing_ordinals": differing_ordinals,
+            "verdict": (
+                "all development top-five lists match"
+                if not differing_ordinals
+                else "development top-five lists differ"
+            ),
+        }
+
+    substring_aggregates = baseline_aggregates.get("substring_labels")
+    baseline_hit_at_5 = (
+        substring_aggregates.get("hit_at_5")
+        if isinstance(substring_aggregates, Mapping)
+        else None
+    )
+    expected_count = (
+        substring_aggregates.get("count")
+        if isinstance(substring_aggregates, Mapping)
+        else None
+    )
+    expected_successes = (
+        baseline_hit_at_5.get("successes")
+        if isinstance(baseline_hit_at_5, Mapping)
+        else None
+    )
+    expected_mrr = (
+        substring_aggregates.get("mrr")
+        if isinstance(substring_aggregates, Mapping)
+        else None
+    )
+    if (
+        expected_count != len(questions)
+        or not isinstance(expected_successes, int)
+        or isinstance(expected_successes, bool)
+        or not isinstance(expected_mrr, (int, float))
+        or isinstance(expected_mrr, bool)
+    ):
+        raise ValueError("Baseline development substring-label aggregates are invalid")
+
+    reciprocal_ranks: list[float] = []
+    hit_at_5_successes = 0
+    for question, question_id in zip(questions, question_ids):
+        labels = question.get("relevant", [])
+        if not isinstance(labels, list):
+            raise ValueError("Development question relevant labels must be a list")
+        rank = first_relevant_rank(diagnostic_results[question_id][:5], labels)
+        if rank is not None:
+            hit_at_5_successes += 1
+            reciprocal_ranks.append(1 / rank)
+        else:
+            reciprocal_ranks.append(0.0)
+    observed_mrr = sum(reciprocal_ranks) / len(reciprocal_ranks)
+    observed_matches = hit_at_5_successes == expected_successes and math.isclose(
+        observed_mrr,
+        float(expected_mrr),
+        rel_tol=0.0,
+        abs_tol=1e-12,
+    )
+    return {
+        "mode": "aggregate_metrics",
+        "questions_compared": len(questions),
+        "identical_count": None,
+        "differing_ordinals": [],
+        "baseline_hit_at_5_successes": expected_successes,
+        "diagnostic_hit_at_5_successes": hit_at_5_successes,
+        "baseline_mrr": float(expected_mrr),
+        "diagnostic_mrr": observed_mrr,
+        "verdict": (
+            "development hit@5 and MRR aggregates match"
+            if observed_matches
+            else "development hit@5 and/or MRR aggregates differ"
+        ),
     }

@@ -19,6 +19,9 @@ from evaluation.test_files import is_test_path
         "parser_test.py",
         "apps/accounts/tests.py",
         r"src\test\java\example\WidgetTests.java",
+        "src/main/UserTest.java",
+        "src/main/UserServiceTests.java",
+        "src/test/java/Foo.java",
     ],
 )
 def test_is_test_path_recognizes_test_conventions(path: str) -> None:
@@ -36,6 +39,9 @@ def test_is_test_path_recognizes_test_conventions(path: str) -> None:
         "src/widget.testimony.ts",
         "src/widget.specification.ts",
         "src/Widget.java",
+        "src/main/Latest.java",
+        "src/main/Contest.java",
+        "src/main/Attest.java",
     ],
 )
 def test_is_test_path_does_not_match_substrings(path: str) -> None:
