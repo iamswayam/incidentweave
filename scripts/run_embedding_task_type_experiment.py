@@ -7,6 +7,7 @@ import asyncio
 import json
 import math
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,7 @@ from evaluation.embedding_task_type import (  # noqa: E402
     EMBEDDING_MODEL,
     EXPERIMENT_VERSION,
     QUERY_TASK_TYPE,
+    EmbeddingInputs,
     collect_embedding_inputs,
     compare_guard_decisions,
     embedding_cache_key,
@@ -35,6 +37,7 @@ from evaluation.embedding_task_type import (  # noqa: E402
     read_cached_vector,
     render_results,
     summarize_method,
+    write_results_note,
 )
 from evaluation.manifest import (  # noqa: E402
     MANIFEST_PATH,
@@ -43,6 +46,18 @@ from evaluation.manifest import (  # noqa: E402
 from scripts.diagnose_test_files import _development_question_records  # noqa: E402
 
 CACHE_ROOT = ROOT / "evaluation" / "cache" / "embedding_task_type_v1"
+RESULTS_NOTE_PATH = ROOT / "docs" / "notes" / "15-embedding-task-type-results.md"
+RESULT_LIMITS = (
+    "This comparison covers 33 answerable and 15 unanswerable development questions "
+    "across three small repositories; results may not generalize to other repositories "
+    "or query distributions.",
+    "A successful retrieval metric does not establish answer quality; the held-out "
+    "split remains untouched.",
+    "The evidence-guard threshold of 0.5 is provisional and was set on the control "
+    "embeddings. A candidate may shift distances and change guard decisions; an R4 "
+    "failure for that reason is valid, and threshold recalibration is out of scope "
+    "for this comparison (item 3b).",
+)
 MAX_DOCUMENT_TEXTS = 200
 MAX_QUERY_TEXTS = 48
 DOCUMENT_BATCH_SIZE = 50
@@ -121,6 +136,38 @@ def _missing_texts(
     task_type: str,
 ) -> list[str]:
     return [text for text in texts if not _cache_path(text, task_type).is_file()]
+
+
+def _require_cached_vectors(inputs: EmbeddingInputs) -> None:
+    missing_documents = _missing_texts(inputs.document_texts, DOCUMENT_TASK_TYPE)
+    missing_queries = _missing_texts(inputs.query_texts, QUERY_TASK_TYPE)
+    if missing_documents or missing_queries:
+        raise ValueError(
+            "Embedding cache is incomplete: "
+            f"missing document vectors={len(missing_documents)}, "
+            f"missing development query vectors={len(missing_queries)}"
+        )
+    for text in inputs.document_texts:
+        read_cached_vector(_cache_path(text, DOCUMENT_TASK_TYPE))
+    for text in inputs.query_texts:
+        read_cached_vector(_cache_path(text, QUERY_TASK_TYPE))
+
+
+def _protocol_commit_hash() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("Cannot identify the registered protocol commit") from exc
+    commit = result.stdout.strip()
+    if not commit:
+        raise RuntimeError("Git returned an empty protocol commit")
+    return commit
 
 
 def _request_plan(
@@ -318,6 +365,8 @@ async def _evaluate(manifest_path: Path) -> int:
     manifest, asset_root, fixtures, questions = _load_development_inputs(
         manifest_path
     )
+    inputs = collect_embedding_inputs(fixtures, questions)
+    _require_cached_vectors(inputs)
     CACHE_ROOT.mkdir(parents=True, exist_ok=True)
     per_repository: dict[str, dict[str, dict[str, Any]]] = {}
     guard_by_repository: dict[str, dict[str, Any]] = {}
@@ -425,6 +474,8 @@ async def _evaluate(manifest_path: Path) -> int:
     report = {
         "experiment_version": EXPERIMENT_VERSION,
         "selection_split": "development",
+        "protocol_commit": _protocol_commit_hash(),
+        "limits": RESULT_LIMITS,
         "bootstrap": bootstrap,
         "per_repository": per_repository,
         "pooled": pooled_metrics,
@@ -434,12 +485,14 @@ async def _evaluate(manifest_path: Path) -> int:
     markdown_path = CACHE_ROOT / "report-development.md"
     json_path = CACHE_ROOT / "report-development.json"
     markdown_path.write_text(render_results(report), encoding="utf-8")
+    write_results_note(report, RESULTS_NOTE_PATH)
     json_path.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     print(render_results(report), end="")
     print(f"Development-only report: {markdown_path}")
+    print(f"Aggregate-only results note: {RESULTS_NOTE_PATH}")
     return 0
 
 
