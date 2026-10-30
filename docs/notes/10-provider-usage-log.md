@@ -23,7 +23,10 @@ table. Logging is disabled by default.
 
 ## Enable logging
 
-Set `PROVIDER_USAGE_LOG_ENABLED=true` in `.env`, then apply the schema:
+Set `PROVIDER_USAGE_LOG_ENABLED=true` in `.env` to enable logging. Database writes
+are bounded by `PROVIDER_USAGE_LOG_TIMEOUT_SECONDS` (default `2` seconds); a timed
+out write is warned and does not change the provider result or exception. Then
+apply the schema:
 
 ```powershell
 .\.venv\Scripts\python.exe -m alembic upgrade head
@@ -65,8 +68,9 @@ latencies are excluded from latency statistics.
 Classified provider errors and cooldown refusals are logged as failures. Deadline
 timeouts use the `timeout` error class. Unexpected non-provider exceptions, such
 as `ValueError`, are not recorded. Attempts count started provider attempts, and
-latency is measured around the adapter operation. Token counts are logged only
-when Gemini reports integer prompt and candidate token counts.
+latency is measured around the adapter call, excluding rate-limiter waiting.
+Token counts are logged only when Gemini reports integer prompt and candidate
+token counts.
 
 Treat the database report as operational metadata: restrict database access and
 avoid adding sensitive payload fields to this schema.

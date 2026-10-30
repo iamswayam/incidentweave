@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     provider_cooldown_failures: int | None = None
     provider_cooldown_seconds: float | None = None
     provider_usage_log_enabled: bool = False
+    provider_usage_log_timeout_seconds: float = 2.0
 
     model_config = SettingsConfigDict(
         env_file=".env",
