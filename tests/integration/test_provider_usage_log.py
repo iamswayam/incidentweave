@@ -1,11 +1,15 @@
 """Integration tests for the provider usage log table."""
 
+from uuid import uuid4
+
 import pytest
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import ProviderUsageLog
 from app.db.session import AsyncSessionLocal, engine
+from app.providers.usage import DbUsageLogger, UsageEntry
+from scripts.usage_report import _load_rows
 
 pytestmark = pytest.mark.integration
 
@@ -76,3 +80,40 @@ async def test_usage_table_rejects_invalid_status_and_success_error_class() -> N
         with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
+
+
+@pytest.mark.anyio
+async def test_db_logger_records_rows_visible_to_report_query() -> None:
+    """Verify logged usage is selected by the read-only report query."""
+
+    model = f"usage-test-{uuid4().hex}"
+    entry = UsageEntry(
+        provider="gemini",
+        model=model,
+        operation_tag="generation",
+        status="success",
+        error_class=None,
+        attempt_count=2,
+        latency_ms=35,
+        input_tokens=8,
+        output_tokens=3,
+        correlation_id=uuid4().hex,
+    )
+    await DbUsageLogger().record(entry)
+
+    rows = await _load_rows(24)
+    matching = [row for row in rows if row["model"] == model]
+
+    assert matching == [
+        {
+            "provider": "gemini",
+            "model": model,
+            "operation_tag": "generation",
+            "status": "success",
+            "error_class": None,
+            "attempt_count": 2,
+            "latency_ms": 35,
+            "input_tokens": 8,
+            "output_tokens": 3,
+        }
+    ]
