@@ -240,3 +240,20 @@ When the provider layer fails, the app fails explicitly. There is no success-sha
   - The limiter is process-wide for the Gemini adapter rather than separately keyed per model and operation. Unset limits disable it rather than failing closed when limits are unknown.
   - Usage logging, operation tags, the usage table/report, a gateway, and a second provider remain unimplemented.
   - Retry mechanics remain in the shared `post_json()` helper, while deadlines and attempt counts are supplied by each call site.
+
+## Implementation notes (item 18a-3)
+
+- Code locations: `app/db/models/usage.py` defines `ProviderUsageLog`; `app/providers/usage.py` defines the entries, operation context, and null/database loggers; `app/providers/usage_report.py` contains pure aggregation and formatters; `scripts/usage_report.py` is the read-only CLI.
+- Migration: `20261030_0005_provider_usage_log.py` creates `provider_usage_log` with status/error-class checks and indexes.
+- Logging is disabled by default through `PROVIDER_USAGE_LOG_ENABLED=false`. When enabled, each logged provider call is persisted in its own short session; logger failures emit only a warning containing the exception class and do not change the provider result or exception.
+- The supported operation tags are `query_embedding`, `document_embedding`, `generation`, `experiment_embedding`, and `evaluation`. The active `usage_operation(tag)` context overrides the explicit call-site tag and is reset on context exit.
+- `scripts/investigate.py` already creates a UUID correlation ID for each investigation. The provider logger now uses that ID through `correlation_id_var`; direct provider calls outside an investigation context generate a UUID for each usage entry.
+- Latency is elapsed adapter time in milliseconds, including rate-limiter waiting. `attempt_count` is the number of provider attempts started, updated by `post_json()` on each attempt. Input/output tokens are taken only from integer Gemini `usageMetadata.promptTokenCount` and `candidatesTokenCount` values. Cooldown refusals record zero attempts and no latency.
+- No prompt, response, source-code text, API key, or request payload is stored. Non-provider exceptions such as `ValueError` are not logged; classified provider failures, deadline timeouts, and cooldown refusals are logged.
+- Differences from earlier sections of this note:
+  - The earlier scope, inventory, and usage-log sections describe a design-only state; the model, migration, logger, operation tags, and report are now implemented.
+  - The design table described `attempt_count` as retries attempted; implementation records attempts started, including the initial attempt.
+  - The earlier report description named provider/model/status aggregation; the report also groups by operation tag and error class and includes attempt totals, latency statistics, and token sums.
+  - The earlier migration section named `20261026_0004` as latest and proposed a 0005 migration. Revision `20261030_0005` is now the latest and adds the usage table.
+  - The layering section proposed separate generation/embedding interfaces; this implementation keeps the existing Gemini `post_json` adapter and adds a `UsageLogger` protocol rather than introducing those interfaces.
+  - Correlation IDs are reused from the investigation flow when available; standalone calls use generated IDs rather than a caller-provided stable trace ID.

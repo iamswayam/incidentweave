@@ -11,3 +11,4 @@
 | 07 | [07-retrieval-inspection-report.md](07-retrieval-inspection-report.md) | Per-question retrieval inspection cards and how to read them (item 13c) |
 | 08 | [08-fulltext-diagnostic.md](08-fulltext-diagnostic.md) | Full-text query, token, and OR-match diagnostic (item 14c-1) |
 | 09 | [09-fulltext-ablation-results.md](09-fulltext-ablation-results.md) | Registered full-text ablation measurements and decision (item 14c-2) |
+| 10 | [10-provider-usage-log.md](10-provider-usage-log.md) | Provider usage log schema, privacy, operation tags, and report (item 18a-3) |

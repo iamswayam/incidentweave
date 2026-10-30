@@ -54,6 +54,7 @@ async def embed_text(text: str) -> list[float]:
             _single_embedding_url(),
             payload,
             deadline_seconds=60,
+            operation_tag="query_embedding",
         )
 
     embedding = payload_data.get("embedding")
@@ -87,6 +88,7 @@ async def embed_texts(texts: list[str]) -> list[list[float]]:
             _batch_embedding_url(),
             payload,
             deadline_seconds=60,
+            operation_tag="document_embedding",
         )
 
     embeddings = payload_data.get("embeddings")

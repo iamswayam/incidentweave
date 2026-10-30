@@ -11,6 +11,7 @@ def test_all_phase2_models_are_registered() -> None:
         "investigations",
         "audit_records",
         "ingest_runs",
+        "provider_usage_log",
     }
 
 

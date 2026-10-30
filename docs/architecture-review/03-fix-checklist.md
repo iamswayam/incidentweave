@@ -41,7 +41,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
 | 18a-1 | Done | #66 | Provider layer design |
 | 18a-2 | Done | #75 | Provider interfaces, Gemini adapter, rate limiter and cooldown |
-| 18a-3 | Not started | pending | Usage log table and report |
+| 18a-3 | In progress | pending | Usage log table and report |
 | 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
 | 18c | Not started | pending | Local open embedding model experiment |
 | 18d | Not started | pending | Graceful degradation and degraded-response API contract |
@@ -352,7 +352,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
   failures and usage by model/status. Do not store prompt text or response text.
 - *Done when:* the log table and report script are documented, the schema is reviewed, and the data is
   sufficient to diagnose provider outages without retaining code or secret-bearing payloads.
-- **Status:** Not started.
+- **Status:** In progress (PR pending).
 
 **18b. Generation fallback: Groq and Cerebras over OpenAI-compatible HTTP.**
 - *Why:* a provider quota or outage can block generation, but fallback output can differ in quality and

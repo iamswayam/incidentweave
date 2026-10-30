@@ -4,18 +4,30 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import random
+import re
 from collections import deque
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import timezone
 from email.utils import parsedate_to_datetime
-from time import monotonic, time
+from time import monotonic, perf_counter, time
 from typing import Any
+from uuid import uuid4
 
 import httpx
 
 from app.config import settings
+from app.providers.usage import (
+    DbUsageLogger,
+    NullUsageLogger,
+    UsageEntry,
+    UsageLogger,
+    correlation_id_var,
+    operation_override_var,
+    validate_operation_tag,
+)
 
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
@@ -376,6 +388,7 @@ class GeminiProviderAdapter:
         sleep: Callable[[float], Awaitable[None]] | None = None,
         rng: Callable[[], float] | None = None,
         post_json_fn: Callable[..., Awaitable[dict[str, Any]]] | None = None,
+        usage_logger: UsageLogger | None = None,
     ) -> None:
         self.rate_limiter = rate_limiter or AsyncRateLimiter(
             rpm=settings.provider_rate_limit_rpm,
@@ -389,6 +402,59 @@ class GeminiProviderAdapter:
         self.sleep = sleep
         self.rng = rng
         self._post_json_fn = post_json_fn
+        self.usage_logger = (
+            usage_logger
+            if usage_logger is not None
+            else (
+                DbUsageLogger()
+                if settings.provider_usage_log_enabled
+                else NullUsageLogger()
+            )
+        )
+
+    @staticmethod
+    def _model_from_url(url: str) -> str:
+        match = re.search(r"models/([^/:?]+)", url)
+        return match.group(1) if match is not None else "unknown"
+
+    async def _record_usage(
+        self,
+        *,
+        url: str,
+        operation_tag: str,
+        status: str,
+        error_class: str | None,
+        attempt_count: int,
+        latency_ms: int | None,
+        result: dict[str, Any] | None = None,
+    ) -> None:
+        usage = result.get("usageMetadata") if result is not None else None
+        input_tokens = usage.get("promptTokenCount") if isinstance(usage, dict) else None
+        output_tokens = (
+            usage.get("candidatesTokenCount") if isinstance(usage, dict) else None
+        )
+        try:
+            await self.usage_logger.record(
+                UsageEntry(
+                    provider="gemini",
+                    model=self._model_from_url(url),
+                    operation_tag=operation_override_var.get() or operation_tag,
+                    status=status,
+                    error_class=error_class,
+                    attempt_count=attempt_count,
+                    latency_ms=latency_ms,
+                    input_tokens=input_tokens if type(input_tokens) is int else None,
+                    output_tokens=(
+                        output_tokens if type(output_tokens) is int else None
+                    ),
+                    correlation_id=correlation_id_var.get() or uuid4().hex,
+                )
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "Provider usage logger failed (%s)",
+                type(exc).__name__,
+            )
 
     async def post_json(
         self,
@@ -398,9 +464,20 @@ class GeminiProviderAdapter:
         *,
         deadline_seconds: float,
         max_attempts: int = 3,
+        operation_tag: str = "generation",
     ) -> dict[str, Any]:
         """Guard the direct helper with rate limiting, cooldown, and typed retries."""
+        validate_operation_tag(operation_tag)
+        stats: dict[str, int] = {}
         if not self.cooldown.allow_request():
+            await self._record_usage(
+                url=url,
+                operation_tag=operation_tag,
+                status="failure",
+                error_class="rate_limited",
+                attempt_count=0,
+                latency_ms=None,
+            )
             raise ProviderRateLimitedError("Gemini provider cooldown is active")
         # Estimate token usage; real token counts are unavailable without usage logging.
         estimated_tokens = max(1, len(json.dumps(payload)) // 4)
@@ -410,6 +487,7 @@ class GeminiProviderAdapter:
         if self.rng is not None:
             kwargs["rng"] = self.rng
         fn = self._post_json_fn or post_json
+        started_at = perf_counter()
         try:
             await self.rate_limiter.acquire(tokens=estimated_tokens)
             result = await fn(
@@ -418,6 +496,7 @@ class GeminiProviderAdapter:
                 payload,
                 deadline_seconds=deadline_seconds,
                 max_attempts=max_attempts,
+                stats=stats,
                 **kwargs,
             )
         except ProviderError as exc:
@@ -425,14 +504,39 @@ class GeminiProviderAdapter:
                 self.cooldown.record_retryable_failure()
             else:
                 self.cooldown.record_success()
+            await self._record_usage(
+                url=url,
+                operation_tag=operation_tag,
+                status="failure",
+                error_class=exc.error_class,
+                attempt_count=stats.get("attempts", 0),
+                latency_ms=round((perf_counter() - started_at) * 1000),
+            )
             raise
         except TimeoutError:
             self.cooldown.record_retryable_failure()
+            await self._record_usage(
+                url=url,
+                operation_tag=operation_tag,
+                status="failure",
+                error_class="timeout",
+                attempt_count=stats.get("attempts", 0),
+                latency_ms=round((perf_counter() - started_at) * 1000),
+            )
             raise
         except BaseException:
             self.cooldown.release_probe()
             raise
         self.cooldown.record_success()
+        await self._record_usage(
+            url=url,
+            operation_tag=operation_tag,
+            status="success",
+            error_class=None,
+            attempt_count=stats.get("attempts", 0),
+            latency_ms=round((perf_counter() - started_at) * 1000),
+            result=result,
+        )
         return result
 
 
@@ -443,6 +547,7 @@ async def guarded_post_json(
     *,
     deadline_seconds: float,
     max_attempts: int = 3,
+    operation_tag: str = "generation",
 ) -> dict[str, Any]:
     """Route through the configured provider adapter."""
     return await DEFAULT_ADAPTER.post_json(
@@ -451,6 +556,7 @@ async def guarded_post_json(
         payload,
         deadline_seconds=deadline_seconds,
         max_attempts=max_attempts,
+        operation_tag=operation_tag,
     )
 
 
@@ -463,12 +569,15 @@ async def post_json(
     max_attempts: int = 3,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     rng: Callable[[], float] = random.random,
+    stats: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """POST JSON with bounded retries, jitter, and a whole-operation deadline."""
 
     async with asyncio.timeout(deadline_seconds):
         remaining_deadline = float(deadline_seconds)
         for attempt in range(max_attempts):
+            if stats is not None:
+                stats["attempts"] = attempt + 1
             try:
                 response = await send_once(client, url, payload)
             except (httpx.TimeoutException, httpx.NetworkError):

@@ -84,6 +84,7 @@ async def generate_investigation(
             payload,
             deadline_seconds=GENERATION_DEADLINE_SECONDS,
             max_attempts=MAX_GENERATION_ATTEMPTS,
+            operation_tag="generation",
         )
     latency_ms = round((perf_counter() - started_at) * 1000)
     return response_payload, latency_ms

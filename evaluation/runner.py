@@ -23,6 +23,7 @@ from app.investigation.guard import (
 )
 from app.investigation.prompt import SYSTEM_INSTRUCTION
 from app.providers import gemini as gemini_provider
+from app.providers.usage import usage_operation
 from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
@@ -584,13 +585,14 @@ async def run_pipeline_once(
             request_state["question_throttle_wait_ms"] = 0
             start_wall = time.perf_counter()
             try:
-                result = await investigate.investigate_repository(
-                    repository_name,
-                    question["question"],
-                    limit=LIMIT,
-                    persist=False,
-                    temperature=0,
-                )
+                with usage_operation("evaluation"):
+                    result = await investigate.investigate_repository(
+                        repository_name,
+                        question["question"],
+                        limit=LIMIT,
+                        persist=False,
+                        temperature=0,
+                    )
                 diagnosis = str(result.get("diagnosis") or "")
                 cited_chunk_ids = result.get("cited_chunk_ids", [])
                 retrieval_results = result.get("retrieval_results", [])
