@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
+from typing import Literal
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -24,6 +25,17 @@ GEMINI_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSION = 768
 EMBED_BATCH_SIZE = 50
 EMBED_CONCURRENCY = 4
+EmbeddingTaskType = Literal["RETRIEVAL_DOCUMENT", "CODE_RETRIEVAL_QUERY"]
+
+
+def _validate_embedding_options(
+    task_type: EmbeddingTaskType | None,
+    max_attempts: int,
+) -> None:
+    if task_type not in {None, "RETRIEVAL_DOCUMENT", "CODE_RETRIEVAL_QUERY"}:
+        raise ValueError(f"Unsupported Gemini embedding task type: {task_type}")
+    if type(max_attempts) is not int or max_attempts < 1:
+        raise ValueError("max_attempts must be positive")
 
 
 def _single_embedding_url() -> str:
@@ -40,20 +52,29 @@ def _batch_embedding_url() -> str:
     )
 
 
-async def embed_text(text: str) -> list[float]:
-    """Call the Gemini embeddings API for a single text value."""
+async def embed_text(
+    text: str,
+    *,
+    task_type: EmbeddingTaskType | None = None,
+    max_attempts: int = 3,
+) -> list[float]:
+    """Embed one value, optionally selecting a retrieval-specific task."""
 
     payload = {
         "model": GEMINI_MODEL,
         "content": {"parts": [{"text": text}]},
         "outputDimensionality": EMBEDDING_DIMENSION,
     }
+    _validate_embedding_options(task_type, max_attempts)
+    if task_type is not None:
+        payload["taskType"] = task_type
     async with make_client() as client:
         payload_data = await guarded_post_json(
             client,
             _single_embedding_url(),
             payload,
             deadline_seconds=60,
+            max_attempts=max_attempts,
             operation_tag="query_embedding",
         )
 
@@ -69,25 +90,33 @@ async def embed_text(text: str) -> list[float]:
     return [float(value) for value in values]
 
 
-async def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed multiple texts with Gemini's batch embedding endpoint."""
+async def embed_texts(
+    texts: list[str],
+    *,
+    task_type: EmbeddingTaskType | None = None,
+    max_attempts: int = 3,
+) -> list[list[float]]:
+    """Embed a batch, optionally selecting a retrieval-specific task."""
 
-    payload = {
-        "requests": [
-            {
-                "model": GEMINI_MODEL,
-                "content": {"parts": [{"text": text}]},
-                "outputDimensionality": EMBEDDING_DIMENSION,
-            }
-            for text in texts
-        ]
-    }
+    _validate_embedding_options(task_type, max_attempts)
+    requests = []
+    for text in texts:
+        request = {
+            "model": GEMINI_MODEL,
+            "content": {"parts": [{"text": text}]},
+            "outputDimensionality": EMBEDDING_DIMENSION,
+        }
+        if task_type is not None:
+            request["taskType"] = task_type
+        requests.append(request)
+    payload = {"requests": requests}
     async with make_client() as client:
         payload_data = await guarded_post_json(
             client,
             _batch_embedding_url(),
             payload,
             deadline_seconds=60,
+            max_attempts=max_attempts,
             operation_tag="document_embedding",
         )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,30 @@ from evaluation.stats import paired_comparison, wilson_interval
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "golden_set.json"
 DEFAULT_REPOSITORY_ID = "incidentweave"
+
+
+def _explicit_development_questions(
+    entry: Mapping[str, Any],
+    split: str,
+    question_records: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Accept only rows explicitly selected for the development split."""
+
+    if split != "development":
+        raise ValueError(
+            "Explicit question records are supported only for development"
+        )
+    allowed_ids = set(entry["splits"]["development"])
+    raw_ids = [question.get("id") for question in question_records]
+    if any(not isinstance(question_id, str) or not question_id for question_id in raw_ids):
+        raise ValueError("Explicit development records need non-empty question ids")
+    selected_ids = [str(question_id) for question_id in raw_ids]
+    if (
+        len(selected_ids) != len(set(selected_ids))
+        or not set(selected_ids) <= allowed_ids
+    ):
+        raise ValueError("Explicit question records must be unique development rows")
+    return [dict(question) for question in question_records]
 
 
 def fixture_repository_name(repo_id: str) -> str:
@@ -89,6 +114,8 @@ async def run_offline_retrieval(
     record_details: bool = False,
     variant: str = "control",
     record_variant_details: bool = False,
+    development_records: Sequence[Mapping[str, Any]] | None = None,
+    golden_pinned_sha: str | None = None,
 ) -> dict[str, Any]:
     """Evaluate vector-plus-FTS retrieval without provider calls."""
 
@@ -108,10 +135,19 @@ async def run_offline_retrieval(
             raise ValueError("limit must be greater than zero")
         await _delete_fixture_repository(fixture_repository)
         fixture = load_fixture(selected_fixture_path)
-        golden = load_golden_set(selected_golden_path)
+        if development_records is None:
+            golden = load_golden_set(selected_golden_path)
+            questions = questions_for_split(entry, golden["questions"], split)
+            selected_pinned_sha = golden["pinned_sha"]
+        else:
+            questions = _explicit_development_questions(
+                entry,
+                split,
+                development_records,
+            )
+            selected_pinned_sha = golden_pinned_sha or str(entry["pinned_sha"])
         fixture_chunks = fixture["chunks"]
         fixture_queries = fixture["queries"]
-        questions = questions_for_split(entry, golden["questions"], split)
 
         async with AsyncSessionLocal() as session:
             repository = Repository(name=fixture_repository)
@@ -271,7 +307,7 @@ async def run_offline_retrieval(
             "split": split,
             "previously_exposed": bool(entry.get("previously_exposed")),
             "fixture": fixture["meta"],
-            "golden_pinned_sha": golden["pinned_sha"],
+            "golden_pinned_sha": selected_pinned_sha,
             "limit": limit,
         },
         "questions": question_records,
