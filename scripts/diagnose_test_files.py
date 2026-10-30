@@ -277,37 +277,6 @@ def _development_question_records(
     raise ValueError("Question set has no questions array")
 
 
-def _top_level_json_value(path: Path, selected_key: str) -> Any:
-    """Decode one top-level JSON value while skipping all other values."""
-
-    raw = path.read_text(encoding="utf-8")
-    decoder = json.JSONDecoder()
-    position = _skip_space(raw, 0)
-    if raw[position] != "{":
-        raise ValueError(f"{path}: expected a JSON object")
-    position += 1
-    while True:
-        position = _skip_space(raw, position)
-        if raw[position] == "}":
-            break
-        key, key_end = decoder.raw_decode(raw, position)
-        if not isinstance(key, str):
-            raise ValueError(f"{path}: top-level keys must be strings")
-        position = _skip_space(raw, key_end)
-        if raw[position] != ":":
-            raise ValueError(f"{path}: invalid top-level JSON object")
-        value_start = _skip_space(raw, position + 1)
-        value_end = _json_value_end(raw, value_start)
-        if key == selected_key:
-            return json.loads(raw[value_start:value_end])
-        position = _skip_space(raw, value_end)
-        if raw[position] == ",":
-            position += 1
-        elif raw[position] != "}":
-            raise ValueError(f"{path}: invalid top-level object separator")
-    raise ValueError(f"{path}: missing top-level {selected_key!r}")
-
-
 def _vector_literal(values: list[float]) -> str:
     if not values:
         raise ValueError("Embedding vectors must not be empty")
@@ -398,9 +367,6 @@ async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[
             _development_question_records(baseline_path, development_ids),
             "development",
         )
-        baseline_summary = _top_level_json_value(baseline_path, "summary")
-        if not isinstance(baseline_summary, dict):
-            raise ValueError(f"{repository_id}: baseline summary must be an object")
 
         fixture = load_fixture(fixture_path)
         chunks = fixture["chunks"]
@@ -424,7 +390,6 @@ async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[
             questions,
             results_by_question,
             baseline_questions,
-            baseline_summary,
         )
         output.append({"repository": repository_id, **repository_diagnostic})
     return output
@@ -446,40 +411,52 @@ def render_diagnostic(repositories: list[dict[str, Any]]) -> str:
         "JSONB CTE; the query runs in a read-only PostgreSQL transaction and does not insert or "
         "modify rows. Cached fixture query embeddings are used; no provider is called.",
         "",
+        "## Held-out handling disclosure",
+        "",
+        "During the review of item 14b-1, an assistant opened the first lines of the committed "
+        "baseline files directly instead of through the development split helper. This exposed "
+        "baseline row metadata for a small number of held-out rows and an all-split summary in a "
+        "tool output. No held-out question text was opened, no held-out retrieval or provider "
+        "call was run, and nothing exposed was used for any decision in this item. It is recorded "
+        "here so the single registered held-out run in item 3b can take it into account. All "
+        "later access to baseline and question files goes through the development split helper "
+        "only.",
+        "",
         "## Control reconciliation",
         "",
-        "The committed baseline has per-question development rows but does not store the "
-        "retrieved top-five lists. Therefore the weaker aggregate check was used: diagnostic "
-        "substring-label hit@5 successes and MRR are compared with the committed development "
-        "aggregates. This verifies aggregate outcomes but cannot prove rank-by-rank identity.",
+        "Baseline label ranks were compared only for the 11 answerable development questions "
+        "per repository. Rank `—` means no substring match in the top five. Hit@5 and MRR use "
+        "these 11 questions as the denominator, counting misses as zero for MRR. Unanswerable "
+        "questions were not compared because the baseline rows expose no evidence-guard decision. "
+        "The earlier aggregate comparison used all-split totals and is replaced by this "
+        "development-only comparison.",
         "",
-        "| Repository | Development questions compared | "
-        "Identical top-five lists | Differing question ordinals | Verdict |",
-        "|---|---:|---:|---|---|",
+        "| Repository | Answerable questions compared | Identical ranks | "
+        "Baseline label_rank present | Differing ranks (ordinal: baseline → diagnostic) | "
+        "Baseline hit@5; MRR | "
+        "Diagnostic hit@5; MRR | Unanswerable guard | Verdict |",
+        "|---:|---:|---:|---:|---|---|---|---|---|",
     ]
     for repository in repositories:
         reconciliation = repository["control_reconciliation"]
-        if reconciliation["mode"] == "top_five":
-            identical = str(reconciliation["identical_count"])
-            differing = (
-                ", ".join(map(str, reconciliation["differing_ordinals"]))
-                or "none"
-            )
-            verdict = reconciliation["verdict"]
-        else:
-            identical = "not available (baseline omits results)"
-            differing = "not available (aggregate-only check)"
-            verdict = (
-                f"{reconciliation['verdict']}; hit@5 successes: diagnostic "
-                f"{reconciliation['diagnostic_hit_at_5_successes']} vs baseline "
-                f"{reconciliation['baseline_hit_at_5_successes']}; MRR: diagnostic "
-                f"{reconciliation['diagnostic_mrr']:.6f} vs baseline "
-                f"{reconciliation['baseline_mrr']:.6f}"
-            )
+        differing = ", ".join(
+            f"{row['ordinal']}: {row['baseline_rank'] or '—'} → "
+            f"{row['diagnostic_rank'] or '—'}"
+            for row in reconciliation["differing_ranks"]
+        ) or "none"
+        baseline_metrics = reconciliation["baseline_metrics"]
+        diagnostic_metrics = reconciliation["diagnostic_metrics"]
         lines.append(
             f"| {repository['repository']} | "
-            f"{reconciliation['questions_compared']} | {identical} | "
-            f"{differing} | {verdict} |"
+            f"{reconciliation['questions_compared']} | "
+            f"{reconciliation['identical_rank_count']} | "
+            f"{reconciliation['baseline_label_rank_count']} | {differing} | "
+            f"{baseline_metrics['hit_at_5_successes']}; "
+            f"{baseline_metrics['mrr']:.6f} | "
+            f"{diagnostic_metrics['hit_at_5_successes']}; "
+            f"{diagnostic_metrics['mrr']:.6f} | "
+            f"{reconciliation['unanswerable_guard_comparison']} | "
+            f"{reconciliation['verdict']} |"
         )
     lines.extend(
         [

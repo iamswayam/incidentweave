@@ -100,71 +100,78 @@ def test_build_repository_diagnostic_combines_summaries() -> None:
     assert summary["top5_test_share"] == 1.0
 
 
-def test_reconcile_control_compares_top_five_identities_and_reports_ordinals() -> None:
-    questions = [
-        {"id": "dev-a"},
-        {"id": "dev-b"},
-    ]
-    first = {"file_path": "app/a.py", "line_start": 1, "line_end": 5}
-    second = {"file_path": "app/b.py", "line_start": 6, "line_end": 10}
-    diagnostic_results = {"dev-a": [first], "dev-b": [second]}
-    baseline_questions = [
-        {"id": "dev-a", "retrieved": [dict(first)]},
-        {"id": "dev-b", "retrieved": [dict(first)]},
-    ]
-
-    reconciliation = reconcile_control(
-        questions,
-        diagnostic_results,
-        baseline_questions,
-        {},
-    )
-
-    assert reconciliation == {
-        "mode": "top_five",
-        "questions_compared": 2,
-        "identical_count": 1,
-        "differing_ordinals": [2],
-        "verdict": "development top-five lists differ",
-    }
-
-
-def test_reconcile_control_falls_back_to_development_aggregates() -> None:
+def test_reconcile_control_compares_answerable_ranks_and_aggregates() -> None:
     questions = [
         {
             "id": "dev-a",
+            "category": "direct",
             "relevant": [{"file_path": "app/a.py", "substring": "needle"}],
         },
-        {"id": "dev-b", "relevant": []},
+        {
+            "id": "dev-b",
+            "category": "paraphrased",
+            "relevant": [{"file_path": "app/b.py", "substring": "missing"}],
+        },
+        {"id": "dev-c", "category": "unanswerable_near", "relevant": []},
     ]
     diagnostic_results = {
         "dev-a": [{"file_path": "app/a.py", "content": "found needle"}],
-        "dev-b": [{"file_path": "app/b.py", "content": "nothing"}],
+        "dev-b": [{"file_path": "app/b.py", "content": "nothing here"}],
+        "dev-c": [{"file_path": "app/c.py", "content": "no evidence"}],
     }
-    baseline_questions = [{"id": "dev-a"}, {"id": "dev-b"}]
-    aggregates = {
-        "substring_labels": {
-            "count": 2,
-            "hit_at_5": {"successes": 1},
-            "mrr": 0.5,
-        }
-    }
+    baseline_questions = [
+        {"id": "dev-a", "label_rank": 2},
+        {"id": "dev-b", "label_rank": None},
+        {"id": "dev-c", "label_rank": None},
+    ]
 
     reconciliation = reconcile_control(
         questions,
         diagnostic_results,
         baseline_questions,
-        aggregates,
     )
 
     assert reconciliation == {
-        "mode": "aggregate_metrics",
         "questions_compared": 2,
-        "identical_count": None,
-        "differing_ordinals": [],
-        "baseline_hit_at_5_successes": 1,
-        "diagnostic_hit_at_5_successes": 1,
-        "baseline_mrr": 0.5,
-        "diagnostic_mrr": 0.5,
-        "verdict": "development hit@5 and MRR aggregates match",
+        "identical_rank_count": 1,
+        "differing_ranks": [
+            {"ordinal": 1, "baseline_rank": 2, "diagnostic_rank": 1}
+        ],
+        "baseline_label_rank_count": 1,
+        "baseline_metrics": {"hit_at_5_successes": 1, "mrr": 0.25},
+        "diagnostic_metrics": {"hit_at_5_successes": 1, "mrr": 0.5},
+        "unanswerable_guard_comparison": (
+            "not compared; baseline rows expose no evidence-guard decision"
+        ),
+        "verdict": "answerable development ranks differ",
     }
+
+
+def test_reconcile_control_reports_matching_answerable_ranks() -> None:
+    questions = [
+        {
+            "id": "dev-a",
+            "category": "direct",
+            "relevant": [{"file_path": "app/a.py", "substring": "needle"}],
+        }
+    ]
+
+    reconciliation = reconcile_control(
+        questions,
+        {"dev-a": [{"file_path": "app/a.py", "content": "found needle"}]},
+        [{"id": "dev-a", "label_rank": 1}],
+    )
+
+    assert reconciliation["questions_compared"] == 1
+    assert reconciliation["identical_rank_count"] == 1
+    assert reconciliation["baseline_label_rank_count"] == 1
+    assert reconciliation["differing_ranks"] == []
+    assert reconciliation["baseline_metrics"] == {
+        "hit_at_5_successes": 1,
+        "mrr": 1.0,
+    }
+    assert reconciliation["diagnostic_metrics"] == {
+        "hit_at_5_successes": 1,
+        "mrr": 1.0,
+    }
+    assert reconciliation["verdict"] == "all answerable development ranks match"

@@ -4,15 +4,19 @@
 
 The classifier applies the path rules in `evaluation/test_files.py` to fixture chunk paths. Only development question records are decoded and selected through the manifest split helper. The control is the production hybrid retrieval: exact pgvector cosine ranking and PostgreSQL English full-text ranking, fused with RRF (constant 60) and the production deterministic tie-break. Fixture chunks are supplied through a query-local JSONB CTE; the query runs in a read-only PostgreSQL transaction and does not insert or modify rows. Cached fixture query embeddings are used; no provider is called.
 
+## Held-out handling disclosure
+
+During the review of item 14b-1, an assistant opened the first lines of the committed baseline files directly instead of through the development split helper. This exposed baseline row metadata for a small number of held-out rows and an all-split summary in a tool output. No held-out question text was opened, no held-out retrieval or provider call was run, and nothing exposed was used for any decision in this item. It is recorded here so the single registered held-out run in item 3b can take it into account. All later access to baseline and question files goes through the development split helper only.
+
 ## Control reconciliation
 
-The committed baseline has per-question development rows but does not store the retrieved top-five lists. Therefore the weaker aggregate check was used: diagnostic substring-label hit@5 successes and MRR are compared with the committed development aggregates. This verifies aggregate outcomes but cannot prove rank-by-rank identity.
+Baseline label ranks were compared only for the 11 answerable development questions per repository. Rank `—` means no substring match in the top five. Hit@5 and MRR use these 11 questions as the denominator, counting misses as zero for MRR. Unanswerable questions were not compared because the baseline rows expose no evidence-guard decision. The earlier aggregate comparison used all-split totals and is replaced by this development-only comparison.
 
-| Repository | Development questions compared | Identical top-five lists | Differing question ordinals | Verdict |
-|---|---:|---:|---|---|
-| incidentweave | 16 | not available (baseline omits results) | not available (aggregate-only check) | development hit@5 and/or MRR aggregates differ; hit@5 successes: diagnostic 7 vs baseline 11; MRR: diagnostic 0.354167 vs baseline 0.572917 |
-| batch-processing-service | 16 | not available (baseline omits results) | not available (aggregate-only check) | development hit@5 and/or MRR aggregates differ; hit@5 successes: diagnostic 10 vs baseline 14; MRR: diagnostic 0.470833 vs baseline 0.637500 |
-| lifeos | 16 | not available (baseline omits results) | not available (aggregate-only check) | development hit@5 and/or MRR aggregates differ; hit@5 successes: diagnostic 11 vs baseline 16; MRR: diagnostic 0.564583 vs baseline 0.804167 |
+| Repository | Answerable questions compared | Identical ranks | Baseline label_rank present | Differing ranks (ordinal: baseline → diagnostic) | Baseline hit@5; MRR | Diagnostic hit@5; MRR | Unanswerable guard | Verdict |
+|---:|---:|---:|---:|---|---|---|---|---|
+| incidentweave | 11 | 11 | 7 | none | 7; 0.515152 | 7; 0.515152 | not compared; baseline rows expose no evidence-guard decision | all answerable development ranks match |
+| batch-processing-service | 11 | 11 | 10 | none | 10; 0.684848 | 10; 0.684848 | not compared; baseline rows expose no evidence-guard decision | all answerable development ranks match |
+| lifeos | 11 | 11 | 11 | none | 11; 0.821212 | 11; 0.821212 | not compared; baseline rows expose no evidence-guard decision | all answerable development ranks match |
 
 ## Per-repository results
 
