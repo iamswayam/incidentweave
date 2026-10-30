@@ -12,8 +12,9 @@ RRF fusion and deterministic tie-breaks. Use the current 14c-3 full-text behavio
 S0 60/10 chunks, cached fixture embeddings, and a top-five result list for every question.
 Use only the frozen development split: 16 questions per repository, including 11 answerable
 questions per repository. Do not run or inspect the held-out split.
-The control's top-five lists are reconciled with the committed development baseline in the
-diagnostic note (section Control reconciliation) before any variant is run.
+The diagnostic reconciles, per answerable development question, the baseline `label_rank` with
+the control's first substring-match rank in the top five. The ordinal-only comparison is
+recorded in the diagnostic note (section Control reconciliation) before any variant is run.
 
 ## Test-file definition and reviewed paths
 
