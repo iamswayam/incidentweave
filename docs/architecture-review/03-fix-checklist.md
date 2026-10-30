@@ -40,7 +40,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
 | 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
 | 18a-1 | Done | #66 | Provider layer design |
-| 18a-2 | In progress | pending | Provider interfaces, Gemini adapter, rate limiter and cooldown |
+| 18a-2 | Done | #75 | Provider interfaces, Gemini adapter, rate limiter and cooldown |
 | 18a-3 | Not started | pending | Usage log table and report |
 | 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
 | 18c | Not started | pending | Local open embedding model experiment |
@@ -53,7 +53,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15a-1 | Done | #48 | chunking comparison foundation |
 | 15a-2 | Done | #50 | chunking comparison experiment: S0 retained |
 | 15b | Closed | n/a | no change, S0 retained |
-| 27a | In progress | pending | Evaluation README indexes and documentation map |
+| 27a | Done | #73 | Evaluation README indexes and documentation map |
 | 27b | Not started | pending | Evaluation layout normalization |
 
 ## 1. Fix-order checklist (summary)
@@ -95,7 +95,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
 | 18 | ☐ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
 | 18a-1 | ☑ | Provider layer design and call-site inventory | High | S–M | Both |
-| 18a-2 | ☐ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
+| 18a-2 | ☑ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
 | 18a-3 | ☐ | Usage log table and report without prompt or response text | High | M | Both |
 | 18b | ☐ | Ordered generation fallback through Groq and Cerebras over OpenAI-compatible HTTP | Medium | M | Both |
 | 18c | ☐ | Registered local embedding-model experiment with a separate model-labelled fixture and index | Medium | M | Both |
@@ -108,7 +108,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
 | 25 | ☐ | Three separate decisions: grep fallback (settled by 2 and 3a), MCP/LangGraph rationale, hosted demo | Low | M | Both |
 | 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
-| 27a | ☐ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
+| 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
 | 27b | ☐ | Evaluation layout normalization | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
@@ -342,7 +342,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Done when:* the shared provider interfaces exist, the Gemini adapter is the first adapter, retry,
   cooldown and rate limiting are configurable, tests remain mocked/offline, and the app's runtime
   behavior remains unchanged by default.
-- **Status:** In progress (PR pending).
+- **Status:** Done (PR #75).
 
 **18a-3. Usage log table and report.**
 - *Why:* runtime telemetry must distinguish provider, model, operation, failure class and latency without
@@ -423,7 +423,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Why:* evaluation commands, modules, data, and generated outputs are spread across the root README, scripts, notes, phase logs, experiment records, and several evaluation directories.
 - *Fix:* add `evaluation/README.md` and indexes for `experiments/`, `fixtures/`, `repos/`, and `results/`. Document the module and documentation maps, current commands and their output effects, manifest relationships, and committed-versus-generated files. Link to the evaluation guide from the root README and `docs/README.md`.
 - *Done when:* all documentation links resolve; commands are verified or explicitly labelled when not run; only README content, the two index links, and this checklist bookkeeping change.
-- **Status:** In progress (PR pending).
+- **Status:** Done (PR #73).
 
 **27b. Evaluation layout normalization.**
 - *Why:* IncidentWeave evaluation data is at the evaluation root and in `fixtures/` and `results/`, while the other repositories' data is grouped under `repos/<name>/` with common filenames.
