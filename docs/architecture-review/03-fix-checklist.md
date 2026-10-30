@@ -38,6 +38,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-1 | Done | #57 | full-text diagnostic and preregistered ablation protocol |
 | 14c-2 | Done | #61 | c1/c2 failed the registered rule; c3 equivalence confirmed; no variant adopted |
 | 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
+| 14b-1 | In progress | pending | test-file classifier, diagnostic and retrieval protocol |
+| 14b-2 | Not started | pending | run the registered test-file comparison |
 | 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
 | 18a-1 | Done | #66 | Provider layer design |
 | 18a-2 | Done | #75 | Provider interfaces, Gemini adapter, rate limiter and cooldown |
@@ -84,7 +86,8 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-2 | ☑ | Compare c1/c2 under the registered rule; c3 equivalence only | High | M | Both |
 | 14c-3 | ☑ | Closed, no change: registered rule retained current retrieval; reopen only after a separately registered comparison | High | M | Both |
 | 14d | ☐ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
-| 14b | ☐ | Evaluate a test-file retrieval policy | High | S–M | Both |
+| 14b-1 | ☐ | Classify test files, diagnose the control and register a retrieval protocol | High | S–M | Both |
+| 14b-2 | ☐ | Compare test-file downweighting and exclusion under the registered safeguards | High | M | Both |
 | 14a | ☐ | Evaluate embedding task type after lexical and test-file ablations | Medium | M | Both |
 | 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
 | 15a-2 | ☑ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
@@ -120,7 +123,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
-| 4 | **14c-2**, **14c-3**, **18a**, **14b**, **14a**, **14d**, **18b**, **18d**, **18c**, **3b** | Settle retrieval and provider/fallback design before the final guard validation |
+| 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a**, **14d**, **18b**, **18d**, **18c**, **3b** | Settle retrieval and provider/fallback design before the final guard validation |
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 | 6 | **27a** | Add the evaluation documentation index before normalizing the data layout |
 | 7 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work |
@@ -132,7 +135,7 @@ Item 13c precedes 14c-1 so ablation results can be judged with the inspection re
 
 Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker. Item 13d precedes 13c so the inspection report is reproducible.
 
-Item 3b follows the remaining retrieval changes (14d, 14b and 14a) because retrieval changes can move vector distances; re-validate the guard only after retrieval settles. Item 14c-3 is closed with no change.
+Item 3b follows the remaining retrieval changes (14d, 14b-2 and 14a) because retrieval changes can move vector distances; re-validate the guard only after retrieval settles. Item 14c-3 is closed with no change.
 
 ---
 
@@ -265,14 +268,21 @@ Item 3b follows the remaining retrieval changes (14d, 14b and 14a) because retri
 - *Fix:* compare offline Python-side BM25 with PostgreSQL `ts_rank` on the same development fixtures. Do not add a PostgreSQL extension for this experiment.
 - *Done when:* a paired development comparison reports ranking and cost; adopt in production only if BM25 wins clearly and an extension is justified; state per-repository tolerances in whole questions.
 
-**14b. Test-file retrieval policy.**
-- *Why:* tests accounted for 44% of top-five results in the original baseline [EXEC], and may compete with source evidence.
-- *Fix:* tag tests with `document_type="test"` and compare keep / downweight / exclude without changing chunking or lexical settings from the selected 14c control.
-- *Done when:* a committed comparison reports retrieval effects plus test-source recall and precision; retain a policy only if it helps without harming the registered safeguards; state per-repository tolerances in whole questions.
+**14b-1. Test-file diagnostic and registered retrieval protocol.**
+- *Why:* tests accounted for 44% of top-five results in the original baseline [EXEC], and may crowd out source evidence.
+- *Fix:* add a deterministic test-file path classifier, an offline development-fixture diagnostic, and a binding protocol for comparing test-file ranking policies.
+- *Done when:* the classifier and diagnostic are committed; the protocol states every threshold in whole questions; held-out data remains untouched.
+- **Status:** In progress (PR pending).
+
+**14b-2. Run the registered test-file retrieval comparison.**
+- *Why:* apply the 14b-1 protocol to determine whether test-file chunks should remain unchanged, be downweighted, or be excluded.
+- *Fix:* compare the registered downweight and exclude variants offline against the selected 14c control without changing chunking or lexical settings; record retrieval effects, test-source recall and precision, and the decision.
+- *Done when:* the registered rule is applied exactly; the committed results, report, and notes file record the comparison and decision; retain a policy only if it helps without harming the safeguards, with per-repository tolerances in whole questions.
+- **Status:** Not started.
 
 **14a. Embedding task type (last).**
 - *Why:* no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs].
-- *Fix:* compare document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY` task types after 14c and 14b, versioning and rebuilding embeddings as a distinct run.
+- *Fix:* compare document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY` task types after 14c and 14b-2, versioning and rebuilding embeddings as a distinct run.
 - *Done when:* one embedding change is compared with the selected lexical and test-file control using paired frozen development results; keep it only if it helps without harming the safeguards. Provider quota use is explicit and bounded; state per-repository tolerances in whole questions.
 
 **15a-1. Chunking comparison foundation (after 16a).**
