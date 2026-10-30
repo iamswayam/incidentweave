@@ -41,7 +41,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
 | 18a-1 | Done | #66 | Provider layer design |
 | 18a-2 | Done | #75 | Provider interfaces, Gemini adapter, rate limiter and cooldown |
-| 18a-3 | In progress | pending | Usage log table and report |
+| 18a-3 | Done | #78, #79 | Usage log table and report |
 | 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
 | 18c | Not started | pending | Local open embedding model experiment |
 | 18d | Not started | pending | Graceful degradation and degraded-response API contract |
@@ -55,6 +55,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15b | Closed | n/a | no change, S0 retained |
 | 27a | Done | #73 | Evaluation README indexes and documentation map |
 | 27b | Not started | pending | Evaluation layout normalization |
+| 28 | Not started | pending | Test tiers and CI speed |
 
 ## 1. Fix-order checklist (summary)
 
@@ -96,7 +97,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 18 | ☐ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
 | 18a-1 | ☑ | Provider layer design and call-site inventory | High | S–M | Both |
 | 18a-2 | ☑ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
-| 18a-3 | ☐ | Usage log table and report without prompt or response text | High | M | Both |
+| 18a-3 | ☑ | Usage log table and report without prompt or response text | High | M | Both |
 | 18b | ☐ | Ordered generation fallback through Groq and Cerebras over OpenAI-compatible HTTP | Medium | M | Both |
 | 18c | ☐ | Registered local embedding-model experiment with a separate model-labelled fixture and index | Medium | M | Both |
 | 18d | ☐ | Graceful degradation and degraded-response API contract | Medium | M | Both |
@@ -110,6 +111,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
 | 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
 | 27b | ☐ | Evaluation layout normalization | Medium | M | Maintainer |
+| 28 | ☐ | Test tiers and CI speed | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -122,6 +124,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
 | 6 | **27a** | Add the evaluation documentation index before normalizing the data layout |
 | 7 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work |
+| 8 | **28** | Record test timing and separate CI test tiers |
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
@@ -352,7 +355,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
   failures and usage by model/status. Do not store prompt text or response text.
 - *Done when:* the log table and report script are documented, the schema is reviewed, and the data is
   sufficient to diagnose provider outages without retaining code or secret-bearing payloads.
-- **Status:** In progress (PR pending).
+- **Status:** Done (PRs #78 and #79).
 
 **18b. Generation fallback: Groq and Cerebras over OpenAI-compatible HTTP.**
 - *Why:* a provider quota or outage can block generation, but fallback output can differ in quality and
@@ -429,6 +432,12 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Why:* IncidentWeave evaluation data is at the evaluation root and in `fixtures/` and `results/`, while the other repositories' data is grouped under `repos/<name>/` with common filenames.
 - *Fix:* move `golden_set.json`, `gate.json`, `smoke-gate.json`, `fixtures/retrieval_fixture.json.gz`, and the IncidentWeave baselines into `evaluation/repos/incidentweave/` using `questions.json`, `gate.json`, `smoke-gate.json`, `retrieval_fixture.json.gz`, `offline-baseline.json`, and `smoke-baseline.json`. Rename `evaluation/chunk_experiments.py` to `chunk_strategies.py`; update manifest paths, code, tests, and live documentation. Check whether legacy ignore/output patterns for `results/run-*.json`, `evaluation_report.json`, and `results/baseline.json` are still needed.
 - *Done when:* every moved path is updated in the manifest, code, tests, and live documentation; the manifest validator, unit tests, and smoke gate pass; no hash, baseline, or gate value changes; binding historical documents are not edited.
+- **Status:** Not started.
+
+**28. Test tiers and CI speed.**
+- *Why:* the suite runs as one block (about 280 tests, about a minute). As tests grow, every change would wait for all of them, and a database failure would hide behind unit-test results.
+- *Fix:* (1) record `--durations=20` and total time per folder as a baseline; (2) keep unit and integration tests in separate folders and give every test exactly one tier marker (`unit` implied by folder, `integration`, `slow`); (3) split CI into parallel jobs (lint, unit, integration with PostgreSQL and alembic, retrieval gate); (4) evaluate pytest-xdist for the unit tier only, after confirming the tests share no global state (a new dev dependency needs maintainer approval); (5) write a short testing guide in docs/notes with the commands for each tier.
+- *Done when:* each tier has a documented command; CI jobs run in parallel and the unit job finishes without a database; the baseline and the new timings are recorded; no test is deleted or weakened.
 - **Status:** Not started.
 
 ---
