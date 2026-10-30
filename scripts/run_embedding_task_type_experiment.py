@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.providers.gemini import ProviderError  # noqa: E402
 from evaluation.build_fixture import load_fixture, write_fixture  # noqa: E402
 from evaluation.embedding_task_type import (  # noqa: E402
     DOCUMENT_TASK_TYPE,
@@ -258,8 +259,8 @@ def _write_vector(text: str, task_type: str, vector: list[float]) -> None:
 
 
 async def _embed(manifest_path: Path, document_delay: float, query_delay: float) -> int:
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise ValueError("Set GEMINI_API_KEY in the process environment")
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
+        raise ValueError("GEMINI_API_KEY is missing.")
     _, _, fixtures, questions = _load_development_inputs(
         manifest_path
     )
@@ -534,6 +535,17 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _safe_error_message(exc: Exception) -> str:
+    if isinstance(exc, ProviderError):
+        return f"Gemini provider request failed ({exc.error_class})."
+
+    message = str(exc)
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if api_key:
+        message = message.replace(api_key, "[REDACTED]")
+    return message
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "embed" and not args.confirm_provider_calls:
@@ -555,7 +567,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         return asyncio.run(_evaluate(args.manifest))
     except (OSError, RuntimeError, ValueError, SQLAlchemyError) as exc:
-        print(f"Error: {type(exc).__name__}", file=sys.stderr)
+        print(f"Error: {_safe_error_message(exc)}", file=sys.stderr)
         return 2
 
 
