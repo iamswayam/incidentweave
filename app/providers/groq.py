@@ -44,7 +44,8 @@ from app.providers.usage import (
 )
 
 GROQ_CHAT_COMPLETIONS_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
-JSON_SCHEMA_MODELS = {
+# Source checked 2026-10-30: https://console.groq.com/docs/structured-outputs
+JSON_SCHEMA_CAPABLE_MODELS = {
     "openai/gpt-oss-20b",
     "openai/gpt-oss-120b",
     "openai/gpt-oss-safeguard-20b",
@@ -84,7 +85,7 @@ def _request_payload(
     temperature: float | None,
 ) -> dict[str, Any]:
     schema = _json_schema(RESPONSE_SCHEMA)
-    if model in JSON_SCHEMA_MODELS:
+    if model in JSON_SCHEMA_CAPABLE_MODELS:
         response_format = {
             "type": "json_schema",
             "json_schema": {
@@ -422,10 +423,15 @@ async def generate_with_groq(
     refusal = message.get("refusal")
     if isinstance(refusal, str) and refusal:
         raise ProviderSafetyBlockedError("Groq blocked the generation request")
-    if choices[0].get("finish_reason") in {"content_filter", "safety"}:
+    finish_reason = choices[0].get("finish_reason")
+    if finish_reason in {"content_filter", "safety"}:
         raise ProviderSafetyBlockedError("Groq blocked the generation request")
+    if finish_reason in {"length", "max_tokens", "token_limit"}:
+        raise ProviderSchemaInvalidError(
+            "Groq stopped before completing the investigation response"
+        )
     content = message.get("content")
-    if not isinstance(content, str):
+    if not isinstance(content, str) or not content.strip():
         raise ProviderSchemaInvalidError("Groq response content was not text")
     try:
         validate_generation_response_text(content)
