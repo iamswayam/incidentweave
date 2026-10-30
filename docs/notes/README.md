@@ -12,3 +12,4 @@
 | 08 | [08-fulltext-diagnostic.md](08-fulltext-diagnostic.md) | Full-text query, token, and OR-match diagnostic (item 14c-1) |
 | 09 | [09-fulltext-ablation-results.md](09-fulltext-ablation-results.md) | Registered full-text ablation measurements and decision (item 14c-2) |
 | 10 | [10-provider-usage-log.md](10-provider-usage-log.md) | Provider usage log schema, privacy, operation tags, and report (item 18a-3) |
+| 11 | [11-test-file-diagnostic.md](11-test-file-diagnostic.md) | Test-file paths and control retrieval share in development fixtures (item 14b-1) |
