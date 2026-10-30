@@ -14,6 +14,7 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 | 08 | [08-retrieval-ablation-protocol.md](08-retrieval-ablation-protocol.md) | Maintainer | Preregistered retrieval ablation protocol (item 14) | Living |
 | 09 | [09-llm-gateway-decision.md](09-llm-gateway-decision.md) | Maintainer | LLM gateway decision revision and provider-layer direction for item 18 | Living |
 | 10 | [10-llm-gateway-design.md](10-llm-gateway-design.md) | Maintainer | Provider-layer design and call-site inventory for 18a-1 | Living |
+| 11 | [11-test-file-retrieval-protocol.md](11-test-file-retrieval-protocol.md) | Maintainer | Preregistered test-file retrieval comparison protocol (item 14b) | Living |
 
 ## Conventions
 - Files are named `NN-kebab-case.md` in reading order. A new document takes the next number.
