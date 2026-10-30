@@ -99,6 +99,8 @@ flowchart TD
 
 Provider requests use an async HTTP client, bounded retries with jitter for selected transient failures, a 90-second generation deadline, and a 120-second end-to-end investigation deadline. Batch size 50, concurrency 4, and both deadlines are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 
+The embedding helper supports optional Gemini retrieval task metadata, but current production calls omit it. Item 14a registers a separate development-only comparison of document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY`; do not change production defaults or reuse legacy cache entries before that comparison and an explicit adoption decision ([task-type experiment](../notes/14-embedding-task-type-experiment.md)).
+
 ### 5.2 Synchronous API investigation
 
 ```mermaid
