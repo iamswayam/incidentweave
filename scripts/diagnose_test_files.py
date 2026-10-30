@@ -63,7 +63,7 @@ CONTROL_SQL = text(
         WHERE chunk.embedding IS NOT NULL
     ),
     vector_top AS (
-        SELECT * FROM vector_ranked WHERE vector_rank <= :limit
+        SELECT * FROM vector_ranked WHERE vector_rank <= :branch_limit
     ),
     fulltext_ranked AS (
         SELECT
@@ -87,7 +87,7 @@ CONTROL_SQL = text(
               @@ websearch_to_tsquery(:query_text)
     ),
     fulltext_top AS (
-        SELECT * FROM fulltext_ranked WHERE fulltext_rank <= :limit
+        SELECT * FROM fulltext_ranked WHERE fulltext_rank <= :branch_limit
     ),
     candidates AS (
         SELECT id FROM vector_top
@@ -124,7 +124,7 @@ CONTROL_SQL = text(
         COALESCE(vector.file_path, fulltext.file_path),
         COALESCE(vector.line_start, fulltext.line_start),
         COALESCE(vector.line_end, fulltext.line_end)
-    LIMIT :limit
+    LIMIT :candidate_limit
     """
 )
 
@@ -287,6 +287,8 @@ async def _control_top_five(
     chunks: list[dict[str, Any]],
     question_text: str,
     query_embedding: list[float],
+    *,
+    candidate_depth: int = TOP_FIVE,
 ) -> list[dict[str, Any]]:
     fixture_chunks = []
     for index, chunk in enumerate(chunks, start=1):
@@ -313,7 +315,8 @@ async def _control_top_five(
                     "fixture_chunks": json.dumps(fixture_chunks),
                     "query_embedding": _vector_literal(query_embedding),
                     "query_text": question_text,
-                    "limit": TOP_FIVE,
+                    "branch_limit": TOP_FIVE,
+                    "candidate_limit": candidate_depth,
                 },
             )
         ).mappings().all()
@@ -330,12 +333,18 @@ async def _control_top_five(
             ),
             "fts_score": float(row["fts_score"]) if row["fts_score"] is not None else None,
             "rrf_score": float(row["rrf_score"]),
+            "vector_rank": row["vector_rank"],
+            "fulltext_rank": row["fulltext_rank"],
         }
         for row in rows
     ]
 
 
-async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[str, Any]]:
+async def collect_diagnostics(
+    manifest_path: Path = MANIFEST_PATH,
+    *,
+    include_comparison_data: bool = False,
+) -> list[dict[str, Any]]:
     """Run control retrieval against fixture CTEs for development questions only."""
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -382,6 +391,7 @@ async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[
                 chunks,
                 str(question["question"]),
                 fixture_queries[question_id],
+                candidate_depth=(2 * TOP_FIVE if include_comparison_data else TOP_FIVE),
             )
         repository_diagnostic = build_repository_diagnostic(
             chunks, questions, results_by_question
@@ -391,6 +401,11 @@ async def collect_diagnostics(manifest_path: Path = MANIFEST_PATH) -> list[dict[
             results_by_question,
             baseline_questions,
         )
+        if include_comparison_data:
+            repository_diagnostic["_comparison_data"] = {
+                "questions": questions,
+                "control_rankings": results_by_question,
+            }
         output.append({"repository": repository_id, **repository_diagnostic})
     return output
 
