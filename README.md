@@ -26,7 +26,7 @@ MIT. See [LICENSE](LICENSE).
 
 ## Why IncidentWeave
 
-An investigation answer is only useful when its evidence can be inspected. IncidentWeave indexes a **local Python repository**, retrieves relevant source chunks with vector and full-text search, checks whether the evidence is sufficient, and only then requests a grounded Gemini response.
+An investigation answer is only useful when its evidence can be inspected. IncidentWeave indexes a **local Python repository**, retrieves relevant source chunks with vector and full-text search, checks whether the evidence is sufficient, and only then requests a grounded response from Gemini, with an optional default-off Groq generation fallback.
 
 It is deliberately a bounded system rather than an open-ended agent loop:
 
@@ -51,7 +51,9 @@ flowchart LR
     Fuse --> Guard{Evidence sufficient?}
     Guard -->|yes| Prompt[Grounded prompt]
     Prompt --> Gemini[Gemini generation]
+    Gemini -->|eligible failure and enabled| Groq[Groq generation]
     Gemini --> Parse[Parse citations and model self-rating]
+    Groq --> Parse
     Parse --> Persist[Investigation and audit persistence]
     Guard -->|retry once| Retrieve
     Guard -->|still insufficient| Abstain[INSUFFICIENT_EVIDENCE]
@@ -68,14 +70,14 @@ The graph executes hybrid retrieval in-process and does not invoke MCP tools. Af
 | **Embeddings** | Calls Gemini `gemini-embedding-001` through an async HTTP client, requests 768 dimensions, validates vectors, and batches missing repository chunks in groups of 50 with concurrency capped at 4. |
 | **Hybrid retrieval** | Combines pgvector cosine-distance results with PostgreSQL full-text results through Reciprocal Rank Fusion (RRF). |
 | **Evidence gate** | Requires at least one retrieved chunk with vector distance at or below the provisional 0.5 cutoff; RRF is for ranking and reporting, not a gate. A chunk without vector distance cannot make evidence sufficient. The cutoff will be re-validated on the held-out split in checklist item 3b. |
-| **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores inside tagged, explicitly untrusted evidence sections to Gemini `gemini-3.5-flash-lite`; evidence content is bounded by the prompt budget. Generation requests JSON-schema output with outcome, diagnosis, self-rating, uncertainty note, and claims. |
+| **Grounded generation** | Sends retrieved source content, paths, line ranges, and scores inside tagged, explicitly untrusted evidence sections to Gemini `gemini-3.5-flash-lite`. An explicitly configured, default-off Groq fallback is attempted only after eligible Gemini rate-limit, server, or timeout failures; embeddings remain Gemini-only. Both responses use the investigation JSON contract and evidence validation. |
 | **Citations & model self-rating** | Requires each claim to cite a retrieved chunk ID and a verbatim quote of at least 10 characters found case-sensitively after whitespace normalization; reports reference validity separately from claim faithfulness. May lower the model's `high` self-rating when retrieval margins are borderline. The rating is not a measured probability of correctness. |
 | **Audit trail** | Persists an investigation and audit for answers, guard refusals, model abstentions, and failures; the investigation stores a typed outcome, and refusals retain retrieval evidence and tool attempts. |
 | **API & tooling** | Protected HTTP endpoints, local CLI entry points, a stdio MCP server, Docker Compose, Alembic migrations, pytest, Ruff, and CI. |
 
 Ingest runs record the source path and available Git metadata, and each investigation audit links to the latest run. Chunks no longer present in a later ingest are deleted rather than archived, so historical evidence text is preserved only after checklist item 8.
 
-Provider execution uses bounded asynchronous HTTP calls with retries on selected transient failures. Batch size 50, concurrency 4, the 90-second generation deadline, and the 120-second investigation deadline are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](docs/notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
+Provider execution uses bounded asynchronous HTTP calls with retries on selected transient failures. The optional Groq path has a separate limiter and cooldown and is disabled unless `GROQ_FALLBACK_ENABLED`, `GROQ_API_KEY`, and `GROQ_MODEL` are configured. Enabling Groq sends repository snippets and incident text to a second vendor; review the [Groq fallback note](docs/notes/13-groq-generation-fallback.md) and current Groq data terms first. Batch size 50, concurrency 4, the 90-second generation deadline, and the 120-second investigation deadline are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](docs/notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 
 ## Technology stack
 
@@ -83,7 +85,7 @@ Provider execution uses bounded asynchronous HTTP calls with retries on selected
 |---|---|
 | Backend | Python 3.12+, FastAPI, Pydantic Settings, Uvicorn |
 | Data | PostgreSQL 17, pgvector, SQLAlchemy async, Psycopg 3, Alembic |
-| AI & workflow | Gemini embeddings and generation, LangGraph, MCP |
+| AI & workflow | Gemini embeddings and primary generation, optional Groq generation fallback, LangGraph, MCP |
 | Search | pgvector cosine distance, PostgreSQL FTS, Reciprocal Rank Fusion |
 | Engineering | Docker Compose, pytest, Ruff, GitHub Actions |
 
@@ -94,6 +96,7 @@ Provider execution uses bounded asynchronous HTTP calls with retries on selected
 - Python 3.12 or 3.13
 - Docker Desktop / Docker Compose
 - A Gemini API key for embedding, search, and investigation commands
+- Groq credentials and model selection only if the optional generation fallback is enabled
 
 ### 1. Install and configure
 
@@ -115,6 +118,8 @@ Set `GEMINI_API_KEY` and `API_PROTECTION_SECRET` in `.env`. The API launcher rea
 $env:GEMINI_API_KEY = "<your-gemini-api-key>"
 $env:API_PROTECTION_SECRET = "<a-local-shared-secret>"
 ```
+
+Groq fallback is off by default. To enable it, review the [privacy warning and verified provider facts](docs/notes/13-groq-generation-fallback.md), then set `GROQ_FALLBACK_ENABLED=true`, `GROQ_API_KEY`, and `GROQ_MODEL` in the ignored `.env` or process environment. Do not commit provider keys.
 
 ### 2. Start PostgreSQL and apply the schema
 
@@ -175,7 +180,7 @@ Invoke-RestMethod -Method Post `
   -Body '{"repository_name":"<repository_name>","query":"How are database sessions configured?","limit":5}'
 ```
 
-The API and CLI report the diagnosis and model self-rating (`low`, `medium`, or `high`). The API also includes a rating note: it is the model's own label, may be lowered when retrieval scores are weak, and is not a measured probability of correctness; no accuracy check exists yet. API responses include validated claims and quotes, an uncertainty note, citation-validation counts, cited chunk IDs, the evidence check, tool attempt trace, model, latency, and a fixed evaluation caveat. Invalid JSON or incorrectly typed model output is treated as an upstream failure. A validated quote establishes that a reference exists in retrieved text, not that the claim follows from it; faithfulness is deferred to item 17. The request follows the documented Gemini REST JSON-schema response format, but this change has not been tested against the live API. Guard refusals are persisted with an investigation ID and retrieval evidence; errors store only their exception class name.
+The API and CLI report the diagnosis and model self-rating (`low`, `medium`, or `high`). The API also includes a rating note: it is the model's own label, may be lowered when retrieval scores are weak, and is not a measured probability of correctness; no accuracy check exists yet. API responses include validated claims and quotes, an uncertainty note, citation-validation counts, cited chunk IDs, the evidence check, tool attempt trace, selected generation model, latency, and a fixed evaluation caveat. Invalid JSON or incorrectly typed model output is treated as an upstream failure. A validated quote establishes that a reference exists in retrieved text, not that the claim follows from it; faithfulness is deferred to item 17. Gemini and the optional Groq path are normalized to the same investigation response schema; this change has not been tested against either live API. Guard refusals are persisted with an investigation ID and retrieval evidence; errors store only their exception class name.
 
 When persistence is enabled, the audit also records the exact prompt and version, raw candidate text and uncalibrated self-rating for generated answers, generation settings, threshold snapshot, embedding model, a ranked per-chunk hash/location/score snapshot with whether each chunk entered the prompt, and a minimal correlation/outcome/model/generation-latency/error-class trace. Guard refusals store retrieval snapshots and thresholds but no prompt or raw response; errors store the minimal trace only. These replay fields are database-only and are not returned by the API. Prompts and raw responses may contain repository source; restrict direct database access accordingly. Per-chunk records store hashes and source locations, not separate content copies; the generated prompt preserves the evidence text the model saw, while dropped chunks and refusal evidence require access to the source at the recorded ingestion revision. The trace records generation latency, not per-stage timings; stage-level telemetry remains future work.
 

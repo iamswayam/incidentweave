@@ -84,6 +84,12 @@ def _structured_response(response_text: str) -> Mapping[str, object]:
     return response
 
 
+def validate_generation_response_text(response_text: str) -> Mapping[str, object]:
+    """Validate provider JSON against the investigation response contract."""
+
+    return _structured_response(response_text)
+
+
 def extract_generation_trace(
     prompt: str | None,
     response_payload: Mapping[str, object] | None,

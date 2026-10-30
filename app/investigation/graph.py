@@ -168,7 +168,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         return {
             "response_payload": response_payload,
             "latency_ms": latency_ms,
-            "model": GEMINI_GENERATION_MODEL,
+            "model": str(response_payload.get("_model") or GEMINI_GENERATION_MODEL),
         }
 
     def parse(state: InvestigationState) -> dict[str, object]:

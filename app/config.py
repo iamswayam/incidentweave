@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     provider_cooldown_seconds: float | None = None
     provider_usage_log_enabled: bool = False
     provider_usage_log_timeout_seconds: float = 2.0
+    groq_api_key: str | None = None
+    groq_model: str | None = None
+    groq_fallback_enabled: bool = False
+    groq_timeout_seconds: float = 60.0
+    groq_rate_limit_rpm: float | None = None
+    groq_rate_limit_tpm: float | None = None
+    groq_rate_limit_rpd: float | None = None
+    groq_cooldown_failures: int | None = None
+    groq_cooldown_seconds: float | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

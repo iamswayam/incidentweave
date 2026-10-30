@@ -257,3 +257,11 @@ When the provider layer fails, the app fails explicitly. There is no success-sha
   - The earlier migration section named `20261026_0004` as latest and proposed a 0005 migration. Revision `20261030_0005` is now the latest and adds the usage table.
   - The layering section proposed separate generation/embedding interfaces; this implementation keeps the existing Gemini `post_json` adapter and adds a `UsageLogger` protocol rather than introducing those interfaces.
   - Correlation IDs are reused from the investigation flow when available; standalone calls use generated IDs rather than a caller-provided stable trace ID.
+
+## Implementation notes (item 18b)
+
+- `app/providers/groq.py` implements the optional Groq Chat Completions adapter. It owns a separate limiter and cooldown and uses the existing typed provider errors and usage logger.
+- `app/investigation/generation.py` tries Gemini first and attempts Groq only when explicitly enabled and fully configured, after a retryable failure or open Gemini cooldown. Auth, bad-request, safety-blocked, and schema-invalid failures do not trigger fallback.
+- Groq output is converted to the existing Gemini response envelope and validated through the same parser. The graph and persistence report the selected generation model; embeddings remain Gemini-only.
+- All Groq settings default to unset except `GROQ_FALLBACK_ENABLED=false` and `GROQ_TIMEOUT_SECONDS=60`. No database migration or new runtime dependency was needed; existing usage rows already include provider and model.
+- See [the Groq fallback note](../notes/13-groq-generation-fallback.md) for verified provider facts, privacy considerations, source URLs, and the manual live check. Groq facts were checked on 2026-10-30; the raw authorization-header spelling and numeric free-plan quotas remain unverified.

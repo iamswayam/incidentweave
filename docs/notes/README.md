@@ -14,3 +14,4 @@
 | 10 | [10-provider-usage-log.md](10-provider-usage-log.md) | Provider usage log schema, privacy, operation tags, and report (item 18a-3) |
 | 11 | [11-test-file-diagnostic.md](11-test-file-diagnostic.md) | Test-file paths and control retrieval share in development fixtures (item 14b-1) |
 | 12 | [12-test-file-comparison-results.md](12-test-file-comparison-results.md) | Registered development test-file variants, comparison metrics, decision, and [machine-readable results](12-test-file-comparison-results.json) (item 14b-2) |
+| 13 | [13-groq-generation-fallback.md](13-groq-generation-fallback.md) | Optional Groq generation fallback, policy, privacy, configuration, and verified provider facts (item 18b) |

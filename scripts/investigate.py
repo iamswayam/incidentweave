@@ -283,7 +283,7 @@ async def _investigate_repository(
                 query=query_text,
                 response_payload=response_payload,
                 retrieval_results=result["retrieval_results"],
-                model=GEMINI_GENERATION_MODEL,
+                model=str(result["model"]),
                 latency_ms=result["latency_ms"],
                 final_confidence=result["confidence"],
                 token_usage=(
@@ -309,7 +309,7 @@ async def _investigate_repository(
         "cited_chunk_ids": result["cited_chunk_ids"],
         "retrieval_results": result["retrieval_results"],
         "evidence_check": result["evidence_check"],
-        "model": GEMINI_GENERATION_MODEL,
+        "model": result["model"],
         "latency_ms": result["latency_ms"],
         "retry_used": result["retry_used"],
         "confidence_calibrated": result["confidence_calibrated"],
