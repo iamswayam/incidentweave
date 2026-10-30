@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.config import settings  # noqa: E402
 from app.providers.gemini import ProviderError  # noqa: E402
 from evaluation.build_fixture import load_fixture, write_fixture  # noqa: E402
 from evaluation.embedding_task_type import (  # noqa: E402
@@ -259,7 +260,7 @@ def _write_vector(text: str, task_type: str, vector: list[float]) -> None:
 
 
 async def _embed(manifest_path: Path, document_delay: float, query_delay: float) -> int:
-    if not os.environ.get("GEMINI_API_KEY", "").strip():
+    if not (settings.gemini_api_key or "").strip():
         raise ValueError("GEMINI_API_KEY is missing.")
     _, _, fixtures, questions = _load_development_inputs(
         manifest_path
@@ -540,9 +541,9 @@ def _safe_error_message(exc: Exception) -> str:
         return f"Gemini provider request failed ({exc.error_class})."
 
     message = str(exc)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key:
-        message = message.replace(api_key, "[REDACTED]")
+    for api_key in (settings.gemini_api_key, os.environ.get("GEMINI_API_KEY")):
+        if api_key:
+            message = message.replace(api_key, "[REDACTED]")
     return message
 
 
