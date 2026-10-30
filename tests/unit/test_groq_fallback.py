@@ -531,3 +531,321 @@ async def test_groq_http_statuses_map_to_typed_errors(
                 deadline_seconds=5,
                 max_attempts=1,
             )
+
+
+FAKE_GROQ_SECRET = "gsk_FAKE_KEY_FOR_TEST"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("outcome", "expected_error"),
+    [
+        ("success", None),
+        ("rate_limited", gemini.ProviderRateLimitedError),
+        ("server_error", gemini.ProviderServerError),
+        ("timeout", gemini.ProviderTimeoutError),
+        ("auth", gemini.ProviderAuthError),
+    ],
+)
+async def test_fake_key_never_leaks_from_groq_requests_or_results(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    outcome: str,
+    expected_error: type[gemini.ProviderError] | None,
+) -> None:
+    monkeypatch.setattr(settings, "groq_fallback_enabled", True)
+    monkeypatch.setattr(settings, "groq_api_key", FAKE_GROQ_SECRET)
+    monkeypatch.setattr(settings, "groq_model", "qwen/qwen3.8-27b")
+    response_by_outcome = {
+        "success": httpx.Response(200, json=_groq_payload()),
+        "rate_limited": httpx.Response(429, text="limit exceeded"),
+        "server_error": httpx.Response(503, text="temporarily unavailable"),
+        "auth": httpx.Response(401, text=f"invalid key {FAKE_GROQ_SECRET}"),
+    }
+    requests: list[httpx.Request] = []
+    usage_logger = RecordingUsageLogger()
+
+    async def no_wait(_delay: float) -> None:
+        return None
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if outcome == "timeout":
+            raise httpx.ReadTimeout("request timed out", request=request)
+        return response_by_outcome[outcome]
+
+    monkeypatch.setattr(
+        generation,
+        "guarded_post_json",
+        _raise_provider_error(gemini.ProviderRateLimitedError("primary quota")),
+    )
+    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(
+        groq,
+        "DEFAULT_ADAPTER",
+        _new_groq_adapter(
+            sleep=no_wait,
+            rng=lambda: 0,
+            usage_logger=usage_logger,
+        ),
+    )
+    monkeypatch.setattr(
+        groq,
+        "make_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    caplog.set_level(logging.DEBUG)
+    if expected_error is None:
+        result, _ = await generation.generate_investigation("question")
+        assert FAKE_GROQ_SECRET not in repr(result)
+    else:
+        with pytest.raises(expected_error) as raised:
+            await generation.generate_investigation("question")
+        assert FAKE_GROQ_SECRET not in str(raised.value)
+        assert FAKE_GROQ_SECRET not in repr(raised.value)
+
+    assert requests[0].headers["Authorization"] == f"Bearer {FAKE_GROQ_SECRET}"
+    assert FAKE_GROQ_SECRET not in str(requests[0].url)
+    assert requests[0].url.query == b""
+    assert FAKE_GROQ_SECRET not in repr(requests[0])
+    assert len(usage_logger.entries) == 1
+    assert FAKE_GROQ_SECRET not in repr(usage_logger.entries[0])
+    assert all(FAKE_GROQ_SECRET not in record.getMessage() for record in caplog.records)
+    assert FAKE_GROQ_SECRET not in caplog.text
+    assert "from_provider=gemini to_provider=groq" in caplog.text
+
+
+@pytest.mark.anyio
+async def test_fallback_log_and_groq_auth_error_do_not_leak_fake_key(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _enable_fallback(monkeypatch)
+    monkeypatch.setattr(settings, "groq_api_key", FAKE_GROQ_SECRET)
+    caplog.set_level(logging.DEBUG)
+    requests: list[httpx.Request] = []
+    usage_logger = RecordingUsageLogger()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(401, text=f"invalid {FAKE_GROQ_SECRET}")
+
+    monkeypatch.setattr(
+        generation,
+        "guarded_post_json",
+        _raise_provider_error(gemini.ProviderRateLimitedError("quota")),
+    )
+    monkeypatch.setattr(
+        groq,
+        "DEFAULT_ADAPTER",
+        _new_groq_adapter(usage_logger=usage_logger),
+    )
+    monkeypatch.setattr(
+        groq,
+        "make_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(gemini.ProviderAuthError) as raised:
+        await generation.generate_investigation("question")
+
+    assert raised.value.__cause__ is not None
+    assert FAKE_GROQ_SECRET not in str(raised.value)
+    assert FAKE_GROQ_SECRET not in repr(raised.value)
+    assert FAKE_GROQ_SECRET not in caplog.text
+    assert "reason=rate_limited from_provider=gemini to_provider=groq" in caplog.text
+    assert FAKE_GROQ_SECRET not in repr(requests[0])
+    assert len(usage_logger.entries) == 1
+    assert FAKE_GROQ_SECRET not in repr(usage_logger.entries[0])
+
+
+def _raise_provider_error(
+    error: gemini.ProviderError,
+) -> Callable[..., Any]:
+    async def fail(*_args: object, **_kwargs: object) -> dict[str, Any]:
+        raise error
+
+    return fail
+
+
+@pytest.mark.anyio
+async def test_one_groq_sequence_uses_only_bounded_internal_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _enable_fallback(monkeypatch)
+    requests: list[httpx.Request] = []
+    sleeps: list[float] = []
+    usage_logger = RecordingUsageLogger()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) < 3:
+            return httpx.Response(503, text="temporary")
+        return httpx.Response(200, json=_groq_payload())
+
+    async def no_wait(delay: float) -> None:
+        sleeps.append(delay)
+
+    adapter = _new_groq_adapter(
+        sleep=no_wait,
+        rng=lambda: 0,
+        usage_logger=usage_logger,
+    )
+    original_generate = groq.generate_with_groq
+    sequences: list[str] = []
+
+    async def count_sequence(*args: object, **kwargs: object) -> dict[str, Any]:
+        sequences.append("started")
+        return await original_generate(*args, **kwargs)
+
+    monkeypatch.setattr(
+        generation,
+        "guarded_post_json",
+        _raise_provider_error(gemini.ProviderServerError("Gemini failed")),
+    )
+    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(groq, "DEFAULT_ADAPTER", adapter)
+    monkeypatch.setattr(
+        groq,
+        "make_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    monkeypatch.setattr(groq, "generate_with_groq", count_sequence)
+
+    response, _ = await generation.generate_investigation("question")
+
+    assert response["_provider"] == "groq"
+    assert sequences == ["started"]
+    assert len(requests) == 3
+    assert len(sleeps) == 2
+    assert usage_logger.entries[0].attempt_count == 3
+
+
+@pytest.mark.anyio
+async def test_open_gemini_cooldown_falls_back_without_gemini_http_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _enable_fallback(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-gemini-key-for-cooldown")
+    cooldown = gemini.CooldownStateMachine(
+        failure_threshold=1,
+        cooldown_seconds=60,
+        clock=lambda: 0,
+    )
+    cooldown.state = "open"
+    cooldown.cooldown_until = 60
+    monkeypatch.setattr(gemini.DEFAULT_ADAPTER, "cooldown", cooldown)
+    gemini_requests: list[httpx.Request] = []
+
+    def record_gemini(request: httpx.Request) -> httpx.Response:
+        gemini_requests.append(request)
+        return httpx.Response(500)
+
+    monkeypatch.setattr(
+        generation,
+        "make_client",
+        lambda: httpx.AsyncClient(
+            transport=httpx.MockTransport(record_gemini)
+        ),
+    )
+
+    async def use_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
+        return {
+            "candidates": [],
+            "_provider": "groq",
+            "_model": "qwen/qwen3.8-27b",
+        }
+
+    monkeypatch.setattr(groq, "generate_with_groq", use_groq)
+    response, _ = await generation.generate_investigation("question")
+
+    assert response["_provider"] == "groq"
+    assert gemini_requests == []
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("response_payload", "expected_error"),
+    [
+        ({"id": "missing-choices"}, gemini.ProviderSchemaInvalidError),
+        ({"choices": []}, gemini.ProviderSchemaInvalidError),
+        ({"choices": [{}]}, gemini.ProviderSchemaInvalidError),
+        (
+            {
+                "choices": [
+                    {"message": {"content": ""}, "finish_reason": "stop"}
+                ]
+            },
+            gemini.ProviderSchemaInvalidError,
+        ),
+        (
+            {
+                "choices": [
+                    {"message": {"content": "not JSON"}, "finish_reason": "stop"}
+                ]
+            },
+            gemini.ProviderSchemaInvalidError,
+        ),
+        (
+            {
+                "choices": [
+                    {
+                        "message": {"content": json.dumps(VALID_RESPONSE)},
+                        "finish_reason": "content_filter",
+                    }
+                ]
+            },
+            gemini.ProviderSafetyBlockedError,
+        ),
+        (
+            {
+                "choices": [
+                    {
+                        "message": {"content": json.dumps(VALID_RESPONSE)},
+                        "finish_reason": "length",
+                    }
+                ]
+            },
+            gemini.ProviderSchemaInvalidError,
+        ),
+    ],
+)
+async def test_invalid_or_incomplete_groq_responses_never_return_partial_output(
+    monkeypatch: pytest.MonkeyPatch,
+    response_payload: dict[str, Any],
+    expected_error: type[gemini.ProviderError],
+) -> None:
+    _enable_fallback(monkeypatch)
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=response_payload)
+
+    monkeypatch.setattr(
+        groq,
+        "DEFAULT_ADAPTER",
+        _new_groq_adapter(usage_logger=RecordingUsageLogger()),
+    )
+    monkeypatch.setattr(
+        groq,
+        "make_client",
+        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(expected_error):
+        await groq.generate_with_groq("question")
+
+    assert len(requests) == 1
+
+
+def test_json_schema_model_registry_is_named_and_unknown_models_use_json_object() -> None:
+    assert groq.JSON_SCHEMA_CAPABLE_MODELS
+    assert "qwen/qwen3.8-27b" in groq.JSON_SCHEMA_CAPABLE_MODELS
+    unknown_payload = groq._request_payload(
+        "question",
+        model="unknown/model",
+        temperature=None,
+    )
+    assert unknown_payload["response_format"] == {"type": "json_object"}
+    assert "Schema:" in unknown_payload["messages"][0]["content"]
