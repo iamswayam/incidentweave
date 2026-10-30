@@ -47,8 +47,9 @@ No key is committed or included in a request URL.
 
 Unset limiter and cooldown settings disable those local controls; they do not
 assert or infer a Groq account quota. Groq publishes organization-level limits
-for RPM, RPD, TPM, TPD, and, for some organizations, ITPM and OTPM. The exact
-limits are available in the account's Limits page. Its public table identifies
+for RPM, RPD, TPM, TPD, and, for some organizations, ITPM and OTPM. Limits are
+organization-scoped and may change; current values are available in the
+account's Limits page. Its public table identifies
 the shown values as Developer-plan base limits, not universal free-plan
 quotas; numeric free-plan RPM, TPM, and RPD values for this deployment are
 therefore **unverified** and are not hard-coded.
