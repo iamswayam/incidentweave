@@ -434,21 +434,26 @@ class GeminiProviderAdapter:
             usage.get("candidatesTokenCount") if isinstance(usage, dict) else None
         )
         try:
-            await self.usage_logger.record(
-                UsageEntry(
-                    provider="gemini",
-                    model=self._model_from_url(url),
-                    operation_tag=operation_override_var.get() or operation_tag,
-                    status=status,
-                    error_class=error_class,
-                    attempt_count=attempt_count,
-                    latency_ms=latency_ms,
-                    input_tokens=input_tokens if type(input_tokens) is int else None,
-                    output_tokens=(
-                        output_tokens if type(output_tokens) is int else None
-                    ),
-                    correlation_id=correlation_id_var.get() or uuid4().hex,
-                )
+            await asyncio.wait_for(
+                self.usage_logger.record(
+                    UsageEntry(
+                        provider="gemini",
+                        model=self._model_from_url(url),
+                        operation_tag=operation_override_var.get() or operation_tag,
+                        status=status,
+                        error_class=error_class,
+                        attempt_count=attempt_count,
+                        latency_ms=latency_ms,
+                        input_tokens=(
+                            input_tokens if type(input_tokens) is int else None
+                        ),
+                        output_tokens=(
+                            output_tokens if type(output_tokens) is int else None
+                        ),
+                        correlation_id=correlation_id_var.get() or uuid4().hex,
+                    )
+                ),
+                timeout=settings.provider_usage_log_timeout_seconds,
             )
         except Exception as exc:
             logging.getLogger(__name__).warning(
@@ -487,9 +492,9 @@ class GeminiProviderAdapter:
         if self.rng is not None:
             kwargs["rng"] = self.rng
         fn = self._post_json_fn or post_json
-        started_at = perf_counter()
         try:
             await self.rate_limiter.acquire(tokens=estimated_tokens)
+            started_at = perf_counter()
             result = await fn(
                 client,
                 url,

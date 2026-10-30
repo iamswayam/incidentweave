@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import subprocess
+import sys
 from dataclasses import fields
 from typing import Any
 
@@ -7,6 +10,7 @@ import httpx
 import pytest
 
 from app.config import settings
+from app.db import session as db_session
 from app.providers import gemini, usage
 
 
@@ -210,7 +214,7 @@ async def test_default_adapter_does_not_access_database_when_logging_disabled(
     def fail_if_db_accessed() -> None:
         raise AssertionError("disabled usage logging must not access the database")
 
-    monkeypatch.setattr(usage, "AsyncSessionLocal", fail_if_db_accessed)
+    monkeypatch.setattr(db_session, "AsyncSessionLocal", fail_if_db_accessed)
     adapter = gemini.GeminiProviderAdapter()
     assert isinstance(adapter.usage_logger, usage.NullUsageLogger)
 
@@ -302,3 +306,121 @@ async def test_value_error_from_provider_helper_is_not_logged() -> None:
         )
 
     assert logger.entries == []
+
+
+class HangingUsageLogger:
+    async def record(self, entry: usage.UsageEntry) -> None:
+        del entry
+        await asyncio.Event().wait()
+
+
+@pytest.mark.anyio
+async def test_usage_timeout_does_not_delay_success_or_log_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(settings, "provider_usage_log_timeout_seconds", 0.01)
+
+    async def succeed(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {"result": "success"}
+
+    adapter = gemini.GeminiProviderAdapter(
+        rate_limiter=gemini.AsyncRateLimiter(),
+        cooldown=gemini.CooldownStateMachine(),
+        post_json_fn=succeed,
+        usage_logger=HangingUsageLogger(),
+    )
+
+    result = await adapter.post_json(
+        httpx.AsyncClient(),
+        "https://example.test/models/gemini-test:generateContent",
+        {"private_payload": "must-not-be-logged"},
+        deadline_seconds=5,
+    )
+
+    assert result == {"result": "success"}
+    assert "Provider usage logger failed (TimeoutError)" in caplog.text
+    assert "must-not-be-logged" not in caplog.text
+
+
+@pytest.mark.anyio
+async def test_usage_timeout_does_not_replace_provider_exception(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setattr(settings, "provider_usage_log_timeout_seconds", 0.01)
+    expected = gemini.ProviderBadRequestError("provider rejected request")
+
+    async def fail(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise expected
+
+    adapter = gemini.GeminiProviderAdapter(
+        rate_limiter=gemini.AsyncRateLimiter(),
+        cooldown=gemini.CooldownStateMachine(),
+        post_json_fn=fail,
+        usage_logger=HangingUsageLogger(),
+    )
+
+    with pytest.raises(gemini.ProviderBadRequestError) as raised:
+        await adapter.post_json(
+            httpx.AsyncClient(),
+            "https://example.test/models/gemini-test:generateContent",
+            {"private_payload": "must-not-be-logged"},
+            deadline_seconds=5,
+        )
+
+    assert raised.value is expected
+    assert "Provider usage logger failed (TimeoutError)" in caplog.text
+    assert "must-not-be-logged" not in caplog.text
+
+
+@pytest.mark.anyio
+async def test_usage_latency_excludes_rate_limiter_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = 0.0
+    logger = FakeUsageLogger()
+
+    async def advance_rate_limiter(*, tokens: float) -> None:
+        nonlocal now
+        del tokens
+        now += 5.0
+
+    async def helper(*_args: object, **_kwargs: object) -> dict[str, object]:
+        nonlocal now
+        now += 0.1
+        return {"ok": True}
+
+    adapter = gemini.GeminiProviderAdapter(
+        rate_limiter=gemini.AsyncRateLimiter(),
+        cooldown=gemini.CooldownStateMachine(),
+        post_json_fn=helper,
+        usage_logger=logger,
+    )
+    monkeypatch.setattr(adapter.rate_limiter, "acquire", advance_rate_limiter)
+    monkeypatch.setattr(gemini, "perf_counter", lambda: now)
+
+    await adapter.post_json(
+        httpx.AsyncClient(),
+        "https://example.test/models/gemini-test:generateContent",
+        {},
+        deadline_seconds=5,
+    )
+
+    assert logger.entries[0].latency_ms == 100
+
+
+def test_importing_usage_module_does_not_import_database_session() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys, app.providers.usage; "
+            "assert 'app.db.session' not in sys.modules",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr

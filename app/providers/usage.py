@@ -8,9 +8,6 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from typing import Iterator, Protocol
 
-from app.db.models import ProviderUsageLog
-from app.db.session import AsyncSessionLocal
-
 OPERATION_TAGS = (
     "query_embedding",
     "document_embedding",
@@ -76,6 +73,9 @@ class DbUsageLogger:
 
     async def record(self, entry: UsageEntry) -> None:
         try:
+            from app.db.models import ProviderUsageLog
+            from app.db.session import AsyncSessionLocal
+
             async with AsyncSessionLocal() as session:
                 session.add(
                     ProviderUsageLog(
