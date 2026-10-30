@@ -215,14 +215,16 @@ async def _embed(manifest_path: Path, batch_delay_seconds: float) -> int:
             os.environ["GEMINI_API_KEY"] = settings.gemini_api_key
     if not os.environ.get("GEMINI_API_KEY"):
         raise ValueError("GEMINI_API_KEY is required for the confirmed embed command")
+    from app.providers.usage import usage_operation
     from scripts.embed_chunks import embed_texts
 
-    await embed_missing(
-        texts,
-        CACHE_ROOT,
-        embed_texts,
-        batch_delay_seconds=batch_delay_seconds,
-    )
+    with usage_operation("experiment_embedding"):
+        await embed_missing(
+            texts,
+            CACHE_ROOT,
+            embed_texts,
+            batch_delay_seconds=batch_delay_seconds,
+        )
     print(f"Cached embeddings: {len(texts)}")
     return 0
 

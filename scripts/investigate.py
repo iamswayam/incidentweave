@@ -51,6 +51,7 @@ from app.investigation.persistence import (  # noqa: E402
 )
 from app.investigation.prompt import PROMPT_VERSION  # noqa: E402
 from app.investigation.replay import ReplayRecord, build_chunk_records  # noqa: E402
+from app.providers.usage import correlation_id_var  # noqa: E402
 from scripts.embed_chunks import GEMINI_MODEL, embed_text  # noqa: E402
 
 INVESTIGATION_DEADLINE_SECONDS = 120
@@ -84,9 +85,34 @@ async def investigate_repository(
     *,
     temperature: float | None = None,
 ) -> dict[str, object]:
-    """Perform the end-to-end grounded investigation flow for one query."""
+    """Run an investigation with a stable provider-usage correlation ID."""
 
     correlation_id = uuid4().hex
+    token = correlation_id_var.set(correlation_id)
+    try:
+        return await _investigate_repository(
+            repo_name,
+            query_text,
+            limit,
+            persist,
+            temperature=temperature,
+            correlation_id=correlation_id,
+        )
+    finally:
+        correlation_id_var.reset(token)
+
+
+async def _investigate_repository(
+    repo_name: str,
+    query_text: str,
+    limit: int = 5,
+    persist: bool = True,
+    *,
+    temperature: float | None = None,
+    correlation_id: str,
+) -> dict[str, object]:
+    """Perform the end-to-end grounded investigation flow for one query."""
+
     if not 1 <= limit <= MAX_LIMIT:
         raise ValueError(f"--limit must be between 1 and {MAX_LIMIT}")
     if len(query_text) > MAX_QUERY_CHARS:

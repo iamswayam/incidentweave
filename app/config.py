@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     provider_rate_limit_rpd: float | None = None
     provider_cooldown_failures: int | None = None
     provider_cooldown_seconds: float | None = None
+    provider_usage_log_enabled: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
