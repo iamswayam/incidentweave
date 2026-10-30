@@ -7,6 +7,7 @@ import pytest
 from evaluation.embedding_task_type import (
     DOCUMENT_TASK_TYPE,
     QUERY_TASK_TYPE,
+    EmbeddingInputs,
     collect_embedding_inputs,
     compare_guard_decisions,
     embedding_cache_key,
@@ -15,22 +16,20 @@ from evaluation.embedding_task_type import (
     read_cached_vector,
     render_results,
     summarize_method,
+    write_results_note,
 )
 from evaluation.retrieval_eval import _explicit_development_questions
+from scripts import run_embedding_task_type_experiment as experiment
 
 
 def _metrics(
     *,
     mrr: float,
     hit_at_5: int = 10,
-    recall_denominator: int | None = 3,
-    recall_hits: int | None = 2,
 ) -> dict[str, int | float | None]:
     return {
         "mrr": mrr,
         "hit_at_5_successes": hit_at_5,
-        "test_source_recall_denominator": recall_denominator,
-        "test_source_recall_hits": recall_hits,
     }
 
 
@@ -40,19 +39,11 @@ def _decision(
     lower_bound: float = 0.01,
     candidate_hits: int = 10,
     guard_regressions: int = 0,
-    recall_denominator: int | None = 3,
-    candidate_recall_hits: int | None = 1,
 ) -> dict[str, object]:
-    control = _metrics(
-        mrr=0.1,
-        recall_denominator=recall_denominator,
-        recall_hits=2 if recall_denominator else None,
-    )
+    control = _metrics(mrr=0.1)
     candidate = _metrics(
         mrr=candidate_mrr,
         hit_at_5=candidate_hits,
-        recall_denominator=recall_denominator,
-        recall_hits=candidate_recall_hits,
     )
     bootstrap = {"bootstrap_95_percentile_interval": [lower_bound, 0.2]}
     return evaluate_task_type_rules(
@@ -206,19 +197,60 @@ def test_guard_comparison_reports_only_development_ordinals() -> None:
     }
 
 
-def test_registered_decision_requires_every_evaluable_safeguard() -> None:
+def test_registered_decision_requires_all_four_rules() -> None:
     assert _decision()["qualifies_for_retention"] is True
-    assert _decision(candidate_mrr=0.12)["rules"]["R1"] == "fail"
-    assert _decision(lower_bound=0)["rules"]["R2"] == "fail"
-    assert _decision(candidate_hits=9)["rules"]["R3"] == "fail"
-    assert _decision(guard_regressions=1)["rules"]["R4"] == "fail"
-    no_test_evidence = _decision(recall_denominator=0, candidate_recall_hits=None)
-    assert no_test_evidence["rules"]["R5"] == "not-evaluable"
-    assert no_test_evidence["qualifies_for_retention"] is False
-    assert _decision(candidate_recall_hits=0)["rules"]["R5"] == "fail"
+    failures = (
+        ({"candidate_mrr": 0.12}, "R1"),
+        ({"lower_bound": 0}, "R2"),
+        ({"candidate_hits": 9}, "R3"),
+        ({"guard_regressions": 1}, "R4"),
+    )
+    for parameters, failed_rule in failures:
+        decision = _decision(**parameters)
+        assert decision["rules"][failed_rule] == "fail"
+        assert all(
+            result == "pass"
+            for rule, result in decision["rules"].items()
+            if rule != failed_rule
+        )
+        assert decision["qualifies_for_retention"] is False
+        assert set(decision["rules"]) == {"R1", "R2", "R3", "R4"}
 
 
-def test_rendered_report_contains_no_question_ids_or_text() -> None:
+def test_registered_decision_mrr_gain_boundary() -> None:
+    at_boundary = _decision(candidate_mrr=0.13)
+    below_boundary = _decision(candidate_mrr=0.1299)
+
+    assert at_boundary["mrr_difference"] == pytest.approx(0.03)
+    assert at_boundary["rules"]["R1"] == "pass"
+    assert at_boundary["qualifies_for_retention"] is True
+    assert below_boundary["mrr_difference"] == pytest.approx(0.0299)
+    assert below_boundary["rules"]["R1"] == "fail"
+    assert below_boundary["qualifies_for_retention"] is False
+
+
+def test_evaluation_refuses_incomplete_development_vector_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(experiment, "CACHE_ROOT", tmp_path)
+
+    with pytest.raises(
+        ValueError,
+        match="missing document vectors=1, missing development query vectors=1",
+    ):
+        experiment._require_cached_vectors(
+            EmbeddingInputs(document_texts=("source text",), query_texts=("query",))
+        )
+
+    experiment._write_vector("source text", DOCUMENT_TASK_TYPE, [0.0] * 768)
+    experiment._write_vector("query", QUERY_TASK_TYPE, [0.0] * 768)
+    experiment._require_cached_vectors(
+        EmbeddingInputs(document_texts=("source text",), query_texts=("query",))
+    )
+
+
+def test_rendered_results_note_is_aggregate_only_and_writable(tmp_path: Path) -> None:
     method = {
         "answerable_questions": 1,
         "hit_at_1_successes": 1,
@@ -263,14 +295,35 @@ def test_rendered_report_contains_no_question_ids_or_text() -> None:
             }
         },
         "decision": {
-            "rules": {f"R{index}": "pass" for index in range(1, 6)},
-            "outcome": "Keep the control.",
+            "rules": {f"R{index}": "pass" for index in range(1, 5)},
+            "outcome": (
+                "The task-type candidate qualifies under the registered rules; "
+                "production remains unchanged pending a separate adoption decision."
+            ),
         },
+        "protocol_commit": "a" * 40,
+        "experiment_version": "synthetic-cache-version",
+        "limits": ["The held-out split remains untouched."],
         "held_out_question_id": "HELDOUT-ID-MUST-NOT-APPEAR",
         "question_text": "HELDOUT-TEXT-MUST-NOT-APPEAR",
     }
 
     rendered = render_results(report)
+    note_path = tmp_path / "15-embedding-task-type-results.md"
+    write_results_note(report, note_path)
 
     assert "HELDOUT-ID-MUST-NOT-APPEAR" not in rendered
     assert "HELDOUT-TEXT-MUST-NOT-APPEAR" not in rendered
+    assert note_path.read_text(encoding="utf-8") == rendered
+    assert "Protocol commit: `" + "a" * 40 + "`" in rendered
+    assert "synthetic-cache-version" in rendered
+    assert "| Pooled | control | 1 | 1 | 1 | 1 | 1.000000 |" in rendered
+    assert "95% paired bootstrap interval: [0.000000, 0.000000]" in rendered
+    assert "The exact sign test is descriptive only" in rendered
+    assert "| Repository | Unanswerable | Unchanged | Improved | Regressed |" in rendered
+    assert "Mechanical decision:" in rendered
+    assert "| R1 |" in rendered
+    assert "| R2 |" in rendered
+    assert "| R3 |" in rendered
+    assert "| R4 |" in rendered
+    assert "R5" not in rendered

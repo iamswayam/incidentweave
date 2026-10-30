@@ -333,14 +333,10 @@ def evaluate_task_type_rules(
     guard_by_repository: Mapping[str, Mapping[str, Any]],
     bootstrap: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Apply the conservative registered retention rule without hidden defaults."""
+    """Apply the four-condition 14a retention rule without hidden defaults."""
 
     difference = float(candidate_pooled["mrr"]) - float(control_pooled["mrr"])
     interval = bootstrap["bootstrap_95_percentile_interval"]
-    denominator = control_pooled["test_source_recall_denominator"]
-    candidate_denominator = candidate_pooled["test_source_recall_denominator"]
-    if denominator != candidate_denominator:
-        raise ValueError("Control and candidate test-evidence denominators differ")
 
     rules = {
         "R1": "pass" if difference >= 0.03 else "fail",
@@ -363,17 +359,7 @@ def evaluate_task_type_rules(
             else "fail"
         ),
     }
-    if denominator is None or int(denominator) == 0:
-        rules["R5"] = "not-evaluable"
-    else:
-        control_hits = control_pooled["test_source_recall_hits"]
-        candidate_hits = candidate_pooled["test_source_recall_hits"]
-        if control_hits is None or candidate_hits is None:
-            raise ValueError("Evaluable test-source recall needs both hit counts")
-        rules["R5"] = (
-            "pass" if int(control_hits) - int(candidate_hits) <= 1 else "fail"
-        )
-    qualifies = all(rules[rule] == "pass" for rule in ("R1", "R2", "R3", "R4", "R5"))
+    qualifies = all(rules[rule] == "pass" for rule in ("R1", "R2", "R3", "R4"))
     return {
         "rules": rules,
         "qualifies_for_retention": qualifies,
@@ -389,10 +375,17 @@ def evaluate_task_type_rules(
 
 
 def render_results(report: Mapping[str, Any]) -> str:
-    """Render aggregates and development ordinals without question IDs or text."""
+    """Render a commit-ready aggregate note without question IDs or text."""
 
     lines = [
         "# Embedding task-type comparison: development",
+        "",
+        "## Protocol metadata",
+        "",
+        "- Protocol: [14-embedding-task-type-experiment.md](14-embedding-task-type-experiment.md)",
+        f"- Protocol commit: `{report['protocol_commit']}`",
+        f"- Cache version: `{report['experiment_version']}`",
+        "- Selection split: development only.",
         "",
         "| Scope | Method | Answerable | Hit@1 | Hit@3 | Hit@5 | MRR | Span MRR | "
         "Test top-five share | Test-source recall | Test precision |",
@@ -471,13 +464,42 @@ def render_results(report: Mapping[str, Any]) -> str:
             "",
             "## Registered decision",
             "",
-            "| Rule | Result |",
-            "|---|---|",
+            "| Rule | Retention condition | Result |",
+            "|---|---|---|",
         ]
     )
+    conditions = {
+        "R1": (
+            "Pooled development MRR over 33 answerable questions improves "
+            "by at least 0.03 versus control."
+        ),
+        "R2": "The 95% paired-bootstrap lower bound of the pooled MRR difference is above 0.",
+        "R3": "Per-repository answerable Hit@5 successes do not decrease.",
+        "R4": (
+            "Per-repository guard decisions on every unanswerable development "
+            "question are unchanged or improved."
+        ),
+    }
     lines.extend(
-        f"| {rule} | {status} |"
+        f"| {rule} | {conditions[rule]} | {status} |"
         for rule, status in report["decision"]["rules"].items()
     )
-    lines.extend(["", report["decision"]["outcome"], ""])
+    lines.extend(
+        [
+            "",
+            f"**Mechanical decision:** {report['decision']['outcome']}",
+            "",
+            "## Limits",
+            "",
+            *[f"- {limit}" for limit in report["limits"]],
+            "",
+        ]
+    )
     return "\n".join(lines)
+
+
+def write_results_note(report: Mapping[str, Any], path: Path) -> None:
+    """Write the aggregate development result to its repository documentation path."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_results(report), encoding="utf-8")

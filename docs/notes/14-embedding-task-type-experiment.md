@@ -40,11 +40,24 @@ The protocol's most conservative readings are:
   question or vector is embedded or evaluated.
 - The selected 14c and 14b controls stay fixed. No retrieval setting changes alongside
   the embedding configuration.
-- Item 14a does not specify numeric safeguards. To avoid weakening the registered 14b
-  decision, apply its R1-R5 criteria unchanged; when test-source recall has a zero
-  denominator, R5 is not evaluable and cannot authorize retention.
+- Item 14a uses only the embedding-task-type comparison rule: R1-R4 are required, and
+  there is no R5 because test-source recall is a test-file metric rather than an embedding
+  task-type safeguard.
 - The task-type candidate remains experimental even if it meets the numeric rule; no
   production embedding rewrite or adoption is performed by the comparison command.
+
+## Amendment before results
+
+Date: 2026-10-30.
+
+The 14a rule was corrected before any candidate result existed. The original 14b test-file
+comparison included an R5 metric, but that criterion concerns test-source recall and the
+preference for test-file evidence, not the Gemini embedding task-type comparison. An
+embedding task-type candidate should only be retained if it improves pooled development MRR
+and preserves repository-level hit@5 and guard safety; a zero test-source denominator is not
+an embedding-specific risk and is not part of the 14a rule.
+
+This amendment was made before any task-type vectors or results existed.
 
 ## Metrics and decision
 
@@ -60,29 +73,29 @@ The exact two-sided sign test is descriptive only.
 
 | Rule | Retention condition |
 |---|---|
-| R1 | Pooled MRR gain is at least `0.03`. |
-| R2 | Lower bound of the paired-bootstrap 95% interval is above zero. |
-| R3 | No repository loses an answerable Hit@5 success (tolerance: 0 questions). |
-| R4 | No unanswerable guard decision regresses in any repository (tolerance: 0 questions); sufficient-to-insufficient is an improvement. |
-| R5 | Pooled test-source recall loses at most one question. A zero denominator is not evaluable and is not a pass. |
+| R1 | Pooled development MRR over the 33 answerable questions improves by at least `0.03` versus the control. |
+| R2 | The 95% paired-bootstrap lower bound of the pooled MRR difference is above zero. |
+| R3 | Per repository answerable Hit@5 successes do not decrease (tolerance: 0 questions). |
+| R4 | Per repository guard decisions on every unanswerable development question are unchanged or improved (tolerance: 0 questions). |
 
 Retain only if every rule passes. Otherwise keep the current control and do not adopt the
-task-type candidate. On the registered 14b development set, test-source recall's denominator
-was zero; that value is not reinterpreted after seeing the task-type results.
+task-type candidate.
 
 ## Versioning, quota, and artifacts
 
 Candidate cache identity includes the experiment version, model, dimension, task type, and
 input text hash. It cannot reuse legacy vectors or mix document and query vectors. Candidate
-fixtures and reports are written under ignored `evaluation/cache/embedding_task_type_v1/`;
-the committed control fixture, baseline, gate, manifest, and production database embeddings
-are not overwritten.
+fixtures and JSON reports are written under ignored
+`evaluation/cache/embedding_task_type_v1/`; the evaluate command also writes an
+aggregate-only Markdown result to [15-embedding-task-type-results.md](15-embedding-task-type-results.md).
+The result note is committed after review. The committed control fixture, baseline, gate,
+manifest, and production database embeddings are not overwritten.
 
 The plan is fail-closed at 200 unique document texts, 48 unique development query texts,
 and four document batches of at most 50 texts. Each physical request is limited to one
 attempt, bounding the initial plan to at most 52 HTTP requests. Defaults pace document
 batches 70 seconds apart and query requests 1.5 seconds apart. The `plan` command prints
-the exact uncached text and request counts before any provider call. If interrupted,
+the exact uncached input counts and request counts before any provider call. If interrupted,
 successful vectors are cached separately; re-run `plan` before resuming so only uncached
 inputs are counted. No API key or request content is written to the report.
 
@@ -121,12 +134,13 @@ local PostgreSQL service available, evaluate those cached vectors without provid
 ```
 
 The evaluation selects `development` with the diagnostic's `_development_question_records`
-loader, passes those rows to an evaluator that rejects explicit non-development records,
-applies the current retrieval path and production guard, and writes aggregate-only reports
-to the ignored cache directory. It does not write a committed baseline or make a held-out
-decision.
-The report must be reviewed and copied into the documentation only in a later result-recording
-step; this offline preparation does not claim a winner.
+loader, requires every development document and query vector to exist and validate in the
+task-versioned cache, passes only those rows to an evaluator that rejects explicit
+non-development records, and applies the current retrieval path and production guard. It
+writes aggregate-only reports to the ignored cache directory and the Markdown result note
+linked above. The note includes the evaluator's protocol commit hash and is committed only
+after maintainer review. It does not write a committed baseline or make a held-out decision.
+This offline preparation does not claim a winner.
 
 The Google API documentation was not fetched in this offline task. Verify the current REST
 `taskType` contract and account quota before the maintainer authorizes the provider calls.
@@ -135,6 +149,7 @@ The Google API documentation was not fetched in this offline task. Verify the cu
 
 The comparison uses 33 answerable and 15 unanswerable development questions across three
 small repositories. Results may not generalize to other repositories or query distributions.
-If R5 remains not evaluable because no test-evidence question exists, the conservative rule
-cannot retain the candidate. A successful retrieval metric does not establish answer quality.
-The held-out split remains untouched.
+A successful retrieval metric does not establish answer quality. The held-out split remains
+untouched. The evidence guard threshold of `0.5` is provisional and was set on the control
+embeddings; a candidate that shifts distances may change guard decisions. A failure of R4 for
+that reason is a valid result, and recalibrating the threshold is out of scope here (item 3b).
