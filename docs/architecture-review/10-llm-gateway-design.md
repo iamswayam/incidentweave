@@ -216,6 +216,8 @@ The design remains consistent with the secure handling already in the repo: envi
 
 When the provider layer fails, the app fails explicitly. There is no success-shaped fallback in the provider layer itself. When generation fails, the app may return an explicit degraded response only after the maintainers approve the 18d design. Until then, the provider layer treats failure as an explicit failure and does not silently re-route or bypass the provider contract.
 
+The proposed response contract, failure matrix, and approval checklist are in [the item 18d-1 degraded-response design](13-degraded-response-design.md). No degraded behavior is approved or implemented by that record.
+
 ## Maintainer decisions
 
 - Direction approved: own thin provider layer now; no LiteLLM proxy deployment now.
