@@ -1,0 +1,310 @@
+{
+  "decision": {
+    "conditions": {
+      "R1_pooled_mrr_improves_by_at_least_0_030": false,
+      "R2_bootstrap_lower_bound_above_zero": false,
+      "R3_no_repository_loses_more_than_one_hit_at_5": true,
+      "R4_unanswerable_guard_outcomes_unchanged": true
+    },
+    "decision": "keep control",
+    "qualifies": false
+  },
+  "metadata": {
+    "answerable_questions": 33,
+    "bm25_b": 0.75,
+    "bm25_k1": 1.2,
+    "control_reconciliation": "passed 33/33 per-question label and span ranks",
+    "held_out_used": false,
+    "protocol": "docs/architecture-review/12-bm25-comparison-protocol.md",
+    "protocol_commit": "a47e6fc0c981f28530a89c710bda12371f9d30e1",
+    "provider_calls": false,
+    "repositories": [
+      "batch-processing-service",
+      "incidentweave",
+      "lifeos"
+    ],
+    "rrf_constant": 60,
+    "split": "development",
+    "top_k": 5
+  },
+  "per_repository": {
+    "batch-processing-service": {
+      "cost": {
+        "bm25_index_build_ms": 29.205099999671802,
+        "bm25_query_mean_ms": 0.983818749546117,
+        "sql_c1_query_mean_ms": 160.52853749965834
+      },
+      "guard": {
+        "changed": 0,
+        "changed_development_ordinals": [],
+        "control": {
+          "insufficient": 3,
+          "sufficient": 2,
+          "unanswerable_questions": 5
+        },
+        "unanswerable_questions": 5,
+        "unchanged": 5
+      },
+      "lexical_branch": {
+        "B1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 4,
+          "hit_at_3_successes": 5,
+          "hit_at_5_successes": 8
+        },
+        "C1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 2,
+          "hit_at_3_successes": 6,
+          "hit_at_5_successes": 7
+        },
+        "control": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 1,
+          "hit_at_3_successes": 1,
+          "hit_at_5_successes": 1
+        }
+      },
+      "methods": {
+        "B1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 4,
+          "hit_at_3_successes": 8,
+          "hit_at_5_successes": 9,
+          "mrr": 0.5484848484848485
+        },
+        "C1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 5,
+          "hit_at_3_successes": 7,
+          "hit_at_5_successes": 9,
+          "mrr": 0.5666666666666667
+        },
+        "control": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 6,
+          "hit_at_3_successes": 9,
+          "hit_at_5_successes": 10,
+          "mrr": 0.6848484848484848
+        }
+      }
+    },
+    "incidentweave": {
+      "cost": {
+        "bm25_index_build_ms": 24.07919999677688,
+        "bm25_query_mean_ms": 1.306112500060408,
+        "sql_c1_query_mean_ms": 193.32798124969486
+      },
+      "guard": {
+        "changed": 0,
+        "changed_development_ordinals": [],
+        "control": {
+          "insufficient": 3,
+          "sufficient": 2,
+          "unanswerable_questions": 5
+        },
+        "unanswerable_questions": 5,
+        "unchanged": 5
+      },
+      "lexical_branch": {
+        "B1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 0,
+          "hit_at_3_successes": 2,
+          "hit_at_5_successes": 4
+        },
+        "C1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 6,
+          "hit_at_3_successes": 7,
+          "hit_at_5_successes": 9
+        },
+        "control": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 1,
+          "hit_at_3_successes": 1,
+          "hit_at_5_successes": 2
+        }
+      },
+      "methods": {
+        "B1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 3,
+          "hit_at_3_successes": 5,
+          "hit_at_5_successes": 7,
+          "mrr": 0.3893939393939394
+        },
+        "C1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 6,
+          "hit_at_3_successes": 8,
+          "hit_at_5_successes": 8,
+          "mrr": 0.6212121212121212
+        },
+        "control": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 5,
+          "hit_at_3_successes": 7,
+          "hit_at_5_successes": 7,
+          "mrr": 0.5151515151515151
+        }
+      }
+    },
+    "lifeos": {
+      "cost": {
+        "bm25_index_build_ms": 22.75559999907273,
+        "bm25_query_mean_ms": 0.5097999999179592,
+        "sql_c1_query_mean_ms": 99.40991874987049
+      },
+      "guard": {
+        "changed": 0,
+        "changed_development_ordinals": [],
+        "control": {
+          "insufficient": 3,
+          "sufficient": 2,
+          "unanswerable_questions": 5
+        },
+        "unanswerable_questions": 5,
+        "unchanged": 5
+      },
+      "lexical_branch": {
+        "B1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 2,
+          "hit_at_3_successes": 3,
+          "hit_at_5_successes": 7
+        },
+        "C1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 3,
+          "hit_at_3_successes": 6,
+          "hit_at_5_successes": 10
+        },
+        "control": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 1,
+          "hit_at_3_successes": 2,
+          "hit_at_5_successes": 2
+        }
+      },
+      "methods": {
+        "B1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 5,
+          "hit_at_3_successes": 9,
+          "hit_at_5_successes": 11,
+          "mrr": 0.6621212121212121
+        },
+        "C1": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 8,
+          "hit_at_3_successes": 11,
+          "hit_at_5_successes": 11,
+          "mrr": 0.8333333333333333
+        },
+        "control": {
+          "answerable_questions": 11,
+          "hit_at_1_successes": 8,
+          "hit_at_3_successes": 10,
+          "hit_at_5_successes": 11,
+          "mrr": 0.8212121212121212
+        }
+      }
+    }
+  },
+  "pooled": {
+    "lexical_branch": {
+      "B1": {
+        "answerable_questions": 33,
+        "hit_at_1_successes": 6,
+        "hit_at_3_successes": 10,
+        "hit_at_5_successes": 19
+      },
+      "C1": {
+        "answerable_questions": 33,
+        "hit_at_1_successes": 11,
+        "hit_at_3_successes": 19,
+        "hit_at_5_successes": 26
+      },
+      "control": {
+        "answerable_questions": 33,
+        "hit_at_1_successes": 3,
+        "hit_at_3_successes": 4,
+        "hit_at_5_successes": 5
+      }
+    },
+    "methods": {
+      "B1": {
+        "answerable_questions": 33,
+        "hit_at_1_successes": 12,
+        "hit_at_3_successes": 22,
+        "hit_at_5_successes": 27,
+        "mrr": 0.5333333333333333
+      },
+      "C1": {
+        "answerable_questions": 33,
+        "hit_at_1_successes": 19,
+        "hit_at_3_successes": 26,
+        "hit_at_5_successes": 28,
+        "mrr": 0.6737373737373737
+      },
+      "control": {
+        "answerable_questions": 33,
+        "hit_at_1_successes": 19,
+        "hit_at_3_successes": 26,
+        "hit_at_5_successes": 28,
+        "mrr": 0.6737373737373737
+      }
+    },
+    "statistics": {
+      "bootstrap_95_percentile_interval": [
+        -0.23787878787878788,
+        -0.048484848484848485
+      ],
+      "bootstrap_resamples": 10000,
+      "bootstrap_seed": 20261031,
+      "mrr_difference": -0.14040404040404042,
+      "question_differences": [
+        -0.6666666666666667,
+        0.0,
+        -0.5,
+        0.0,
+        0.0,
+        0.0,
+        -0.3333333333333333,
+        0.0,
+        0.5,
+        0.0,
+        -0.5,
+        -0.6666666666666667,
+        0.0,
+        0.0,
+        -0.08333333333333331,
+        0.0,
+        0.0,
+        -0.5,
+        0.0,
+        -0.1333333333333333,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.75,
+        -0.5,
+        0.0,
+        0.0,
+        0.0,
+        -0.1333333333333333,
+        -0.16666666666666669,
+        0.3,
+        -0.5
+      ],
+      "sign_test": {
+        "negative": 13,
+        "positive": 2,
+        "ties": 18,
+        "two_sided_p_value": 0.00738525390625
+      }
+    }
+  }
+}
