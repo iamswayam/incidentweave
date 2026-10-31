@@ -9,6 +9,15 @@ import pytest
 import app.investigation.graph as graph_module
 from app.investigation.confidence import calibrate_confidence
 from app.investigation.graph import create_investigation_graph
+from app.providers.gemini import (
+    ProviderAuthError,
+    ProviderBadRequestError,
+    ProviderRateLimitedError,
+    ProviderSafetyBlockedError,
+    ProviderSchemaInvalidError,
+    ProviderServerError,
+    ProviderTimeoutError,
+)
 
 
 class FakeSessionContext:
@@ -361,3 +370,71 @@ def test_confidence_calibration_downgrades_borderline_retrieval() -> None:
 
     assert confidence == "medium"
     assert "best RRF 0.021000 is below 0.032" in note
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "error",
+    [
+        ProviderRateLimitedError("cooldown"),
+        ProviderServerError("server unavailable"),
+        ProviderTimeoutError("provider timed out"),
+    ],
+)
+async def test_graph_returns_degraded_result_after_generation_availability_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+) -> None:
+    async def fake_hybrid_search(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+        return [sufficient_result()]
+
+    async def fail_generation(*_args: object, **_kwargs: object) -> object:
+        raise error
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", fail_generation)
+
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())
+
+    assert result["outcome"] == "generation_unavailable"
+    assert result["unavailable_answer"] is True
+    assert result["degraded"] is True
+    assert result["degraded_reason"] == "generation_unavailable"
+    assert result["diagnosis"] == ""
+    assert result["confidence"] == "not_applicable"
+    assert result["cited_chunk_ids"] == []
+    assert result["claims"] == []
+    assert result["evidence_check"]["is_sufficient"] is True
+    assert result["retrieval_results"] == [sufficient_result()]
+    assert result["generation_trace"]["failed_stage"] == "generation"
+    assert "query" not in result["generation_trace"]
+    assert "prompt" not in result["generation_trace"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "error",
+    [
+        ProviderAuthError("unauthorized"),
+        ProviderBadRequestError("invalid request"),
+        ProviderSafetyBlockedError("blocked"),
+        ProviderSchemaInvalidError("invalid schema"),
+    ],
+)
+async def test_graph_does_not_degrade_nonavailability_generation_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+) -> None:
+    async def fake_hybrid_search(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+        return [sufficient_result()]
+
+    async def fail_generation(*_args: object, **_kwargs: object) -> object:
+        raise error
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", fail_generation)
+
+    with pytest.raises(type(error)):
+        await create_investigation_graph(calibrate_confidence).ainvoke(initial_state())

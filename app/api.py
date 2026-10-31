@@ -37,6 +37,18 @@ class InvestigationRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=MAX_LIMIT)
 
 
+class InvestigationEvidence(BaseModel):
+    """Content-free location and ranking metadata for retrieved evidence."""
+
+    chunk_id: str
+    file_path: str
+    start_line: int | None
+    end_line: int | None
+    rank: int
+    rrf_score: float | None
+    vector_score: float | None
+
+
 class InvestigationResponse(BaseModel):
     """Investigation output with the model's self-rating and its limitations."""
 
@@ -57,6 +69,10 @@ class InvestigationResponse(BaseModel):
     model: str
     latency_ms: int | None
     evaluation_note: str
+    unavailable_answer: bool = False
+    degraded: bool = False
+    degraded_reason: str | None = None
+    evidence: list[InvestigationEvidence] = Field(default_factory=list)
 
 
 class RepositorySummary(BaseModel):
@@ -114,6 +130,10 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
     cited_chunk_ids = result.get("cited_chunk_ids")
     if not isinstance(cited_chunk_ids, list):
         cited_chunk_ids = []
+    unavailable_answer = result.get("unavailable_answer") is True
+    evidence = result.get("evidence")
+    if not isinstance(evidence, list):
+        evidence = []
 
     return InvestigationResponse(
         investigation_id=(
@@ -123,11 +143,25 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
         ),
         repository_name=str(result.get("repository") or payload.repository_name),
         query=str(result.get("query") or payload.query),
-        diagnosis=str(result.get("diagnosis") or "INSUFFICIENT_EVIDENCE"),
+        diagnosis=(
+            ""
+            if unavailable_answer
+            else str(result.get("diagnosis") or "INSUFFICIENT_EVIDENCE")
+        ),
         outcome=str(result["outcome"]),
-        model_self_rating=str(result.get("confidence") or "low"),
+        model_self_rating=(
+            "not_applicable"
+            if unavailable_answer
+            else str(result.get("confidence") or "low")
+        ),
         rating_note=(
-            f"{RATING_NOTE} {calibration_note}" if calibration_note else RATING_NOTE
+            "No model response was generated."
+            if unavailable_answer
+            else (
+                f"{RATING_NOTE} {calibration_note}"
+                if calibration_note
+                else RATING_NOTE
+            )
         ),
         cited_chunk_ids=[str(chunk_id) for chunk_id in cited_chunk_ids],
         evidence_check=evidence_check,
@@ -149,6 +183,14 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
             else None
         ),
         evaluation_note=EVALUATION_NOTE,
+        unavailable_answer=unavailable_answer,
+        degraded=result.get("degraded") is True,
+        degraded_reason=(
+            str(result["degraded_reason"])
+            if isinstance(result.get("degraded_reason"), str)
+            else None
+        ),
+        evidence=evidence,
     )
 
 
@@ -200,15 +242,42 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
     citation_validation = audit_payload.get("citation_validation")
     if not isinstance(citation_validation, dict):
         citation_validation = {"submitted": 0, "valid": 0, "rate": None}
+    degraded_payload = audit_payload.get("degraded")
+    if not isinstance(degraded_payload, dict):
+        degraded_payload = {}
+    stored_evidence_check = degraded_payload.get("evidence_check")
+    if isinstance(stored_evidence_check, dict):
+        evidence_check = {
+            "is_sufficient": stored_evidence_check.get("is_sufficient"),
+            "reason": stored_evidence_check.get("reason"),
+            "best_rrf_score": stored_evidence_check.get("best_rrf_score"),
+            "best_vector_score": stored_evidence_check.get("best_vector_score"),
+        }
+    stored_evidence = degraded_payload.get("evidence")
+    if not isinstance(stored_evidence, list):
+        stored_evidence = []
+    unavailable_answer = degraded_payload.get("unavailable_answer") is True
 
     return InvestigationResponse(
         investigation_id=investigation.id,
         repository_name=repository.name if repository is not None else "",
         query=investigation.query,
-        diagnosis=investigation.response or "INSUFFICIENT_EVIDENCE",
+        diagnosis=(
+            ""
+            if unavailable_answer
+            else investigation.response or "INSUFFICIENT_EVIDENCE"
+        ),
         outcome=investigation.outcome,
-        model_self_rating=investigation.confidence or "low",
-        rating_note=RATING_NOTE,
+        model_self_rating=(
+            "not_applicable"
+            if unavailable_answer
+            else investigation.confidence or "low"
+        ),
+        rating_note=(
+            "No model response was generated."
+            if unavailable_answer
+            else RATING_NOTE
+        ),
         cited_chunk_ids=[str(item) for item in audit_payload.get("cited_chunk_ids", [])],
         evidence_check=evidence_check,
         retry_used=any(attempt.get("stage") == "widened_retry" for attempt in tool_calls),
@@ -219,6 +288,14 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
         model=investigation.model or "",
         latency_ms=investigation.latency_ms,
         evaluation_note=EVALUATION_NOTE,
+        unavailable_answer=unavailable_answer,
+        degraded=degraded_payload.get("degraded") is True,
+        degraded_reason=(
+            str(degraded_payload["degraded_reason"])
+            if isinstance(degraded_payload.get("degraded_reason"), str)
+            else None
+        ),
+        evidence=stored_evidence,
     )
 
 

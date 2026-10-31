@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from time import perf_counter
 from typing import NotRequired, TypedDict
 
 from app.db.session import AsyncSessionLocal
-from app.investigation.generation import GEMINI_GENERATION_MODEL, generate_investigation
+from app.investigation.generation import (
+    GEMINI_GENERATION_MODEL,
+    generate_investigation,
+    generation_failure_trace,
+    is_generation_unavailable_error,
+)
 from app.investigation.guard import evaluate_evidence_sufficiency
 from app.investigation.limits import MAX_EVIDENCE_CHARS
 from app.investigation.parsing import parse_investigation_response
@@ -45,6 +51,11 @@ class InvestigationState(TypedDict):
     submitted_citation_count: NotRequired[int]
     valid_citation_count: NotRequired[int]
     citation_validity_rate: NotRequired[float | None]
+    outcome: NotRequired[str]
+    unavailable_answer: NotRequired[bool]
+    degraded: NotRequired[bool]
+    degraded_reason: NotRequired[str | None]
+    generation_trace: NotRequired[dict[str, object]]
 
 
 ConfidenceCalibrator = Callable[
@@ -160,15 +171,43 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         }
 
     async def generate(state: InvestigationState) -> dict[str, object]:
-        response_payload, latency_ms = await generate_investigation(
-            state["prompt"],
-            temperature=state.get("temperature"),
-        )
+        started_at = perf_counter()
+        try:
+            response_payload, latency_ms = await generate_investigation(
+                state["prompt"],
+                temperature=state.get("temperature"),
+            )
+        except Exception as exc:
+            if not is_generation_unavailable_error(exc):
+                raise
+            elapsed_ms = round((perf_counter() - started_at) * 1000)
+            return {
+                "diagnosis": "",
+                "confidence": "not_applicable",
+                "cited_chunk_ids": [],
+                "claims": [],
+                "uncertainty_note": (
+                    "Generation unavailable after configured provider retries."
+                ),
+                "model": "",
+                "latency_ms": None,
+                "outcome": "generation_unavailable",
+                "unavailable_answer": True,
+                "degraded": True,
+                "degraded_reason": "generation_unavailable",
+                "generation_trace": generation_failure_trace(
+                    exc,
+                    elapsed_ms=elapsed_ms,
+                ),
+            }
         return {
             "response_payload": response_payload,
             "latency_ms": latency_ms,
             "model": str(response_payload.get("_model") or GEMINI_GENERATION_MODEL),
         }
+
+    def route_after_generate(state: InvestigationState) -> str:
+        return "degraded" if state.get("outcome") == "generation_unavailable" else "parse"
 
     def parse(state: InvestigationState) -> dict[str, object]:
         parsed = parse_investigation_response(
@@ -224,7 +263,11 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
     graph.add_edge("widen_search", "retrieve")
     graph.add_edge("insufficient", END)
     graph.add_edge("build_prompt", "generate")
-    graph.add_edge("generate", "parse")
+    graph.add_conditional_edges(
+        "generate",
+        route_after_generate,
+        {"parse": "parse", "degraded": END},
+    )
     graph.add_edge("parse", "calibrate")
     graph.add_edge("calibrate", END)
     return graph.compile()

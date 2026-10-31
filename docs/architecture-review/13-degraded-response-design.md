@@ -1,8 +1,10 @@
 # Degraded response design (item 18d-1)
 
-**Status: Approved (maintainer, 2026-10-31); implementation in 18d-2, 18d-3, 18d-4**
+**Status: 18d-2 is implemented; 18d-3 and 18d-4 remain**
 
-This is a documentation-only design record. It does not change application behavior.
+This record specifies the approved response contract. Item 18d-2 implements generation
+degradation; embedding degradation and the persistent query cache remain for items 18d-3 and
+18d-4.
 
 ## 1. Current behavior verified in code
 

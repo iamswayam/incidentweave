@@ -8,6 +8,7 @@ import pytest
 
 import scripts.investigate as investigate_module
 from app.investigation.replay import ReplayRecord
+from app.providers.gemini import ProviderAuthError, ProviderServerError
 
 
 class FakeSessionContext:
@@ -215,3 +216,245 @@ async def test_investigation_deadline_persists_timeout_error(
         )
 
     assert persisted_errors == ["TimeoutError"]
+
+
+@pytest.mark.anyio
+async def test_embedding_failure_audit_records_query_embedding_stage_and_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: list[tuple[str, ReplayRecord | None]] = []
+    provider_error = ProviderServerError("provider unavailable", status_code=503)
+
+    async def fail_embedding(query: str) -> list[float]:
+        raise provider_error
+
+    async def fake_persist_error(
+        session: object,
+        repository_id: int,
+        query: str,
+        error_class: str,
+        **kwargs: object,
+    ) -> None:
+        recorded.append((error_class, kwargs.get("replay")))
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "embed_text", fail_embedding)
+    monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
+
+    with pytest.raises(ProviderServerError):
+        await investigate_module.investigate_repository(
+            "test-repo", "private question", persist=True
+        )
+
+    error_class, replay = recorded[0]
+    assert error_class == "ProviderServerError"
+    assert isinstance(replay, ReplayRecord)
+    assert replay.trace is not None
+    assert replay.trace["failed_stage"] == "query_embedding"
+    assert replay.trace["model"] == investigate_module.GEMINI_MODEL
+    assert replay.trace["error_classes"] == ["server_error"]
+    assert replay.trace["provider_attempts"][0]["attempt_count"] == 3
+    assert "private question" not in repr(replay.trace)
+
+
+@pytest.mark.anyio
+async def test_generation_failure_audit_records_generation_stage_and_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorded: list[ReplayRecord | None] = []
+
+    class FailedGraph:
+        async def ainvoke(self, state: dict[str, Any]) -> dict[str, Any]:
+            raise ProviderAuthError("provider credentials rejected")
+
+    async def fake_embed_text(query: str) -> list[float]:
+        return [0.1, 0.2]
+
+    async def fake_persist_error(
+        session: object,
+        repository_id: int,
+        query: str,
+        error_class: str,
+        **kwargs: object,
+    ) -> None:
+        recorded.append(kwargs.get("replay"))
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
+    monkeypatch.setattr(
+        investigate_module, "create_investigation_graph", lambda _calibrator: FailedGraph()
+    )
+    monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
+
+    with pytest.raises(ProviderAuthError):
+        await investigate_module.investigate_repository(
+            "test-repo", "private question", persist=True
+        )
+
+    replay = recorded[0]
+    assert isinstance(replay, ReplayRecord)
+    assert replay.trace is not None
+    assert replay.trace["failed_stage"] == "generation"
+    assert replay.trace["model"] == investigate_module.GEMINI_GENERATION_MODEL
+    assert replay.trace["error_classes"] == ["auth"]
+    assert "private question" not in repr(replay.trace)
+
+
+@pytest.mark.anyio
+async def test_generation_unavailable_result_persists_only_evidence_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    retrieval_results = [
+        {
+            "id": 9,
+            "file_path": "source.py",
+            "line_start": 3,
+            "line_end": 8,
+            "rrf_score": 0.04,
+            "vector_score": 0.3,
+            "content": "SOURCE TEXT MUST NOT LEAVE THE INVESTIGATION FLOW",
+        }
+    ]
+    trace = {
+        "failed_stage": "generation",
+        "model": investigate_module.GEMINI_GENERATION_MODEL,
+        "provider_attempts": [
+            {
+                "provider": "gemini",
+                "model": investigate_module.GEMINI_GENERATION_MODEL,
+                "error_class": "server_error",
+                "attempt_count": 3,
+            }
+        ],
+        "error_classes": ["server_error"],
+        "attempt_count": 3,
+        "elapsed_ms": 400,
+        "correlation_id": "test-correlation",
+    }
+
+    class UnavailableGraph:
+        async def ainvoke(self, state: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "outcome": "generation_unavailable",
+                "unavailable_answer": True,
+                "degraded": True,
+                "degraded_reason": "generation_unavailable",
+                "diagnosis": "",
+                "confidence": "not_applicable",
+                "cited_chunk_ids": [],
+                "claims": [],
+                "uncertainty_note": (
+                    "Generation unavailable after configured provider retries."
+                ),
+                "retrieval_results": retrieval_results,
+                "retrieved_before_budget": retrieval_results,
+                "evidence_check": {
+                    "is_sufficient": True,
+                    "reason": "Evidence meets the guard threshold.",
+                },
+                "retry_used": False,
+                "tool_calls": [],
+                "generation_trace": trace,
+            }
+
+    persisted: list[dict[str, object]] = []
+
+    async def fake_embed_text(query: str) -> list[float]:
+        return [0.1, 0.2]
+
+    async def fake_persist_generation_unavailable(**kwargs: object) -> SimpleNamespace:
+        persisted.append(kwargs)
+        return SimpleNamespace(id=91)
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
+    monkeypatch.setattr(
+        investigate_module,
+        "create_investigation_graph",
+        lambda _calibrator: UnavailableGraph(),
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "persist_generation_unavailable",
+        fake_persist_generation_unavailable,
+    )
+
+    result = await investigate_module.investigate_repository(
+        "test-repo", "question", persist=True
+    )
+
+    assert result["outcome"] == "generation_unavailable"
+    assert result["investigation_id"] == 91
+    assert result["diagnosis"] == ""
+    assert result["confidence"] == "not_applicable"
+    assert result["evidence"] == [
+        {
+            "chunk_id": "9",
+            "file_path": "source.py",
+            "start_line": 3,
+            "end_line": 8,
+            "rank": 1,
+            "rrf_score": 0.04,
+            "vector_score": 0.3,
+        }
+    ]
+    assert "content" not in repr(result["evidence"])
+    assert persisted[0]["evidence"] == result["evidence"]
+    assert persisted[0]["generation_trace"]["failed_stage"] == "generation"
+
+
+def test_cli_prints_generation_trace_and_degraded_state_without_raw_text(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = {
+        "repository": "test-repo",
+        "query": "question",
+        "outcome": "generation_unavailable",
+        "diagnosis": "",
+        "confidence": "not_applicable",
+        "unavailable_answer": True,
+        "degraded": True,
+        "degraded_reason": "generation_unavailable",
+        "cited_chunk_ids": [],
+        "model": "",
+        "latency_ms": None,
+        "retry_used": False,
+        "confidence_calibrated": False,
+        "tool_calls": [],
+        "generation_trace": {
+            "failed_stage": "generation",
+            "raw_text": "SOURCE RESPONSE TEXT MUST NOT PRINT",
+        },
+        "evidence": [
+            {
+                "chunk_id": "9",
+                "file_path": "source.py",
+                "start_line": 3,
+                "end_line": 8,
+                "rank": 1,
+                "rrf_score": 0.04,
+                "vector_score": 0.3,
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        investigate_module,
+        "parse_args",
+        lambda: SimpleNamespace(repo_name="test-repo", query="question", limit=5),
+    )
+    def fake_run(coroutine: Any) -> dict[str, object]:
+        coroutine.close()
+        return result
+
+    monkeypatch.setattr(asyncio, "run", fake_run)
+
+    investigate_module.main()
+    output = capsys.readouterr().out
+
+    assert "Outcome: generation_unavailable" in output
+    assert "Unavailable answer: True" in output
+    assert "Degraded: True" in output
+    assert "Generation trace:" in output
+    assert "Evidence metadata:" in output
+    assert "SOURCE RESPONSE TEXT MUST NOT PRINT" not in output

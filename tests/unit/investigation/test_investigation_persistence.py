@@ -10,8 +10,10 @@ from app.investigation.persistence import (
     OUTCOME_ABSTAINED_MODEL,
     OUTCOME_ANSWERED,
     OUTCOME_ERROR,
+    OUTCOME_GENERATION_UNAVAILABLE,
     OUTCOME_REFUSED_GUARD,
     persist_error,
+    persist_generation_unavailable,
     persist_investigation,
     persist_refusal,
 )
@@ -392,3 +394,92 @@ async def test_persist_error_stores_only_exception_class_name() -> None:
             audit_rows[0].tool_calls,
         )
     )
+
+
+@pytest.mark.anyio
+async def test_persist_generation_unavailable_stores_metadata_only_and_trace() -> None:
+    session = FakeSession()
+    retrieval_results = [
+        {
+            "id": 105,
+            "file_path": "app/db/session.py",
+            "line_start": 1,
+            "line_end": 46,
+            "vector_score": 0.288,
+            "fts_score": 0.5,
+            "rrf_score": 0.032,
+            "content": "SOURCE TEXT MUST NOT BE PERSISTED IN DEGRADED EVIDENCE",
+        }
+    ]
+    evidence = [
+        {
+            "chunk_id": "105",
+            "file_path": "app/db/session.py",
+            "start_line": 1,
+            "end_line": 46,
+            "rank": 1,
+            "rrf_score": 0.032,
+            "vector_score": 0.288,
+        }
+    ]
+    trace = {
+        "failed_stage": "generation",
+        "model": "qwen/qwen3.8-27b",
+        "provider_attempts": [
+            {
+                "provider": "gemini",
+                "model": "gemini-3.5-flash-lite",
+                "error_class": "server_error",
+                "attempt_count": 3,
+            },
+            {
+                "provider": "groq",
+                "model": "qwen/qwen3.8-27b",
+                "error_class": "timeout",
+                "attempt_count": 3,
+            },
+        ],
+        "error_classes": ["server_error", "timeout"],
+        "attempt_count": 6,
+        "elapsed_ms": 1900,
+        "correlation_id": "safe-correlation",
+    }
+
+    investigation = await persist_generation_unavailable(
+        session,
+        repository_id=17,
+        query="private query stored in existing audit column",
+        retrieval_results=retrieval_results,
+        evidence=evidence,
+        evidence_check={
+            "is_sufficient": True,
+            "reason": "Evidence meets the guard threshold.",
+            "best_rrf_score": 0.032,
+            "best_vector_score": 0.288,
+        },
+        tool_call_trace=[
+            {
+                "tool": "hybrid_search",
+                "stage": "initial",
+                "parameters": {"query": "private question", "limit": 5},
+                "outcome": {"sufficient": True},
+            }
+        ],
+        generation_trace=trace,
+        ingest_run_id=234,
+        replay=ReplayRecord(trace={"outcome": OUTCOME_GENERATION_UNAVAILABLE}),
+    )
+
+    audit = next(item for item in session.added if isinstance(item, Audit))
+    assert session.committed is True
+    assert investigation.outcome == OUTCOME_GENERATION_UNAVAILABLE
+    assert investigation.response == ""
+    assert investigation.confidence == "not_applicable"
+    assert audit.tool_calls["degraded"]["evidence"] == evidence
+    assert audit.tool_calls["degraded"]["evidence_check"]["is_sufficient"] is True
+    assert audit.trace == trace
+    assert audit.tool_calls["attempts"][0]["parameters"] == {"limit": 5}
+    assert "private question" not in repr(audit.tool_calls)
+    assert audit.prompt is None
+    assert audit.raw_response is None
+    assert "SOURCE TEXT" not in repr(audit.tool_calls)

@@ -23,6 +23,9 @@ GENERATION_DEADLINE_SECONDS = 90
 MAX_GENERATION_ATTEMPTS = 3
 _logger = logging.getLogger(__name__)
 _GROQ_FALLBACK_ERROR_CLASSES = {"rate_limited", "server_error", "timeout"}
+GENERATION_UNAVAILABLE_ERROR_CLASSES = frozenset(
+    {"rate_limited", "server_error", "timeout"}
+)
 RESPONSE_SCHEMA: dict[str, object] = {
     "type": "OBJECT",
     "properties": {
@@ -66,6 +69,69 @@ RESPONSE_SCHEMA: dict[str, object] = {
         "claims",
     ],
 }
+
+
+def is_generation_unavailable_error(error: Exception) -> bool:
+    """Return whether an exhausted typed provider failure is availability-related."""
+
+    if isinstance(error, ProviderError):
+        return error.error_class in GENERATION_UNAVAILABLE_ERROR_CLASSES
+    return isinstance(error, TimeoutError)
+
+
+def generation_failure_trace(
+    error: Exception,
+    *,
+    elapsed_ms: int,
+) -> dict[str, object]:
+    """Build a content-free trace of provider failures for one generation operation."""
+
+    from app.providers.usage import correlation_id_var
+
+    chain: list[Exception] = []
+    current: BaseException | None = error
+    while isinstance(current, Exception):
+        chain.append(current)
+        current = current.__cause__
+    chain.reverse()
+    provider_errors = [item for item in chain if isinstance(item, ProviderError)]
+    if not provider_errors:
+        provider_errors = [ProviderTimeoutError("Generation timed out")]
+
+    attempts: list[dict[str, object]] = []
+    for index, provider_error in enumerate(provider_errors):
+        provider = "groq" if index > 0 else "gemini"
+        attempt_count = (
+            0
+            if provider_error.error_class == "rate_limited"
+            and provider_error.status_code is None
+            else (
+                MAX_GENERATION_ATTEMPTS
+                if provider_error.retryable
+                else 1
+            )
+        )
+        attempts.append(
+            {
+                "provider": provider,
+                "model": (
+                    str(settings.groq_model or "")
+                    if provider == "groq"
+                    else GEMINI_GENERATION_MODEL
+                ),
+                "error_class": provider_error.error_class,
+                "attempt_count": attempt_count,
+            }
+        )
+    return {
+        "failed_stage": "generation",
+        "model": str(attempts[-1]["model"]),
+        "provider_attempts": attempts,
+        "error_classes": [item["error_class"] for item in attempts],
+        "attempt_count": sum(int(item["attempt_count"]) for item in attempts),
+        "elapsed_ms": elapsed_ms,
+        "correlation_id": correlation_id_var.get(),
+    }
 
 
 async def generate_investigation(

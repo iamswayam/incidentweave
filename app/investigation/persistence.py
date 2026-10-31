@@ -15,6 +15,7 @@ OUTCOME_ANSWERED = "answered"
 OUTCOME_REFUSED_GUARD = "refused_guard"
 OUTCOME_ABSTAINED_MODEL = "abstained_model"
 OUTCOME_ERROR = "error"
+OUTCOME_GENERATION_UNAVAILABLE = "generation_unavailable"
 
 
 async def latest_ingest_run_id(session, repository_id: int) -> int | None:
@@ -43,6 +44,23 @@ def _retrieval_summary(
         }
         for item in retrieval_results
     ]
+
+
+def content_free_tool_call_trace(
+    tool_call_trace: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    """Keep degraded tool telemetry while omitting the natural-language query."""
+
+    sanitized: list[dict[str, object]] = []
+    for item in tool_call_trace:
+        record = dict(item)
+        parameters = record.get("parameters")
+        if isinstance(parameters, Mapping):
+            record["parameters"] = {
+                key: value for key, value in parameters.items() if key != "query"
+            }
+        sanitized.append(record)
+    return sanitized
 
 
 def _replay_columns(replay: ReplayRecord | None) -> dict[str, object]:
@@ -211,6 +229,92 @@ async def persist_refusal(
         token_usage=None,
         confidence="low",
         **_replay_columns(replay),
+    )
+    session.add(audit)
+    await session.commit()
+    return investigation
+
+
+async def persist_generation_unavailable(
+    session,
+    repository_id: int,
+    query: str,
+    retrieval_results: Sequence[Mapping[str, object]],
+    evidence: Sequence[Mapping[str, object]],
+    evidence_check: Mapping[str, object],
+    tool_call_trace: Sequence[Mapping[str, object]],
+    generation_trace: Mapping[str, object],
+    ingest_run_id: int | None = None,
+    replay: ReplayRecord | None = None,
+) -> Investigation:
+    """Persist an unavailable generation outcome without prompt or source text."""
+
+    investigation = Investigation(
+        repository_id=repository_id,
+        query=query,
+        response="",
+        model=None,
+        latency_ms=None,
+        token_usage=None,
+        confidence="not_applicable",
+        outcome=OUTCOME_GENERATION_UNAVAILABLE,
+    )
+    session.add(investigation)
+    await session.flush()
+
+    retrieved_chunk_ids = [
+        int(chunk_id)
+        for item in retrieval_results
+        if (chunk_id := item.get("id")) is not None
+        and (isinstance(chunk_id, int) or (isinstance(chunk_id, str) and chunk_id.isdigit()))
+    ]
+    evidence_items = [dict(item) for item in evidence]
+    replay_columns = _replay_columns(replay)
+    replay_columns["trace"] = dict(generation_trace)
+    audit = Audit(
+        investigation_id=investigation.id,
+        query=query,
+        repository_id=repository_id,
+        ingest_run_id=ingest_run_id,
+        retrieved_chunk_ids=retrieved_chunk_ids,
+        vector_scores=[
+            float(item["vector_score"])
+            for item in retrieval_results
+            if isinstance(item.get("vector_score"), (int, float))
+        ],
+        fts_scores=[
+            float(item["fts_score"])
+            for item in retrieval_results
+            if isinstance(item.get("fts_score"), (int, float))
+        ],
+        rrf_scores=[
+            float(item["rrf_score"])
+            for item in retrieval_results
+            if isinstance(item.get("rrf_score"), (int, float))
+        ],
+        tool_calls={
+            "attempts": content_free_tool_call_trace(tool_call_trace),
+            "cited_chunk_ids": [],
+            "retrieval_results": _retrieval_summary(retrieval_results),
+            "claims": [],
+            "uncertainty_note": (
+                "Generation unavailable after configured provider retries."
+            ),
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "degraded": {
+                "unavailable_answer": True,
+                "degraded": True,
+                "degraded_reason": "generation_unavailable",
+                "evidence": evidence_items,
+                "evidence_check": dict(evidence_check),
+            },
+        },
+        model=None,
+        response="",
+        latency_ms=None,
+        token_usage=None,
+        confidence="not_applicable",
+        **replay_columns,
     )
     session.add(audit)
     await session.commit()
