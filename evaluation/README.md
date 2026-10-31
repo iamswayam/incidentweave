@@ -17,12 +17,17 @@ This guide points to the relevant commands, data, modules, and evaluation record
 | `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` | Writes per-question retrieval cards and repository summaries under ignored `evaluation/inspection/`; defaults to development. | No | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
 | `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI](../scripts/run_chunking_experiment.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_embedding_task_type_experiment --help` | Shows the development-only task-type experiment commands. `plan` is offline, `embed` requires `--confirm-provider-calls` and a Gemini key, and `evaluate` uses cached candidate vectors without provider calls. All candidate artifacts are under ignored `evaluation/cache/embedding_task_type_v1/`. | Yes, for `evaluate` only | Yes, for confirmed `embed` only | No | [Task-type experiment note](../docs/notes/14-embedding-task-type-experiment.md), [CLI](../scripts/run_embedding_task_type_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment plan` | Counts development-only chunks/questions and candidate cache misses. Uses the evaluation database; no model download or API call. | Yes | No | No | [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md), [CLI](../scripts/run_local_embedding_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment embed` | Uses the optional `local-embeddings` extra to download and embed only development documents and questions with the two registered FastEmbed models. | Yes | No | No; ignored cache only | [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md), [CLI](../scripts/run_local_embedding_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment evaluate` | Reads validated candidate caches and only development Gemini query vectors, checks 33/33 control rank equivalence before candidate metrics, and writes aggregate-only results. | Yes | No | Yes, results note only | [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md), [results](../docs/notes/18-local-embedding-results.md) |
 | `.\.venv\Scripts\python.exe -m scripts.run_fulltext_ablation` | Rewrites tracked `evaluation/experiments/fulltext/results.json` and `report.md`. No help mode; do not run it to check usage. | Yes | No | Yes | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
 | `.\.venv\Scripts\python.exe -m scripts.compare_bm25` | Runs the preregistered BM25/control/C1 comparison on development fixtures and writes the aggregate result JSON and note. | Yes | No | Yes | [BM25 protocol](../docs/architecture-review/12-bm25-comparison-protocol.md), [results](../docs/notes/17-bm25-comparison-results.md), [entry point](../scripts/compare_bm25.py) |
 | `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` | Has `--help`; writes tracked `docs/notes/08-fulltext-diagnostic.md` by default; pass `--output` to write elsewhere. | Yes | No | Yes by default | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
 | `.\.venv\Scripts\python.exe scripts\run_eval.py` | Runs the two-pass answer evaluation against an allowlisted repository and writes run artifacts under ignored `evaluation/results/runs/`. | Yes | Yes | No | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
 
 The fixture builder needs existing database embeddings and cached question embeddings; it does not fetch embeddings.
+
+For item 18c, install `fastembed==0.9.1` with `.\.venv\Scripts\python.exe -m pip install -e ".[local-embeddings]"` only when intentionally running `embed`. This optional extra is not part of `dev` and is not installed by CI.
 
 Commands with Writes tracked files = Yes change registered artifacts when rerun.
 
@@ -37,8 +42,8 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | [`golden_set.json`](golden_set.json) | IncidentWeave questions and their labels. | Versioned |
 | [`manifest.json`](manifest.json) | Selects the repositories and pins their evaluation inputs. | Versioned |
 | [`smoke-gate.json`](smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
-| `cache/` | Local embedding cache used by fixture construction and experiments, including the versioned item 14a task-type cache. | Ignored/generated |
-| [`experiments/`](experiments/) | Chunking, full-text, and BM25 experiment protocols, fixtures, and reports. | Versioned |
+| `cache/` | Local embedding cache used by fixture construction and experiments, including versioned item 14a and item 18c caches. | Ignored/generated |
+| [`experiments/`](experiments/) | Chunking, full-text, BM25, and local embedding experiment documentation. | Versioned |
 | [`fixtures/`](fixtures/) | Shared IncidentWeave offline retrieval fixture. | Versioned |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
 | [`repos/`](repos/) | Questions, fixtures, gates, and baselines for the other repositories. | Versioned |
@@ -93,6 +98,8 @@ The descriptions below are taken from each module's docstring.
 - [`fulltext_experiment.py`](fulltext_experiment.py) — Execute and render the item 14c-2 development-only full-text ablation.
 - [`bm25.py`](bm25.py) — Pure fixed-parameter BM25 ranking and item 14d decision helpers.
 - [`compare_bm25.py`](../scripts/compare_bm25.py) — Run the item 14d development-only BM25 comparison.
+- [`local_embedding.py`](local_embedding.py) — Cache identity, vector validation, exact cosine ranking, RRF, and decision helpers for item 18c.
+- [`run_local_embedding_experiment.py`](../scripts/run_local_embedding_experiment.py) — Plan, embed, and evaluate item 18c with development-only inputs.
 
 `chunk_experiments.py` defines chunking strategies; `chunking_experiment.py` runs the experiment. Item 27b may rename `chunk_experiments.py`.
 
@@ -134,6 +141,8 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md) | How were PostgreSQL full-text terms, stop words, and OR matches diagnosed? |
 | [Full-text ablation results](../docs/notes/09-fulltext-ablation-results.md) | What development-only ablation was measured, and what decision followed? |
 | [BM25 comparison results](../docs/notes/17-bm25-comparison-results.md) | What did the development-only BM25 comparison measure and decide? |
+| [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md) | Which local embedding models, controls, and retention rules were registered for item 18c? |
+| [Local embedding results](../docs/notes/18-local-embedding-results.md) | What did the development-only local embedding comparison measure and decide? |
 | [Chunking-experiment index](../docs/chunking-experiment/README.md) | Where are the chunking experiment log, decision, workbook, and reviews? |
 | [Chunking experiment log](../docs/chunking-experiment/01-experiment-log.md) | What decisions and experiment history were recorded for the chunking work? |
 | [Chunking decision report](../docs/chunking-experiment/02-decision-report.md) | What decision and evidence were recorded for the chunking comparison? |
@@ -146,7 +155,7 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 
 | Path or pattern | Contents | Status |
 |---|---|---|
-| `cache/` | Local cached embeddings used by fixture construction and experiments; item 14a task-type vectors are versioned separately. | Generated and ignored |
+| `cache/` | Local cached embeddings used by fixture construction and experiments; item 14a and item 18c vectors are versioned separately. | Generated and ignored |
 | `_snapshot/` | Local pinned-source snapshots and experiment working copies. | Generated and ignored |
 | `inspection/` | Generated per-question cards and repository summaries. | Generated and ignored |
 | `results/runs/` | Timestamped run reports and related artifacts; `.gitkeep` is the only tracked file under this directory. | Generated and ignored, except tracked `.gitkeep` |

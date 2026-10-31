@@ -26,6 +26,9 @@ dev = [
     "pytest-socket>=0.7,<1.0",
     "ruff>=0.11,<1.0",
 ]
+local-embeddings = [
+    "fastembed==0.9.1",
+]
 
 [tool.setuptools.packages.find]
 include = ["app*", "scripts*", "evaluation*"]
