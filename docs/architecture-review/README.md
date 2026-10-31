@@ -16,6 +16,7 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 | 10 | [10-llm-gateway-design.md](10-llm-gateway-design.md) | Maintainer | Provider-layer design and call-site inventory for 18a-1 | Living |
 | 11 | [11-test-file-retrieval-protocol.md](11-test-file-retrieval-protocol.md) | Maintainer | Preregistered test-file retrieval comparison protocol (item 14b) | Living |
 | 12 | [12-bm25-comparison-protocol.md](12-bm25-comparison-protocol.md) | Maintainer | Preregistered BM25 lexical retrieval comparison protocol (item 14d) | Living |
+| 13 | [13-degraded-response-design.md](13-degraded-response-design.md) | Maintainer | Proposed degraded-response contract for item 18d-1; awaiting approval | Proposed |
 
 ## Conventions
 - Files are named `NN-kebab-case.md` in reading order. A new document takes the next number.
