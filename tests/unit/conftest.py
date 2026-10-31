@@ -1,7 +1,9 @@
 import pytest
 
+from app.api_security import rate_limiter as api_rate_limiter
 from app.config import settings
 from app.providers import gemini, groq
+from app.providers.usage import NullUsageLogger
 
 _PROVIDER_DEFAULTS = {
     "gemini_api_key": None,
@@ -22,34 +24,34 @@ _PROVIDER_DEFAULTS = {
     "groq_cooldown_failures": None,
     "groq_cooldown_seconds": None,
 }
-_PROVIDER_ENV_VARS = (
-    "GEMINI_API_KEY",
-    "PROVIDER_RATE_LIMIT_RPM",
-    "PROVIDER_RATE_LIMIT_TPM",
-    "PROVIDER_RATE_LIMIT_RPD",
-    "PROVIDER_COOLDOWN_FAILURES",
-    "PROVIDER_COOLDOWN_SECONDS",
-    "PROVIDER_USAGE_LOG_ENABLED",
-    "PROVIDER_USAGE_LOG_TIMEOUT_SECONDS",
-    "GROQ_API_KEY",
-    "GROQ_MODEL",
-    "GROQ_FALLBACK_ENABLED",
-    "GROQ_TIMEOUT_SECONDS",
-    "GROQ_RATE_LIMIT_RPM",
-    "GROQ_RATE_LIMIT_TPM",
-    "GROQ_RATE_LIMIT_RPD",
-    "GROQ_COOLDOWN_FAILURES",
-    "GROQ_COOLDOWN_SECONDS",
-)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolate_provider_configuration() -> None:
+    """Apply provider defaults once, before tests construct adapters."""
+    for name, value in _PROVIDER_DEFAULTS.items():
+        setattr(settings, name, value)
+    gemini.DEFAULT_ADAPTER = gemini.GeminiProviderAdapter(
+        usage_logger=NullUsageLogger()
+    )
+    groq.DEFAULT_ADAPTER = groq.GroqProviderAdapter(
+        usage_logger=NullUsageLogger()
+    )
 
 
 @pytest.fixture(autouse=True)
-def isolate_provider_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep local .env provider settings from slowing or changing unit tests."""
-    for name, value in _PROVIDER_DEFAULTS.items():
-        monkeypatch.setattr(settings, name, value)
-    for name in _PROVIDER_ENV_VARS:
-        monkeypatch.delenv(name, raising=False)
-
-    monkeypatch.setattr(gemini, "DEFAULT_ADAPTER", gemini.GeminiProviderAdapter())
-    monkeypatch.setattr(groq, "DEFAULT_ADAPTER", groq.GroqProviderAdapter())
+def reset_provider_adapter_state(isolate_provider_configuration: None) -> None:
+    """Clear mutable limiter and cooldown state without rebuilding adapters."""
+    del isolate_provider_configuration
+    api_rate_limiter.reset()
+    for adapter in (gemini.DEFAULT_ADAPTER, groq.DEFAULT_ADAPTER):
+        limiter = adapter.rate_limiter
+        limiter._minute_requests.clear()
+        limiter._minute_tokens.clear()
+        limiter._day_requests.clear()
+        limiter._day_tokens.clear()
+        cooldown = adapter.cooldown
+        cooldown.state = "closed"
+        cooldown.consecutive_failures = 0
+        cooldown.cooldown_until = 0.0
+        cooldown._probe_in_flight = False

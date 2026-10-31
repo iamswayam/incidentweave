@@ -235,18 +235,20 @@ runs used the provider default and are not directly comparable.
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.test_tiers fast
+.\.venv\Scripts\python.exe -m scripts.test_tiers fast --area providers
 .\.venv\Scripts\python.exe -m scripts.test_tiers integration  # PostgreSQL + pgvector and migrations required
 .\.venv\Scripts\python.exe -m scripts.test_tiers evaluation
 .\.venv\Scripts\python.exe -m scripts.test_tiers full
 .\.venv\Scripts\python.exe -m ruff check .
 ```
 
-The fast command runs only `tests/unit` serially; pytest-xdist was measured and was marginally
-slower on this Windows machine. Integration is serial because tests share one database. Evaluation
-runs deterministic harness tests and the offline smoke gate. The full command runs every test
-serially. GitHub Actions runs Ruff and the Docker build, unit, PostgreSQL integration, and
-evaluation/smoke-gate jobs in parallel. See the [test-tier guide](docs/notes/16-test-tiers.md)
-and [CI configuration](.github/workflows/ci.yml).
+The fast command runs only `tests/unit` serially; `--area <name>` selects a subfolder such as
+`providers` or `retrieval`. pytest-socket blocks network sockets by default (Unix sockets remain
+available); integration tests allow only local database hosts. Integration is serial because tests
+share one database. Evaluation runs deterministic harness tests and the offline smoke gate. The
+full command runs every test serially. GitHub Actions runs lint/build, network-blocked unit,
+PostgreSQL integration, and evaluation/smoke-gate jobs in parallel. See the
+[test-tier guide](docs/notes/16-test-tiers.md) and [CI configuration](.github/workflows/ci.yml).
 
 ## Project structure
 

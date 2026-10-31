@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from types import SimpleNamespace
 from typing import Any
 
@@ -49,12 +50,21 @@ class FakeSession:
         return FakeResult(self.rows)
 
 
-@pytest.fixture
-def api_client(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(settings, "api_protection_secret", TEST_SECRET)
+@pytest.fixture(scope="module")
+def api_client() -> Generator[TestClient, None, None]:
+    original_secret = settings.api_protection_secret
+    settings.api_protection_secret = TEST_SECRET
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        settings.api_protection_secret = original_secret
+
+
+@pytest.fixture(autouse=True)
+def reset_api_rate_limiter() -> Generator[None, None, None]:
     rate_limiter.reset()
-    with TestClient(app) as client:
-        yield client
+    yield
     rate_limiter.reset()
 
 

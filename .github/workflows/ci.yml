@@ -42,7 +42,7 @@ jobs:
         run: python -m pip install -e ".[dev]"
 
       - name: Run unit tests
-        run: python -m pytest tests/unit -q
+        run: python -m pytest tests/unit -q --durations=15
 
   integration:
     runs-on: ubuntu-latest
@@ -89,12 +89,6 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
         run: python -m pytest tests/integration -q
-
-      - name: Pytest
-        env:
-          DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
-        run: pytest
-
 
   evaluation:
     runs-on: ubuntu-latest

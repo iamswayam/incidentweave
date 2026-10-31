@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import NotRequired, TypedDict
 
-from langgraph.graph import END, START, StateGraph
-
 from app.db.session import AsyncSessionLocal
 from app.investigation.generation import GEMINI_GENERATION_MODEL, generate_investigation
 from app.investigation.guard import evaluate_evidence_sufficiency
@@ -56,6 +54,7 @@ ConfidenceCalibrator = Callable[
 
 def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
     """Build the one-retry investigation graph around existing Phase 5 logic."""
+    from langgraph.graph import END, START, StateGraph
 
     async def retrieve(state: InvestigationState) -> dict[str, object]:
         async with AsyncSessionLocal() as session:
