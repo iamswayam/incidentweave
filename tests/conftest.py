@@ -59,7 +59,6 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     else:
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-    print(type(asyncio.get_event_loop_policy()).__name__)
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

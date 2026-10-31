@@ -12,6 +12,7 @@ import pytest
 from app.config import settings
 from app.db import session as db_session
 from app.providers import gemini, usage
+from tests.unit.httpx_client import make_test_client
 
 
 class FakeUsageLogger:
@@ -78,7 +79,7 @@ async def test_success_records_model_operation_attempt_latency_and_tokens(
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_usage_response())
 
-    async with httpx.AsyncClient(
+    async with make_test_client(
         transport=httpx.MockTransport(handler),
     ) as client:
         result = await adapter.post_json(
@@ -121,7 +122,7 @@ async def test_exhausted_503_retries_are_logged_with_attempt_count(
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(503, text="unavailable")
 
-    async with httpx.AsyncClient(
+    async with make_test_client(
         transport=httpx.MockTransport(handler),
     ) as client:
         with pytest.raises(gemini.ProviderServerError):
@@ -158,7 +159,7 @@ async def test_open_cooldown_logs_rate_limited_without_attempt_or_latency() -> N
 
     with pytest.raises(gemini.ProviderRateLimitedError):
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test/v1beta/models/gemini-test:generateContent",
             {},
             deadline_seconds=5,
@@ -182,7 +183,7 @@ async def test_usage_logger_failure_does_not_change_success_or_provider_exceptio
 
     adapter = _adapter(logger, post_json_fn=succeed)
     result = await adapter.post_json(
-        httpx.AsyncClient(),
+        make_test_client(),
         "https://example.test/models/gemini-test:generateContent",
         {},
         deadline_seconds=5,
@@ -197,7 +198,7 @@ async def test_usage_logger_failure_does_not_change_success_or_provider_exceptio
     adapter._post_json_fn = fail
     with pytest.raises(gemini.ProviderServerError) as raised:
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test/models/gemini-test:generateContent",
             {},
             deadline_seconds=5,
@@ -223,7 +224,7 @@ async def test_default_adapter_does_not_access_database_when_logging_disabled(
 
     adapter._post_json_fn = succeed
     result = await adapter.post_json(
-        httpx.AsyncClient(),
+        make_test_client(),
         "https://example.test/models/gemini-test:generateContent",
         {},
         deadline_seconds=5,
@@ -239,7 +240,7 @@ async def test_usage_operation_overrides_call_tag_and_resets_afterward() -> None
         return {"ok": True}
 
     adapter = _adapter(logger, post_json_fn=succeed)
-    async with httpx.AsyncClient() as client:
+    async with make_test_client() as client:
         with usage.usage_operation("evaluation"):
             await adapter.post_json(
                 client,
@@ -279,7 +280,7 @@ async def test_non_integer_usage_metadata_is_logged_as_none() -> None:
 
     adapter._post_json_fn = succeed
     await adapter.post_json(
-        httpx.AsyncClient(),
+        make_test_client(),
         "https://example.test/models/gemini-test:generateContent",
         {},
         deadline_seconds=5,
@@ -299,7 +300,7 @@ async def test_value_error_from_provider_helper_is_not_logged() -> None:
     adapter = _adapter(logger, post_json_fn=fail)
     with pytest.raises(ValueError, match="invalid helper output"):
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test/models/gemini-test:generateContent",
             {},
             deadline_seconds=5,
@@ -332,7 +333,7 @@ async def test_usage_timeout_does_not_delay_success_or_log_payload(
     )
 
     result = await adapter.post_json(
-        httpx.AsyncClient(),
+        make_test_client(),
         "https://example.test/models/gemini-test:generateContent",
         {"private_payload": "must-not-be-logged"},
         deadline_seconds=5,
@@ -363,7 +364,7 @@ async def test_usage_timeout_does_not_replace_provider_exception(
 
     with pytest.raises(gemini.ProviderBadRequestError) as raised:
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test/models/gemini-test:generateContent",
             {"private_payload": "must-not-be-logged"},
             deadline_seconds=5,
@@ -401,7 +402,7 @@ async def test_usage_latency_excludes_rate_limiter_wait(
     monkeypatch.setattr(gemini, "perf_counter", lambda: now)
 
     await adapter.post_json(
-        httpx.AsyncClient(),
+        make_test_client(),
         "https://example.test/models/gemini-test:generateContent",
         {},
         deadline_seconds=5,

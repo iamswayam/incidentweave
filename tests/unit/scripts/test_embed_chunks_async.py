@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from scripts import embed_chunks
+from tests.unit.httpx_client import make_test_client
 
 
 class FakeScalars:
@@ -72,7 +73,7 @@ async def test_embed_texts_rejects_wrong_count_or_dimension(
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     with pytest.raises(ValueError, match=message):
         await embed_chunks.embed_texts(["first", "second"])
@@ -125,7 +126,7 @@ async def test_embed_repository_chunks_batches_and_limits_concurrency(
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     assert await embed_chunks.embed_repository_chunks("repo") == (120, 0, 0)

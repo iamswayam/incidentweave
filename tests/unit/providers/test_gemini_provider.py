@@ -8,10 +8,11 @@ import pytest
 
 from app.investigation import generation
 from app.providers import gemini
+from tests.unit.httpx_client import make_test_client
 
 
 def client_for(handler) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return make_test_client(transport=httpx.MockTransport(handler))
 
 
 @pytest.mark.anyio
@@ -131,7 +132,7 @@ async def test_generation_is_responsive_during_slow_provider_call(
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     slow_task = asyncio.create_task(generation.generate_investigation("slow"))
     await slow_request_started.wait()

@@ -7,6 +7,7 @@ import pytest
 
 from app.investigation import generation
 from scripts import embed_chunks
+from tests.unit.httpx_client import make_test_client
 
 
 def mock_client(monkeypatch, handler) -> list[httpx.Request]:
@@ -19,12 +20,12 @@ def mock_client(monkeypatch, handler) -> list[httpx.Request]:
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(capture)),
+        lambda: make_test_client(transport=httpx.MockTransport(capture)),
     )
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(capture)),
+        lambda: make_test_client(transport=httpx.MockTransport(capture)),
     )
     return requests
 

@@ -9,6 +9,7 @@ import pytest
 from app.investigation import generation
 from app.providers import gemini
 from scripts import embed_chunks
+from tests.unit.httpx_client import make_test_client
 
 
 @pytest.mark.parametrize(
@@ -197,12 +198,12 @@ async def test_guarded_post_json_uses_default_adapter_and_blocks_open_cooldown(
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: httpx.AsyncClient(transport=transport),
+        lambda: make_test_client(transport=transport),
     )
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=transport),
+        lambda: make_test_client(transport=transport),
     )
 
     with pytest.raises(gemini.ProviderRateLimitedError):
@@ -244,12 +245,12 @@ async def test_adapter_uses_legacy_request_shape_for_generation_and_embedding(
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     payload, _ = await generation.generate_investigation("question")
@@ -374,7 +375,7 @@ async def test_estimated_tokens_are_passed_to_limiter_and_tpm_is_enforced() -> N
     adapter.rate_limiter.acquire = fake_acquire
 
     await adapter.post_json(
-        httpx.AsyncClient(),
+        make_test_client(),
         "https://example.test",
         {"message": "hello world!"},
         deadline_seconds=10,
@@ -410,7 +411,7 @@ async def test_estimated_tokens_trigger_tpm_wait() -> None:
 
     for _ in range(2):
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test",
             payload,
             deadline_seconds=10,
@@ -441,7 +442,7 @@ async def test_non_retryable_error_closes_cooldown_and_timeout_counts_as_retryab
     adapter._post_json_fn = fail_400
     with pytest.raises(gemini.ProviderBadRequestError):
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test",
             {"a": 1},
             deadline_seconds=10,
@@ -451,7 +452,7 @@ async def test_non_retryable_error_closes_cooldown_and_timeout_counts_as_retryab
     adapter._post_json_fn = fail_timeout
     with pytest.raises(TimeoutError):
         await adapter.post_json(
-            httpx.AsyncClient(),
+            make_test_client(),
             "https://example.test",
             {"a": 1},
             deadline_seconds=10,
@@ -490,7 +491,7 @@ async def test_value_error_releases_half_open_probe() -> None:
         post_json_fn=fail,
     )
 
-    async with httpx.AsyncClient() as client:
+    async with make_test_client() as client:
         with pytest.raises(ValueError, match="invalid response"):
             await adapter.post_json(
                 client,
@@ -517,7 +518,7 @@ async def test_cancelled_half_open_probe_is_released() -> None:
         post_json_fn=cancel,
     )
 
-    async with httpx.AsyncClient() as client:
+    async with make_test_client() as client:
         with pytest.raises(asyncio.CancelledError):
             await adapter.post_json(
                 client,
@@ -550,7 +551,7 @@ async def test_rate_limiter_error_releases_half_open_probe(
     )
     monkeypatch.setattr(adapter.rate_limiter, "acquire", fail_acquire)
 
-    async with httpx.AsyncClient() as client:
+    async with make_test_client() as client:
         with pytest.raises(RuntimeError, match="limiter failed"):
             await adapter.post_json(
                 client,

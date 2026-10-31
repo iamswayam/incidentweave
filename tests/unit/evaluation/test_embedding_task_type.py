@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from scripts import embed_chunks
+from tests.unit.httpx_client import make_test_client
 
 
 @pytest.mark.anyio
@@ -29,7 +30,7 @@ async def test_single_embedding_can_send_query_task_type(
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     vector = await embed_chunks.embed_text(
@@ -67,7 +68,7 @@ async def test_batched_embedding_applies_document_task_type_per_request(
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     vectors = await embed_chunks.embed_texts(
@@ -106,7 +107,7 @@ async def test_default_embedding_payload_omits_task_type(
     monkeypatch.setattr(
         embed_chunks,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     await embed_chunks.embed_text("legacy query")
