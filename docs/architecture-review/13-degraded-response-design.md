@@ -1,9 +1,8 @@
 # Degraded response design (item 18d-1)
 
-**Status: Proposed, awaiting maintainer approval**
+**Status: Approved (maintainer, 2026-10-31); implementation in 18d-2, 18d-3, 18d-4**
 
-This is a documentation-only contract proposal. It does not change application behavior. The
-implementation must wait for maintainer approval of the decisions below.
+This is a documentation-only design record. It does not change application behavior.
 
 ## 1. Current behavior verified in code
 
@@ -361,29 +360,30 @@ response field; it is not copied into new telemetry.
 ## 6. Implementation test plan and proposed split
 
 All tests use fake providers and in-memory/fake cache behavior; no live provider call is needed.
+Implement 18d-4 before 18d-3: the persistent cache-hit path is encountered before lexical-only
+fallback in the query flow.
 
 | Proposed implementation PR | Scope and tests | Schema migration |
 |---|---|---|
-| **18d-2 — contract and generation degradation** | Add response defaults and outcome docs; fake Gemini transient failures and enabled/disabled Groq fallback; assert generation-unavailable shape only after eligible exhaustion; ensure auth, bad-request, safety-blocked, and schema-invalid errors remain explicit; assert evidence contains metadata only; verify persistence and `GET /investigations/{id}` round-trip; verify CLI shows flags without source text. | No migration if the new flags/evidence/trace remain in audit JSONB and outcome uses the existing `String(32)` column. |
-| **18d-3 — lexical-only mode** | Fake query-embedding failures with and without a cache hit; assert C1 sanitized-OR lexical-only results, normal hybrid unchanged, no generation on cache miss, null guard state and exact reason, metadata-only evidence, and correct `embedding_unavailable` outcome; test provider error classes that must not degrade. | No migration; reuse current lexical retrieval and audit JSONB. |
+| **18d-2 — contract and generation degradation** | Add response defaults and outcome docs; fake Gemini transient failures and enabled/disabled Groq fallback; assert generation-unavailable shape only after eligible exhaustion; ensure auth, bad-request, safety-blocked, and schema-invalid errors remain explicit; map malformed or wrong-dimension upstream embedding responses to upstream-failure (HTTP 502), not validation_error (HTTP 422); record the failed stage and that stage's model in the error audit; print the generation trace and degraded states in the CLI; assert evidence contains metadata only; verify persistence and `GET /investigations/{id}` round-trip. | No migration if the new flags/evidence/trace remain in audit JSONB and outcome uses the existing `String(32)` column. |
 | **18d-4 — persistent query cache** | Verify composite identity changes for model/task type/dimensions/query; whitespace collapse with case preservation; no query-text column or serialized query; vector length validation; cache-hit reuse in normal mode; cache miss provider call; 30-day expiration; 10,000-row cap with oldest-created eviction; restart-persistent retrieval. | **Yes.** Create the persistent cache table and unique index; include rollback and retention/eviction coverage. |
+| **18d-3 — lexical-only mode** | Fake query-embedding failures with and without a cache hit; assert C1 sanitized-OR lexical-only results, normal hybrid unchanged, no generation on cache miss, null guard state and exact reason, metadata-only evidence, and correct `embedding_unavailable` outcome; test provider error classes that must not degrade. | No migration; reuse current lexical retrieval and audit JSONB. |
 
 ## 7. Maintainer approval
 
-No decision is approved by this proposal. For each item, mark either Approved or Changed and record
-the actual decision. Leave all boxes empty until maintainer review.
+The maintainer approved each recommendation without changes.
 
 | Decision | Recommendation | Approved | Changed | Maintainer decision / notes |
 |---|---|---|---|---|
-| D1 | Recommended: HTTP 200 with explicit unavailable/degraded flags for eligible generation unavailability. | [ ] | [ ] | |
-| D2 | Recommended: metadata-only evidence; no source text. | [ ] | [ ] | |
-| D3 | Recommended: sanitized-OR C1 lexical-only retrieval only after embedding failure and cache miss. | [ ] | [ ] | |
-| D4 | Recommended: null/not-evaluated guard, never generate from lexical-only evidence. | [ ] | [ ] | |
-| D5 | Recommended: persistent, query-text-free cache; 30-day TTL; 10,000-row cap; oldest-first eviction. | [ ] | [ ] | |
-| D6 | Recommended: generation-only Groq fallback; Gemini-only embeddings and cache reuse. | [ ] | [ ] | |
-| D7 | Recommended: additive API fields, audit-backed GET reconstruction, matching CLI states. | [ ] | [ ] | |
+| D1 | Recommended: HTTP 200 with explicit unavailable/degraded flags for eligible generation unavailability. | [x] | [ ] | Approved as recommended by the maintainer |
+| D2 | Recommended: metadata-only evidence; no source text. | [x] | [ ] | Approved as recommended by the maintainer |
+| D3 | Recommended: sanitized-OR C1 lexical-only retrieval only after embedding failure and cache miss. | [x] | [ ] | Approved as recommended by the maintainer |
+| D4 | Recommended: null/not-evaluated guard, never generate from lexical-only evidence. | [x] | [ ] | Approved as recommended by the maintainer |
+| D5 | Recommended: persistent, query-text-free cache; 30-day TTL; 10,000-row cap; oldest-first eviction. | [x] | [ ] | Approved as recommended by the maintainer |
+| D6 | Recommended: generation-only Groq fallback; Gemini-only embeddings and cache reuse. | [x] | [ ] | Approved as recommended by the maintainer |
+| D7 | Recommended: additive API fields, audit-backed GET reconstruction, matching CLI states. | [x] | [ ] | Approved as recommended by the maintainer |
 
-**Approval date:** ____________________
+**Approval date:** 2026-10-31
 
 ## 8. Honest limits
 
