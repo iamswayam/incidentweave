@@ -23,6 +23,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0,<10.0",
+    "pytest-socket>=0.7,<1.0",
     "ruff>=0.11,<1.0",
 ]
 
@@ -31,9 +32,12 @@ include = ["app*", "scripts*", "evaluation*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --strict-markers --import-mode=importlib --disable-socket --allow-unix-socket"
 markers = [
+    "unit: pure logic tests without database or external network access",
     "integration: tests that require a running PostgreSQL database",
+    "evaluation: deterministic evaluation and harness tests",
+    "slow: tests with intentionally long-running behavior",
 ]
 
 [tool.ruff]

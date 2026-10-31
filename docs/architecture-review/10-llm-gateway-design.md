@@ -31,8 +31,8 @@ The direct call path is centralized in `app/providers/gemini.py`, which enforces
 | `evaluation/runner.py` | `load_key_without_logging()`, `cached_embedding()`, `_counted_send_once()` | Evaluation-only cache + generation throttle | Reads `.env` if needed and never logs the secret | `MIN_API_DELAY_SECONDS` pacing and generation budget; `429` is counted | Tests validate budget and cache logic | CI-safe |
 | `evaluation/chunking_experiment.py` | `embed_missing()`, `_embed()` | Embedding batches with `--batch-delay-seconds` pacing | Reads env or settings | Pacing is implemented between batches; no explicit fallback | Unit tests validate schedule and cache ordering | Evaluation-only |
 | `scripts/run_chunking_experiment.py` | `_embed()` CLI | Same as above | env / settings | Fails fast if key missing | Unit tests validate the CLI path | Not part of default CI |
-| `tests/unit/test_gemini_provider.py` | retry and redaction tests | Mocked provider contract | Sets `GEMINI_API_KEY` in env | Verifies retries and redaction | Canonical provider contract tests | CI-safe |
-| `tests/unit/test_gemini_api_key_header.py` | request-header tests | Mocked generation + embedding contract | Sets `GEMINI_API_KEY` in env | Asserts key is in header and not URL | Canonical replacement for provider | CI-safe |
+| `tests/unit/providers/test_gemini_provider.py` | retry and redaction tests | Mocked provider contract | Sets `GEMINI_API_KEY` in env | Verifies retries and redaction | Canonical provider contract tests | CI-safe |
+| `tests/unit/providers/test_gemini_api_key_header.py` | request-header tests | Mocked generation + embedding contract | Sets `GEMINI_API_KEY` in env | Asserts key is in header and not URL | Canonical replacement for provider | CI-safe |
 | `tests/unit/test_chunking_experiment.py` | pacing tests | Mocked embed function | `monkeypatch.setenv` coupled with fake embed | Verifies delay between batches | Official pacing test replacement | CI-safe |
 
 ## Direction
@@ -159,7 +159,7 @@ These tags differentiate offline evaluation, runtime queries, generation, and lo
 
 ## LLM response schema
 
-LLM response schema changes are managed explicitly in code rather than by implicit model output. In this repo the generation schema is defined in `RESPONSE_SCHEMA` inside [../../app/investigation/generation.py](../../app/investigation/generation.py), and the tests assert the exact schema and payload shape in [../../tests/unit/test_gemini_api_key_header.py](../../tests/unit/test_gemini_api_key_header.py) and [../../tests/unit/test_gemini_provider.py](../../tests/unit/test_gemini_provider.py).
+LLM response schema changes are managed explicitly in code rather than by implicit model output. In this repo the generation schema is defined in `RESPONSE_SCHEMA` inside [../../app/investigation/generation.py](../../app/investigation/generation.py), and the tests assert the exact schema and payload shape in [../../tests/unit/providers/test_gemini_api_key_header.py](../../tests/unit/providers/test_gemini_api_key_header.py) and [../../tests/unit/providers/test_gemini_provider.py](../../tests/unit/providers/test_gemini_provider.py).
 
 That means a provider schema change is recorded in code, checked by tests, and reviewed as a deliberate contract change. The repo does not rely on unspecified model drift or runtime-only schema assumptions.
 

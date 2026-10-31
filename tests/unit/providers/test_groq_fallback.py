@@ -15,6 +15,7 @@ from app.investigation import graph as graph_module
 from app.investigation.confidence import calibrate_confidence
 from app.providers import gemini, groq
 from app.providers.usage import UsageEntry
+from tests.unit.httpx_client import make_test_client
 
 VALID_RESPONSE = {
     "outcome": "answered",
@@ -116,7 +117,7 @@ async def test_generation_falls_back_once_for_retryable_gemini_errors(
             "_model": "qwen/qwen3.8-27b",
         }
 
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(generation, "guarded_post_json", fail_gemini)
     monkeypatch.setattr(groq, "generate_with_groq", use_groq)
 
@@ -139,7 +140,7 @@ async def test_generation_falls_back_when_gemini_cooldown_is_open(
     cooldown.state = "open"
     cooldown.cooldown_until = 60
     monkeypatch.setattr(gemini.DEFAULT_ADAPTER, "cooldown", cooldown)
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(
         groq,
         "generate_with_groq",
@@ -173,7 +174,7 @@ async def test_generation_falls_back_on_gemini_deadline_timeout(
             "_model": "qwen/qwen3.8-27b",
         }
 
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(generation, "guarded_post_json", timeout_gemini)
     monkeypatch.setattr(groq, "generate_with_groq", use_groq)
 
@@ -209,7 +210,7 @@ async def test_missing_or_disabled_groq_configuration_does_not_fallback(
     ) -> dict[str, Any]:
         raise AssertionError("Groq must remain disabled")
 
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(generation, "guarded_post_json", fail_gemini)
     monkeypatch.setattr(groq, "generate_with_groq", must_not_call_groq)
     with pytest.raises(gemini.ProviderRateLimitedError):
@@ -240,7 +241,7 @@ async def test_generation_never_falls_back_for_non_retryable_errors(
     ) -> dict[str, Any]:
         raise AssertionError("Groq must not bypass a non-retryable Gemini error")
 
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(generation, "guarded_post_json", fail_gemini)
     monkeypatch.setattr(groq, "generate_with_groq", must_not_call_groq)
     with pytest.raises(type(error)):
@@ -263,7 +264,7 @@ async def test_groq_failure_chains_gemini_error_and_does_not_log_secrets(
     async def fail_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
         raise groq_error
 
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(generation, "guarded_post_json", fail_gemini)
     monkeypatch.setattr(groq, "generate_with_groq", fail_groq)
 
@@ -305,7 +306,7 @@ async def test_groq_adapter_honors_retry_after_and_logs_metadata_only(
         rng=lambda: 0,
         usage_logger=logger,
     )
-    async with httpx.AsyncClient(transport=transport) as client:
+    async with make_test_client(transport=transport) as client:
         result = await adapter.post_json(
             client,
             {"model": "qwen/qwen3.8-27b", "messages": []},
@@ -346,7 +347,7 @@ async def test_groq_bad_json_is_schema_invalid_and_redacts_key(
         )
     )
     adapter = _new_groq_adapter(usage_logger=logger)
-    async with httpx.AsyncClient(transport=transport) as client:
+    async with make_test_client(transport=transport) as client:
         with pytest.raises(gemini.ProviderBadRequestError) as raised:
             await adapter.post_json(
                 client,
@@ -359,7 +360,7 @@ async def test_groq_bad_json_is_schema_invalid_and_redacts_key(
     monkeypatch.setattr(
         groq,
         "make_client",
-        lambda: httpx.AsyncClient(
+        lambda: make_test_client(
             transport=httpx.MockTransport(
                 lambda _request: httpx.Response(200, json=_groq_payload("not JSON"))
             )
@@ -386,7 +387,7 @@ async def test_groq_json_schema_selection_and_same_response_contract(
     monkeypatch.setattr(
         groq,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     groq_payload = await groq.generate_with_groq("question")
     gemini_payload = {
@@ -523,7 +524,7 @@ async def test_groq_http_statuses_map_to_typed_errors(
         lambda _request: httpx.Response(status_code, text="provider error")
     )
     adapter = _new_groq_adapter()
-    async with httpx.AsyncClient(transport=transport) as client:
+    async with make_test_client(transport=transport) as client:
         with pytest.raises(error_type):
             await adapter.post_json(
                 client,
@@ -579,7 +580,7 @@ async def test_fake_key_never_leaks_from_groq_requests_or_results(
         "guarded_post_json",
         _raise_provider_error(gemini.ProviderRateLimitedError("primary quota")),
     )
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(
         groq,
         "DEFAULT_ADAPTER",
@@ -592,7 +593,7 @@ async def test_fake_key_never_leaks_from_groq_requests_or_results(
     monkeypatch.setattr(
         groq,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     caplog.set_level(logging.DEBUG)
     if expected_error is None:
@@ -643,7 +644,7 @@ async def test_fallback_log_and_groq_auth_error_do_not_leak_fake_key(
     monkeypatch.setattr(
         groq,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     with pytest.raises(gemini.ProviderAuthError) as raised:
@@ -703,12 +704,12 @@ async def test_one_groq_sequence_uses_only_bounded_internal_retries(
         "guarded_post_json",
         _raise_provider_error(gemini.ProviderServerError("Gemini failed")),
     )
-    monkeypatch.setattr(generation, "make_client", lambda: httpx.AsyncClient())
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
     monkeypatch.setattr(groq, "DEFAULT_ADAPTER", adapter)
     monkeypatch.setattr(
         groq,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     monkeypatch.setattr(groq, "generate_with_groq", count_sequence)
 
@@ -744,7 +745,7 @@ async def test_open_gemini_cooldown_falls_back_without_gemini_http_call(
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: httpx.AsyncClient(
+        lambda: make_test_client(
             transport=httpx.MockTransport(record_gemini)
         ),
     )
@@ -830,7 +831,7 @@ async def test_invalid_or_incomplete_groq_responses_never_return_partial_output(
     monkeypatch.setattr(
         groq,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
 
     with pytest.raises(expected_error):

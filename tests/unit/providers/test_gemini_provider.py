@@ -8,10 +8,11 @@ import pytest
 
 from app.investigation import generation
 from app.providers import gemini
+from tests.unit.httpx_client import make_test_client
 
 
 def client_for(handler) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return make_test_client(transport=httpx.MockTransport(handler))
 
 
 @pytest.mark.anyio
@@ -99,7 +100,7 @@ async def test_post_json_deadline_raises_timeout(
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
 
     async def handler(request: httpx.Request) -> httpx.Response:
-        await asyncio.sleep(0.2)
+        await asyncio.Event().wait()
         return httpx.Response(200, json={"ok": True})
 
     async with client_for(handler) as client:
@@ -117,37 +118,26 @@ async def test_generation_is_responsive_during_slow_provider_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    slow_request_started = asyncio.Event()
+    release_slow_request = asyncio.Event()
 
     async def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         prompt = body["contents"][0]["parts"][0]["text"]
         if prompt == "slow":
-            await asyncio.sleep(0.5)
+            slow_request_started.set()
+            await release_slow_request.wait()
         return httpx.Response(200, json={"candidates": []})
 
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: make_test_client(transport=httpx.MockTransport(handler)),
     )
     slow_task = asyncio.create_task(generation.generate_investigation("slow"))
-    tick_times: list[float] = []
-
-    async def ticker() -> None:
-        while not slow_task.done():
-            tick_times.append(asyncio.get_running_loop().time())
-            await asyncio.sleep(0.01)
-
-    ticker_task = asyncio.create_task(ticker())
-    await asyncio.sleep(0.01)
-    fast_started = asyncio.get_running_loop().time()
+    await slow_request_started.wait()
     await generation.generate_investigation("fast")
-    fast_elapsed = asyncio.get_running_loop().time() - fast_started
 
     assert not slow_task.done()
-    assert fast_elapsed < 0.2
+    release_slow_request.set()
     await slow_task
-    await ticker_task
-    assert max(
-        second - first for first, second in zip(tick_times, tick_times[1:])
-    ) < 0.2
