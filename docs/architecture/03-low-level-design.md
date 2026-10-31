@@ -282,7 +282,7 @@ sequenceDiagram
 
 `persist_investigation()` reparses the provider payload, inserts an `Investigation`, flushes to obtain its ID, builds an `Audit`, then performs one commit. It saves query, parsed diagnosis, configured model, latency, token count, and final model self-rating in both records; the Investigation stores the `answered` or `abstained_model` outcome. Audit additionally stores retrieved chunk IDs, numeric score arrays, cited chunk IDs, validated claims and quotes, uncertainty note, citation-validation counts, attempt trace and per-result metadata in `tool_calls`. Nullable replay columns capture the exact prompt/version, raw candidate text, pre-calibration model self-rating, generation parameters, threshold snapshot, embedding model, ranked per-chunk hashes/locations/scores/kept flags, and minimal correlation/outcome/model/generation-latency/error-class trace ([`persistence.py`](../../app/investigation/persistence.py), [`ReplayRecord`](../../app/investigation/replay.py)).
 
-`investigate_repository()` resolves the repository's latest IngestRun by highest ID and attaches that run ID to the Audit row for answers, model abstentions, guard refusals, and error outcomes. It persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace, retrieval summary, per-chunk snapshot and threshold values; refusal rows have no prompt or raw response. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Exceptions during embedding or graph execution are re-raised after an `error` outcome and empty Audit row are attempted. Error audits store only the exception class name, never its message. Audit replay fields are not exposed through the API. Prompt and raw response may contain source code, so database access must be restricted. The generated prompt stores the evidence text the model saw; per-chunk snapshots store hashes and source locations, so dropped chunks and refusal evidence require the source revision for historical recovery. The trace records generation latency, not per-stage timings. `persist=False` skips these writes.
+`investigate_repository()` resolves the repository's latest IngestRun by highest ID and attaches that run ID to the Audit row for answers, model abstentions, guard refusals, generation-unavailable outcomes, and error outcomes. It persists guard insufficiency as a `refused_guard` Investigation and Audit when `persist=True`, including the attempt trace, retrieval summary, per-chunk snapshot and threshold values; refusal rows have no prompt or raw response. A model-level abstention after a successful guard is persisted with outcome `abstained_model`; other generated answers use `answered`. Eligible generation availability failures after guard acceptance are persisted as `generation_unavailable`, with empty response, no claims/citations, content-free evidence metadata, guard result, and a trace of failed stage, provider/model attempts, typed error classes, attempt counts, elapsed time, and correlation ID. The degraded trace and tool-call parameters omit prompt and query text; the Audit's existing query column remains part of the investigation record. Other exceptions during embedding or graph execution are re-raised after an `error` outcome and Audit row are attempted, with the failed stage/model recorded when known. Error audits store the exception class, never its message. Audit replay fields are not exposed through the API. Prompt and raw response may contain source code, so database access must be restricted. The generated prompt stores the evidence text the model saw; per-chunk snapshots store hashes and source locations, so dropped chunks and refusal evidence require the source revision for historical recovery. `persist=False` skips these writes.
 
 ## 8. API design
 
@@ -301,11 +301,58 @@ flowchart LR
 | Route | Protection | Behavior |
 |---|---|---|
 | `GET /health` | None | Returns `{"status": "ok"}`. |
-| `POST /investigations` | Shared `X-API-Secret`, then rate limit | Validates `repository_name`, non-empty query, positive `limit`; runs/persists synchronously; returns diagnosis, `model_self_rating`, a `rating_note`, citations, evidence check, tool trace, model and latency. |
+| `POST /investigations` | Shared `X-API-Secret`, then rate limit | Validates `repository_name`, non-empty query, positive `limit`; runs/persists synchronously; returns diagnosis, `model_self_rating`, a `rating_note`, citations, evidence check, tool trace, model and latency, plus additive `unavailable_answer`, `degraded`, `degraded_reason`, and `evidence` fields. |
 | `GET /investigations/{id}` | Same | Reads one investigation and exactly one audit record; reconstructs returned evidence/tool fields. |
 | `GET /repositories` | Same | Returns every repository’s total chunk count and non-null embedding count. |
 
-`require_api_access()` uses `secrets.compare_digest` for the configured secret, then applies ten accepted requests per 60 seconds to the request client IP. HTTP validation/error handlers redact internal details into a consistent `{"error": {"code", "message"}}` shape. Both API methods return the final model self-rating and a note describing its limits; the API does not expose a `confidence` or `raw_confidence` field.
+`require_api_access()` uses `secrets.compare_digest` for the configured secret, then applies ten accepted requests per 60 seconds to the request client IP. HTTP validation/error handlers redact internal details into a consistent `{"error": {"code", "message"}}` shape. The additive response fields default to `false`, `false`, `null`, and `[]`, so ordinary answers and refusals retain their existing fields and values. After guard acceptance, exhausted Gemini and any eligible configured Groq fallback availability failures return HTTP 200 with outcome `generation_unavailable`, empty diagnosis, `model_self_rating="not_applicable"`, no claims or cited IDs, the existing guard result, and content-free evidence locations. Auth, bad-request, safety-blocked, and schema-invalid provider failures do not degrade. Request validation remains 422; malformed or wrong-dimension upstream query-embedding output is a typed provider schema failure and maps to 502.
+
+The following response is exercised by the API POST/GET round-trip unit fixture. The `evidence`
+items contain only the fields listed here; they never contain source text:
+
+```json
+{
+  "investigation_id": 731,
+  "repository_name": "incidentweave-eval",
+  "query": "How does request authentication work?",
+  "diagnosis": "",
+  "outcome": "generation_unavailable",
+  "model_self_rating": "not_applicable",
+  "rating_note": "No model response was generated.",
+  "cited_chunk_ids": [],
+  "evidence_check": {
+    "is_sufficient": true,
+    "reason": "Evidence meets the guard threshold.",
+    "best_rrf_score": 0.032,
+    "best_vector_score": 0.31
+  },
+  "retry_used": false,
+  "tool_calls": [],
+  "claims": [],
+  "uncertainty_note": "Generation unavailable after configured provider retries.",
+  "citation_validation": {"submitted": 0, "valid": 0, "rate": null},
+  "model": "",
+  "latency_ms": null,
+  "evaluation_note": "Phase 8 evaluated 24 questions on one source snapshot: hybrid tied vector-only (hit@1 8/16, hit@3 and hit@5 11/16, MRR 0.573), the guard had 4 false accepts, and no tested vector-distance cutoff separated the groups. These results are diagnostic, not a benchmark; see docs/phases/08-evaluation.md for limits.",
+  "unavailable_answer": true,
+  "degraded": true,
+  "degraded_reason": "generation_unavailable",
+  "evidence": [
+    {
+      "chunk_id": "42",
+      "file_path": "app/security.py",
+      "start_line": 20,
+      "end_line": 38,
+      "rank": 1,
+      "rrf_score": 0.032,
+      "vector_score": 0.31
+    }
+  ]
+}
+```
+
+The CLI prints the outcome/degraded flags, a content-free generation trace, and metadata-only
+evidence for `generation_unavailable`; it omits raw model text and source text.
 
 ## 9. CLI and evaluation boundaries
 

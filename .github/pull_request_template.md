@@ -15,3 +15,7 @@ Closes #<issue number>. Checklist item <NN> in `docs/architecture-review/03-fix-
 - [ ] `pytest -q` passes (count: )
 - [ ] README and architecture docs match the code
 - [ ] Checklist ticked, Status line added, progress log updated
+
+## Ideas for later
+<Idea to revisit and why it might help.>
+<Evidence that would justify trying it.>

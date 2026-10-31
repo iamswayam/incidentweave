@@ -284,3 +284,53 @@ This file is intentionally a holding area for improvement work that should be re
 
 - Invalid-secret requests are rejected before rate limiting, so unauthenticated traffic is not bounded by the per-IP limiter.
 - The 502 mapping has unit coverage, but a live failing-provider response has not been exercised.
+
+## Later ideas from items 14d and 18d
+
+### BM25 B2 as a separately registered comparison
+
+- **Idea:** Compare a separately registered BM25 variant with stop words, stemming, and identifier splitting for `snake_case` and `camelCase`.
+- **Why:** [Note 17](./17-bm25-comparison-results.md) tested only naive BM25 without stemming or a stop list, and that variant lost to `ts_rank`.
+- **Evidence needed:** Preregistered development-split conditions and a paired comparison against the same control before considering production registration.
+
+### Weighted or learned fusion
+
+- **Idea:** Compare weighted or learned fusion with equal-weight reciprocal-rank fusion.
+- **Why:** The BM25 arm lost partly because noisy lexical hits displaced vector hits; different fusion weights may protect strong vector results.
+- **Evidence needed:** A separately registered comparison with per-repository and per-question results showing repeatable improvement without safety regressions.
+
+### Reranking the top results
+
+- **Idea:** Evaluate a reranker over the top retrieved results.
+- **Why:** A second-stage ranking may improve ordering while leaving the existing candidate retrieval and evidence guard intact.
+- **Evidence needed:** An offline comparison showing better paired ranking metrics at acceptable latency and without weakening refusal behavior.
+
+### AST or function-level chunking
+
+- **Idea:** Compare tree-sitter AST/function-level chunks with the current line windows.
+- **Why:** The 60/10 line windows cut about a third of functions, which may separate relevant code from its context.
+- **Evidence needed:** A registered chunking experiment reporting retrieval quality, function-boundary coverage, chunk counts, and indexing cost across representative repositories and languages.
+
+### Larger and more varied question sets
+
+- **Idea:** Expand evaluation to 100+ questions across more repositories and languages.
+- **Why:** With 33 answerable development questions, one rank change is about 0.015 pooled MRR.
+- **Evidence needed:** Maintainer-reviewed questions and labels with repository/language coverage and a frozen held-out split kept out of tuning.
+
+### Revisit HTTP 503 for generation unavailability
+
+- **Idea:** Revisit HTTP 503 instead of HTTP 200 for `generation_unavailable`.
+- **Why:** A real client that ignores `unavailable_answer`, `degraded`, or `outcome` could mistake the response for a generated answer.
+- **Evidence needed:** Client integration evidence that degraded flags are ignored or mishandled, weighed against whether clients discard useful evidence bodies on 503.
+
+### Optional source snippets in degraded evidence
+
+- **Idea:** Consider optional source snippets in degraded evidence behind explicit access control.
+- **Why:** Snippets could make retrieved locations easier to inspect without a second source lookup.
+- **Evidence needed:** A reviewed authorization model, privacy assessment, and user need that justify exposing code in this response path.
+
+### Diagnose why hybrid retrieval did not improve
+
+- **Idea:** Analyze why hybrid retrieval did not improve even when lexical-only recall rose from 5/33 to 26/33.
+- **Why:** The remaining limit may be vector ranking, chunk boundaries, or how the hybrid fusion ranks candidates rather than lexical matching.
+- **Evidence needed:** Per-question branch ranks, candidate overlap, chunk-boundary diagnostics, and controlled development-split comparisons that isolate each cause.
