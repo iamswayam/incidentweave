@@ -276,6 +276,46 @@ async def test_groq_failure_chains_gemini_error_and_does_not_log_secrets(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("fallback_enabled", [False, True])
+async def test_generation_availability_trace_follows_fallback_exhaustion(
+    monkeypatch: pytest.MonkeyPatch,
+    fallback_enabled: bool,
+) -> None:
+    if fallback_enabled:
+        _enable_fallback(monkeypatch)
+    else:
+        monkeypatch.setattr(settings, "groq_fallback_enabled", False)
+        monkeypatch.setattr(settings, "groq_api_key", None)
+        monkeypatch.setattr(settings, "groq_model", None)
+    gemini_error = gemini.ProviderServerError("Gemini unavailable", status_code=503)
+    groq_error = groq.ProviderTimeoutError("Groq timed out")
+
+    async def fail_gemini(*_args: object, **_kwargs: object) -> dict[str, Any]:
+        raise gemini_error
+
+    async def fail_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
+        raise groq_error
+
+    monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
+    monkeypatch.setattr(generation, "guarded_post_json", fail_gemini)
+    monkeypatch.setattr(groq, "generate_with_groq", fail_groq)
+
+    expected_error = groq.ProviderError if fallback_enabled else gemini.ProviderError
+    with pytest.raises(expected_error) as raised:
+        await generation.generate_investigation("private prompt")
+
+    assert generation.is_generation_unavailable_error(raised.value)
+    trace = generation.generation_failure_trace(raised.value, elapsed_ms=1200)
+    providers = trace["provider_attempts"]
+    assert [attempt["provider"] for attempt in providers] == (
+        ["gemini", "groq"] if fallback_enabled else ["gemini"]
+    )
+    assert trace["failed_stage"] == "generation"
+    assert trace["elapsed_ms"] == 1200
+    assert "private prompt" not in repr(trace)
+
+
+@pytest.mark.anyio
 async def test_groq_adapter_honors_retry_after_and_logs_metadata_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

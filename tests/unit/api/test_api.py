@@ -12,6 +12,7 @@ from app.api_security import rate_limiter
 from app.config import settings
 from app.db.models import Investigation, Repository
 from app.main import app
+from app.providers.gemini import ProviderSchemaInvalidError
 
 TEST_SECRET = "phase9-test-secret-not-a-real-credential"
 HEADERS = {"X-API-Secret": TEST_SECRET}
@@ -262,6 +263,10 @@ def test_post_investigation_success_response_shape(
     assert body["evidence_check"]["best_rrf_score"] == 0.04
     assert body["evidence_check"]["best_vector_score"] == 0.25
     assert body["evaluation_note"].startswith("Phase 8 evaluated 24 questions")
+    assert body["unavailable_answer"] is False
+    assert body["degraded"] is False
+    assert body["degraded_reason"] is None
+    assert body["evidence"] == []
     assert calls == [
         ("incidentweave-eval", "What chunk size is configured?", 5, True)
     ]
@@ -335,6 +340,26 @@ def test_post_upstream_failure_returns_sanitized_502(
         }
     }
     assert "provider detail" not in response.text
+
+
+def test_post_malformed_upstream_embedding_response_is_sanitized_502(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
+        raise ProviderSchemaInvalidError("malformed upstream embedding")
+
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "test"},
+    )
+
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "upstream_failure"
+    assert "malformed upstream embedding" not in response.text
 
 
 def test_post_timeout_returns_sanitized_502(
@@ -525,6 +550,10 @@ def test_get_investigation_and_missing_id(
     assert found.status_code == 200
     assert found.json()["diagnosis"] == investigation.response
     assert found.json()["outcome"] == "answered"
+    assert found.json()["unavailable_answer"] is False
+    assert found.json()["degraded"] is False
+    assert found.json()["degraded_reason"] is None
+    assert found.json()["evidence"] == []
     assert found.json()["model_self_rating"] == "medium"
     assert found.json()["rating_note"].startswith("Model self-rating")
     assert "confidence" not in found.json()
@@ -537,6 +566,133 @@ def test_get_investigation_and_missing_id(
     assert missing.json() == {
         "error": {"code": "investigation_not_found", "message": "Investigation not found."}
     }
+
+
+def test_generation_unavailable_post_and_get_round_trip(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evidence = [
+        {
+            "chunk_id": "42",
+            "file_path": "app/security.py",
+            "start_line": 20,
+            "end_line": 38,
+            "rank": 1,
+            "rrf_score": 0.032,
+            "vector_score": 0.31,
+        }
+    ]
+
+    async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
+        return {
+            "investigation_id": 731,
+            "repository": "incidentweave-eval",
+            "query": "How does request authentication work?",
+            "diagnosis": "",
+            "outcome": "generation_unavailable",
+            "confidence": "not_applicable",
+            "unavailable_answer": True,
+            "degraded": True,
+            "degraded_reason": "generation_unavailable",
+            "evidence": evidence,
+            "evidence_check": {
+                "is_sufficient": True,
+                "reason": "Evidence meets the guard threshold.",
+                "best_rrf_score": 0.032,
+                "best_vector_score": 0.31,
+            },
+            "cited_chunk_ids": [],
+            "retry_used": False,
+            "tool_calls": [],
+            "claims": [],
+            "uncertainty_note": "Generation unavailable after configured provider retries.",
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "model": "",
+            "latency_ms": None,
+        }
+
+    investigation = SimpleNamespace(
+        id=731,
+        repository_id=34,
+        query="How does request authentication work?",
+        response="",
+        outcome="generation_unavailable",
+        confidence="not_applicable",
+        model=None,
+        latency_ms=None,
+    )
+    repository = SimpleNamespace(id=34, name="incidentweave-eval")
+    audit = SimpleNamespace(
+        investigation_id=731,
+        tool_calls={
+            "attempts": [],
+            "cited_chunk_ids": [],
+            "claims": [],
+            "uncertainty_note": "Generation unavailable after configured provider retries.",
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "degraded": {
+                "unavailable_answer": True,
+                "degraded": True,
+                "degraded_reason": "generation_unavailable",
+                "evidence": evidence,
+                "evidence_check": {
+                    "is_sufficient": True,
+                    "reason": "Evidence meets the guard threshold.",
+                    "best_rrf_score": 0.032,
+                    "best_vector_score": 0.31,
+                },
+            },
+        },
+    )
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+    monkeypatch.setattr(
+        api_module,
+        "AsyncSessionLocal",
+        lambda: FakeSession(
+            entities={(Investigation, 731): investigation, (Repository, 34): repository},
+            rows=[audit],
+        ),
+    )
+
+    created = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={
+            "repository_name": "incidentweave-eval",
+            "query": "How does request authentication work?",
+        },
+    )
+    fetched = api_client.get("/investigations/731", headers=HEADERS)
+
+    assert created.status_code == fetched.status_code == 200
+    created_body = created.json()
+    fetched_body = fetched.json()
+    assert created_body["outcome"] == "generation_unavailable"
+    assert created_body["diagnosis"] == ""
+    assert created_body["model_self_rating"] == "not_applicable"
+    assert created_body["rating_note"] == "No model response was generated."
+    assert created_body["unavailable_answer"] is True
+    assert created_body["degraded"] is True
+    assert created_body["degraded_reason"] == "generation_unavailable"
+    assert created_body["evidence"] == evidence
+    assert set(created_body["evidence"][0]) == {
+        "chunk_id",
+        "file_path",
+        "start_line",
+        "end_line",
+        "rank",
+        "rrf_score",
+        "vector_score",
+    }
+    assert created_body["evidence"] == fetched_body["evidence"]
+    assert fetched_body["unavailable_answer"] is True
+    assert fetched_body["degraded"] is True
+    assert fetched_body["degraded_reason"] == "generation_unavailable"
+    assert fetched_body["diagnosis"] == ""
+    assert fetched_body["model_self_rating"] == "not_applicable"
+    assert fetched_body["rating_note"] == "No model response was generated."
+    assert fetched_body["evidence_check"] == created_body["evidence_check"]
 
 
 def test_get_investigation_uses_last_grep_attempt_for_evidence_check(

@@ -19,7 +19,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.db.models import Chunk, Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
-from app.providers.gemini import guarded_post_json, make_client  # noqa: E402
+from app.providers.gemini import (  # noqa: E402
+    ProviderSchemaInvalidError,
+    guarded_post_json,
+    make_client,
+)
 
 GEMINI_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSION = 768
@@ -81,13 +85,18 @@ async def embed_text(
     embedding = payload_data.get("embedding")
     values = embedding.get("values") if isinstance(embedding, dict) else None
     if not isinstance(values, list):
-        raise ValueError("Unexpected Gemini embedding response format")
+        raise ProviderSchemaInvalidError("Unexpected Gemini embedding response format")
     if len(values) != EMBEDDING_DIMENSION:
-        raise ValueError(
+        raise ProviderSchemaInvalidError(
             f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}, "
             f"got {len(values)}"
         )
-    return [float(value) for value in values]
+    try:
+        return [float(value) for value in values]
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise ProviderSchemaInvalidError(
+            "Gemini embedding response contained a non-numeric value"
+        ) from exc
 
 
 async def embed_texts(

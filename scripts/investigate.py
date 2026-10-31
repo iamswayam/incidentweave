@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
+from time import perf_counter
 from uuid import uuid4
 
 if sys.platform == "win32":
@@ -28,6 +30,7 @@ from app.investigation.generation import (  # noqa: E402
     GEMINI_GENERATION_MODEL,
     GENERATION_TIMEOUT_SECONDS,
     MAX_GENERATION_ATTEMPTS,
+    generation_failure_trace,
 )
 from app.investigation.graph import create_investigation_graph  # noqa: E402
 from app.investigation.guard import (  # noqa: E402
@@ -39,22 +42,81 @@ from app.investigation.limits import (  # noqa: E402
     MAX_LIMIT,
     MAX_QUERY_CHARS,
 )
-from app.investigation.parsing import extract_generation_trace  # noqa: E402
+from app.investigation.parsing import (  # noqa: E402
+    ModelOutputError,
+    extract_generation_trace,
+)
 from app.investigation.persistence import (  # noqa: E402
     OUTCOME_ABSTAINED_MODEL,
     OUTCOME_ANSWERED,
+    OUTCOME_GENERATION_UNAVAILABLE,
     OUTCOME_REFUSED_GUARD,
+    content_free_tool_call_trace,
     latest_ingest_run_id,
     persist_error,
+    persist_generation_unavailable,
     persist_investigation,
     persist_refusal,
 )
 from app.investigation.prompt import PROMPT_VERSION  # noqa: E402
 from app.investigation.replay import ReplayRecord, build_chunk_records  # noqa: E402
+from app.providers.gemini import ProviderError  # noqa: E402
 from app.providers.usage import correlation_id_var  # noqa: E402
 from scripts.embed_chunks import GEMINI_MODEL, embed_text  # noqa: E402
 
 INVESTIGATION_DEADLINE_SECONDS = 120
+
+
+def _content_free_evidence(
+    retrieval_results: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "chunk_id": str(item.get("id") or ""),
+            "file_path": str(item.get("file_path") or ""),
+            "start_line": item.get("line_start"),
+            "end_line": item.get("line_end"),
+            "rank": rank,
+            "rrf_score": item.get("rrf_score"),
+            "vector_score": item.get("vector_score"),
+        }
+        for rank, item in enumerate(retrieval_results, start=1)
+    ]
+
+
+def _query_embedding_failure_trace(
+    error: Exception,
+    *,
+    elapsed_ms: int,
+    correlation_id: str,
+) -> dict[str, object]:
+    error_class = error.error_class if isinstance(error, ProviderError) else type(error).__name__
+    attempt_count = (
+        0
+        if isinstance(error, ProviderError)
+        and error.error_class == "rate_limited"
+        and error.status_code is None
+        else (
+            3
+            if isinstance(error, ProviderError) and error.retryable
+            else 1
+        )
+    )
+    return {
+        "failed_stage": "query_embedding",
+        "provider_attempts": [
+            {
+                "provider": "gemini",
+                "model": GEMINI_MODEL,
+                "error_class": error_class,
+                "attempt_count": attempt_count,
+            }
+        ],
+        "error_classes": [error_class],
+        "attempt_count": attempt_count,
+        "elapsed_ms": elapsed_ms,
+        "correlation_id": correlation_id,
+    }
 
 
 def parse_args() -> argparse.Namespace:
@@ -129,9 +191,13 @@ async def _investigate_repository(
         repository_id = repository.id
         ingest_run_id = await latest_ingest_run_id(session, repository_id)
 
+    stage = "query_embedding"
+    stage_started_at = perf_counter()
     try:
         async with asyncio.timeout(INVESTIGATION_DEADLINE_SECONDS):
             query_embedding = await embed_text(query_text)
+            stage = "investigation"
+            stage_started_at = perf_counter()
             graph = create_investigation_graph(calibrate_confidence)
             result = await graph.ainvoke(
                 {
@@ -158,6 +224,45 @@ async def _investigate_repository(
                 }
             )
     except Exception as exc:
+        elapsed_ms = round((perf_counter() - stage_started_at) * 1000)
+        if stage == "query_embedding":
+            error_trace = _query_embedding_failure_trace(
+                exc,
+                elapsed_ms=elapsed_ms,
+                correlation_id=correlation_id,
+            )
+        elif isinstance(exc, (ProviderError, TimeoutError)):
+            error_trace = generation_failure_trace(exc, elapsed_ms=elapsed_ms)
+        elif isinstance(exc, ModelOutputError):
+            error_trace = {
+                "failed_stage": "generation",
+                "model": GEMINI_GENERATION_MODEL,
+                "provider_attempts": [
+                    {
+                        "provider": "gemini",
+                        "model": GEMINI_GENERATION_MODEL,
+                        "error_class": "schema_invalid",
+                        "attempt_count": 1,
+                    }
+                ],
+                "error_classes": ["schema_invalid"],
+                "attempt_count": 1,
+                "elapsed_ms": elapsed_ms,
+                "correlation_id": correlation_id,
+            }
+        else:
+            error_trace = {
+                "failed_stage": "investigation",
+                "provider_attempts": [],
+                "error_classes": [type(exc).__name__],
+                "attempt_count": 0,
+                "elapsed_ms": elapsed_ms,
+                "correlation_id": correlation_id,
+            }
+        if error_trace.get("failed_stage") == "investigation":
+            error_trace["model"] = None
+        elif stage == "query_embedding":
+            error_trace["model"] = GEMINI_MODEL
         if persist:
             try:
                 async with AsyncSessionLocal() as session:
@@ -167,15 +272,7 @@ async def _investigate_repository(
                         query_text,
                         type(exc).__name__,
                         ingest_run_id=ingest_run_id,
-                        replay=ReplayRecord(
-                            trace={
-                                "correlation_id": correlation_id,
-                                "outcome": "error",
-                                "model": GEMINI_GENERATION_MODEL,
-                                "generation_latency_ms": None,
-                                "error_class": type(exc).__name__,
-                            }
-                        ),
+                        replay=ReplayRecord(trace={"outcome": "error", **error_trace}),
                     )
             except Exception as persistence_error:
                 print(
@@ -184,6 +281,74 @@ async def _investigate_repository(
                     file=sys.stderr,
                 )
         raise
+
+    if result.get("outcome") == OUTCOME_GENERATION_UNAVAILABLE:
+        retrieval_results = result.get(
+            "retrieved_before_budget",
+            result["retrieval_results"],
+        )
+        kept_chunk_ids = [
+            item.get("id")
+            for item in result["retrieval_results"]
+            if item.get("id") is not None
+        ]
+        evidence = _content_free_evidence(retrieval_results)
+        generation_trace = result["generation_trace"]
+        tool_call_trace = content_free_tool_call_trace(result["tool_calls"])
+        replay = ReplayRecord(
+            thresholds=_current_thresholds(),
+            embedding_model=GEMINI_MODEL,
+            chunk_records=build_chunk_records(
+                retrieval_results,
+                kept_chunk_ids,
+            ),
+            trace={
+                **generation_trace,
+                "outcome": OUTCOME_GENERATION_UNAVAILABLE,
+                "degraded": True,
+                "degraded_reason": "generation_unavailable",
+            },
+        )
+        if persist:
+            async with AsyncSessionLocal() as session:
+                investigation = await persist_generation_unavailable(
+                    session=session,
+                    repository_id=repository_id,
+                    query=query_text,
+                    retrieval_results=retrieval_results,
+                    evidence=evidence,
+                    evidence_check=result["evidence_check"],
+                    tool_call_trace=tool_call_trace,
+                    generation_trace=replay.trace or generation_trace,
+                    ingest_run_id=ingest_run_id,
+                    replay=replay,
+                )
+            investigation_id = investigation.id
+        return {
+            "repository": repo_name,
+            "investigation_id": investigation_id,
+            "query": query_text,
+            "diagnosis": "",
+            "confidence": "not_applicable",
+            "outcome": OUTCOME_GENERATION_UNAVAILABLE,
+            "unavailable_answer": True,
+            "degraded": True,
+            "degraded_reason": "generation_unavailable",
+            "evidence": evidence,
+            "cited_chunk_ids": [],
+            "retrieval_results": retrieval_results,
+            "evidence_check": result["evidence_check"],
+            "model": "",
+            "latency_ms": None,
+            "retry_used": result["retry_used"],
+            "confidence_calibrated": False,
+            "calibration_note": "",
+            "tool_calls": tool_call_trace,
+            "claims": [],
+            "uncertainty_note": result["uncertainty_note"],
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "generation_trace": generation_trace,
+        }
 
     if not result["evidence_check"]["is_sufficient"]:
         replay = ReplayRecord(
@@ -359,8 +524,12 @@ def main() -> None:
 
     print(f"Repository: {result['repository']}")
     print(f"Query: {result['query']}")
+    print(f"Outcome: {result['outcome']}")
     print(f"Diagnosis: {result['diagnosis']}")
     print(f"Model self-rating: {result['confidence']}")
+    print(f"Unavailable answer: {bool(result.get('unavailable_answer', False))}")
+    print(f"Degraded: {bool(result.get('degraded', False))}")
+    print(f"Degraded reason: {result.get('degraded_reason')}")
     print(f"Cited chunks: {result['cited_chunk_ids']}")
     print(f"Model: {result['model']}")
     print(f"Latency ms: {result['latency_ms']}")
@@ -370,6 +539,17 @@ def main() -> None:
         f"{result['confidence_calibrated']}"
     )
     print(f"Tool attempts: {len(result['tool_calls'])}")
+    generation_trace = result.get("generation_trace")
+    if isinstance(generation_trace, dict):
+        safe_trace = {
+            key: value for key, value in generation_trace.items() if key != "raw_text"
+        }
+    else:
+        safe_trace = generation_trace
+    print(f"Generation trace: {json.dumps(safe_trace, sort_keys=True)}")
+    evidence = result.get("evidence")
+    if isinstance(evidence, list) and evidence:
+        print(f"Evidence metadata: {json.dumps(evidence, sort_keys=True)}")
 
 
 if __name__ == "__main__":
