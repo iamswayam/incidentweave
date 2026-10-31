@@ -17,6 +17,7 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 | 11 | [11-test-file-retrieval-protocol.md](11-test-file-retrieval-protocol.md) | Maintainer | Preregistered test-file retrieval comparison protocol (item 14b) | Living |
 | 12 | [12-bm25-comparison-protocol.md](12-bm25-comparison-protocol.md) | Maintainer | Preregistered BM25 lexical retrieval comparison protocol (item 14d) | Living |
 | 13 | [13-degraded-response-design.md](13-degraded-response-design.md) | Maintainer | Approved degraded-response contract and implementation record for item 18d | Implemented |
+| 14 | [14-local-embedding-protocol.md](14-local-embedding-protocol.md) | Maintainer | Registered development-only local embedding comparison protocol for item 18c | Registered |
 
 ## Conventions
 - Files are named `NN-kebab-case.md` in reading order. A new document takes the next number.
