@@ -7,6 +7,7 @@ This short model covers the current local IncidentWeave workflow.
 - **Source code in prompts:** retrieved repository chunks may contain proprietary or sensitive text.
 - **Provider credential:** `GEMINI_API_KEY` authorizes embedding and generation requests.
 - **Stored audits:** investigation queries, outcomes, retrieval metadata, tool traces, exact prompts, and raw model text are stored in PostgreSQL. Prompts and responses can contain proprietary repository source.
+- **Query-embedding cache:** persistent query-derived vectors and SHA-256 hashes are stored in PostgreSQL for up to 30 days, without query text. Vectors are derived from user queries, and the hash is linkable to a guessed query by hashing candidates; treat both as sensitive data.
 
 ## Trust boundaries
 
@@ -37,4 +38,5 @@ This short model covers the current local IncidentWeave workflow.
 - The rate limit is process-local and is not a distributed quota or cost budget.
 - Per-chunk replay records store hashes and locations, not content. Generated prompts preserve included evidence text; dropped or refused evidence requires access to the source revision.
 - Prompt and raw response columns increase the sensitivity of the database. Database roles, backups, and operational access must protect them.
+- Cache vectors and query hashes require the same database access controls and backup protection. The hash is not anonymization: anyone with candidate queries can test them against stored hashes.
 - Behavioral prompt-injection tests are deferred to checklist item 12b.

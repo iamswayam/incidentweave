@@ -16,6 +16,7 @@ OUTCOME_REFUSED_GUARD = "refused_guard"
 OUTCOME_ABSTAINED_MODEL = "abstained_model"
 OUTCOME_ERROR = "error"
 OUTCOME_GENERATION_UNAVAILABLE = "generation_unavailable"
+OUTCOME_EMBEDDING_UNAVAILABLE = "embedding_unavailable"
 
 
 async def latest_ingest_run_id(session, repository_id: int) -> int | None:
@@ -235,7 +236,7 @@ async def persist_refusal(
     return investigation
 
 
-async def persist_generation_unavailable(
+async def persist_degraded_investigation(
     session,
     repository_id: int,
     query: str,
@@ -244,10 +245,13 @@ async def persist_generation_unavailable(
     evidence_check: Mapping[str, object],
     tool_call_trace: Sequence[Mapping[str, object]],
     generation_trace: Mapping[str, object],
+    outcome: str,
+    degraded_reason: str,
+    uncertainty_note: str,
     ingest_run_id: int | None = None,
     replay: ReplayRecord | None = None,
 ) -> Investigation:
-    """Persist an unavailable generation outcome without prompt or source text."""
+    """Persist either degraded outcome without prompt or source text."""
 
     investigation = Investigation(
         repository_id=repository_id,
@@ -257,7 +261,7 @@ async def persist_generation_unavailable(
         latency_ms=None,
         token_usage=None,
         confidence="not_applicable",
-        outcome=OUTCOME_GENERATION_UNAVAILABLE,
+        outcome=outcome,
     )
     session.add(investigation)
     await session.flush()
@@ -297,14 +301,12 @@ async def persist_generation_unavailable(
             "cited_chunk_ids": [],
             "retrieval_results": _retrieval_summary(retrieval_results),
             "claims": [],
-            "uncertainty_note": (
-                "Generation unavailable after configured provider retries."
-            ),
+            "uncertainty_note": uncertainty_note,
             "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
             "degraded": {
                 "unavailable_answer": True,
                 "degraded": True,
-                "degraded_reason": "generation_unavailable",
+                "degraded_reason": degraded_reason,
                 "evidence": evidence_items,
                 "evidence_check": dict(evidence_check),
             },
@@ -319,6 +321,37 @@ async def persist_generation_unavailable(
     session.add(audit)
     await session.commit()
     return investigation
+
+
+async def persist_generation_unavailable(
+    session,
+    repository_id: int,
+    query: str,
+    retrieval_results: Sequence[Mapping[str, object]],
+    evidence: Sequence[Mapping[str, object]],
+    evidence_check: Mapping[str, object],
+    tool_call_trace: Sequence[Mapping[str, object]],
+    generation_trace: Mapping[str, object],
+    ingest_run_id: int | None = None,
+    replay: ReplayRecord | None = None,
+) -> Investigation:
+    """Persist generation unavailability through the shared degraded path."""
+
+    return await persist_degraded_investigation(
+        session=session,
+        repository_id=repository_id,
+        query=query,
+        retrieval_results=retrieval_results,
+        evidence=evidence,
+        evidence_check=evidence_check,
+        tool_call_trace=tool_call_trace,
+        generation_trace=generation_trace,
+        outcome=OUTCOME_GENERATION_UNAVAILABLE,
+        degraded_reason="generation_unavailable",
+        uncertainty_note="Generation unavailable after configured provider retries.",
+        ingest_run_id=ingest_run_id,
+        replay=replay,
+    )
 
 
 async def persist_error(

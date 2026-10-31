@@ -27,6 +27,7 @@ from app.providers.gemini import (  # noqa: E402
 
 GEMINI_MODEL = "models/gemini-embedding-001"
 EMBEDDING_DIMENSION = 768
+MAX_EMBEDDING_ATTEMPTS = 3
 EMBED_BATCH_SIZE = 50
 EMBED_CONCURRENCY = 4
 EmbeddingTaskType = Literal["RETRIEVAL_DOCUMENT", "CODE_RETRIEVAL_QUERY"]
@@ -60,7 +61,7 @@ async def embed_text(
     text: str,
     *,
     task_type: EmbeddingTaskType | None = None,
-    max_attempts: int = 3,
+    max_attempts: int = MAX_EMBEDDING_ATTEMPTS,
 ) -> list[float]:
     """Embed one value, optionally selecting a retrieval-specific task."""
 
@@ -103,7 +104,7 @@ async def embed_texts(
     texts: list[str],
     *,
     task_type: EmbeddingTaskType | None = None,
-    max_attempts: int = 3,
+    max_attempts: int = MAX_EMBEDDING_ATTEMPTS,
 ) -> list[list[float]]:
     """Embed a batch, optionally selecting a retrieval-specific task."""
 

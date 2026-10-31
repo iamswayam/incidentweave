@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 from time import perf_counter
@@ -29,6 +30,7 @@ from app.investigation.confidence import (  # noqa: E402
 from app.investigation.generation import (  # noqa: E402
     GEMINI_GENERATION_MODEL,
     GENERATION_TIMEOUT_SECONDS,
+    GENERATION_UNAVAILABLE_ERROR_CLASSES,
     MAX_GENERATION_ATTEMPTS,
     generation_failure_trace,
 )
@@ -49,10 +51,12 @@ from app.investigation.parsing import (  # noqa: E402
 from app.investigation.persistence import (  # noqa: E402
     OUTCOME_ABSTAINED_MODEL,
     OUTCOME_ANSWERED,
+    OUTCOME_EMBEDDING_UNAVAILABLE,
     OUTCOME_GENERATION_UNAVAILABLE,
     OUTCOME_REFUSED_GUARD,
     content_free_tool_call_trace,
     latest_ingest_run_id,
+    persist_degraded_investigation,
     persist_error,
     persist_generation_unavailable,
     persist_investigation,
@@ -62,9 +66,23 @@ from app.investigation.prompt import PROMPT_VERSION  # noqa: E402
 from app.investigation.replay import ReplayRecord, build_chunk_records  # noqa: E402
 from app.providers.gemini import ProviderError  # noqa: E402
 from app.providers.usage import correlation_id_var  # noqa: E402
-from scripts.embed_chunks import GEMINI_MODEL, embed_text  # noqa: E402
+from app.retrieval.degraded_search import search_degraded_lexical_only  # noqa: E402
+from app.retrieval.query_embedding_cache import (  # noqa: E402
+    QueryEmbeddingKey,
+    build_query_embedding_key,
+    get_query_embedding,
+    put_query_embedding,
+)
+from scripts.embed_chunks import (  # noqa: E402
+    EMBEDDING_DIMENSION,
+    GEMINI_MODEL,
+    MAX_EMBEDDING_ATTEMPTS,
+    embed_text,
+)
 
 INVESTIGATION_DEADLINE_SECONDS = 120
+QUERY_EMBEDDING_TASK_TYPE = "default"
+_logger = logging.getLogger(__name__)
 
 
 def _content_free_evidence(
@@ -89,6 +107,9 @@ def _query_embedding_failure_trace(
     *,
     elapsed_ms: int,
     correlation_id: str,
+    cache_key: QueryEmbeddingKey,
+    retrieval_mode: str,
+    result_count: int,
 ) -> dict[str, object]:
     error_class = error.error_class if isinstance(error, ProviderError) else type(error).__name__
     attempt_count = (
@@ -97,25 +118,39 @@ def _query_embedding_failure_trace(
         and error.error_class == "rate_limited"
         and error.status_code is None
         else (
-            3
+            MAX_EMBEDDING_ATTEMPTS
             if isinstance(error, ProviderError) and error.retryable
             else 1
         )
     )
     return {
         "failed_stage": "query_embedding",
+        "model": GEMINI_MODEL,
         "provider_attempts": [
             {
                 "provider": "gemini",
                 "model": GEMINI_MODEL,
                 "error_class": error_class,
                 "attempt_count": attempt_count,
+                "attempt_count_basis": "inferred_from_error_class",
             }
         ],
         "error_classes": [error_class],
         "attempt_count": attempt_count,
+        "attempt_count_basis": "inferred_from_error_class",
         "elapsed_ms": elapsed_ms,
         "correlation_id": correlation_id,
+        "cache": {
+            "hit": False,
+            "miss": True,
+            "embedding_model": cache_key.embedding_model,
+            "task_type": cache_key.task_type,
+            "dimensions": cache_key.dimensions,
+            "query_hash": cache_key.query_hash,
+        },
+        "retrieval_mode": retrieval_mode,
+        "result_count": result_count,
+        "guard_ran": False,
     }
 
 
@@ -137,6 +172,48 @@ def parse_args() -> argparse.Namespace:
         help="Maximum hybrid-search results to consider",
     )
     return parser.parse_args()
+
+
+async def _lookup_query_embedding_cache(
+    key: QueryEmbeddingKey,
+) -> tuple[list[float] | None, bool]:
+    try:
+        async with AsyncSessionLocal() as session:
+            vector = await get_query_embedding(session, key)
+            await session.commit()
+        return vector, True
+    except Exception as exc:
+        _logger.warning("Query embedding cache read failed (%s)", type(exc).__name__)
+        return None, False
+
+
+async def _store_query_embedding_cache(
+    key: QueryEmbeddingKey,
+    vector: list[float],
+) -> None:
+    try:
+        async with AsyncSessionLocal() as session:
+            await put_query_embedding(session, key, vector)
+            await session.commit()
+    except Exception as exc:
+        _logger.warning("Query embedding cache write failed (%s)", type(exc).__name__)
+
+
+def _query_embedding_cache_trace(
+    key: QueryEmbeddingKey,
+    *,
+    hit: bool,
+    lookup_succeeded: bool = True,
+) -> dict[str, object]:
+    return {
+        "hit": hit,
+        "miss": lookup_succeeded and not hit,
+        "lookup_succeeded": lookup_succeeded,
+        "embedding_model": key.embedding_model,
+        "task_type": key.task_type,
+        "dimensions": key.dimensions,
+        "query_hash": key.query_hash,
+    }
 
 
 async def investigate_repository(
@@ -193,36 +270,126 @@ async def _investigate_repository(
 
     stage = "query_embedding"
     stage_started_at = perf_counter()
+    cache_key = build_query_embedding_key(
+        GEMINI_MODEL,
+        QUERY_EMBEDDING_TASK_TYPE,
+        EMBEDDING_DIMENSION,
+        query_text,
+    )
+    cache_vector: list[float] | None = None
+    cache_checked = False
+    cache_hit = False
+    cache_trace = _query_embedding_cache_trace(cache_key, hit=False)
+    embedding_failure: ProviderError | None = None
+    result: dict[str, object]
     try:
         async with asyncio.timeout(INVESTIGATION_DEADLINE_SECONDS):
-            query_embedding = await embed_text(query_text)
-            stage = "investigation"
-            stage_started_at = perf_counter()
-            graph = create_investigation_graph(calibrate_confidence)
-            result = await graph.ainvoke(
-                {
-                    "repository_id": repository_id,
-                    "repository_name": repo_name,
-                    "query": query_text,
-                    "query_embedding": query_embedding,
-                    "search_limit": limit,
-                    "retry_limit": limit * 2,
-                    "retry_count": 0,
-                    "retry_used": False,
-                    "retrieval_results": [],
-                    "evidence_check": {},
-                    "diagnosis": "",
-                    "confidence": "",
-                    "cited_chunk_ids": [],
-                    "model": GEMINI_GENERATION_MODEL,
-                    "latency_ms": None,
-                    "calibration_note": "",
-                    "confidence_calibrated": False,
-                    "evidence_source": "hybrid",
-                    "tool_calls": [],
-                    "temperature": temperature,
-                }
+            cache_vector, cache_checked = await _lookup_query_embedding_cache(cache_key)
+            cache_hit = cache_vector is not None
+            cache_trace = _query_embedding_cache_trace(
+                cache_key,
+                hit=cache_hit,
+                lookup_succeeded=cache_checked,
             )
+            if cache_hit:
+                query_embedding = cache_vector
+            else:
+                try:
+                    query_embedding = await embed_text(query_text)
+                except ProviderError as exc:
+                    if (
+                        cache_checked
+                        and exc.error_class in GENERATION_UNAVAILABLE_ERROR_CLASSES
+                    ):
+                        embedding_failure = exc
+                        stage = "lexical_retrieval"
+                        async with AsyncSessionLocal() as session:
+                            retrieval_results = await search_degraded_lexical_only(
+                                session,
+                                repository_id,
+                                query_text,
+                                limit,
+                            )
+                    else:
+                        raise
+                else:
+                    await _store_query_embedding_cache(cache_key, query_embedding)
+
+            if embedding_failure is not None:
+                elapsed_ms = round((perf_counter() - stage_started_at) * 1000)
+                failure_trace = _query_embedding_failure_trace(
+                    embedding_failure,
+                    elapsed_ms=elapsed_ms,
+                    correlation_id=correlation_id,
+                    cache_key=cache_key,
+                    retrieval_mode="lexical_only",
+                    result_count=len(retrieval_results),
+                )
+                failure_trace["cache"] = cache_trace
+                result = {
+                    "outcome": OUTCOME_EMBEDDING_UNAVAILABLE,
+                    "unavailable_answer": True,
+                    "degraded": True,
+                    "degraded_reason": "embedding_unavailable",
+                    "diagnosis": "",
+                    "confidence": "not_applicable",
+                    "cited_chunk_ids": [],
+                    "claims": [],
+                    "uncertainty_note": (
+                        "Lexical-only evidence is returned; the vector guard and "
+                        "generation were not run."
+                    ),
+                    "retrieval_results": retrieval_results,
+                    "retrieved_before_budget": retrieval_results,
+                    "evidence_check": {
+                        "is_sufficient": None,
+                        "reason": "not evaluated: no query embedding",
+                        "best_rrf_score": None,
+                        "best_vector_score": None,
+                    },
+                    "retry_used": False,
+                    "confidence_calibrated": False,
+                    "calibration_note": "",
+                    "model": "",
+                    "latency_ms": None,
+                    "tool_calls": [
+                        {
+                            "tool": "degraded_lexical_search",
+                            "stage": "lexical_only",
+                            "parameters": {"limit": limit},
+                            "outcome": {"result_count": len(retrieval_results)},
+                        }
+                    ],
+                    "generation_trace": failure_trace,
+                }
+            else:
+                stage = "investigation"
+                stage_started_at = perf_counter()
+                graph = create_investigation_graph(calibrate_confidence)
+                result = await graph.ainvoke(
+                    {
+                        "repository_id": repository_id,
+                        "repository_name": repo_name,
+                        "query": query_text,
+                        "query_embedding": query_embedding,
+                        "search_limit": limit,
+                        "retry_limit": limit * 2,
+                        "retry_count": 0,
+                        "retry_used": False,
+                        "retrieval_results": [],
+                        "evidence_check": {},
+                        "diagnosis": "",
+                        "confidence": "",
+                        "cited_chunk_ids": [],
+                        "model": GEMINI_GENERATION_MODEL,
+                        "latency_ms": None,
+                        "calibration_note": "",
+                        "confidence_calibrated": False,
+                        "evidence_source": "hybrid",
+                        "tool_calls": [],
+                        "temperature": temperature,
+                    }
+                )
     except Exception as exc:
         elapsed_ms = round((perf_counter() - stage_started_at) * 1000)
         if stage == "query_embedding":
@@ -230,9 +397,16 @@ async def _investigate_repository(
                 exc,
                 elapsed_ms=elapsed_ms,
                 correlation_id=correlation_id,
+                cache_key=cache_key,
+                retrieval_mode="hybrid",
+                result_count=0,
             )
-        elif isinstance(exc, (ProviderError, TimeoutError)):
+            error_trace["cache"] = cache_trace
+        elif stage == "investigation" and isinstance(
+            exc, (ProviderError, TimeoutError)
+        ):
             error_trace = generation_failure_trace(exc, elapsed_ms=elapsed_ms)
+            error_trace["cache"] = cache_trace
         elif isinstance(exc, ModelOutputError):
             error_trace = {
                 "failed_stage": "generation",
@@ -243,23 +417,26 @@ async def _investigate_repository(
                         "model": GEMINI_GENERATION_MODEL,
                         "error_class": "schema_invalid",
                         "attempt_count": 1,
+                        "attempt_count_basis": "inferred_from_error_class",
                     }
                 ],
                 "error_classes": ["schema_invalid"],
                 "attempt_count": 1,
+                "attempt_count_basis": "inferred_from_error_class",
                 "elapsed_ms": elapsed_ms,
                 "correlation_id": correlation_id,
+                "cache": cache_trace,
             }
         else:
             error_trace = {
-                "failed_stage": "investigation",
+                "failed_stage": stage,
                 "provider_attempts": [],
                 "error_classes": [type(exc).__name__],
                 "attempt_count": 0,
                 "elapsed_ms": elapsed_ms,
                 "correlation_id": correlation_id,
             }
-        if error_trace.get("failed_stage") == "investigation":
+        if error_trace.get("failed_stage") not in {"query_embedding", "generation"}:
             error_trace["model"] = None
         elif stage == "query_embedding":
             error_trace["model"] = GEMINI_MODEL
@@ -282,6 +459,65 @@ async def _investigate_repository(
                 )
         raise
 
+    if result.get("outcome") == OUTCOME_EMBEDDING_UNAVAILABLE:
+        retrieval_results = result["retrieval_results"]
+        evidence = _content_free_evidence(retrieval_results)
+        failure_trace = result["generation_trace"]
+        tool_call_trace = content_free_tool_call_trace(result["tool_calls"])
+        replay = ReplayRecord(
+            embedding_model=GEMINI_MODEL,
+            chunk_records=build_chunk_records(retrieval_results, []),
+            trace={
+                **failure_trace,
+                "outcome": OUTCOME_EMBEDDING_UNAVAILABLE,
+                "degraded": True,
+                "degraded_reason": "embedding_unavailable",
+            },
+        )
+        if persist:
+            async with AsyncSessionLocal() as session:
+                investigation = await persist_degraded_investigation(
+                    session=session,
+                    repository_id=repository_id,
+                    query=query_text,
+                    retrieval_results=retrieval_results,
+                    evidence=evidence,
+                    evidence_check=result["evidence_check"],
+                    tool_call_trace=tool_call_trace,
+                    generation_trace=replay.trace or failure_trace,
+                    outcome=OUTCOME_EMBEDDING_UNAVAILABLE,
+                    degraded_reason="embedding_unavailable",
+                    uncertainty_note=str(result["uncertainty_note"]),
+                    ingest_run_id=ingest_run_id,
+                    replay=replay,
+                )
+            investigation_id = investigation.id
+        return {
+            "repository": repo_name,
+            "investigation_id": investigation_id,
+            "query": query_text,
+            "diagnosis": "",
+            "confidence": "not_applicable",
+            "outcome": OUTCOME_EMBEDDING_UNAVAILABLE,
+            "unavailable_answer": True,
+            "degraded": True,
+            "degraded_reason": "embedding_unavailable",
+            "evidence": evidence,
+            "cited_chunk_ids": [],
+            "retrieval_results": retrieval_results,
+            "evidence_check": result["evidence_check"],
+            "model": "",
+            "latency_ms": None,
+            "retry_used": False,
+            "confidence_calibrated": False,
+            "calibration_note": "",
+            "tool_calls": tool_call_trace,
+            "claims": [],
+            "uncertainty_note": result["uncertainty_note"],
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "generation_trace": failure_trace,
+        }
+
     if result.get("outcome") == OUTCOME_GENERATION_UNAVAILABLE:
         retrieval_results = result.get(
             "retrieved_before_budget",
@@ -293,7 +529,10 @@ async def _investigate_repository(
             if item.get("id") is not None
         ]
         evidence = _content_free_evidence(retrieval_results)
-        generation_trace = result["generation_trace"]
+        generation_trace = {
+            **result["generation_trace"],
+            "cache": cache_trace,
+        }
         tool_call_trace = content_free_tool_call_trace(result["tool_calls"])
         replay = ReplayRecord(
             thresholds=_current_thresholds(),
@@ -307,6 +546,7 @@ async def _investigate_repository(
                 "outcome": OUTCOME_GENERATION_UNAVAILABLE,
                 "degraded": True,
                 "degraded_reason": "generation_unavailable",
+                "cache": cache_trace,
             },
         )
         if persist:
@@ -364,6 +604,7 @@ async def _investigate_repository(
                 "model": None,
                 "generation_latency_ms": None,
                 "error_class": None,
+                "query_embedding_cache": cache_trace,
             },
         )
         if persist:
@@ -437,6 +678,7 @@ async def _investigate_repository(
             "model": result["model"],
             "generation_latency_ms": result["latency_ms"],
             "error_class": None,
+            "query_embedding_cache": cache_trace,
         },
     )
     if persist:

@@ -9,9 +9,11 @@ from app.investigation.parsing import parse_investigation_response
 from app.investigation.persistence import (
     OUTCOME_ABSTAINED_MODEL,
     OUTCOME_ANSWERED,
+    OUTCOME_EMBEDDING_UNAVAILABLE,
     OUTCOME_ERROR,
     OUTCOME_GENERATION_UNAVAILABLE,
     OUTCOME_REFUSED_GUARD,
+    persist_degraded_investigation,
     persist_error,
     persist_generation_unavailable,
     persist_investigation,
@@ -482,4 +484,71 @@ async def test_persist_generation_unavailable_stores_metadata_only_and_trace() -
     assert "private question" not in repr(audit.tool_calls)
     assert audit.prompt is None
     assert audit.raw_response is None
+    assert "SOURCE TEXT" not in repr(audit.tool_calls)
+
+
+@pytest.mark.anyio
+async def test_persist_embedding_unavailable_stores_cache_miss_and_null_guard() -> None:
+    session = FakeSession()
+    evidence = [
+        {
+            "chunk_id": "105",
+            "file_path": "app/db/session.py",
+            "start_line": 1,
+            "end_line": 46,
+            "rank": 1,
+            "rrf_score": None,
+            "vector_score": None,
+        }
+    ]
+    trace = {
+        "failed_stage": "query_embedding",
+        "error_classes": ["server_error"],
+        "attempt_count": 3,
+        "attempt_count_basis": "inferred_from_error_class",
+        "cache": {"hit": False, "miss": True, "query_hash": "a" * 64},
+        "retrieval_mode": "lexical_only",
+        "result_count": 1,
+        "guard_ran": False,
+    }
+
+    investigation = await persist_degraded_investigation(
+        session,
+        repository_id=17,
+        query="private query",
+        retrieval_results=[
+            {
+                "id": 105,
+                "file_path": "app/db/session.py",
+                "line_start": 1,
+                "line_end": 46,
+                "content": "SOURCE TEXT MUST NOT BE PERSISTED IN DEGRADED EVIDENCE",
+                "fts_score": 0.5,
+                "rrf_score": None,
+                "vector_score": None,
+            }
+        ],
+        evidence=evidence,
+        evidence_check={
+            "is_sufficient": None,
+            "reason": "not evaluated: no query embedding",
+            "best_rrf_score": None,
+            "best_vector_score": None,
+        },
+        tool_call_trace=[],
+        generation_trace=trace,
+        outcome=OUTCOME_EMBEDDING_UNAVAILABLE,
+        degraded_reason="embedding_unavailable",
+        uncertainty_note="No answer was generated.",
+        replay=ReplayRecord(trace=trace),
+    )
+
+    audit = next(item for item in session.added if isinstance(item, Audit))
+    assert session.committed is True
+    assert investigation.outcome == OUTCOME_EMBEDDING_UNAVAILABLE
+    assert audit.tool_calls["degraded"]["degraded_reason"] == "embedding_unavailable"
+    assert audit.tool_calls["degraded"]["evidence"] == evidence
+    assert audit.tool_calls["degraded"]["evidence_check"]["is_sufficient"] is None
+    assert audit.trace == trace
+    assert "private query" not in repr(audit.trace)
     assert "SOURCE TEXT" not in repr(audit.tool_calls)

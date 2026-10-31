@@ -8,7 +8,14 @@ import pytest
 
 import scripts.investigate as investigate_module
 from app.investigation.replay import ReplayRecord
-from app.providers.gemini import ProviderAuthError, ProviderServerError
+from app.providers.gemini import (
+    ProviderAuthError,
+    ProviderBadRequestError,
+    ProviderError,
+    ProviderSafetyBlockedError,
+    ProviderSchemaInvalidError,
+    ProviderServerError,
+)
 
 
 class FakeSessionContext:
@@ -20,6 +27,14 @@ class FakeSessionContext:
 
     async def scalar(self, statement: object) -> SimpleNamespace:
         return SimpleNamespace(id=1)
+
+
+async def async_none_cache_miss(key: object) -> tuple[None, bool]:
+    return None, True
+
+
+async def async_noop_cache_write(key: object, vector: list[float]) -> None:
+    return None
 
 
 class FakeGraph:
@@ -324,10 +339,12 @@ async def test_generation_unavailable_result_persists_only_evidence_metadata(
                 "model": investigate_module.GEMINI_GENERATION_MODEL,
                 "error_class": "server_error",
                 "attempt_count": 3,
+                "attempt_count_basis": "inferred_from_error_class",
             }
         ],
         "error_classes": ["server_error"],
         "attempt_count": 3,
+        "attempt_count_basis": "inferred_from_error_class",
         "elapsed_ms": 400,
         "correlation_id": "test-correlation",
     }
@@ -370,6 +387,16 @@ async def test_generation_unavailable_result_persists_only_evidence_metadata(
     monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
     monkeypatch.setattr(
         investigate_module,
+        "_lookup_query_embedding_cache",
+        async_none_cache_miss,
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "_store_query_embedding_cache",
+        async_noop_cache_write,
+    )
+    monkeypatch.setattr(
+        investigate_module,
         "create_investigation_graph",
         lambda _calibrator: UnavailableGraph(),
     )
@@ -401,6 +428,10 @@ async def test_generation_unavailable_result_persists_only_evidence_metadata(
     assert "content" not in repr(result["evidence"])
     assert persisted[0]["evidence"] == result["evidence"]
     assert persisted[0]["generation_trace"]["failed_stage"] == "generation"
+    assert (
+        persisted[0]["generation_trace"]["attempt_count_basis"]
+        == "inferred_from_error_class"
+    )
 
 
 def test_cli_prints_generation_trace_and_degraded_state_without_raw_text(
@@ -458,3 +489,264 @@ def test_cli_prints_generation_trace_and_degraded_state_without_raw_text(
     assert "Generation trace:" in output
     assert "Evidence metadata:" in output
     assert "SOURCE RESPONSE TEXT MUST NOT PRINT" not in output
+
+
+@pytest.mark.anyio
+async def test_cached_query_vector_skips_embedding_and_uses_normal_graph(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_graph = FakeGraph()
+
+    async def cache_hit(key: object) -> tuple[list[float], bool]:
+        return [0.2, 0.4], True
+
+    async def embedding_must_not_run(query: str) -> list[float]:
+        raise AssertionError("Cache hit must skip provider embedding")
+
+    async def cache_write_must_not_run(key: object, vector: list[float]) -> None:
+        raise AssertionError("Cache hit must not write")
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "_lookup_query_embedding_cache", cache_hit)
+    monkeypatch.setattr(investigate_module, "embed_text", embedding_must_not_run)
+    monkeypatch.setattr(
+        investigate_module, "_store_query_embedding_cache", cache_write_must_not_run
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "create_investigation_graph",
+        lambda _calibrator: fake_graph,
+    )
+
+    result = await investigate_module.investigate_repository(
+        "test-repo", "question", persist=False
+    )
+
+    assert result["outcome"] == "answered"
+    assert fake_graph.state is not None
+    assert fake_graph.state["query_embedding"] == [0.2, 0.4]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "retrieval_results",
+    [
+        [
+            {
+                "id": 9,
+                "file_path": "source.py",
+                "line_start": 3,
+                "line_end": 8,
+                "content": "SOURCE TEXT MUST NOT BE RETURNED",
+                "score": 0.5,
+                "fts_score": 0.5,
+                "rrf_score": None,
+                "vector_score": None,
+            }
+        ],
+        [],
+    ],
+)
+async def test_embedding_availability_failure_uses_lexical_only_without_guard_or_generation(
+    monkeypatch: pytest.MonkeyPatch,
+    retrieval_results: list[dict[str, object]],
+) -> None:
+    provider_error = ProviderServerError("embedding unavailable", status_code=503)
+    persisted: list[dict[str, object]] = []
+    lexical_calls: list[tuple[int, str, int]] = []
+
+    async def cache_miss(key: object) -> tuple[None, bool]:
+        return None, True
+
+    async def fail_embedding(query: str) -> list[float]:
+        raise provider_error
+
+    async def fake_lexical_search(
+        session: object,
+        repository_id: int,
+        query: str,
+        limit: int,
+    ) -> list[dict[str, object]]:
+        lexical_calls.append((repository_id, query, limit))
+        return retrieval_results
+
+    async def unexpected_cache_write(key: object, vector: list[float]) -> None:
+        raise AssertionError("Failed provider embedding must not write cache")
+
+    async def fake_persist(**kwargs: object) -> SimpleNamespace:
+        persisted.append(kwargs)
+        return SimpleNamespace(id=92)
+
+    def graph_must_not_run(_calibrator: object) -> None:
+        raise AssertionError("Degraded lexical-only path must not run graph/guard")
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "_lookup_query_embedding_cache", cache_miss)
+    monkeypatch.setattr(investigate_module, "embed_text", fail_embedding)
+    monkeypatch.setattr(
+        investigate_module,
+        "search_degraded_lexical_only",
+        fake_lexical_search,
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "_store_query_embedding_cache",
+        unexpected_cache_write,
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "persist_degraded_investigation",
+        fake_persist,
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "create_investigation_graph",
+        graph_must_not_run,
+    )
+
+    result = await investigate_module.investigate_repository(
+        "test-repo", "question", limit=4, persist=True
+    )
+
+    assert result["outcome"] == "embedding_unavailable"
+    assert result["unavailable_answer"] is True
+    assert result["degraded"] is True
+    assert result["degraded_reason"] == "embedding_unavailable"
+    assert result["diagnosis"] == ""
+    assert result["confidence"] == "not_applicable"
+    assert result["cited_chunk_ids"] == []
+    assert result["claims"] == []
+    assert result["evidence_check"] == {
+        "is_sufficient": None,
+        "reason": "not evaluated: no query embedding",
+        "best_rrf_score": None,
+        "best_vector_score": None,
+    }
+    expected_evidence = (
+        [
+            {
+                "chunk_id": "9",
+                "file_path": "source.py",
+                "start_line": 3,
+                "end_line": 8,
+                "rank": 1,
+                "rrf_score": None,
+                "vector_score": None,
+            }
+        ]
+        if retrieval_results
+        else []
+    )
+    assert result["evidence"] == expected_evidence
+    for evidence_item in result["evidence"]:
+        assert set(evidence_item) == {
+            "chunk_id",
+            "file_path",
+            "start_line",
+            "end_line",
+            "rank",
+            "rrf_score",
+            "vector_score",
+        }
+    assert "content" not in repr(result["evidence"])
+    assert lexical_calls == [(1, "question", 4)]
+    assert persisted[0]["outcome"] == "embedding_unavailable"
+    assert persisted[0]["degraded_reason"] == "embedding_unavailable"
+    assert persisted[0]["generation_trace"]["failed_stage"] == "query_embedding"
+    assert persisted[0]["generation_trace"]["model"] == investigate_module.GEMINI_MODEL
+    assert persisted[0]["generation_trace"]["retrieval_mode"] == "lexical_only"
+    assert persisted[0]["generation_trace"]["cache"]["miss"] is True
+    assert persisted[0]["generation_trace"]["guard_ran"] is False
+    assert persisted[0]["generation_trace"]["result_count"] == len(retrieval_results)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "error",
+    [
+        ProviderAuthError("unauthorized"),
+        ProviderBadRequestError("bad request"),
+        ProviderSafetyBlockedError("blocked"),
+        ProviderSchemaInvalidError("invalid vector"),
+    ],
+)
+async def test_nonavailability_embedding_errors_remain_explicit(
+    monkeypatch: pytest.MonkeyPatch,
+    error: ProviderError,
+) -> None:
+    persisted_errors: list[str] = []
+
+    async def cache_miss(key: object) -> tuple[None, bool]:
+        return None, True
+
+    async def fail_embedding(query: str) -> list[float]:
+        raise error
+
+    async def unexpected_lexical(*args: object, **kwargs: object) -> list[object]:
+        raise AssertionError("Non-availability errors must not use lexical fallback")
+
+    async def fake_persist_error(
+        session: object,
+        repository_id: int,
+        query: str,
+        error_class: str,
+        **kwargs: object,
+    ) -> None:
+        persisted_errors.append(error_class)
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "_lookup_query_embedding_cache", cache_miss)
+    monkeypatch.setattr(investigate_module, "embed_text", fail_embedding)
+    monkeypatch.setattr(
+        investigate_module,
+        "search_degraded_lexical_only",
+        unexpected_lexical,
+    )
+    monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
+
+    with pytest.raises(type(error)):
+        await investigate_module.investigate_repository(
+            "test-repo", "question", persist=True
+        )
+
+    assert persisted_errors == [type(error).__name__]
+
+
+@pytest.mark.anyio
+async def test_embedding_availability_failure_does_not_degrade_when_cache_lookup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_error = ProviderServerError("embedding unavailable", status_code=503)
+
+    async def cache_failure(key: object) -> tuple[None, bool]:
+        return None, False
+
+    async def fail_embedding(query: str) -> list[float]:
+        raise provider_error
+
+    async def unexpected_lexical(*args: object, **kwargs: object) -> list[object]:
+        raise AssertionError("An unreadable cache is not a confirmed cache miss")
+
+    async def fake_persist_error(
+        session: object,
+        repository_id: int,
+        query: str,
+        error_class: str,
+        **kwargs: object,
+    ) -> None:
+        return None
+
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(investigate_module, "_lookup_query_embedding_cache", cache_failure)
+    monkeypatch.setattr(investigate_module, "embed_text", fail_embedding)
+    monkeypatch.setattr(
+        investigate_module,
+        "search_degraded_lexical_only",
+        unexpected_lexical,
+    )
+    monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
+
+    with pytest.raises(ProviderServerError):
+        await investigate_module.investigate_repository(
+            "test-repo", "question", persist=True
+        )

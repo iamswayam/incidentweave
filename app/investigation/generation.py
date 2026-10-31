@@ -121,6 +121,7 @@ def generation_failure_trace(
                 ),
                 "error_class": provider_error.error_class,
                 "attempt_count": attempt_count,
+                "attempt_count_basis": "inferred_from_error_class",
             }
         )
     return {
@@ -129,6 +130,7 @@ def generation_failure_trace(
         "provider_attempts": attempts,
         "error_classes": [item["error_class"] for item in attempts],
         "attempt_count": sum(int(item["attempt_count"]) for item in attempts),
+        "attempt_count_basis": "inferred_from_error_class",
         "elapsed_ms": elapsed_ms,
         "correlation_id": correlation_id_var.get(),
     }

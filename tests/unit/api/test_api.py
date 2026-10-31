@@ -222,6 +222,128 @@ def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
     assert AUDIT_ONLY_FIELDS.isdisjoint(fetched.json())
 
 
+@pytest.mark.parametrize(
+    ("outcome", "degraded_reason"),
+    [
+        ("generation_unavailable", "generation_unavailable"),
+        ("embedding_unavailable", "embedding_unavailable"),
+    ],
+)
+def test_post_and_get_round_trip_embedding_and_generation_degradation(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+    degraded_reason: str,
+) -> None:
+    evidence_check = {
+        "is_sufficient": None,
+        "reason": "not evaluated: no query embedding",
+        "best_rrf_score": None,
+        "best_vector_score": None,
+    }
+    evidence = [
+        {
+            "chunk_id": "42",
+            "file_path": "app/security.py",
+            "start_line": 20,
+            "end_line": 38,
+            "rank": 1,
+            "rrf_score": None,
+            "vector_score": None,
+        }
+    ]
+
+    async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
+        return {
+            "investigation_id": 78,
+            "repository": "incidentweave-eval",
+            "query": "question",
+            "diagnosis": "",
+            "outcome": outcome,
+            "confidence": "not_applicable",
+            "unavailable_answer": True,
+            "degraded": True,
+            "degraded_reason": degraded_reason,
+            "evidence": evidence,
+            "evidence_check": evidence_check,
+            "cited_chunk_ids": [],
+            "tool_calls": [],
+            "claims": [],
+            "uncertainty_note": "No generated answer.",
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "model": "",
+            "latency_ms": None,
+        }
+
+    investigation = SimpleNamespace(
+        id=78,
+        repository_id=34,
+        query="question",
+        response="",
+        outcome=outcome,
+        confidence="not_applicable",
+        model=None,
+        latency_ms=None,
+    )
+    repository = SimpleNamespace(id=34, name="incidentweave-eval")
+    audit = SimpleNamespace(
+        investigation_id=78,
+        tool_calls={
+            "attempts": [],
+            "cited_chunk_ids": [],
+            "claims": [],
+            "uncertainty_note": "No generated answer.",
+            "citation_validation": {"submitted": 0, "valid": 0, "rate": None},
+            "degraded": {
+                "unavailable_answer": True,
+                "degraded": True,
+                "degraded_reason": degraded_reason,
+                "evidence": evidence,
+                "evidence_check": evidence_check,
+            },
+        },
+    )
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+    monkeypatch.setattr(
+        api_module,
+        "AsyncSessionLocal",
+        lambda: FakeSession(
+            entities={
+                (Investigation, 78): investigation,
+                (Repository, 34): repository,
+            },
+            rows=[audit],
+        ),
+    )
+
+    created = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={"repository_name": "incidentweave-eval", "query": "question"},
+    )
+    fetched = api_client.get("/investigations/78", headers=HEADERS)
+
+    assert created.status_code == fetched.status_code == 200
+    for response in (created.json(), fetched.json()):
+        assert response["outcome"] == outcome
+        assert response["unavailable_answer"] is True
+        assert response["degraded"] is True
+        assert response["degraded_reason"] == degraded_reason
+        assert response["diagnosis"] == ""
+        assert response["model_self_rating"] == "not_applicable"
+        assert response["evidence_check"] == evidence_check
+        assert response["evidence"] == evidence
+        assert set(response["evidence"][0]) == {
+            "chunk_id",
+            "file_path",
+            "start_line",
+            "end_line",
+            "rank",
+            "rrf_score",
+            "vector_score",
+        }
+
+
 def test_post_investigation_success_response_shape(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

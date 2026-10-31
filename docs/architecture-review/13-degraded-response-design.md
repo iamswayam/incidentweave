@@ -1,12 +1,14 @@
 # Degraded response design (item 18d-1)
 
-**Status: 18d-2 is implemented; 18d-3 and 18d-4 remain**
+**Status: 18d implemented**
 
-This record specifies the approved response contract. Item 18d-2 implements generation
-degradation; embedding degradation and the persistent query cache remain for items 18d-3 and
+This record specifies the approved response contract implemented by items 18d-2, 18d-3, and
 18d-4.
 
-## 1. Current behavior verified in code
+## 1. Behavior before the 18d implementation
+
+The bullets below are the pre-implementation baseline, not the current runtime behavior. The
+implemented behavior is summarized in the failure matrix and the runbook in section 6.
 
 - **Generation failure:** `scripts/investigate.py` catches an exception around query embedding and
   graph execution, attempts to persist a generic error, then re-raises it. `app/api.py` converts
@@ -60,16 +62,16 @@ generation-only. See the [provider-layer design](10-llm-gateway-design.md),
 
 ## 2. Failure matrix
 
-The “current behavior” column records the code as it exists now. The “proposed contract” column
-applies only after approval and implementation. An “error audit” means the existing generic
+The “pre-18d behavior” column records the design-time baseline. The “implemented contract”
+column describes the code after items 18d-2 through 18d-4. An “error audit” means the generic
 `error` outcome plus an audit row, if persistence succeeds; it does not contain retrieval evidence.
 Usage logging depends on its existing enable setting.
 
-| Case | Current HTTP status and outcome | Proposed HTTP status, outcome, flags | Proposed persistence | Usage log and trace |
+| Case | Pre-18d HTTP status and outcome | Implemented HTTP status, outcome, flags | Implemented persistence | Usage log and trace |
 |---|---|---|---|---|
 | Generation unavailable after Gemini retry budget and eligible Groq fallback are exhausted | HTTP 502 `upstream_failure`; the client receives no evidence list. A generic `error` audit is attempted, with no retrieved chunks. | HTTP 200; `generation_unavailable`; `unavailable_answer=true`, `degraded=true`, `degraded_reason="generation_unavailable"`; diagnosis empty, rating `not_applicable`; return metadata-only retrieved evidence. | Persist the new outcome, flags, evidence metadata, guard result, and trace in the existing investigation/audit records. Do not persist a generated answer or source text. | Preserve provider usage entries for Gemini and Groq failures, each with its existing provider/model/operation/status/error/attempt/latency/correlation fields. Audit trace records both provider outcomes, final degraded outcome, and correlation ID. |
-| Embedding service is unavailable but a compatible query-vector cache entry is available | Not representable today: there is no runtime query cache, so the embedding request fails before retrieval and produces HTTP 502 for provider runtime errors. | Cache-first lookup means a compatible hit skips the provider request and uses ordinary hybrid retrieval: HTTP 200, normal `answered` or `refused_guard` outcome, `degraded=false`, `degraded_reason=null`. If a failed request is followed by finding a compatible cache entry, use it the same way. | Persist the ordinary investigation/audit plus cache-hit metadata; never persist query text in the cache. | A cache-first hit creates no provider usage entry because no provider request occurred. If a provider request failed before a cache recovery, retain its provider failure entry and record cache recovery in the audit trace. |
-| Embedding request fails and there is no compatible cache entry | HTTP 502 for provider runtime errors; error audit attempted with no retrieval. A malformed embedding response currently becomes HTTP 422 due to the broad `ValueError` mapping. | HTTP 200; `embedding_unavailable`; `unavailable_answer=true`, `degraded=true`, `degraded_reason="embedding_unavailable"`; run sanitized-OR lexical-only retrieval, return metadata-only evidence, and do not generate an answer. `evidence_check.is_sufficient=null` with reason `"not evaluated: no query embedding"`. | Persist the new outcome, lexical evidence metadata, null guard state, `evidence_source="lexical_only"`, and trace in the existing investigation/audit records. Do not persist source text or an answer. | Usage log records the Gemini query-embedding failure when enabled. Trace records embedding error class, cache miss, lexical-only mode, result count, null guard state, degraded outcome, and correlation ID. |
+| Embedding service is unavailable but a compatible query-vector cache entry is available | Not representable before 18d: there was no runtime query cache, so embedding failed before retrieval. | Cache-first lookup means a compatible hit skips the provider request and uses ordinary hybrid retrieval: HTTP 200, normal `answered` or `refused_guard` outcome, `degraded=false`, `degraded_reason=null`. | Persist the ordinary investigation/audit plus cache-hit metadata; never persist query text in the cache. | A cache hit creates no provider usage entry because no provider request occurred; the audit trace records cache identity metadata. |
+| Embedding request fails and there is no compatible cache entry | HTTP 502 for provider runtime errors; generic error audit attempted with no retrieval. Malformed upstream output could previously be confused with request validation. | HTTP 200; `embedding_unavailable`; `unavailable_answer=true`, `degraded=true`, `degraded_reason="embedding_unavailable"`; run sanitized-OR lexical-only retrieval, return metadata-only evidence, and do not generate an answer. `evidence_check.is_sufficient=null` with reason `"not evaluated: no query embedding"`. | Persist the new outcome, lexical evidence metadata, null guard state, and trace in the existing investigation/audit records. Do not persist source text or an answer. | Usage log records the Gemini query-embedding failure when enabled. Trace records embedding error class, confirmed cache miss, lexical-only mode, result count, null guard state, degraded outcome, and correlation ID. |
 | Both embedding and generation provider systems are unavailable | With no cache, current query embedding fails first; generation is never attempted. The current API returns HTTP 502 for provider runtime errors and attempts only a generic error audit. | With no cache, this is the embedding-unavailable case above: HTTP 200, `embedding_unavailable`; generation is intentionally not attempted. If a compatible cache vector is available, query embedding is served from cache and any subsequent exhausted Gemini/Groq generation failure follows the `generation_unavailable` row. | Persist the applicable single degraded outcome and its audit metadata. Never claim generation failed if generation was not attempted. | Record only provider operations that actually occurred. Cache use and skipped/attempted generation are distinguishable in trace. |
 | Database unavailable | Database errors are not translated by a dedicated API handler; failures generally surface as HTTP 500. If an error happens after provider execution, provider usage may still be logged independently. Persistence may fail; no investigation ID or audit is guaranteed. | Unchanged: HTTP 500 for database failures; do not disguise database failure as a degraded success. If a provider runtime failure is independently what reaches the API, existing mapping remains HTTP 502. | No persistence guarantee while the database is unavailable. | Any already-written provider usage row may exist. No audit trace can be guaranteed. Never use an in-memory fallback to claim persistence. |
 | Auth, bad-request, safety-blocked, or schema-invalid provider error | These are `RuntimeError` subclasses and are currently surfaced by the API as HTTP 502 `upstream_failure` (except malformed-output `ValueError`, which currently maps to 422). Gemini does not Groq-fallback on these typed classes. A generic error audit is attempted. | Preserve the current explicit error behavior and status mapping; never convert these classes to `generation_unavailable` or a lexical degraded response. | Existing error persistence only; no degraded outcome or evidence-shaped success. | Keep typed provider usage/error entries and a sanitized failure trace. Do not log prompts or keys. |
@@ -285,7 +287,7 @@ no source text is present.
       "start_line": 20,
       "end_line": 38,
       "rank": 1,
-      "rrf_score": 0.016,
+      "rrf_score": null,
       "vector_score": null
     }
   ]
@@ -370,6 +372,23 @@ fallback in the query flow.
 | **18d-2 — contract and generation degradation** | Add response defaults and outcome docs; fake Gemini transient failures and enabled/disabled Groq fallback; assert generation-unavailable shape only after eligible exhaustion; ensure auth, bad-request, safety-blocked, and schema-invalid errors remain explicit; map malformed or wrong-dimension upstream embedding responses to upstream-failure (HTTP 502), not validation_error (HTTP 422); record the failed stage and that stage's model in the error audit; print the generation trace and degraded states in the CLI; assert evidence contains metadata only; verify persistence and `GET /investigations/{id}` round-trip. | No migration if the new flags/evidence/trace remain in audit JSONB and outcome uses the existing `String(32)` column. |
 | **18d-4 — persistent query cache** | Verify composite identity changes for model/task type/dimensions/query; whitespace collapse with case preservation; no query-text column or serialized query; vector length validation; cache-hit reuse in normal mode; cache miss provider call; 30-day expiration; 10,000-row cap with oldest-created eviction; restart-persistent retrieval. | **Yes.** Create the persistent cache table and unique index; include rollback and retention/eviction coverage. |
 | **18d-3 — lexical-only mode** | Fake query-embedding failures with and without a cache hit; assert C1 sanitized-OR lexical-only results, normal hybrid unchanged, no generation on cache miss, null guard state and exact reason, metadata-only evidence, and correct `embedding_unavailable` outcome; test provider error classes that must not degrade. | No migration; reuse current lexical retrieval and audit JSONB. |
+
+### Implemented failure-mode runbook
+
+1. **Generation unavailable:** query embedding/cache lookup and ordinary hybrid retrieval run first.
+   The vector guard still runs. Only after the guard accepts and Gemini plus any eligible,
+   enabled/configured Groq fallback exhausts availability retries does the API return HTTP 200
+   `generation_unavailable` with the guard result and metadata-only evidence. The CLI reports the
+   same outcome and safe trace. Non-availability provider errors remain explicit HTTP 502 errors.
+2. **Embedding provider unavailable, compatible cache hit:** the persistent vector is reused and
+   the unchanged hybrid/guard/generation path proceeds normally. A cache hit makes no provider
+   request and adds no provider-usage row.
+3. **Embedding provider unavailable, cache miss:** only typed availability failures enter the
+   degraded lexical-only C1 path. It returns HTTP 200 `embedding_unavailable`, metadata-only
+   locations, and `evidence_check.is_sufficient=null`; neither vector guard nor generation runs.
+   Empty lexical results still produce the same degraded response with an empty evidence list.
+   Authentication, bad-request, safety-blocked, and schema-invalid failures remain explicit HTTP
+   502 errors. Cache read failure is not a confirmed miss and therefore does not enable fallback.
 
 ## 7. Maintainer approval
 

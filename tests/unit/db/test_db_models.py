@@ -4,7 +4,7 @@ from app.db.base import Base
 from app.db.models import Audit, Chunk, IngestRun, Investigation
 
 
-def test_all_phase2_models_are_registered() -> None:
+def test_all_database_models_are_registered() -> None:
     assert set(Base.metadata.tables) == {
         "repositories",
         "chunks",
@@ -12,6 +12,7 @@ def test_all_phase2_models_are_registered() -> None:
         "audit_records",
         "ingest_runs",
         "provider_usage_log",
+        "query_embedding_cache",
     }
 
 
