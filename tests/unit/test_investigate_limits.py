@@ -184,7 +184,7 @@ async def test_investigation_deadline_persists_timeout_error(
 
     class SlowGraph:
         async def ainvoke(self, state: dict[str, Any]) -> dict[str, Any]:
-            await asyncio.sleep(1)
+            await asyncio.Event().wait()
             return state
 
     async def fake_embed_text(query: str) -> list[float]:

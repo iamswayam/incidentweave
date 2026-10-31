@@ -31,9 +31,12 @@ include = ["app*", "scripts*", "evaluation*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --strict-markers"
 markers = [
+    "unit: pure logic tests without database or external network access",
     "integration: tests that require a running PostgreSQL database",
+    "evaluation: deterministic evaluation and harness tests",
+    "slow: tests with intentionally long-running behavior",
 ]
 
 [tool.ruff]

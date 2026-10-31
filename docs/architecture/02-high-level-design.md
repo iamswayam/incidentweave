@@ -24,7 +24,7 @@ This document describes the implementation on the `main` branch, not an aspirati
 | Retrieval | pgvector cosine distance, PostgreSQL FTS, RRF | Vector and lexical candidate retrieval, rank fusion |
 | Persistence | PostgreSQL 17 + pgvector, SQLAlchemy async, Psycopg 3, Alembic | Source chunks, investigation records, audit data and schema migration |
 | Local tools | Model Context Protocol (MCP), stdio | MCP server exposes `grep_search` and `hybrid_search`; the investigation graph invokes neither |
-| Quality/runtime | pytest, Ruff, GitHub Actions, Docker Compose | Test, lint, database-backed CI, and local container runtime |
+| Quality/runtime | pytest tier commands, Ruff, GitHub Actions, Docker Compose | Unit, PostgreSQL integration, and offline evaluation tests; lint and local container runtime |
 
 Dependency ranges and Python version are defined in [`pyproject.toml`](../../pyproject.toml). The local Compose environment and Docker image are defined in [`docker-compose.yml`](../../docker-compose.yml) and [`docker/Dockerfile`](../../docker/Dockerfile).
 

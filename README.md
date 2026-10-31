@@ -234,13 +234,19 @@ runs used the provider default and are not directly comparable.
 ## Quality checks and CI
 
 ```powershell
-ruff check .
-pytest
-pytest tests\unit
-pytest tests\integration  # requires PostgreSQL + pgvector
+.\.venv\Scripts\python.exe -m scripts.test_tiers fast
+.\.venv\Scripts\python.exe -m scripts.test_tiers integration  # PostgreSQL + pgvector and migrations required
+.\.venv\Scripts\python.exe -m scripts.test_tiers evaluation
+.\.venv\Scripts\python.exe -m scripts.test_tiers full
+.\.venv\Scripts\python.exe -m ruff check .
 ```
 
-GitHub Actions runs on pushes and pull requests. It installs Python 3.12 dependencies, starts `pgvector/pgvector:pg17`, checks database connectivity, applies Alembic migrations, runs Ruff and pytest, and builds the Docker image. See [CI configuration](.github/workflows/ci.yml).
+The fast command runs only `tests/unit` serially; pytest-xdist was measured and was marginally
+slower on this Windows machine. Integration is serial because tests share one database. Evaluation
+runs deterministic harness tests and the offline smoke gate. The full command runs every test
+serially. GitHub Actions runs Ruff and the Docker build, unit, PostgreSQL integration, and
+evaluation/smoke-gate jobs in parallel. See the [test-tier guide](docs/notes/16-test-tiers.md)
+and [CI configuration](.github/workflows/ci.yml).
 
 ## Project structure
 
@@ -255,7 +261,7 @@ incidentweave/
 ├── scripts/                   # ingest, embed, search, investigate, serve, eval CLIs
 ├── evaluation/                # golden set, metrics, runner, stored artifacts
 ├── migrations/                # Alembic schema history
-├── tests/                     # unit and PostgreSQL integration tests
+├── tests/                     # unit, PostgreSQL integration, and evaluation tests
 ├── docker/                    # application image
 └── docs/                      # architecture, phase logs, reviews, learning notes
 ```
