@@ -3,7 +3,13 @@
 import pytest
 
 from app.db.base import Base
-from app.db.models import Audit, Chunk, IngestRun, Investigation
+from app.db.models import (
+    Audit,
+    Chunk,
+    IngestRun,
+    Investigation,
+    QueryEmbeddingCache,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -17,6 +23,7 @@ def test_all_phase_2_models_are_registered() -> None:
         "investigations",
         "audit_records",
         "ingest_runs",
+        "query_embedding_cache",
     }
 
     assert expected_tables.issubset(Base.metadata.tables)
@@ -24,3 +31,4 @@ def test_all_phase_2_models_are_registered() -> None:
     assert Chunk.__tablename__ == "chunks"
     assert IngestRun.__tablename__ == "ingest_runs"
     assert Investigation.__tablename__ == "investigations"
+    assert QueryEmbeddingCache.__tablename__ == "query_embedding_cache"

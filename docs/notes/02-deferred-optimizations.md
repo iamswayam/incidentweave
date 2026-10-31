@@ -334,3 +334,39 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Analyze why hybrid retrieval did not improve even when lexical-only recall rose from 5/33 to 26/33.
 - **Why:** The remaining limit may be vector ranking, chunk boundaries, or how the hybrid fusion ranks candidates rather than lexical matching.
 - **Evidence needed:** Per-question branch ranks, candidate overlap, chunk-boundary diagnostics, and controlled development-split comparisons that isolate each cause.
+
+### Measure cache hit rate and consider cache warm-up
+
+- **Idea:** Add a privacy-preserving cache hit-rate metric and evaluate an explicit warm-up workflow.
+- **Why:** Hit-rate data can establish whether persistent caching reduces provider calls; warm-up may help recurring workloads avoid cold-start latency.
+- **Evidence needed:** Aggregate hit/miss counts without query text or hashes, measured provider-call reduction, and a workload showing startup cache misses are material.
+
+### Evaluate semantic or near-duplicate query caching
+
+- **Idea:** Compare exact normalized-query keys with semantic or near-duplicate query matching.
+- **Why:** Similar questions may produce useful reusable vectors even when whitespace-normalized strings differ.
+- **Evidence needed:** A privacy review and offline nearest-neighbor comparison showing that reuse does not change retrieval quality or merge materially different questions.
+
+### Consider pgvector storage for cached vectors
+
+- **Idea:** Move the cached JSON vector to a pgvector column if cache lookup requirements expand to similarity search.
+- **Why:** Current lookups use exact identity only, so JSON is sufficient; a vector index would only help if similarity-based cache lookup is justified.
+- **Evidence needed:** A concrete similarity-query use case, measured lookup bottleneck, and migration/index cost comparison.
+
+### Register a weighted or tuned lexical fallback
+
+- **Idea:** Compare a weighted lexical fallback or BM25 B2 after it is separately registered.
+- **Why:** The current fallback reuses sanitized-OR C1; a better lexical ranker may improve degraded-mode evidence ordering.
+- **Evidence needed:** Preregistered development-split conditions, paired per-question metrics, and a separate quality review before production use.
+
+### Monitor degraded-mode frequency and quality
+
+- **Idea:** Aggregate how often `generation_unavailable` and `embedding_unavailable` occur and measure their real quality impact.
+- **Why:** The modes currently make safe, explicit responses, but their frequency and operational effect are unknown.
+- **Evidence needed:** Privacy-reviewed counters and representative evaluations linking degradation events to service outcomes without retaining query text.
+
+### Degrade earlier when the provider circuit opens
+
+- **Idea:** Consider circuit-breaker-aware early degradation instead of waiting for the retry budget to finish.
+- **Why:** An open circuit indicates recent provider unavailability and may avoid repeated latency from doomed attempts.
+- **Evidence needed:** Provider outage traces showing retry delays dominate response time, plus tests demonstrating prompt recovery and no false early degradation.
