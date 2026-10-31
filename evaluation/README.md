@@ -18,6 +18,7 @@ This guide points to the relevant commands, data, modules, and evaluation record
 | `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI](../scripts/run_chunking_experiment.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_embedding_task_type_experiment --help` | Shows the development-only task-type experiment commands. `plan` is offline, `embed` requires `--confirm-provider-calls` and a Gemini key, and `evaluate` uses cached candidate vectors without provider calls. All candidate artifacts are under ignored `evaluation/cache/embedding_task_type_v1/`. | Yes, for `evaluate` only | Yes, for confirmed `embed` only | No | [Task-type experiment note](../docs/notes/14-embedding-task-type-experiment.md), [CLI](../scripts/run_embedding_task_type_experiment.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_fulltext_ablation` | Rewrites tracked `evaluation/experiments/fulltext/results.json` and `report.md`. No help mode; do not run it to check usage. | Yes | No | Yes | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
+| `.\.venv\Scripts\python.exe -m scripts.compare_bm25` | Runs the preregistered BM25/control/C1 comparison on development fixtures and writes the aggregate result JSON and note. | Yes | No | Yes | [BM25 protocol](../docs/architecture-review/12-bm25-comparison-protocol.md), [results](../docs/notes/17-bm25-comparison-results.md), [entry point](../scripts/compare_bm25.py) |
 | `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` | Has `--help`; writes tracked `docs/notes/08-fulltext-diagnostic.md` by default; pass `--output` to write elsewhere. | Yes | No | Yes by default | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
 | `.\.venv\Scripts\python.exe scripts\run_eval.py` | Runs the two-pass answer evaluation against an allowlisted repository and writes run artifacts under ignored `evaluation/results/runs/`. | Yes | Yes | No | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
 
@@ -37,7 +38,7 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | [`manifest.json`](manifest.json) | Selects the repositories and pins their evaluation inputs. | Versioned |
 | [`smoke-gate.json`](smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
 | `cache/` | Local embedding cache used by fixture construction and experiments, including the versioned item 14a task-type cache. | Ignored/generated |
-| [`experiments/`](experiments/) | Chunking and full-text experiment protocols, fixtures, and reports. | Versioned |
+| [`experiments/`](experiments/) | Chunking, full-text, and BM25 experiment protocols, fixtures, and reports. | Versioned |
 | [`fixtures/`](fixtures/) | Shared IncidentWeave offline retrieval fixture. | Versioned |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
 | [`repos/`](repos/) | Questions, fixtures, gates, and baselines for the other repositories. | Versioned |
@@ -90,6 +91,8 @@ The descriptions below are taken from each module's docstring.
 - [`fulltext_ablation.py`](fulltext_ablation.py) — Fixture-backed runners and metrics for the registered full-text ablation.
 - [`fulltext_diagnostic.py`](fulltext_diagnostic.py) — Pure helpers for diagnosing PostgreSQL full-text query terms.
 - [`fulltext_experiment.py`](fulltext_experiment.py) — Execute and render the item 14c-2 development-only full-text ablation.
+- [`bm25.py`](bm25.py) — Pure fixed-parameter BM25 ranking and item 14d decision helpers.
+- [`compare_bm25.py`](../scripts/compare_bm25.py) — Run the item 14d development-only BM25 comparison.
 
 `chunk_experiments.py` defines chunking strategies; `chunking_experiment.py` runs the experiment. Item 27b may rename `chunk_experiments.py`.
 
@@ -121,6 +124,7 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 | [Multi-repo evaluation plan](../docs/architecture-review/06-multi-repo-evaluation-plan.md) | How are repositories, questions, splits, and multi-repo gates designed? |
 | [Chunking comparison plan](../docs/architecture-review/07-chunking-comparison-plan.md) | What chunking candidates, metrics, and selection rule were registered? |
 | [Retrieval ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md) | What full-text variants and decision rules were preregistered? |
+| [BM25 comparison protocol](../docs/architecture-review/12-bm25-comparison-protocol.md) | How was the Python BM25 comparison preregistered? |
 | [Phase 8 evaluation log](../docs/phases/08-evaluation.md) | How was the original answer and retrieval evaluation specified and recorded? |
 | [Phase 8b evaluation improvements](../docs/phases/08b-evaluation-improvements.md) | What measurement, run-registry, and evidence-bundle improvements were made? |
 | [Offline retrieval evaluation note](../docs/notes/04-offline-retrieval-evaluation.md) | How do committed fixtures, labels, offline metrics, and the retrieval gate work? |
@@ -129,6 +133,7 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) | How are generated retrieval cards read, and what are their limits? |
 | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md) | How were PostgreSQL full-text terms, stop words, and OR matches diagnosed? |
 | [Full-text ablation results](../docs/notes/09-fulltext-ablation-results.md) | What development-only ablation was measured, and what decision followed? |
+| [BM25 comparison results](../docs/notes/17-bm25-comparison-results.md) | What did the development-only BM25 comparison measure and decide? |
 | [Chunking-experiment index](../docs/chunking-experiment/README.md) | Where are the chunking experiment log, decision, workbook, and reviews? |
 | [Chunking experiment log](../docs/chunking-experiment/01-experiment-log.md) | What decisions and experiment history were recorded for the chunking work? |
 | [Chunking decision report](../docs/chunking-experiment/02-decision-report.md) | What decision and evidence were recorded for the chunking comparison? |
