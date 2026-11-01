@@ -38,15 +38,23 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-1 | Done | #57 | full-text diagnostic and preregistered ablation protocol |
 | 14c-2 | Done | #61 | c1/c2 failed the registered rule; c3 equivalence confirmed; no variant adopted |
 | 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
-| 14b-1 | In progress | pending | test-file classifier, diagnostic and retrieval protocol |
-| 14b-2 | Not started | pending | run the registered test-file comparison |
-| 18 | Superseded | n/a | split into 18a-1, 18a-2, 18a-3, 18b, 18c and 18d; see [decision record](09-llm-gateway-decision.md) |
+| 14b-1 | Done | #82 | Test-file classifier, diagnostic and retrieval protocol |
+| 14b-2 | Done | #84 | Keep control; V1 was descriptively better but did not satisfy all registered retention conditions |
+| 14b-3 | Not started | pending | Maintainer decision on V1; off by default and to be tested in 3b |
+| 14a-1 | Done | #88 | Registered embedding task-type protocol |
+| 14a-2 | Done | #90 | Keep control; task-type candidate did not satisfy all registered retention conditions |
+| 14d | Done | #94 | Keep control; BM25 B1 failed R1 and R2 |
+| 18 | Superseded | n/a | Superseded; 18a, 18c done; 18b-2 open |
 | 18a-1 | Done | #66 | Provider layer design |
 | 18a-2 | Done | #75 | Provider interfaces, Gemini adapter, rate limiter and cooldown |
 | 18a-3 | Done | #78, #79 | Usage log table and report |
-| 18b | Not started | pending | Ordered generation fallback across Groq and Cerebras |
-| 18c | Not started | pending | Local open embedding model experiment |
-| 18d | Not started | pending | Graceful degradation and degraded-response API contract |
+| 18b-1 | Done | #86 | Groq generation fallback adapter; off by default; terms verification remains before enabling |
+| 18b-2 | Not started | pending | Cerebras route, per-model validation and private-code terms checks before enabling |
+| 18c | Done | #102 | Keep control; both local candidates failed R1-R3 |
+| 18d-1 | Done | #96 | Degraded-response design approved 2026-10-31 |
+| 18d-2 | Done | #98 | HTTP 200 degraded outcome `generation_unavailable`, with persisted trace |
+| 18d-3 | Done | #100 | HTTP 200 degraded outcome `embedding_unavailable`, lexical-only; no vector guard or generation |
+| 18d-4 | Done | #100 | Query-embedding cache, keyed by model/task/dimensions/query hash; 30-day retention, 10,000-row cap |
 | 16a | Done | #42 | multi-repo harness |
 | 16b | Done | #44 | batch-processing-service data |
 | 16c | Done | #46 | lifeos data |
@@ -57,7 +65,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15b | Closed | n/a | no change, S0 retained |
 | 27a | Done | #73 | Evaluation README indexes and documentation map |
 | 27b | Not started | pending | Evaluation layout normalization |
-| 28 | Not started | pending | Test tiers and CI speed |
+| 28 | Done | #92 | Test tiers; unit tier now runs about 33 seconds locally |
+
+**Next:** Pause for repository restructuring and documentation cleanup before starting 27b and 3b.
 
 ## 1. Fix-order checklist (summary)
 
@@ -85,10 +95,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 14c-1 | ☑ | Diagnose full-text matching and preregister the ablation protocol | High | S | Both |
 | 14c-2 | ☑ | Compare c1/c2 under the registered rule; c3 equivalence only | High | M | Both |
 | 14c-3 | ☑ | Closed, no change: registered rule retained current retrieval; reopen only after a separately registered comparison | High | M | Both |
-| 14d | ☐ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
-| 14b-1 | ☐ | Classify test files, diagnose the control and register a retrieval protocol | High | S–M | Both |
-| 14b-2 | ☐ | Compare test-file downweighting and exclusion under the registered safeguards | High | M | Both |
-| 14a | ☐ | Evaluate embedding task type after lexical and test-file ablations | Medium | M | Both |
+| 14d | ☑ | Compare offline Python BM25 with `ts_rank` after 14c; production adoption only if clearly better and an extension is justified | Medium | M | Both |
+| 14b-1 | ☑ | Classify test files, diagnose the control and register a retrieval protocol | High | S–M | Both |
+| 14b-2 | ☑ | Compare test-file downweighting and exclusion under the registered safeguards | High | M | Both |
+| 14b-3 | ☐ | Maintainer decision on test-file variant V1; off by default, to be tested in 3b | Medium | S | Maintainer |
+| 14a-1 | ☑ | Register the embedding task-type protocol | Medium | M | Both |
+| 14a-2 | ☑ | Run the registered embedding task-type comparison | Medium | M | Both |
 | 15a-1 | ☑ | Chunking comparison foundation: repository-independent strategy interface, AST chunker and S3 embedding text, no provider calls | High | M | New (data-driven, see Part A) |
 | 15a-2 | ☑ | Chunking comparison experiment: per-strategy fixtures, precommitted rule and recorded result | High | M | New (data-driven, see Part A) |
 | 15b | ☑ | Adopt the selected chunker in production ingestion, version it and re-ingest | High | M | New (data-driven, see Part A) |
@@ -97,13 +109,17 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
 | 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
-| 18 | ☐ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
+| 18 | ☑ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
 | 18a-1 | ☑ | Provider layer design and call-site inventory | High | S–M | Both |
 | 18a-2 | ☑ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
 | 18a-3 | ☑ | Usage log table and report without prompt or response text | High | M | Both |
-| 18b | ☐ | Ordered generation fallback through Groq and Cerebras over OpenAI-compatible HTTP | Medium | M | Both |
-| 18c | ☐ | Registered local embedding-model experiment with a separate model-labelled fixture and index | Medium | M | Both |
-| 18d | ☐ | Graceful degradation and degraded-response API contract | Medium | M | Both |
+| 18b-1 | ☑ | Groq generation fallback adapter, off by default | Medium | M | Both |
+| 18b-2 | ☐ | Complete fallback routes and per-model validation before enabling any fallback | Medium | M | Both |
+| 18c | ☑ | Registered local embedding-model experiment with a separate model-labelled fixture and index | Medium | M | Both |
+| 18d-1 | ☑ | Approve the degraded-response design | Medium | M | Both |
+| 18d-2 | ☑ | Implement generation degradation | Medium | M | Both |
+| 18d-3 | ☑ | Implement lexical-only embedding degradation | Medium | M | Both |
+| 18d-4 | ☑ | Add the query-embedding cache | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
 | 20 | ☐ | Multi-artifact ingestion (docs, configs, logs) with metadata | Medium | L | Both |
 | 21 | ☐ | Reranker experiment | Low | M | Both |
@@ -114,7 +130,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
 | 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
 | 27b | ☐ | Evaluation layout normalization | Medium | M | Maintainer |
-| 28 | ☐ | Test tiers and CI speed | Medium | M | Maintainer |
+| 28 | ☑ | Test tiers and CI speed | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -123,11 +139,16 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 1 | **1** (done), **2**, **3a**, **4**, **5a**, **19** | Small changes that stop unsafe or misleading behaviour |
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
-| 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a**, **14d**, **18b**, **18d**, **18c**, **3b** | Settle retrieval and provider/fallback design before the final guard validation |
-| 5 | **20**, **12b**, **22**, **23** (rest), **24**, **25**, **26** | Breadth, production posture, architecture decisions |
-| 6 | **27a** | Add the evaluation documentation index before normalizing the data layout |
-| 7 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work |
-| 8 | **28** | Record test timing and separate CI test tiers |
+| 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a-1**, **14a-2**, **14d**, **18b-1**, **18d-1**, **18d-2**, **18d-3**, **18d-4**, **18c** (done); **18b-2** and **14b-3** remain open | Settle retrieval and provider/fallback design before the final guard validation |
+| 5 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work and the documentation pause |
+| 6 | **3b** (including **14b-3**) | Revalidate guard thresholds after retrieval changes and the maintainer's V1 decision |
+| 7 | **17**, **15c**, **5b**, **21**, **20**, **12b**, **22–26** | Then continue answer-quality, retrieval-context, hardening, breadth and architecture work |
+
+Remaining implementation sequence after the restructuring/documentation pause: **27b**, **3b**
+(including the pending 14b-3 V1 decision/test), then **17**, **15c**, **5b**, **21**, **20**,
+**12b**, and **22–26**.
+
+Items **27a** and **28** are complete and are not part of the remaining sequence.
 
 Item 13's span labels depend on none of items 9, 11 and 12, so they may start earlier if the guard change (3a) should be measured sooner. Either order is defensible.
 
@@ -135,7 +156,7 @@ Item 13c precedes 14c-1 so ablation results can be judged with the inspection re
 
 Item 15a-1 (chunking comparison foundation) follows items 9, 13 and 16a. Item 15a-2 follows 16b and 16c so the precommitted comparison uses all three repositories; 15b follows its held-out confirmation; 15c follows item 17. Item 3b follows 15a-2 and uses the S0 chunker. Item 13d precedes 13c so the inspection report is reproducible.
 
-Item 3b follows the remaining retrieval changes (14d, 14b-2 and 14a) because retrieval changes can move vector distances; re-validate the guard only after retrieval settles. Item 14c-3 is closed with no change.
+Item 3b follows the retrieval comparisons (14d, 14b-2 and 14a-2) because retrieval changes can move vector distances; re-validate the guard only after retrieval settles. The pending V1 decision in 14b-3 is to be tested within 3b. Item 14c-3 is closed with no change.
 
 ---
 
@@ -267,23 +288,37 @@ Item 3b follows the remaining retrieval changes (14d, 14b-2 and 14a) because ret
 - *Why:* the current lexical rank may not be the best fit for small code repositories, but an additional ranking method should be justified by measured gains.
 - *Fix:* compare offline Python-side BM25 with PostgreSQL `ts_rank` on the same development fixtures. Do not add a PostgreSQL extension for this experiment.
 - *Done when:* a paired development comparison reports ranking and cost; adopt in production only if BM25 wins clearly and an extension is justified; state per-repository tolerances in whole questions.
+- **Status:** Done (PR #94). Keep control; BM25 B1 failed R1 and R2. See [the results note](../notes/17-bm25-comparison-results.md).
 
 **14b-1. Test-file diagnostic and registered retrieval protocol.**
 - *Why:* tests accounted for 44% of top-five results in the original baseline [EXEC], and may crowd out source evidence.
 - *Fix:* add a deterministic test-file path classifier, an offline development-fixture diagnostic, and a binding protocol for comparing test-file ranking policies.
 - *Done when:* the classifier and diagnostic are committed; the protocol states every threshold in whole questions; held-out data remains untouched.
-- **Status:** In progress (PR pending).
+- **Status:** Done (PR #82). The classifier, diagnostic and registered protocol are committed.
 
 **14b-2. Run the registered test-file retrieval comparison.**
 - *Why:* apply the 14b-1 protocol to determine whether test-file chunks should remain unchanged, be downweighted, or be excluded.
 - *Fix:* compare the registered downweight and exclude variants offline against the selected 14c control without changing chunking or lexical settings; record retrieval effects, test-source recall and precision, and the decision.
 - *Done when:* the registered rule is applied exactly; the committed results, report, and notes file record the comparison and decision; retain a policy only if it helps without harming the safeguards, with per-repository tolerances in whole questions.
-- **Status:** Not started.
+- **Status:** Done (PR #84). Keep control. V1 was descriptively better, but did not satisfy all registered retention conditions; see [the comparison results](../notes/12-test-file-comparison-results.md).
 
-**14a. Embedding task type (last).**
+**14b-3. Maintainer decision on test-file variant V1 (pending; to be tested in 3b).**
+- *Why:* V1 was descriptively better, but the comparison did not justify retaining a test-file policy under all registered conditions.
+- *Fix:* obtain the maintainer's decision on whether V1 should be tested as an optional variant during 3b. Keep it off by default unless that decision and the 3b evidence support a change.
+- *Done when:* the maintainer decision is recorded and any approved V1 variant is tested under item 3b without changing its registered safeguards.
+- **Status:** Not started; pending maintainer decision. V1 remains off by default and is to be tested in 3b.
+
+**14a-1. Register the embedding task-type protocol (after 14c and 14b-2).**
 - *Why:* no `task_type` is sent to the embedding API although `RETRIEVAL_DOCUMENT` and `CODE_RETRIEVAL_QUERY` exist [Google docs].
-- *Fix:* compare document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY` task types after 14c and 14b-2, versioning and rebuilding embeddings as a distinct run.
+- *Fix:* preregister the document `RETRIEVAL_DOCUMENT` and query `CODE_RETRIEVAL_QUERY` comparison, versioning and rebuilding embeddings as a distinct run.
+- *Done when:* a protocol fixes the control, candidate, development-only procedure and decision rules before candidate results exist.
+- **Status:** Done (PR #88). Protocol: [embedding task-type experiment](../notes/14-embedding-task-type-experiment.md).
+
+**14a-2. Run the registered embedding task-type comparison.**
+- *Why:* the task-type protocol must be evaluated against the current retrieval control before any change is considered.
+- *Fix:* run the registered comparison using the task-type-specific embeddings and the existing paired development evaluation; make no unrelated retrieval changes.
 - *Done when:* one embedding change is compared with the selected lexical and test-file control using paired frozen development results; keep it only if it helps without harming the safeguards. Provider quota use is explicit and bounded; state per-repository tolerances in whole questions.
+- **Status:** Done (PR #90). Keep control; the candidate did not satisfy all registered retention conditions. See [development results](../notes/15-embedding-task-type-results.md).
 
 **15a-1. Chunking comparison foundation (after 16a).**
 - *Fix:* add a repository-independent, deterministic strategy interface for 60/10, 100/20, AST-aware chunks and AST-aware enriched embedding text. Define chunk boundaries, merge/fallback rules and version metadata; preserve raw stored chunk text and secret skipping. Add no provider calls in this item.
@@ -331,7 +366,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Fix:* replace the direct proxy-like assumptions with a thin provider layer; add ordered generation
   fallback only after validation; evaluate local embeddings under a separate registered protocol.
 - *Done when:* the applicable requirements in 18a-1, 18a-2, 18a-3, 18b, 18c and 18d are met independently.
-- **Status:** Superseded; work is tracked in 18a-1, 18a-2, 18a-3, 18b, 18c and 18d.
+- **Status:** Superseded; 18a and 18c are done; 18b-2 remains open.
 
 **18a-1. Provider layer design.**
 - *Why:* before any implementation, the team needs a complete view of every provider call site,
@@ -367,19 +402,26 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
   sufficient to diagnose provider outages without retaining code or secret-bearing payloads.
 - **Status:** Done (PRs #78 and #79).
 
-**18b. Generation fallback: Groq and Cerebras over OpenAI-compatible HTTP.**
+**18b-1. Groq generation fallback adapter (off by default).**
+- *Why:* a provider quota or outage can block generation, but fallback output can differ in quality and structured-output behavior.
+- *Fix:* add the Groq generation fallback adapter behind configuration, off by default, using classified provider failures and the shared response-validation path.
+- *Done when:* the adapter can be selected explicitly, provider/model use is recorded, exhausted routes fail explicitly, and default behavior remains unchanged.
+- **Status:** Done (PR #86). Off by default. Groq data terms and limits still require maintainer verification before enabling it for private-code routes.
+
+**18b-2. Complete ordered generation fallback routes and validation.**
 - *Why:* a provider quota or outage can block generation, but fallback output can differ in quality and
   structured-output behavior. The fallback router must fail explicitly and never on answer quality.
-- *Fix:* configure an ordered generation router using OpenAI-compatible `httpx` requests to Groq and
-  Cerebras. Fallback only on classified failures (rate limit, 5xx, timeout, open cooldown), never on
-  answer quality. Every fallback model must pass schema validity and citation-quote validation on the
-  golden set before it is enabled. Each answer records provider and model. Private code goes only to
-  providers with no-training terms after their current terms are verified. All routes exhausted fail
-  explicitly. State per-repository tolerances in whole questions where a comparison is made.
+- *Fix:* add the Cerebras route and complete the fallback validation contract. Fallback only on
+  classified failures (rate limit, 5xx, timeout, open cooldown), never on answer quality. Every
+  fallback model must pass schema validity and citation-quote validation on the golden set before
+  it is enabled. Each answer records provider and model. Private code goes only to providers with
+  no-training terms after their current terms are verified. All routes exhausted fail explicitly.
+  State per-repository tolerances in whole questions where a comparison is made.
 - *Done when:* the fallback order is committed with the shared validation rules, provider/model labels
   are recorded for each answer, no-training terms are checked for private-code routes, and exhausted
   routes fail explicitly with no success-shaped fallback.
-- **Status:** Not started.
+- **Status:** Not started. Open scope: Cerebras route; golden-set schema and citation-quote validation
+  for every fallback model before enabling; no-training terms check for private-code routes.
 
 **18c. Local open embedding model experiment (unchanged).**
 - *Why:* free hosted embedding tiers are not dependable permanent options, while local model quality on
@@ -391,19 +433,38 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
   separate model-labelled fixture and index are produced; adoption occurs only if the rule passes.
   Held-out questions remain unobserved during selection; state per-repository tolerances in whole
   questions.
-- **Status:** Not started.
+- **Status:** Done (PR #102). Keep control; both local candidates failed R1–R3. See [the result note](../notes/18-local-embedding-results.md).
 
-**18d. Graceful degradation and API contract design.**
+**18d-1. Degraded-response design and maintainer approval.**
 - *Why:* generation and embedding failures need explicit degraded behavior that is understood by the API
   contract before implementation.
-- *Fix:* when generation fails, return the retrieved cited evidence with an explicit
-  `unavailable_answer` flag; when embedding fails, fall back to lexical-only retrieval flagged as
-  degraded. Define what the evidence guard does in that mode since it relies on vector distance. Add a
-  query-embedding cache. This changes the API response, so maintainer approval is required before
-  implementation.
-- *Done when:* the degraded-response API contract, guard behavior and cache semantics are approved by the
-  maintainer and the design record states the exact failure behavior before implementation.
-- **Status:** Not started.
+- *Fix:* approve the degraded-response contract, guard behavior and query-embedding cache semantics
+  before implementation.
+- *Done when:* the maintainer approves the design record and it specifies exact failure behavior.
+- **Status:** Done (PR #96); design approved by the maintainer on 2026-10-31.
+
+**18d-2. Generation degradation.**
+- *Fix:* return `generation_unavailable` as an explicit degraded response after eligible generation
+  failures are exhausted with HTTP 200; preserve retrieved metadata-only evidence and the guard
+  result, and persist the trace for GET reconstruction.
+- *Done when:* the approved generation-degradation contract, typed failure eligibility, audit trace,
+  API/CLI behavior and tests are implemented without silent direct-provider bypass.
+- **Status:** Done (PR #98).
+
+**18d-3. Lexical-only embedding degradation.**
+- *Fix:* after an availability-class query-embedding failure and cache miss, perform deterministic
+  lexical-only retrieval and return `embedding_unavailable` with HTTP 200; do not call the vector
+  guard or generation. Persist metadata-only evidence and the trace for GET reconstruction.
+- *Done when:* the approved lexical-only path and explicit response are implemented, including empty
+  lexical results and tests; normal hybrid retrieval remains unchanged.
+- **Status:** Done (PR #100).
+
+**18d-4. Query-embedding cache.**
+- *Fix:* cache query vectors by embedding model, task type, dimensions and SHA-256 hash of normalized
+  query text; retain rows for 30 days and cap the table at 10,000 rows without storing query text.
+- *Done when:* cache migration, lookup/write behavior, expiration, eviction and integration tests are
+  implemented; cache failures do not silently bypass provider behavior.
+- **Status:** Done (PR #100).
 
 **19. Model self-rating.**
 - *Why:* in the committed baseline the model labeled 15 of 16 answers `high`, and retrieval calibration moved 13 to `medium` [EXEC]. The label has not been checked against correctness.
@@ -448,7 +509,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Why:* the suite runs as one block (about 280 tests, about a minute). As tests grow, every change would wait for all of them, and a database failure would hide behind unit-test results.
 - *Fix:* (1) record `--durations=20` and total time per folder as a baseline; (2) keep unit and integration tests in separate folders and give every test exactly one tier marker (`unit` implied by folder, `integration`, `slow`); (3) split CI into parallel jobs (lint, unit, integration with PostgreSQL and alembic, retrieval gate); (4) evaluate pytest-xdist for the unit tier only, after confirming the tests share no global state (a new dev dependency needs maintainer approval); (5) write a short testing guide in docs/notes with the commands for each tier.
 - *Done when:* each tier has a documented command; CI jobs run in parallel and the unit job finishes without a database; the baseline and the new timings are recorded; no test is deleted or weakened.
-- **Status:** Not started.
+- **Status:** Done (PR #92). Tier commands and CI jobs are documented in [note 16](../notes/16-test-tiers.md). The current unit tier is reported to run in about 33 seconds locally; this task did not rerun tests.
 
 ---
 
