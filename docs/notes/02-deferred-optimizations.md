@@ -420,3 +420,35 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Evaluate quantized or ONNX serving only if a local model is later selected for production.
 - **Why:** Optimized inference may reduce serving footprint and improve throughput.
 - **Evidence needed:** A production-representative benchmark for latency, memory, throughput, numerical drift, licensing, and operational maintenance.
+
+## Later ideas after the 18c comparison
+
+### Register Voyage AI embedding and reranking candidates
+
+- **Idea:** Register Voyage AI `voyage-code-4` for code embeddings and `rerank-3` for reranking. Voyage's pricing page is reported to offer 200 million free tokens per account for these models, compared with roughly 0.1 million tokens in the development corpus.
+- **Why:** The allowance could support a bounded development experiment covering both code embeddings and reranking.
+- **Evidence needed:** A registered protocol like 14a/18c; before any use, verify Voyage's current data-use and training terms, rate limits without billing, free-tier eligibility, and output dimensions. Production uses a 768-dimensional vector column, so a different output size requires a column migration only if a candidate wins.
+
+### Rerank the top 5–10 retrieved results
+
+- **Idea:** Compare Voyage `rerank-3`, Cohere rerank (trial), and an open cross-encoder over the top 5–10 results.
+- **Why:** The control hit@1 is 19/33, hit@3 is 26/33, and hit@5 is 28/33: descriptively, 9 questions have the correct chunk in the top five but not first, versus 5 that miss the top five. Reranking targets the larger group.
+- **Evidence needed:** A separate registered paired evaluation that distinguishes ranking gains from retrieval recall, reports latency/resource/privacy costs, and preserves guard and citation behavior.
+
+### Preserve a documented local path for private-code embeddings
+
+- **Idea:** Keep a local embedding-model path documented as a privacy-driven option even though the tested local candidates lost on retrieval quality.
+- **Why:** The development comparison measured pooled MRR of 0.505 for Jina and 0.535 for BGE, versus 0.674 for Gemini, while hosted free tiers may use inputs for product improvement.
+- **Evidence needed:** Verify each provider's current data-use and training terms before indexing private code, and compare the privacy benefit, local operating cost, and retrieval-quality trade-off for the intended repositories.
+
+### Test Gemini embeddings at larger output dimensions
+
+- **Idea:** Register a lower-priority comparison of Gemini embedding outputs at 1536 or 3072 dimensions.
+- **Why:** More dimensions may retain useful detail that is compressed in the current 768-dimensional vector.
+- **Evidence needed:** A registered development run with control equivalence and a migration review; change the production vector column only if the candidate wins.
+
+### Grow the development question set
+
+- **Idea:** Expand beyond 33 answerable development questions.
+- **Why:** With this sample, a single rank change shifts pooled MRR by about 0.015, making small comparisons coarse.
+- **Evidence needed:** A larger, reviewed, repository-diverse question set with frozen split membership, explicit labels, and enough questions per repository to support the registered whole-question tolerances.
