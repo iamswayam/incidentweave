@@ -2,6 +2,8 @@
 
 # IncidentWeave
 
+**As of 2026-11-01.**
+
 ### Evidence-first investigation for local Python repositories
 
 [![CI](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml/badge.svg)](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml)
@@ -252,6 +254,10 @@ full command runs every test serially. GitHub Actions runs lint/build, network-b
 PostgreSQL integration, and evaluation/smoke-gate jobs in parallel. See the
 [test-tier guide](docs/notes/16-test-tiers.md) and [CI configuration](.github/workflows/ci.yml).
 
+**As of 2026-11-01:** `pytest --collect-only -q` collected 489 tests (294 unit, 16 integration,
+179 evaluation). The unit command passed all 294 tests in 24.81 seconds on this machine; this is
+a local measurement, not a CI timing guarantee.
+
 ## Project structure
 
 ```text
@@ -291,6 +297,8 @@ IncidentWeave intentionally makes its current boundaries visible:
 | [Chunking experiment](docs/chunking-experiment/README.md) | Chunking-strategy experiment record and independent reviews. |
 | [Learning notes](docs/learning/README.md) | Interview-oriented summaries of major concepts. |
 | [Notes](docs/notes/README.md) | Manual verification and deferred optimization notes. |
+| [Documentation status index](docs/README.md) | Cross-folder document status and registered-experiment index. |
+| [Scripts catalog](scripts/README.md) | Script purpose, side effects, requirements and test/doc coverage. |
 
 ## Roadmap status
 

@@ -1,7 +1,6 @@
 # Repository inventory
 
-**Status:** Draft, for the repository-restructuring discussion. No files were moved or
-deleted in this PR.
+**Status:** Frozen snapshot (2026-11-01); superseded by docs/README.md for navigation
 
 ## Scope and method
 

@@ -1,5 +1,7 @@
 # Implementation workflow
 
+**As of 2026-11-01.**
+
 How every item of the [fix checklist](03-fix-checklist.md) is implemented, reviewed and merged. The same steps apply to every item, so the history of the repository reads the same from the first fix to the last.
 
 ## 1. Unit of work
@@ -10,7 +12,7 @@ One checklist item = one branch = one pull request (PR). Items are never mixed, 
 |---|---|
 | Small, single-purpose PRs | Easy to review and easy to revert. Standard practice on any team. |
 | `main` always passes lint and tests | Everyone can branch from a known-good state; releases can be cut at any time. |
-| No direct code pushes to `main` | Code changes are reviewed through a PR. Documentation-only changes may go straight to `main`. |
+| Every change uses a branch and PR | Code and documentation changes receive the same review and merge-commit workflow. |
 
 ## 2. Lifecycle of one item
 
@@ -53,7 +55,10 @@ Also include the checklist item number and the evidence for *Done when* (test na
 
 ## 6. Documentation-only changes
 
-Changes under `docs/` or to `README.md` go directly to `main` as one small commit. Files follow the `NN-kebab-case.md` naming inside their folder, each folder's `README.md` index is updated in the same commit, and every relative link must resolve.
+Documentation changes use a branch and pull request like code changes. Files follow the
+`NN-kebab-case.md` naming inside their folder; update the
+[cross-folder status index](../README.md) and relevant folder navigation in the same change,
+and verify that every relative link resolves.
 
 ## 7. Where progress is recorded
 

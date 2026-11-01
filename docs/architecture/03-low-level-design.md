@@ -1,5 +1,7 @@
 # IncidentWeave Low-Level Design
 
+**As of 2026-11-01.**
+
 ## 1. Scope and implementation status
 
 This document records the low-level design implemented on the `main` branch. It is source-based: paths named here exist in the repository and diagrams model current runtime behavior. The Phase 1–9 build logs and [README roadmap](../../README.md#roadmap) are the in-repository plan baseline; the roadmap is complete at Phase 9. No standalone project-plan or chat-roles document was found in this checkout.

@@ -1,5 +1,7 @@
 # Provider layer design (item 18a-1)
 
+**As of 2026-11-01.**
+
 ## Scope
 
 This note covers the design for the provider-layer direction approved on 2026-10-28. The repo is not implementing a LiteLLM gateway in this step. The goal is to design a thin provider layer that can later be pointed at a gateway without changing the app's call sites, graph, scripts or tests.

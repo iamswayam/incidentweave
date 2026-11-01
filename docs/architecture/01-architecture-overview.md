@@ -1,5 +1,7 @@
 # IncidentWeave Architecture
 
+**As of 2026-11-01.**
+
 **Canonical repository:** [github.com/iamswayam/incidentweave](https://github.com/iamswayam/incidentweave)
 
 IncidentWeave is a repository-aware AI incident investigation platform. Its purpose is to help an engineer investigate questions about a software repository by retrieving source evidence, presenting that evidence to a language model, and returning a diagnosis with references to retrieved chunks. The implemented workflow starts by ingesting Python source into PostgreSQL/pgvector, then accepts a query, searches the selected repository, applies a numeric evidence gate, widens retrieval once if needed, and either abstains or generates a response. With persistence enabled, answered, model-abstained, guard-refused, and error outcomes receive Investigation and Audit records.
@@ -15,6 +17,10 @@ This is a source-grounded reference, not authorization to change the architectur
 **Evidence labels:** **Source-verified** means explicit in current source. **Tested** means an automated test covers the behavior (test execution is separately stated). **Artifact-observed** means present in a saved evaluation artifact. **Inferred** means follows from code wiring but was not directly exercised. **Unknown** means the repository or available runtime evidence does not establish the behavior.
 
 **Inspected revision:** `e104005848bdee38d603d3703f93a5ff9bce79e1`, branch `phase-8/evaluation`, inspected 2026-10-17. At inspection, the local branch and stored `origin/phase-8/evaluation` ref matched. The working tree had an existing untracked `evaluation/results/run-2.json`; ignored evaluation artifacts were also present. No remote fetch was performed. The source permalinks below target this inspected commit; their public availability depends on that commit being present on GitHub. This architecture document was created after that revision check.
+
+The deep source inventory and source permalinks below remain anchored to that inspected
+revision. The current-behavior summary and change history have been refreshed through
+2026-11-01; verify later implementation details against the current source.
 
 ## How to Verify This Architecture
 
@@ -256,7 +262,7 @@ This history is assembled from the checked-in phase logs and current repository 
 | Phase 3 | Added Python repository traversal, 60/10 line chunking, and replace-on-reingest behavior. | [Ingest implementation](../../scripts/ingest_repo.py); [Phase 3 log](../phases/03-ingestion-chunking.md). |
 | Phase 4 | Added Gemini 768-dimensional embeddings, vector search, PostgreSQL FTS, and RRF fusion. | [Embedding](../../scripts/embed_chunks.py), [retrieval](../../app/retrieval/), [Phase 4 log](../phases/04-embeddings-retrieval.md). The phase log records per-chunk processing and no automatic retries. |
 | Phases 5-7 | Added investigation graph, score guard/confidence calibration, controlled tools/MCP, and audit persistence. | [Graph](../../app/investigation/graph.py), [Phase 5-7 logs](../phases/05-investigation-engine.md). Phase logs describe intent and verification at their time; current source is authoritative for behavior today. |
-| Phase 8 | Added a 24-question evaluation against a pinned 40-file/70-chunk corpus and recorded diagnostic retrieval/guard outcomes. | [Phase 8 log](../phases/08-evaluation.md), [golden set](../../evaluation/golden_set.json). Its own scope states results are small-sample diagnostics, not a general benchmark. |
+| Phase 8 | The original phase snapshot used 24 questions and a pinned 40-file/70-chunk corpus to record diagnostic retrieval/guard outcomes; these are historical, not current evaluation-set counts. | [Phase 8 log](../phases/08-evaluation.md), [golden set](../../evaluation/golden_set.json). Its own scope states results are small-sample diagnostics, not a general benchmark. |
 | Phase 8b; commits recorded in work log include `fea9d8d`, `2a6c658`, `b51894a`, `4b688a1` | Added generation traces, additive V2 outcomes, run metadata/registry/comparison, and report diagnostics while preserving legacy labels and evaluation `persist=False`. | [Phase 8b log](../phases/08b-evaluation-improvements.md). The document contains conflicting status wording noted above. |
 | Phase 9 | Added synchronous FastAPI investigation/read endpoints, shared-secret protection, in-memory rate limit, and Docker runtime files. Ingestion and embedding remain CLI-only; job queue was explicitly deferred. | [API](../../app/api.py), [security](../../app/api_security.py), [Dockerfile](../../docker/Dockerfile), [Phase 9 log](../phases/09-production-api.md). |
 | 2026-10-17; uncommitted evaluation harness on `experiment/chunking-evaluation-harness` | Added evaluation-only baseline 60/10 and experimental 100/20 strategies, separate allowlisted repositories, strategy-aware metadata/run IDs, evaluation-owned insertion for new corpora, exact-match reuse, fail-closed stale-data handling, and a selected-repository inventory guard. | D3/D4/D6 were approved in [the chunking experiment log](../chunking-experiment/01-experiment-log.md). This documents harness behavior only; the experiment has not been run or authorized. Production ingestion and golden-set data are unchanged. |

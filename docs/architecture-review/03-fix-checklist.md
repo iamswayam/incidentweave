@@ -1,5 +1,7 @@
 # IncidentWeave: Prioritized Fix Checklist (merged from the Claude and Codex audits)
 
+**As of 2026-11-01.**
+
 *Written 2026-10-21 by Claude (Sonnet 5.5); revised 2026-10-22 after the independent Codex review in `04-fix-checklist-review-codex.md`. Source reports: `01-audit-claude.md` and `02-audit-codex.md` in this folder. Code reference: the Codex review inspected commit `59f38fd`, which descends from `main` @ `e98da82` and from the evaluation harness @ `12edf8e`; that commit has 64 `test_` functions and 70 executed tests. The figures in Parts A and B come from the pinned evaluation snapshot (`62d0e58`).*
 
 **How to use this file**
@@ -65,7 +67,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15b | Closed | n/a | no change, S0 retained |
 | 27a | Done | #73 | Evaluation README indexes and documentation map |
 | 27b | Not started | pending | Evaluation layout normalization |
-| 28 | Done | #92 | Test tiers; unit tier now runs about 33 seconds locally |
+| 28 | Done | #92 | Test tiers; 294 passed in 24.81 seconds locally on 2026-11-01 |
 
 **Next:** Pause for repository restructuring and documentation cleanup before starting 27b and 3b.
 
@@ -109,7 +111,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 16b | ☑ | Multi-repo evaluation data: batch-processing-service’s approved questions, fixture and baseline | High | M | Both |
 | 16c | ☑ | Multi-repo evaluation data: lifeos’s approved questions, fixture and baseline | High | M | Both |
 | 17 | ☐ | LLM judge, claim-level citation scoring, larger abstention set | Medium | M | Both |
-| 18 | ☑ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
+| 18 | ☐ | Superseded: tracing, cost and latency telemetry split across 18a-1, 18a-2, 18a-3, 18b, 18c and 18d | Medium | M | Both |
 | 18a-1 | ☑ | Provider layer design and call-site inventory | High | S–M | Both |
 | 18a-2 | ☑ | Provider interfaces, Gemini adapter, rate limiter and cooldown with no default behavior change | High | M–L | Both |
 | 18a-3 | ☑ | Usage log table and report without prompt or response text | High | M | Both |
@@ -509,7 +511,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Why:* the suite runs as one block (about 280 tests, about a minute). As tests grow, every change would wait for all of them, and a database failure would hide behind unit-test results.
 - *Fix:* (1) record `--durations=20` and total time per folder as a baseline; (2) keep unit and integration tests in separate folders and give every test exactly one tier marker (`unit` implied by folder, `integration`, `slow`); (3) split CI into parallel jobs (lint, unit, integration with PostgreSQL and alembic, retrieval gate); (4) evaluate pytest-xdist for the unit tier only, after confirming the tests share no global state (a new dev dependency needs maintainer approval); (5) write a short testing guide in docs/notes with the commands for each tier.
 - *Done when:* each tier has a documented command; CI jobs run in parallel and the unit job finishes without a database; the baseline and the new timings are recorded; no test is deleted or weakened.
-- **Status:** Done (PR #92). Tier commands and CI jobs are documented in [note 16](../notes/16-test-tiers.md). The current unit tier is reported to run in about 33 seconds locally; this task did not rerun tests.
+- **Status:** Done (PR #92). Tier commands and CI jobs are documented in [note 16](../notes/16-test-tiers.md). As of 2026-11-01, the unit tier passed 294 tests in 24.81 seconds locally.
 
 ---
 

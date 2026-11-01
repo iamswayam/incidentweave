@@ -1,5 +1,7 @@
 # Chunking strategies
 
+**As of 2026-11-01.**
+
 This note describes the deterministic candidate chunk specifications added for item 15a-1.
 They are comparison inputs only; production ingestion and evaluation runners do not use them yet.
 

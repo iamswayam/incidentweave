@@ -1,5 +1,7 @@
 # Architecture review
 
+**As of 2026-11-01.**
+
 Independent engineering audits of IncidentWeave and the prioritized fix checklist that follows from them.
 
 | # | File | Author | Type | Status |
@@ -24,3 +26,5 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 - Frozen documents are never edited apart from link maintenance. Corrections go into the living checklist.
 - The living checklist is updated in the same commit as the fix it describes.
 - Each fix uses one short-lived branch from `main` named `fix/NN-short-name` (NN = checklist item), merged into `main` and then deleted.
+
+Back to the [documentation status index](../README.md).

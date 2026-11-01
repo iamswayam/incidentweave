@@ -1,5 +1,7 @@
 # Phase build logs
 
+**As of 2026-11-01.**
+
 Task specifications and verification logs for the nine-phase roadmap.
 
 | # | File | Contents |
@@ -14,3 +16,5 @@ Task specifications and verification logs for the nine-phase roadmap.
 | 08 | [08-evaluation.md](08-evaluation.md) | Evaluation task specification, measurements and verification log |
 | 08b | [08b-evaluation-improvements.md](08b-evaluation-improvements.md) | Measurement-validation fixes, run registry and evidence bundle |
 | 09 | [09-production-api.md](09-production-api.md) | Production CLI/API task specification and verification log |
+
+Back to the [documentation status index](../README.md).

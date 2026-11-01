@@ -1,5 +1,7 @@
 # LLM gateway decision (item 18)
 
+**As of 2026-11-01.**
+
 ## Revision (2026-10-28)
 
 DIRECTION (approved 2026-10-28): do not deploy the LiteLLM proxy now. Build our own thin provider layer, written so a gateway can be plugged in later. Reasons: the failures that hurt this app are not solved by a gateway (a Gemini outage should still return cited retrieved evidence; pacing is a manual flag today; no caching); a proxy adds a container, a database and a single point of failure on the critical path for one app run by one developer; it puts a translation layer between us and Gemini (our structured JSON output and embedding task_type, which item 14a needs and which LiteLLM's proxy docs do not confirm: https://docs.litellm.ai/blog/gemini_embedding_2_ga); every fallback model needs our own golden-set and citation validation either way. LiteLLM facts that stay true: its spend tracking, admin UI, virtual keys, rate limits and fallbacks are open source and SSO is free up to 5 users, audit logs are enterprise (https://docs.litellm.ai/docs/enterprise.md); in March 2026 PyPI releases 1.82.7 and 1.82.8 were compromised, Docker proxy users were not affected, v1.83.0 is the clean release (https://docs.litellm.ai/blog/security-update-march-2026). Gateway revisit triggers: three or more providers in real use, a wish for its dashboard and key management, or a second service needing LLM access. If adopted later, the security rules in 09 apply (official image, pinned by digest, 1.83.0 or later, no unpinned pip install).

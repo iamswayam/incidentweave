@@ -1,5 +1,7 @@
 # 07 Chunking comparison plan
 
+**As of 2026-11-01.**
+
 ## 1. Proposed plan (author: Claude)
 
 Context: the evaluation harness now has three repositories (incidentweave, batch-processing-service, lifeos) with 24 questions each, explicit development / held-out / smoke splits, span labels that are independent of chunk boundaries, and per-repository offline fixtures. Held-out questions are frozen. Retrieval Hit@5 is near its ceiling on these small corpora (lifeos 16/16).

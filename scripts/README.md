@@ -1,0 +1,36 @@
+# Scripts catalog
+
+**As of 2026-11-01.**
+
+“Test coverage” and “documentation” describe direct matches found in the repository inventory;
+they are not claims of complete behavioral coverage. For entries marked no direct test, the
+related evaluation helper may still have tests. Provider keys stay in the local environment;
+never put them in command arguments.
+
+| Script | Purpose | Kind | Database / key / quota | Belongs to | Tests / docs | Safe quick check? |
+|---|---|---|---|---|---|---|
+| `__init__.py` | Make `scripts` importable for `python -m scripts.<name>` commands. | operational | No DB, key, or quota | Scripts package | Package-wide matches only; no dedicated docs | Yes; importing the package has no command side effect |
+| `benchmark_embeddings.py` | Benchmark Gemini embedding throughput on existing database chunks. | operational | DB + Gemini key; spends quota | Checklist 10; [benchmark note](../docs/notes/03-embedding-benchmark.md) | No direct script test; docs yes | No; live provider calls |
+| `check_retrieval_gate.py` | Run manifest-selected offline retrieval gates. | evaluation runner | No DB, key, or quota | [Evaluation guide](../evaluation/README.md) | Tests yes; docs yes | Yes, use documented smoke split |
+| `compare_bm25.py` | Compare the registered BM25 candidate against control on development data. | experiment runner | DB; no key or quota | Checklist 14d; [protocol](../docs/architecture-review/12-bm25-comparison-protocol.md) | No direct CLI test; docs yes | No; writes aggregate results |
+| `compare_runs.py` | Compare two saved evaluation reports. | evaluation runner | No DB, key, or quota | [Evaluation guide](../evaluation/README.md) | Tests yes; docs yes | No; use only explicitly approved non-held-out run files |
+| `compare_test_file_variants.py` | Compare registered test-file ranking variants on development fixtures. | experiment runner | No DB, key, or quota | Checklist 14b; [protocol](../docs/architecture-review/11-test-file-retrieval-protocol.md) | Tests yes; no direct filename match in docs | No; experiment comparison |
+| `diagnose_fulltext.py` | Diagnose PostgreSQL full-text matching and render a diagnostic report. | one-off diagnostic | DB; no key or quota | Checklist 14c-1; [diagnostic note](../docs/notes/08-fulltext-diagnostic.md) | No direct script test; docs yes | No; default output overwrites a tracked note |
+| `diagnose_test_files.py` | Report test-file representation and control retrieval share from development fixtures. | one-off diagnostic | No DB, key, or quota | Checklist 14b-1; [diagnostic note](../docs/notes/11-test-file-diagnostic.md) | No direct script test or direct filename match in docs | No; diagnostic output |
+| `embed_chunks.py` | Embed missing repository chunks using Gemini. | operational | DB + Gemini key; spends quota | Checklist 10; current [architecture reference](../docs/architecture/01-architecture-overview.md) | Tests yes; docs yes | No; writes production embeddings |
+| `export_openapi.py` | Regenerate the deterministic OpenAPI schema from `app.main.app.openapi()`. | operational | No DB, key, or quota | [API reference](../docs/reference/README.md) | Unit test yes; docs yes | Yes; writes only the selected schema file |
+| `ingest_repo.py` | Ingest a local Python repository and update its chunk records. | operational | DB; no provider key or quota | Checklist 9; [architecture reference](../docs/architecture/01-architecture-overview.md) | Tests yes; docs yes | No; mutates the selected database |
+| `inspect_retrieval.py` | Render deterministic inspection cards from offline development evaluation inputs. | evaluation runner | No DB, key, or quota | Checklist 13c; [inspection note](../docs/notes/07-retrieval-inspection-report.md) | Tests yes; docs yes | Yes; writes ignored inspection output |
+| `investigate.py` | Run the full repository investigation pipeline from the CLI. | operational | DB + Gemini key; may use enabled Groq fallback and provider quota | Checklist 18d; [degraded-mode runbook](../docs/runbooks/degraded-modes-and-cache.md) | Tests yes; docs yes | No; provider calls and persistence |
+| `run_chunking_experiment.py` | Plan, embed, and evaluate registered chunking candidates. | experiment runner | Provider key/quota for `embed`; DB as required by the selected subcommand | Checklist 15a/15b; [experiment guide](../evaluation/README.md) | Tests yes; docs yes | No; `evaluate` rewrites tracked aggregate reports |
+| `run_embedding_task_type_experiment.py` | Plan, embed, and evaluate Gemini task-type candidates. | experiment runner | DB for evaluate; confirmed embed requires Gemini key and quota | Checklist 14a; [protocol](../docs/notes/14-embedding-task-type-experiment.md) | Tests yes; docs yes | No; only run under the registered protocol |
+| `run_eval.py` | Run the Phase 8 answer evaluation and write run artifacts. | evaluation runner | DB + Gemini key; spends quota | Phase 8; [evaluation guide](../evaluation/README.md) | Tests yes; docs yes | No; answer generation and persistence |
+| `run_fulltext_ablation.py` | Execute the registered full-text retrieval ablation. | experiment runner | DB; no provider key or quota | Checklist 14c-2; [protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md) | No direct script test; docs yes | No; rewrites tracked aggregate outputs |
+| `run_local_embedding_experiment.py` | Plan, embed, and evaluate registered local embedding candidates. | experiment runner | Evaluation DB; no provider key/quota; model download required for embedding | Checklist 18c; [protocol](../docs/architecture-review/14-local-embedding-protocol.md) | Tests yes; docs yes | No; may download models and update ignored cache |
+| `run_retrieval_eval.py` | Run offline retrieval-only evaluation using committed fixtures and cached vectors. | evaluation runner | No DB, key, or quota | [Evaluation guide](../evaluation/README.md) | No direct script test; docs yes | No for default output; use an ignored output path to avoid replacing a tracked baseline |
+| `search_repo.py` | Search indexed repository chunks with hybrid retrieval. | operational | DB + Gemini key; embedding a query spends quota unless cached | Checklist 13; [architecture reference](../docs/architecture/01-architecture-overview.md) | No direct CLI test; docs yes | No; requires local data and may call provider |
+| `serve.py` | Start the API server with the Windows-compatible event loop and local settings. | operational | DB; Gemini key for investigations; no key for health endpoint | Phase 9; [root README](../README.md) | Tests yes; docs yes | No; starts a long-running service |
+| `test_tiers.py` | Run fast, integration, evaluation, or full pytest tiers. | operational | Fast: none; integration: local DB; evaluation: offline | [Test-tier guide](../docs/notes/16-test-tiers.md) | Tests yes; docs yes | Yes, use `fast` |
+| `usage_report.py` | Read and summarize provider-usage metadata from PostgreSQL. | operational | DB; no provider key or quota | Checklist 18a-3; [usage log note](../docs/notes/10-provider-usage-log.md) | Tests yes; docs yes | Yes, read-only when pointed to the intended local DB |
+
+Back to the [repository README](../README.md) or the [documentation status index](../docs/README.md).
