@@ -1,5 +1,7 @@
 # Test tiers and scaling
 
+**As of 2026-11-01.**
+
 ## Purpose and layout
 
 Tests are grouped first by execution tier, then by the application area they exercise. A test's
@@ -87,6 +89,13 @@ The full suite is run locally by the `full` command; CI does not repeat the same
 three tier jobs.
 
 ## Diagnosis and timings
+
+### Current snapshot (2026-11-01)
+
+`pytest --collect-only -q` collected 489 tests: 294 unit, 16 integration, and 179
+evaluation tests. The unit tier command
+`.\.venv\Scripts\python.exe -m scripts.test_tiers fast` passed 294 tests in 24.81 seconds
+on this machine. These figures are a dated local measurement, not a CI timing guarantee.
 
 Before the test-tier work, the full suite was reported as **424 passed, 1 failed, 425 total in
 about 156 seconds**. After the first tier split, the 249-test unit tier measured **103.62 seconds

@@ -1,5 +1,7 @@
 # Threat Model
 
+**As of 2026-11-01.**
+
 ## Scope and assets
 
 This short model covers the current local IncidentWeave workflow.

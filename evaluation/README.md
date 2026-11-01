@@ -1,11 +1,15 @@
 # Evaluation
 
+**As of 2026-11-01.**
+
 ## 1. Purpose
 
 The evaluation package contains offline retrieval checks, answer-evaluation tooling, and registered experiments.
 The manifest selects pinned repositories, questions, fixtures, baselines, and gates.
 Offline retrieval uses committed fixtures and question embeddings; the answer runner invokes the investigation pipeline.
 This guide points to the relevant commands, data, modules, and evaluation records.
+
+Back to the [documentation status index](../docs/README.md).
 
 ## 2. Commands
 

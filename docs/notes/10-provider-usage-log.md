@@ -1,5 +1,7 @@
 # Provider Usage Log
 
+**As of 2026-11-01.**
+
 ## Purpose and privacy
 
 The provider usage log records operational metadata so provider failures, latency,

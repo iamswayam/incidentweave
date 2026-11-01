@@ -1,5 +1,7 @@
 # IncidentWeave High-Level Design
 
+**As of 2026-11-01.**
+
 ## 1. Purpose and documentation basis
 
 IncidentWeave is a repository-aware investigation service for backend systems. It ingests a local Python repository, embeds source chunks, retrieves repository evidence for a natural-language question, and conditionally asks Gemini for an evidence-grounded diagnosis, with an optional default-off Groq generation fallback. With persistence enabled, generated answers, model abstentions, guard refusals, and pipeline errors are persisted with audit records.

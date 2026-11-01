@@ -1,5 +1,7 @@
 # IncidentWeave — Learning Log
 
+**As of 2026-11-01.**
+
 One file per major concept, updated right after that piece is built and pressure-tested.
 Read a specific file to refresh yourself on that concept before an interview — don't need
 to read the whole log front to back.
@@ -25,3 +27,5 @@ Fill in a new file using `00-template.md` after each major upgrade, not after ev
 Right after: you've built the piece, pressure-tested it against Claude, and written the
 "why" note (steps 5-6 of the learning loop). That's the moment the explanation is freshest
 and most honest — don't wait, don't backfill from memory a week later.
+
+Back to the [documentation status index](../README.md).

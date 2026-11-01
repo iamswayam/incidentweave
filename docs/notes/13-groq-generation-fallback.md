@@ -1,5 +1,7 @@
 # Optional Groq Generation Fallback
 
+**As of 2026-11-01.**
+
 ## Scope and policy
 
 This adds Groq as an optional fallback for text generation only. Gemini remains

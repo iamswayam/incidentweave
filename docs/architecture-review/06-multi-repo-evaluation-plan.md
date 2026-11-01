@@ -1,5 +1,7 @@
 # 06 Multi-repo evaluation plan
 
+**As of 2026-11-01.**
+
 ## 1. Proposed plan (author: Claude)
 
 Context: the evaluation set today is 24 questions on one repo (incidentweave). We want to measure generalisation across codebases and make chunking and guard experiments trustworthy.
