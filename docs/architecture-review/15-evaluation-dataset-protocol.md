@@ -75,8 +75,8 @@ the pinned SHA. Confirm BSD license-clause counts for `rq/rq` and `encode/uvicor
 
 Backups, in order: `structlog`, `huey`, `flower`, `luigi`. At item 30, replace any candidate
 that fails a selection criterion with the next backup and record the swap in the data card.
-The three v1 repositories remain development data, unchanged. V1 held-out questions remain
-flagged exposed and are excluded from blind claims.
+The three v1 repositories remain development data, unchanged. Treat v1 held-out questions as
+exposed and exclude them from blind claims.
 
 ## 5. Questions
 
@@ -169,6 +169,9 @@ reuse the fixture builder.
   split counts. It does not validate v2 `role`, SPDX `license`, or `fixture.location`.
 - `golden.py` validates the four fixed v1 categories and their v1 counts. It does not yet
   validate the optional v2 provenance fields or the v2 question types and source quotas.
+- The v1 manifest marks IncidentWeave `previously_exposed: true`, but marks the other two v1
+  repositories false. The protocol treats all v1 held-out questions as exposed and excludes
+  them from blind claims; reconcile the flags when implementing v2.
 - Current `golden.py` and manifest validation default to at most 3 questions per file;
   the v1 manifest has a repository-specific override of 5 for batch-processing-service.
   V2 applies the registered limit of 3.

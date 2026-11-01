@@ -433,6 +433,20 @@ This file is intentionally a holding area for improvement work that should be re
 - **Why:** Optimized inference may reduce serving footprint and improve throughput.
 - **Evidence needed:** A production-representative benchmark for latency, memory, throughput, numerical drift, licensing, and operational maintenance.
 
+## Ideas for later from item 29
+
+- **Idea:** Stress-test retrieval on `sentry-python` as a large-repository candidate. **Why:** Dataset v2 targets mid-size repositories. **Evidence needed:** A registered run quantifying quality and resource changes against the same control.
+- **Idea:** Add a closed-book generation baseline. **Why:** Models may memorize popular repositories, confounding retrieval-supported answer claims. **Evidence needed:** A paired answer-quality comparison with and without retrieved context on the frozen evaluation set.
+- **Idea:** Add a second human annotator. **Why:** Independent labels measure inter-rater agreement beyond maintainer self-review. **Evidence needed:** Blinded dual labels and agreement results for gold files and answerability.
+- **Idea:** Extend coverage to multi-language and non-code repositories through item 20. **Why:** Dataset v2 is Python-only. **Evidence needed:** A registered protocol with validated parsing, labels, and per-domain results.
+
+## Ideas for later from item 29
+
+- **Idea:** Stress-test retrieval on `sentry-python` as a larger repository. **Why:** The v2 corpus targets mid-size repositories. **Evidence needed:** A registered run measuring scale-related quality and resource changes against the same control.
+- **Idea:** Add a closed-book generation baseline. **Why:** Models may memorize well-known repositories, confounding retrieval-supported answer claims. **Evidence needed:** A paired answer-quality comparison with and without retrieved context on the frozen evaluation set.
+- **Idea:** Use a second human annotator. **Why:** Independent labels would measure inter-rater agreement beyond maintainer self-review. **Evidence needed:** Blinded dual labels and agreement results for gold files and answerability.
+- **Idea:** Extend dataset coverage to multiple languages and non-code repositories through item 20. **Why:** Dataset v2 supports Python source repositories only. **Evidence needed:** A registered multi-language/non-code protocol with validated parsing, labels, and per-domain results.
+
 ## Later ideas after the 18c comparison
 
 ### Register Voyage AI embedding and reranking candidates
