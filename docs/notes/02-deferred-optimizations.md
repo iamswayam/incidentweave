@@ -64,80 +64,6 @@ This project explicitly separates core functionality from later optimization wor
 ### Rule
 When a problem is caused by noisy data, generated dependencies, or repo quality rather than a bug in the investigation engine, log it here and continue the phase work without widening scope.
 
-## Findings from Phases 5-7
-
-### 1) Widening cannot repair vector-distance rejection
-
-**Observed:** `search_vector()` orders cosine distance ascending and applies a top-N limit; the Phase 6 guard uses the minimum returned vector distance as `best_vector_score`.
-
-**Impact:** Widening the limit cannot change the nearest neighbor or improve the minimum vector distance, so a vector-distance rejection cannot be repaired by this retry on any corpus. RRF may still change when a wider candidate gains membership in the second retrieval list.
-
-**Possible later work:** Use a different fallback or retrieval strategy for vector-distance failures rather than relying on a wider top-N query.
-
-### 2) Literal grep receives the full query
-
-**Observed:** `graph.py` passes `state["query"]` directly as the `keyword` argument to `call_grep_search_mcp()`, which sends it unchanged to `grep_search`.
-
-**Impact:** `grep_search` looks for the entire query string as one case-insensitive literal substring in a source line. It is useful for pasted error strings, exact phrases, or identifiers, but generally will not match ordinary natural-language questions unless that full question appears verbatim in one line.
-
-**Possible later work:** Extract identifiers or rare tokens from a query before calling grep, without adding an unconstrained LLM tool-choice loop.
-
-### 3) Only grep_search is called through MCP
-
-**Observed:** `graph.py` calls `hybrid_search()` directly in its `retrieve` node. Only `call_grep_search_mcp()` creates the stdio MCP client and calls the `grep_search` tool. The MCP server exposes both `hybrid_search` and `grep_search`.
-
-**Impact:** The hybrid-search MCP tool is exposed and discoverable, but unused by the graph; hybrid retrieval remains an in-process call while grep crosses the MCP process boundary.
-
-**Possible later work:** Decide whether exposing hybrid search through MCP provides value for another process or client before routing it through MCP solely for symmetry.
-
-### 4) MCP process cost
-
-**Observed:** Each `call_grep_search_mcp()` invocation constructs `StdioServerParameters`, enters `stdio_client()`, starts `python -m app.investigation.mcp_server`, initializes a `ClientSession`, calls grep, and exits the context.
-
-**Impact:** A new server subprocess is created for each grep call. This is a real process boundary for the Phase 7 claim, but it adds startup and teardown cost to every fallback.
-
-**Possible later work:** Reuse a long-lived MCP client/server session if fallback volume or latency makes per-call process startup material.
-
-### 5) Docker app-to-scripts dependency
-
-**Observed:** `app/investigation/mcp_server.py` imports `iter_python_files` from `scripts.ingest_repo`, while `docker/Dockerfile` copies only `pyproject.toml` and `app/`, not `scripts/`.
-
-**Impact:** The built image would not contain the imported `scripts` package, so importing the MCP server inside that image would fail. This is a packaging/inversion issue, not fixed in this docs-only audit.
-
-**Possible later work:** Move shared ingestion file-selection logic into an application package or package/copy `scripts` deliberately before relying on MCP inside the container.
-
-### 6) Gemini key loading is split between settings and scripts
-
-**Observed:** `app/config.py` defines `gemini_api_key` through `Settings` and `.env` configuration, but `generation.py` and `scripts/embed_chunks.py` each call `os.getenv("GEMINI_API_KEY")` directly. Neither path calls `load_dotenv()` itself.
-
-**Impact:** Those direct script/API calls require `GEMINI_API_KEY` to already be in the process environment; defining `gemini_api_key` in `Settings` does not automatically make `os.getenv()` return it.
-
-**Possible later work:** Centralize secret loading/config access so CLI and application paths use one explicit configuration mechanism.
-
-### 7) Citation matching is not claim verification
-
-**Observed:** `parsing.py` marks a retrieved result as cited when the response contains its chunk ID, file path, or file path plus line range.
-
-**Impact:** This detects that a retrieved file was mentioned, but it does not verify that each diagnosis claim is supported by the cited lines.
-
-**Possible later work:** Add a separate verifier pass that checks claims against cited evidence, with its own evaluation and failure behavior.
-
-### 8) Phase 7 fallback reproducibility depends on manual embedding state
-
-**Observed:** The Checkpoint 8 success case used `tests/fixtures/phase7_grep_probe.py`, re-ingested and embedded it, then manually set its two database embeddings to `NULL` before running the literal fallback. The fixture remains inside the indexed source tree.
-
-**Impact:** Re-embedding the fixture changes the retrieval outcome, and the constructed escalation case is not a naturally reproducible result from a clean embedding run. The exact case requires the fixture plus the embedding-null preparation.
-
-**Possible later work:** Add a deterministic integration fixture or test database setup that models the missing-vector condition without mutating a shared working database.
-
-### 9) Small original corpus limited natural retry testing
-
-**Observed:** Phase 6 measured the original `incidentweave-local` corpus at 31 chunks, all embedded; the Phase 7 corpus was later expanded with Phase 7 files and fixture content.
-
-**Impact:** The original small corpus rarely produced a meaningful limit-5 versus limit-10 retry case, so Phase 6's live retry recovery was not demonstrated naturally.
-
-**Possible later work:** Evaluate retry and escalation on larger, representative repositories rather than treating the small local corpus as a general performance or recall benchmark.
-
 ## Later ideas from the restructuring
 
 | Idea | Why | Evidence needed |
@@ -432,6 +358,13 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Evaluate quantized or ONNX serving only if a local model is later selected for production.
 - **Why:** Optimized inference may reduce serving footprint and improve throughput.
 - **Evidence needed:** A production-representative benchmark for latency, memory, throughput, numerical drift, licensing, and operational maintenance.
+
+## Ideas for later from item 29
+
+- **Idea:** Stress-test retrieval on `sentry-python` as a large-repository candidate. **Why:** Dataset v2 targets mid-size repositories. **Evidence needed:** A registered run quantifying quality and resource changes against the same control.
+- **Idea:** Add a closed-book generation baseline. **Why:** Models may memorize popular repositories, confounding retrieval-supported answer claims. **Evidence needed:** A paired answer-quality comparison with and without retrieved context on the frozen evaluation set.
+- **Idea:** Add a second human annotator. **Why:** Independent labels measure inter-rater agreement beyond maintainer self-review. **Evidence needed:** Blinded dual labels and agreement results for gold files and answerability.
+- **Idea:** Extend coverage to multi-language and non-code repositories through item 20. **Why:** Dataset v2 is Python-only. **Evidence needed:** A registered protocol with validated parsing, labels, and per-domain results.
 
 ## Later ideas after the 18c comparison
 

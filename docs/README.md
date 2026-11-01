@@ -27,7 +27,7 @@ operational and evaluation commands.
 | [architecture/02-high-level-design.md](architecture/02-high-level-design.md) | IncidentWeave High-Level Design | living reference | Living | — | 2026-11-01 |
 | [architecture/03-low-level-design.md](architecture/03-low-level-design.md) | IncidentWeave Low-Level Design | living reference | Living | — | 2026-11-01 |
 | [architecture/04-threat-model.md](architecture/04-threat-model.md) | Threat Model | living reference | Living | — | 2026-11-01 |
-| [architecture-review/README.md](architecture-review/README.md) | Architecture review | living reference | Living | — | 2026-11-01 |
+| [architecture-review/README.md](architecture-review/README.md) | Architecture review | living reference | Living | — | 2026-11-02 |
 | [architecture-review/01-audit-claude.md](architecture-review/01-audit-claude.md) | Independent Engineering Audit & AI Market Assessment: IncidentWeave | audit or review | Frozen | — | — |
 | [architecture-review/02-audit-codex.md](architecture-review/02-audit-codex.md) | IncidentWeave: Independent Engineering Audit and October 2026 Market Assessment | audit or review | Frozen | — | — |
 | [architecture-review/03-fix-checklist.md](architecture-review/03-fix-checklist.md) | IncidentWeave: Prioritized Fix Checklist | living reference | Living | — | 2026-11-02 |
@@ -42,6 +42,7 @@ operational and evaluation commands.
 | [architecture-review/12-bm25-comparison-protocol.md](architecture-review/12-bm25-comparison-protocol.md) | BM25 comparison protocol (item 14d) | protocol | Frozen | — | — |
 | [architecture-review/13-degraded-response-design.md](architecture-review/13-degraded-response-design.md) | Degraded response design (item 18d-1) | decision record | Frozen | — | — |
 | [architecture-review/14-local-embedding-protocol.md](architecture-review/14-local-embedding-protocol.md) | Local embedding-model comparison protocol (item 18c) | protocol | Frozen | — | — |
+| [architecture-review/15-evaluation-dataset-protocol.md](architecture-review/15-evaluation-dataset-protocol.md) | Evaluation dataset v2 protocol (item 29) | protocol | Frozen | — | 2026-11-02 |
 | [chunking-experiment/README.md](chunking-experiment/README.md) | Chunking experiment | living reference | Living | — | 2026-11-01 |
 | [chunking-experiment/01-experiment-log.md](chunking-experiment/01-experiment-log.md) | IncidentWeave: Chunking Strategy Discussion Log | results | Frozen | — | — |
 | [chunking-experiment/02-decision-report.md](chunking-experiment/02-decision-report.md) | Chunking Strategy Experiment: Decision Report | results | Frozen | — | — |
