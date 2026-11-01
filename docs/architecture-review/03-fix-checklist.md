@@ -130,7 +130,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 18d-4 | ☑ | Add the query-embedding cache | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
 | 20 | ☐ | Multi-artifact ingestion (docs, configs, logs) with metadata | Medium | L | Both |
-| 21 | ☐ | Reranker experiment | Low | M | Both |
+| 21 | ☐ | Reranker experiment | High | M | Both |
 | 22 | ☐ | Incident-replay evaluation and hypothesis loop (flagship feature) | Medium | L | Claude |
 | 23 | ☐ | Security and operability layer (auth scopes, distributed limits, load test; threat model and secret scanning moved to 12a) | Medium | L | Codex |
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
@@ -201,6 +201,7 @@ Item 3b follows the retrieval comparisons (14d, 14b-2 and 14a-2) because retriev
 - *Fix:* decide sufficiency per chunk; the RRF number is for ranking, not a gate. Literal (grep) evidence never counts as sufficient by itself. Example rule: the top chunk's own vector distance ≤ T, or it has a lexical match and distance ≤ T2. T is provisional and must not be tuned on the same 24 questions; 3b re-validates it on the item 16 split. Update the README sentence about "both an RRF threshold and a vector-distance threshold".
 - *Done when:* unit tests show the guard accepts only if one chunk passes, including: RRF and vector success on different chunks (accepted when the chunk with the close distance qualifies on its own; refused when no chunk has a distance within the cutoff), a rank-one vector-only hit, an FTS-only hit, and a literal-only result (never sufficient); the README matches the code. The evaluation re-run (false accepts, new threshold) belongs to 3b, because it needs the held-out split and live provider calls. On the current 24 questions the guard's behaviour is unchanged (4 of 8 unanswerable questions still pass).
 - **Status (3a):** 2026-10-23; branch fix/03-evidence-guard; changed app/investigation/guard.py, tests/unit/test_investigation_parsing.py, tests/unit/test_investigation_graph.py, README.md, docs/architecture/01-architecture-overview.md, docs/architecture/03-low-level-design.md and docs/architecture-review/03-fix-checklist.md; ruff check .: All checks passed!; pytest -q: 92 passed in 56.57s. Threshold unchanged at 0.5 until 3b.
+Re-scoped (2026-11-02): runs once on the v2 held-out repositories (protocol 15) with the frozen item 32 scorecard. The v1 held-out split is exposed and excluded from blind claims.
 
 **4. Make abstention consistent.**
 - *Why:* a response with `Diagnosis: INSUFFICIENT_EVIDENCE` and `Confidence: high` is stored as `high` [EXEC]. For literal-grep evidence, calibration retains `high` with the note "retrieval scores clear both calibration margins", which is false because there are no scores [EXEC].
@@ -378,6 +379,7 @@ Closed: plan 07 section 5 retained S0 under the precommitted rule, so production
 
 **17. LLM judge and a larger abstention set.**
 - *Fix:* judge prompts for faithfulness (is each claim supported by its quote?), correctness against a reference answer, and completeness against a required-facts list. Prefer a different model from the generator. Validate the judge on at least 30 human-labeled answers and report agreement (30 labels is a pilot, not proof of reliability; temperature 0 does not guarantee determinism). Keep the keyword screen as a cheap smoke test. Grow unanswerable questions to at least 20 (far, near-miss, false-premise).
+- The abstention-set target (at least 20 unanswerable) is superseded by item 31 (at least 55 development unanswerable).
 - *Done when:* the report shows judge agreement with humans.
 
 **18. Tracing, cost, latency (superseded by 18a-1, 18a-2, 18a-3, 18b, 18c and 18d).**
@@ -496,7 +498,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Fix:* Markdown by heading; YAML/TOML/JSON by top-level key; Dockerfile and CI files whole; logs by time window or request ID with stack traces kept intact. Fill `document_type`, `service`, `environment`, `timestamp`, `incident_id` (the columns already exist but are unused) and filter on them.
 - *Done when:* questions over a README, a runbook and a config are answered with valid citations.
 
-**21. Reranker experiment.** Re-rank the top 20 into the top 5. Keep it only if held-out Hit@5 or nDCG improves beyond the confidence interval at acceptable latency and cost.
+**21. Reranker experiment.** Re-rank the top 20 into the top 5, development split only, using the item 32 scorecard and the item 33 latency and cost report. Keep it only if the rule registered in its own protocol is met. The held-out evaluation is part of item 3b.
 
 **22. Incident-replay evaluation and hypothesis loop.**
 - *Why:* this is the biggest gap versus the AI-SRE product category [market research in my report].
