@@ -27,7 +27,7 @@ from evaluation.metrics import first_relevant_rank, first_relevant_span_rank
 from evaluation.stats import paired_comparison, wilson_interval
 
 ROOT = Path(__file__).resolve().parents[1]
-GOLDEN_PATH = ROOT / "evaluation" / "golden_set.json"
+GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
 DEFAULT_REPOSITORY_ID = "incidentweave"
 
 

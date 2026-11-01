@@ -11,7 +11,7 @@ import pytest
 
 from app.db.models import Repository
 from app.investigation.parsing import extract_generation_trace
-from evaluation.chunk_experiments import (
+from evaluation.chunk_strategies import (
     DEFAULT_STRATEGY,
     EVALUATION_REPOSITORIES,
     STRATEGY_CHOICES,
@@ -489,10 +489,16 @@ def test_run_evaluation_threads_strategy_and_repository_without_live_services(
     from evaluation import runner
 
     source_root = Path(__file__).resolve().parents[2]
-    evaluation_root = tmp_path / "evaluation"
-    evaluation_root.mkdir()
-    (evaluation_root / "golden_set.json").write_text(
-        (source_root / "evaluation" / "golden_set.json").read_text(encoding="utf-8"),
+    evaluation_root = tmp_path / "evaluation" / "repos" / "incidentweave"
+    evaluation_root.mkdir(parents=True)
+    (evaluation_root / "questions.json").write_text(
+        (
+            source_root
+            / "evaluation"
+            / "repos"
+            / "incidentweave"
+            / "questions.json"
+        ).read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     results_root = tmp_path / "results"
@@ -628,7 +634,9 @@ def test_pinned_snapshot_exports_and_validates_with_expected_counts(
     tmp_path: Path,
 ) -> None:
     root = Path(__file__).resolve().parents[2]
-    data = load_golden_set(root / "evaluation" / "golden_set.json")
+    data = load_golden_set(
+        root / "evaluation" / "repos" / "incidentweave" / "questions.json"
+    )
     sha = resolve_corpus_sha(data)
     snapshot_parent = tmp_path / "snapshot"
     try:

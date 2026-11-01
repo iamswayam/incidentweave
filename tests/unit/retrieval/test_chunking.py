@@ -17,8 +17,8 @@ from app.retrieval.chunking import (
     embedding_text,
     line_window_specs,
 )
-from evaluation import chunk_experiments
-from evaluation.chunk_experiments import (
+from evaluation import chunk_strategies
+from evaluation.chunk_strategies import (
     CANDIDATE_STRATEGIES,
     candidate_chunk_specs,
     candidate_embedding_text,
@@ -315,8 +315,8 @@ def test_candidate_registry_and_embedding_text_are_isolated() -> None:
     assert candidate_embedding_text(
         "s3_ast_v1_embed_text", s3_specs[0], "src/run.py"
     ) == embedding_text(s3_specs[0], "src/run.py")
-    assert "s2_ast_v1" not in chunk_experiments.STRATEGIES
-    assert chunk_experiments.EVALUATION_REPOSITORIES == {
+    assert "s2_ast_v1" not in chunk_strategies.STRATEGIES
+    assert chunk_strategies.EVALUATION_REPOSITORIES == {
         "incidentweave-eval",
         "incidentweave-eval-w100_20",
     }

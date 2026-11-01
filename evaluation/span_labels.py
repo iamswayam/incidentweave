@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-GOLDEN_PATH = ROOT / "evaluation" / "golden_set.json"
+GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
 
 
 def find_span(file_text: str, substring: str) -> tuple[int, int] | None:
@@ -77,7 +77,11 @@ def _read_pinned_file(sha: str, path: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--write", action="store_true", help="write spans into golden_set.json")
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="write spans into the IncidentWeave questions file",
+    )
     args = parser.parse_args()
     if not args.write:
         parser.error("--write is required")

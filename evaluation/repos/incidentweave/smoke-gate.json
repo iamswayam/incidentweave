@@ -1,5 +1,5 @@
 {
-  "baseline_report": "evaluation/results/incidentweave-smoke-baseline.json",
+  "baseline_report": "evaluation/repos/incidentweave/smoke-baseline.json",
   "baselines": {
     "substring_labels": {
       "hit_at_5_successes": 4,

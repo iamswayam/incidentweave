@@ -9,7 +9,7 @@ from evaluation.gate import evaluate_gate, load_gate
 
 def gate_config() -> dict[str, Any]:
     return {
-        "baseline_report": "evaluation/results/offline-baseline.json",
+        "baseline_report": "evaluation/repos/incidentweave/offline-baseline.json",
         "baselines": {
             label: {"hit_at_5_successes": 11, "mrr": 0.5729166666666666}
             for label in ("substring_labels", "spans")

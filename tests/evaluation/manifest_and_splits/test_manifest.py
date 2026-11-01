@@ -46,6 +46,7 @@ def test_json_hash_normalizes_line_endings(tmp_path: Path) -> None:
 
 def valid_manifest(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
     evaluation = tmp_path / "evaluation"
+    repository_data = evaluation / "repos" / "incidentweave"
     questions = [
         {"id": "direct-01", "category": "direct"},
         {"id": "direct-02", "category": "direct"},
@@ -55,15 +56,15 @@ def valid_manifest(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
         {"id": "unanswerable_near-01", "category": "unanswerable_near"},
     ]
     resources = {
-        "questions": "evaluation/questions.json",
-        "fixture": "evaluation/fixture.bin",
-        "full_gate": "evaluation/full-gate.json",
-        "full_baseline": "evaluation/full-baseline.json",
-        "smoke_baseline": "evaluation/smoke-baseline.json",
-        "smoke_gate": "evaluation/smoke-gate.json",
+        "questions": "evaluation/repos/incidentweave/questions.json",
+        "fixture": "evaluation/repos/incidentweave/fixture.bin",
+        "full_gate": "evaluation/repos/incidentweave/gate.json",
+        "full_baseline": "evaluation/repos/incidentweave/offline-baseline.json",
+        "smoke_baseline": "evaluation/repos/incidentweave/smoke-baseline.json",
+        "smoke_gate": "evaluation/repos/incidentweave/smoke-gate.json",
     }
     _write_json(
-        evaluation / "questions.json",
+        repository_data / "questions.json",
         {"pinned_sha": "abc123", "questions": questions},
     )
     fixture = {
@@ -71,12 +72,12 @@ def valid_manifest(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
         "chunks": [],
         "queries": {question["id"]: [0.0] for question in questions},
     }
-    (evaluation / "fixture.bin").write_bytes(
+    (repository_data / "fixture.bin").write_bytes(
         gzip.compress(json.dumps(fixture).encode("utf-8"), mtime=0)
     )
     for field, baseline_field in (
-        ("full_gate", "evaluation/full-baseline.json"),
-        ("smoke_gate", "evaluation/smoke-baseline.json"),
+        ("full_gate", "evaluation/repos/incidentweave/offline-baseline.json"),
+        ("smoke_gate", "evaluation/repos/incidentweave/smoke-baseline.json"),
     ):
         gate = {
             "baseline_report": baseline_field,
@@ -174,7 +175,13 @@ def test_manifest_validates_synthetic_assets_and_hashes(tmp_path: Path) -> None:
     assert manifest["repositories"][0]["id"] == "synthetic"
     assert manifest["repositories"][0]["splits"] == assign_splits(
         json.loads(
-            (tmp_path / "evaluation" / "questions.json").read_text(encoding="utf-8")
+            (
+                tmp_path
+                / "evaluation"
+                / "repos"
+                / "incidentweave"
+                / "questions.json"
+            ).read_text(encoding="utf-8")
         )["questions"],
         manifest["split_seed"],
         development_answerable=2,

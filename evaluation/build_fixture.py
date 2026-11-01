@@ -19,7 +19,7 @@ from sqlalchemy import select
 
 from app.db.models import Chunk, Repository
 from app.db.session import AsyncSessionLocal
-from evaluation.chunk_experiments import DEFAULT_STRATEGY, get_strategy
+from evaluation.chunk_strategies import DEFAULT_STRATEGY, get_strategy
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
     MANIFEST_PATH,
@@ -31,9 +31,11 @@ from scripts.embed_chunks import GEMINI_MODEL
 from scripts.ingest_repo import CHUNKER_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
-GOLDEN_PATH = ROOT / "evaluation" / "golden_set.json"
+GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
 CACHE_ROOT = ROOT / "evaluation" / "cache"
-FIXTURE_PATH = ROOT / "evaluation" / "fixtures" / "retrieval_fixture.json.gz"
+FIXTURE_PATH = (
+    ROOT / "evaluation" / "repos" / "incidentweave" / "retrieval_fixture.json.gz"
+)
 MAX_FIXTURE_BYTES = int(1.5 * 1024 * 1024)
 EVALUATION_REPOSITORY = get_strategy(DEFAULT_STRATEGY).evaluation_repository
 

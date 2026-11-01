@@ -1,5 +1,5 @@
 {
-  "baseline_report": "evaluation/results/offline-baseline.json",
+  "baseline_report": "evaluation/repos/incidentweave/offline-baseline.json",
   "baselines": {
     "substring_labels": {
       "hit_at_5_successes": 11,

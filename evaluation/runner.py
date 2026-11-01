@@ -30,7 +30,7 @@ from app.retrieval.vector_search import search_vector
 from scripts import embed_chunks, investigate
 from scripts.ingest_repo import iter_python_files
 
-from .chunk_experiments import (
+from .chunk_strategies import (
     DEFAULT_STRATEGY,
     EVALUATION_REPOSITORIES,
     expected_chunk_ranges,
@@ -81,7 +81,9 @@ def build_run_metadata(
     code_sha: str,
     code_dirty: bool,
     code_untracked_files: int,
-    golden_set_path: Path | str = EVALUATION_ROOT / "golden_set.json",
+    golden_set_path: Path | str = (
+        EVALUATION_ROOT / "repos" / "incidentweave" / "questions.json"
+    ),
     models: dict[str, str] | None = None,
     limit: int = LIMIT,
     passes: int = 2,
