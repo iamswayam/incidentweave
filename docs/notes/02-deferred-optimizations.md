@@ -1,5 +1,7 @@
 # Later Optimizations and Follow-up Notes
 
+**As of 2026-11-01.**
+
 This file tracks issues and improvements that are valid, useful, and worth doing later, but are not required for the current phase to function correctly.
 
 ## 1) Noisy repository ingestion filtering
@@ -135,6 +137,16 @@ When a problem is caused by noisy data, generated dependencies, or repo quality 
 **Impact:** The original small corpus rarely produced a meaningful limit-5 versus limit-10 retry case, so Phase 6's live retry recovery was not demonstrated naturally.
 
 **Possible later work:** Evaluate retry and escalation on larger, representative repositories rather than treating the small local corpus as a general performance or recall benchmark.
+
+## Later ideas from the restructuring
+
+| Idea | Why | Evidence needed |
+|---|---|---|
+| Generate the status index from machine-readable document metadata. | A manually maintained index can drift as the documentation set grows. | Define a small metadata format, validate every tracked Markdown path, and prove generated links and statuses match the intended index before adopting generation. |
+| Move documents into the purpose-based Option A structure. | Reference, decisions, experiments, runbooks, and how-to guides would be easier to discover at scale. | Keep current Option B labels and links stable first; then test a migration with link validation, redirects or aliases, and an explicit freeze policy. |
+| Pair each new experiment in its own folder with protocol, results, and data. | Current protocols, notes, and artifacts are split across separate numbering schemes and folders. | Pilot one newly registered experiment and verify development/held-out boundaries, artifact retention, and navigation before changing existing records. |
+| Publish a documentation site. | A searchable rendered site could improve navigation beyond Markdown indexes. | Evaluate hosting, access control for private repository material, link preservation, and an offline build before deployment. |
+| Add a changelog and release tags. | A user-facing release history would separate shipped changes from checklist progress. | Agree on release boundaries, versioning, migration notes, and a repeatable release process before creating tags. |
 
 ## Findings from Phases 5-7
 
