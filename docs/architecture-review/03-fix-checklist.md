@@ -68,8 +68,14 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 27a | Done | #73 | Evaluation README indexes and documentation map |
 | 27b | Done | #108 | Evaluation layout normalized: IncidentWeave data now at evaluation/repos/incidentweave/; chunk_experiments.py renamed to chunk_strategies.py; only the two gate files' baseline_report path and their manifest pins changed |
 | 28 | Done | #92 | Test tiers; 294 passed in 24.81 seconds locally on 2026-11-01 |
+| 29 | In review | pending | Evaluation dataset v2 protocol |
+| 30 | Not started | pending | Dataset repositories and ingestion |
+| 31 | Not started | pending | Dataset questions v2 |
+| 32 | Not started | pending | Retrieval and guard scorecard |
+| 33 | Not started | pending | Operational metrics report |
+| 34 | Not started | pending | Citation validity and end-to-end checks |
 
-**Next:** Pause for a maintainer discussion before starting 3b (including the pending 14b-3 V1 decision).
+**Next:** item 30 (dataset repositories and ingestion) after protocol 15 merges.
 
 ## 1. Fix-order checklist (summary)
 
@@ -133,6 +139,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
 | 27b | ☑ | Evaluation layout normalization | Medium | M | Maintainer |
 | 28 | ☑ | Test tiers and CI speed | Medium | M | Maintainer |
+| 29 | ☐ | Evaluation dataset v2 protocol | High | M | Maintainer |
+| 30 | ☐ | Dataset repositories and ingestion | High | L | Maintainer |
+| 31 | ☐ | Dataset questions v2 | High | L | Maintainer |
+| 32 | ☐ | Retrieval and guard scorecard | High | M | Maintainer |
+| 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
+| 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -142,13 +154,19 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
 | 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a-1**, **14a-2**, **14d**, **18b-1**, **18d-1**, **18d-2**, **18d-3**, **18d-4**, **18c** (done); **18b-2** and **14b-3** remain open | Settle retrieval and provider/fallback design before the final guard validation |
-| 5 | **27b** (done; after **18a**) | Normalize repository-specific data after the provider-layer work |
-| 6 | **3b** (including **14b-3**) | Revalidate guard thresholds after retrieval changes and the maintainer's V1 decision |
-| 7 | **17**, **15c**, **5b**, **21**, **20**, **12b**, **22–26** | Then continue answer-quality, retrieval-context, hardening, breadth and architecture work |
+| 5 | **29**, **30**, **31** | Register the dataset protocol, qualify repositories, and build/freeze v2 questions |
+| 6 | **32** | Freeze the retrieval and guard scorecard before item 3b |
+| 7 | **33** | Report operational metrics and estimated costs |
+| 8 | **21** (development only) | Evaluate reranking before the held-out run |
+| 9 | **34** | Freeze deterministic citation and end-to-end checks |
+| 10 | **3b** (including **14b-3**) | Run one registered v2 held-out evaluation with the frozen scorecard and threshold validation |
+| 11 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
 
-Remaining implementation sequence: **3b** (including the pending 14b-3 V1 decision/test),
-then **17**, **15c**, **5b**, **21**, **20**,
-**12b**, and **22–26**.
+Remaining implementation sequence: dataset (**29**, **30**, **31**) → scorecard **32** →
+operational report **33** → reranker **21** (development only) → citation validity **34** →
+**3b** (one registered run on v2 held-out repositories with the frozen scorecard, threshold
+validation, and the 14b-3 decision) → **17** (its “grow unanswerable to at least 20” target
+is superseded by item 31) → **15c**, **5b**, **20**, **12b**, and **22–26**.
 
 Items **27a** and **28** are complete and are not part of the remaining sequence.
 
@@ -512,6 +530,42 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Fix:* (1) record `--durations=20` and total time per folder as a baseline; (2) keep unit and integration tests in separate folders and give every test exactly one tier marker (`unit` implied by folder, `integration`, `slow`); (3) split CI into parallel jobs (lint, unit, integration with PostgreSQL and alembic, retrieval gate); (4) evaluate pytest-xdist for the unit tier only, after confirming the tests share no global state (a new dev dependency needs maintainer approval); (5) write a short testing guide in docs/notes with the commands for each tier.
 - *Done when:* each tier has a documented command; CI jobs run in parallel and the unit job finishes without a database; the baseline and the new timings are recorded; no test is deleted or weakened.
 - **Status:** Done (PR #92). Tier commands and CI jobs are documented in [note 16](../notes/16-test-tiers.md). As of 2026-11-01, the unit tier passed 294 tests in 24.81 seconds locally.
+
+**29. Evaluation dataset v2 protocol.**
+- **Why:** The v1 development set has 33 answerable and 15 unanswerable questions across three small repositories; it detects only about 0.14 pooled MRR, and v1 held-out data was exposed once.
+- **Fix:** Register dataset construction, quality gates, repository roles, split policy, and freeze rules in [protocol 15](15-evaluation-dataset-protocol.md).
+- **Done when:** Protocol 15 is merged and indexed.
+- **Status:** In review.
+
+**30. Dataset repositories and ingestion.**
+- **Why:** Dataset v2 needs qualified, pinned repositories with verified licensing and issue provenance.
+- **Fix:** Re-measure and pin the seven candidates, verify licenses and linked-issue counts, ingest development repositories, settle fixture storage, and implement manifest schema v2 and its validator. Do not build held-out fixtures.
+- **Done when:** Development repositories meet the protocol, their data card and manifest validate, and held-out fixtures remain unbuilt.
+- **Status:** Not started.
+
+**31. Dataset questions v2.**
+- **Why:** The evaluation set needs broader repository coverage, controlled question provenance, and measured label quality.
+- **Fix:** Pilot `rq` and `kopf`, pass the pilot gate, scale to the registered quotas, complete quality control, freeze v2.0, and publish the data card.
+- **Done when:** V2 questions meet protocol quotas and quality gates, are frozen as v2.0, and are documented in the data card.
+- **Status:** Not started.
+
+**32. Retrieval and guard scorecard.**
+- **Why:** The v2 comparison needs a fixed retrieval and guard measurement contract before held-out validation.
+- **Fix:** Define nDCG@5/@10, context precision@5, Recall@20, Hit@k, MRR with 95% intervals; guard false-accept/refusal rates, refusal precision/recall, AUROC, and a descriptive threshold sweep. Produce the v2 development control baseline.
+- **Done when:** The scorecard and development baseline are frozen before item 3b.
+- **Status:** Not started.
+
+**33. Operational metrics report.**
+- **Why:** Quality results need latency, usage, cost, failure, degradation, and cache context.
+- **Fix:** Extend the usage report with per-operation p50/p95/p99 latency, tokens, estimated per-query list-price cost with dated official pricing sources, separately reported free-tier actual cost, errors, degraded outcomes, and cache-hit rates.
+- **Done when:** The report is reproducible and separates estimates from observed free-tier cost.
+- **Status:** Not started.
+
+**34. Citation validity and end-to-end checks.**
+- **Why:** Retrieval scores alone do not measure citation validity or answer/refusal stability.
+- **Fix:** Add deterministic quote-in-cited-chunk and chunk-in-retrieved-set checks, end-to-end refusal correctness, and three temperature-0 runs for stability.
+- **Done when:** Checks and reporting are registered before evaluation and run reproducibly on the approved data.
+- **Status:** Not started.
 
 ---
 
