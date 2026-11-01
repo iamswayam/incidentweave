@@ -370,3 +370,53 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Consider circuit-breaker-aware early degradation instead of waiting for the retry budget to finish.
 - **Why:** An open circuit indicates recent provider unavailability and may avoid repeated latency from doomed attempts.
 - **Evidence needed:** Provider outage traces showing retry delays dominate response time, plus tests demonstrating prompt recovery and no false early degradation.
+
+## Later ideas from item 18c
+
+### Check answerable guard refusals in embedding protocols
+
+- **Idea:** Add an answerable guard-refusal check to future embedding comparison protocols.
+- **Why:** R4 checks only unanswerable questions, so a model that refuses more can pass without revealing refusals of answerable questions.
+- **Evidence needed:** Development and held-out comparisons reporting answerable refusals alongside unanswerable false accepts at a preregistered threshold.
+
+### Re-run local embedding models with more resources
+
+- **Idea:** Re-run local model embedding on a machine with more free memory or in a GPU notebook.
+- **Why:** The laptop had about 0.5 GiB free memory during the measured runs, and the resulting CPU timings may overstate cost on better-resourced hardware.
+- **Evidence needed:** Reproducible timing and memory measurements on the same registered inputs, with model builds and runtime configuration recorded.
+
+### Compare larger code-specific embedding models
+
+- **Idea:** Register larger code-focused models such as nomic-embed-code, CodeRankEmbed, or Salesforce SFR code embeddings.
+- **Why:** A larger model trained for source code may improve retrieval on code concepts or identifiers.
+- **Evidence needed:** A separately registered development comparison with model/license/footprint facts, control-path equivalence, paired metrics, and held-out validation before adoption.
+
+### Compare higher Gemini embedding dimensions
+
+- **Idea:** Register Gemini embedding output at 1536 or 3072 dimensions.
+- **Why:** More output dimensions may preserve useful semantic detail that is compressed at 768 dimensions.
+- **Evidence needed:** A separate preregistered run and a reviewed production vector-column migration plan, with retrieval and operational comparisons.
+
+### Calibrate per-model evidence-guard thresholds
+
+- **Idea:** Set an evidence-guard threshold per embedding model under item 3b.
+- **Why:** Cosine-distance distributions differ across models, so the Gemini threshold may not represent equivalent evidence quality.
+- **Evidence needed:** Approved held-out calibration and validation data with false-accept and false-refusal trade-offs.
+
+### Add a cross-encoder reranker
+
+- **Idea:** Rerank the fused top results with a separately evaluated cross-encoder.
+- **Why:** A second-stage relevance model may improve ordering without changing initial candidate retrieval.
+- **Evidence needed:** A preregistered paired comparison, measured latency and resource cost, and evidence that guard and citation behavior remain safe.
+
+### Evaluate Matryoshka truncation
+
+- **Idea:** Test Matryoshka truncation for a compatible local embedding model.
+- **Why:** A shorter vector may reduce memory and compute while retaining retrieval quality.
+- **Evidence needed:** Model documentation confirming supported truncation, a separate retrieval comparison, and measured storage/latency effects.
+
+### Assess quantized or ONNX production serving
+
+- **Idea:** Evaluate quantized or ONNX serving only if a local model is later selected for production.
+- **Why:** Optimized inference may reduce serving footprint and improve throughput.
+- **Evidence needed:** A production-representative benchmark for latency, memory, throughput, numerical drift, licensing, and operational maintenance.
