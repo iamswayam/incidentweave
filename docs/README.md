@@ -1,6 +1,6 @@
 # Documentation status index
 
-**As of 2026-11-01.**
+**As of 2026-11-02.**
 
 This is the single cross-folder status index for tracked Markdown under `docs/`. Folder
 README files remain navigation indexes. The [scripts catalog](../scripts/README.md) covers
@@ -21,7 +21,7 @@ operational and evaluation commands.
 
 | Path | Title | Kind | Status | Superseded-by | Last verified |
 |---|---|---|---|---|---|
-| [README.md](README.md) | Documentation status index | living reference | Living | — | 2026-11-01 |
+| [README.md](README.md) | Documentation status index | living reference | Living | — | 2026-11-02 |
 | [architecture/README.md](architecture/README.md) | Architecture | living reference | Living | — | 2026-11-01 |
 | [architecture/01-architecture-overview.md](architecture/01-architecture-overview.md) | IncidentWeave Architecture | living reference | Living | — | 2026-11-01 |
 | [architecture/02-high-level-design.md](architecture/02-high-level-design.md) | IncidentWeave High-Level Design | living reference | Living | — | 2026-11-01 |
@@ -30,7 +30,7 @@ operational and evaluation commands.
 | [architecture-review/README.md](architecture-review/README.md) | Architecture review | living reference | Living | — | 2026-11-01 |
 | [architecture-review/01-audit-claude.md](architecture-review/01-audit-claude.md) | Independent Engineering Audit & AI Market Assessment: IncidentWeave | audit or review | Frozen | — | — |
 | [architecture-review/02-audit-codex.md](architecture-review/02-audit-codex.md) | IncidentWeave: Independent Engineering Audit and October 2026 Market Assessment | audit or review | Frozen | — | — |
-| [architecture-review/03-fix-checklist.md](architecture-review/03-fix-checklist.md) | IncidentWeave: Prioritized Fix Checklist | living reference | Living | — | 2026-11-01 |
+| [architecture-review/03-fix-checklist.md](architecture-review/03-fix-checklist.md) | IncidentWeave: Prioritized Fix Checklist | living reference | Living | — | 2026-11-02 |
 | [architecture-review/04-fix-checklist-review-codex.md](architecture-review/04-fix-checklist-review-codex.md) | Independent review: fix checklist | audit or review | Frozen | — | — |
 | [architecture-review/05-implementation-workflow.md](architecture-review/05-implementation-workflow.md) | Implementation workflow | how-to | Living | — | 2026-11-01 |
 | [architecture-review/06-multi-repo-evaluation-plan.md](architecture-review/06-multi-repo-evaluation-plan.md) | Multi-repo evaluation plan | protocol | Living | — | 2026-11-01 |

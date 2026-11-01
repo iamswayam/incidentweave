@@ -1,6 +1,6 @@
 # IncidentWeave: Prioritized Fix Checklist (merged from the Claude and Codex audits)
 
-**As of 2026-11-01.**
+**As of 2026-11-02.**
 
 *Written 2026-10-21 by Claude (Sonnet 5.5); revised 2026-10-22 after the independent Codex review in `04-fix-checklist-review-codex.md`. Source reports: `01-audit-claude.md` and `02-audit-codex.md` in this folder. Code reference: the Codex review inspected commit `59f38fd`, which descends from `main` @ `e98da82` and from the evaluation harness @ `12edf8e`; that commit has 64 `test_` functions and 70 executed tests. The figures in Parts A and B come from the pinned evaluation snapshot (`62d0e58`).*
 
@@ -66,10 +66,10 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 15a-2 | Done | #50 | chunking comparison experiment: S0 retained |
 | 15b | Closed | n/a | no change, S0 retained |
 | 27a | Done | #73 | Evaluation README indexes and documentation map |
-| 27b | Not started | pending | Evaluation layout normalization |
+| 27b | Done | #108 | Evaluation layout normalized: IncidentWeave data now at evaluation/repos/incidentweave/; chunk_experiments.py renamed to chunk_strategies.py; only the two gate files' baseline_report path and their manifest pins changed |
 | 28 | Done | #92 | Test tiers; 294 passed in 24.81 seconds locally on 2026-11-01 |
 
-**Next:** Pause for repository restructuring and documentation cleanup before starting 27b and 3b.
+**Next:** Pause for a maintainer discussion before starting 3b (including the pending 14b-3 V1 decision).
 
 ## 1. Fix-order checklist (summary)
 
@@ -131,7 +131,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 25 | ☐ | Three separate decisions: grep fallback (settled by 2 and 3a), MCP/LangGraph rationale, hosted demo | Low | M | Both |
 | 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
 | 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
-| 27b | ☐ | Evaluation layout normalization | Medium | M | Maintainer |
+| 27b | ☑ | Evaluation layout normalization | Medium | M | Maintainer |
 | 28 | ☑ | Test tiers and CI speed | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
@@ -142,12 +142,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
 | 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a-1**, **14a-2**, **14d**, **18b-1**, **18d-1**, **18d-2**, **18d-3**, **18d-4**, **18c** (done); **18b-2** and **14b-3** remain open | Settle retrieval and provider/fallback design before the final guard validation |
-| 5 | **27b** (after **18a**) | Normalize repository-specific data after the provider-layer work and the documentation pause |
+| 5 | **27b** (done; after **18a**) | Normalize repository-specific data after the provider-layer work |
 | 6 | **3b** (including **14b-3**) | Revalidate guard thresholds after retrieval changes and the maintainer's V1 decision |
 | 7 | **17**, **15c**, **5b**, **21**, **20**, **12b**, **22–26** | Then continue answer-quality, retrieval-context, hardening, breadth and architecture work |
 
-Remaining implementation sequence after the restructuring/documentation pause: **27b**, **3b**
-(including the pending 14b-3 V1 decision/test), then **17**, **15c**, **5b**, **21**, **20**,
+Remaining implementation sequence: **3b** (including the pending 14b-3 V1 decision/test),
+then **17**, **15c**, **5b**, **21**, **20**,
 **12b**, and **22–26**.
 
 Items **27a** and **28** are complete and are not part of the remaining sequence.
@@ -505,7 +505,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Why:* IncidentWeave evaluation data is at the evaluation root and in `fixtures/` and `results/`, while the other repositories' data is grouped under `repos/<name>/` with common filenames.
 - *Fix:* move `golden_set.json`, `gate.json`, `smoke-gate.json`, `fixtures/retrieval_fixture.json.gz`, and the IncidentWeave baselines into `evaluation/repos/incidentweave/` using `questions.json`, `gate.json`, `smoke-gate.json`, `retrieval_fixture.json.gz`, `offline-baseline.json`, and `smoke-baseline.json`. Rename `evaluation/chunk_experiments.py` to `chunk_strategies.py`; update manifest paths, code, tests, and live documentation. Check whether legacy ignore/output patterns for `results/run-*.json`, `evaluation_report.json`, and `results/baseline.json` are still needed.
 - *Done when:* every moved path is updated in the manifest, code, tests, and live documentation; the manifest validator, unit tests, and smoke gate pass; no hash, baseline, or gate value changes; binding historical documents are not edited.
-- **Status:** Not started.
+- **Status:** Done (PR #108). Moved paths are listed in the [Moved paths (item 27b)](../../evaluation/README.md#moved-paths-item-27b) table in `evaluation/README.md`; the five data files and `chunk_strategies.py` are 100% renames. `gate.json` and `smoke-gate.json` are 85% renames because only their `baseline_report` paths changed; thresholds and tolerances are unchanged, so only the two gate SHA pins changed in the manifest. `results/baseline.json` remains in place as a legacy Phase 8 artifact, and the legacy ignore patterns are kept. Two links in frozen documents still point to the old paths and are covered by the moved-path table; this is accepted. The full suite passed 489 tests (294 unit, 16 integration, 179 evaluation) before the final stub-removal commit; CI was the final gate.
 
 **28. Test tiers and CI speed.**
 - *Why:* the suite runs as one block (about 280 tests, about a minute). As tests grow, every change would wait for all of them, and a database failure would hide behind unit-test results.
