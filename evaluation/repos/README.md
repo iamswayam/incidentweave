@@ -13,6 +13,6 @@ Each repository directory contains six manifest-selected files:
 | `smoke-gate.json` | Smoke retrieval-gate thresholds |
 | `smoke-baseline.json` | Smoke baseline report |
 
-The directories are [`batch-processing-service/`](batch-processing-service/) and [`lifeos/`](lifeos/).
+The directories are [`incidentweave/`](incidentweave/), [`batch-processing-service/`](batch-processing-service/), and [`lifeos/`](lifeos/).
 
-IncidentWeave's own question set, full gate, smoke gate, fixture, and baselines remain at the evaluation root and in `fixtures/` and `results/` until item 27b normalizes the layout. The [manifest](../manifest.json) pins the paths and hashes for all repositories.
+The [manifest](../manifest.json) pins the paths and hashes for all repositories.

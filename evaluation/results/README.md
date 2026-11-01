@@ -5,8 +5,8 @@ Back to the [evaluation guide](../README.md).
 ## Committed baselines
 
 - [`baseline.json`](baseline.json) — Phase 8 answer-evaluation baseline report; it is not selected by the manifest. See the [Phase 8 evaluation log](../../docs/phases/08-evaluation.md).
-- [`offline-baseline.json`](offline-baseline.json) — IncidentWeave full retrieval baseline selected by the manifest.
-- [`incidentweave-smoke-baseline.json`](incidentweave-smoke-baseline.json) — IncidentWeave smoke baseline selected by the manifest.
+- [`../repos/incidentweave/offline-baseline.json`](../repos/incidentweave/offline-baseline.json) — IncidentWeave full retrieval baseline selected by the manifest.
+- [`../repos/incidentweave/smoke-baseline.json`](../repos/incidentweave/smoke-baseline.json) — IncidentWeave smoke baseline selected by the manifest.
 
 Repository-specific baselines for `batch-processing-service` and `lifeos` are under [`../repos/`](../repos/).
 
