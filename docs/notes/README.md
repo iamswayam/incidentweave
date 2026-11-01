@@ -20,3 +20,4 @@
 | 16 | [16-test-tiers.md](16-test-tiers.md) | Test organization, tier commands, CI jobs, and measured timings (item 28) |
 | 17 | [17-bm25-comparison-results.md](17-bm25-comparison-results.md) | Development-only Python BM25 comparison, registered decision, and measured cost (item 14d) |
 | 18 | [18-local-embedding-results.md](18-local-embedding-results.md) | Aggregate-only development comparison of local open embedding models against the retrieval control (item 18c) |
+| 19 | [19-repository-inventory.md](19-repository-inventory.md) | Draft read-only repository inventory and proposed documentation structure |
