@@ -28,6 +28,14 @@ required vector dimension change.
 | C1 | `jinaai/jina-embeddings-v2-base-code` | 768 | 0.64 GB | Apache-2.0 |
 | C2 | `BAAI/bge-small-en-v1.5` | 384 | 0.067 GB | MIT |
 
+## Artifacts tested
+
+The evaluated C1 artifact was the full ONNX build of
+`jinaai/jina-embeddings-v2-base-code`, with `model.onnx` about 641 MB. C2 was the quantized
+ONNX build downloaded by FastEmbed 0.9.1 for `BAAI/bge-small-en-v1.5`, from
+`Qdrant/bge-small-en-v1.5-onnx-Q`. The results describe these exact builds, not the original
+model weights; quantization and conversion can affect performance and numerical behavior.
+
 Use the FastEmbed library, pinned to **`fastembed==0.9.1`** for this comparison. The
 development environment's installed model registry reports the dimensions, license strings,
 size values, and input truncation descriptions above. The registry descriptions say query and

@@ -10,6 +10,19 @@ The paired bootstrap uses seed 20261031, 10,000 resamples, and linear-interpolat
 
 One rank change is approximately 0.015 pooled MRR. Results cover only 33 answerable and 15 unanswerable questions across three small, single-author repositories. Local inference makes no provider API calls or provider usage charges; model downloads are the only network requirement.
 
+## Artifacts tested and timing provenance
+
+C1 was the full ONNX build of `jinaai/jina-embeddings-v2-base-code` (`model.onnx`, about
+641 MB). C2 was the quantized ONNX build FastEmbed 0.9.1 downloaded for
+`BAAI/bge-small-en-v1.5` (`Qdrant/bge-small-en-v1.5-onnx-Q`). These results describe those
+specific builds, not the original model weights.
+
+C1 documents were embedded across resumed runs: the first 101 documents ran with 1 thread and
+batch size 4 (about 45–52 seconds per chunk); the final 55 ran with 4 threads and batch size
+8. The reported C1 mean of 21.3 seconds per document covers only those final 55 documents.
+Queries and C2 ran with 4 threads. The machine had about 0.5 GiB of free memory during the
+runs, so these timings are a worst-case laptop figure, not a representative hardware benchmark.
+
 ## Retrieval results
 
 | Model | Dimensions | Pooled MRR | Hit@1 | Hit@3 | Hit@5 |
@@ -110,5 +123,13 @@ Control vector-distance distributions:
 Control unanswerable guard decisions (accepted/refused): incidentweave=2/3, batch-processing-service=2/3, lifeos=2/3.
 Control top-five test-file share: 30.4167%.
 
+### Limits of rule R4
+
+R4 counts only unanswerable questions, so a model that refuses more of them can pass R4 even
+if it also refuses answerable questions. As a post-hoc descriptive check only—not part of the
+registered rules and not affecting any decision—the number of the 33 answerable development
+questions whose best retrieved vector distance was above 0.5 was: Gemini control **0/33**,
+C1 **12/33**, and C2 **0/33**. Future embedding protocols should include an answerable
+guard-refusal rule.
 
 The models and distances have not been evaluated on held-out data. Three small, single-author repositories and 48 development questions are insufficient to establish general performance. Candidate guard thresholds remain unvalidated; the 0.5 threshold was calibrated to Gemini. A passing candidate requires a separately registered held-out validation, a per-model guard threshold under item 3b, and a production migration plan before any adoption.

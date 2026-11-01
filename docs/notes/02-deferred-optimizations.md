@@ -373,6 +373,18 @@ This file is intentionally a holding area for improvement work that should be re
 
 ## Later ideas from item 18c
 
+### Check answerable guard refusals in embedding protocols
+
+- **Idea:** Add an answerable guard-refusal check to future embedding comparison protocols.
+- **Why:** R4 checks only unanswerable questions, so a model that refuses more can pass without revealing refusals of answerable questions.
+- **Evidence needed:** Development and held-out comparisons reporting answerable refusals alongside unanswerable false accepts at a preregistered threshold.
+
+### Re-run local embedding models with more resources
+
+- **Idea:** Re-run local model embedding on a machine with more free memory or in a GPU notebook.
+- **Why:** The laptop had about 0.5 GiB free memory during the measured runs, and the resulting CPU timings may overstate cost on better-resourced hardware.
+- **Evidence needed:** Reproducible timing and memory measurements on the same registered inputs, with model builds and runtime configuration recorded.
+
 ### Compare larger code-specific embedding models
 
 - **Idea:** Register larger code-focused models such as nomic-embed-code, CodeRankEmbed, or Salesforce SFR code embeddings.
