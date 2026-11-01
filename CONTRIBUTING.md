@@ -15,6 +15,18 @@ Copy-Item .env.example .env
 alembic upgrade head
 ```
 
+Equivalent setup from CMD:
+
+```cmd
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+copy .env.example .env
+docker compose up -d db
+alembic upgrade head
+```
+
 Set `DATABASE_URL` for the local Compose PostgreSQL service and put provider credentials in
 the ignored `.env` file. Never commit `.env`, keys, tokens, or generated run output. Pydantic
 Settings reads `.env`; `scripts/serve.py` copies `GEMINI_API_KEY` from settings into the

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evaluation.chunk_experiments import (  # noqa: E402
+from evaluation.chunk_strategies import (  # noqa: E402
     DEFAULT_STRATEGY,
     SPLIT_CHOICES,
     STRATEGY_CHOICES,

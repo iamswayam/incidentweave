@@ -464,3 +464,8 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Expand beyond 33 answerable development questions.
 - **Why:** With this sample, a single rank change shifts pooled MRR by about 0.015, making small comparisons coarse.
 - **Evidence needed:** A larger, reviewed, repository-diverse question set with frozen split membership, explicit labels, and enough questions per repository to support the registered whole-question tolerances.
+
+## Ideas for later from item 27b
+
+- Generate the moved-path lookup table from repository metadata to reduce stale documentation links.
+- Consider a manifest-driven path loader so future evaluation layout changes do not require code edits.

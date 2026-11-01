@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from evaluation.build_fixture import load_fixture  # noqa: E402
-from evaluation.chunk_experiments import (  # noqa: E402
+from evaluation.chunk_strategies import (  # noqa: E402
     CANDIDATE_STRATEGIES,
     resolve_split,
 )

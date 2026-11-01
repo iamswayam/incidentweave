@@ -27,29 +27,29 @@
       "indexed_python_lines": 2789,
       "database_repository": "incidentweave-eval",
       "questions": {
-        "path": "evaluation/golden_set.json",
+        "path": "evaluation/repos/incidentweave/questions.json",
         "sha256": "e0ac9f20b88654133142f1cc4a99bd0e3005e51223a58d2d599a47aff9d654ce"
       },
       "fixture": {
-        "path": "evaluation/fixtures/retrieval_fixture.json.gz",
+        "path": "evaluation/repos/incidentweave/retrieval_fixture.json.gz",
         "sha256": "98e446a4ef5c312c45e5ff1f07bc89567be3a0687b2f8b5fc4d7ee72c01e416a",
         "max_bytes": 1572864
       },
       "full_gate": {
-        "path": "evaluation/gate.json",
-        "sha256": "3d510631ab7344eca2cdae88f48da40d7002b476b8697bb90236fedd61fde18d"
+        "path": "evaluation/repos/incidentweave/gate.json",
+        "sha256": "73601fc0dd7e91e879b73b4500ffa5859fb967ebc814bd8599e79c5985c539d6"
       },
       "full_baseline": {
-        "path": "evaluation/results/offline-baseline.json",
+        "path": "evaluation/repos/incidentweave/offline-baseline.json",
         "sha256": "d22c6ddc8b65beefa7c7f261ab076f0651cf675ef88de295be9a45828e65d6c5"
       },
       "smoke_baseline": {
-        "path": "evaluation/results/incidentweave-smoke-baseline.json",
+        "path": "evaluation/repos/incidentweave/smoke-baseline.json",
         "sha256": "a692ef9c5dc9e8b6c93e11eb0de4af3cdd620e679856143b91de4d379d8add6b"
       },
       "smoke_gate": {
-        "path": "evaluation/smoke-gate.json",
-        "sha256": "da159b538607a9d7a35601356d31e63787b93f120330446ff46602211b8a60c5"
+        "path": "evaluation/repos/incidentweave/smoke-gate.json",
+        "sha256": "682a67b41e54e5e9bff73f2094f699a367b6760c195f2a7c9da6e1f332a7ce16"
       },
       "splits": {
         "development": [

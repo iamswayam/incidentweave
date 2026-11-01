@@ -210,7 +210,7 @@ These are diagnostic measurements, **not a general benchmark**: the set covers o
 The retrieval-only offline evaluation uses cached query embeddings and a committed fixture, so it makes no Gemini calls:
 
 ```powershell
-.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/offline-baseline.json
+.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/repos/incidentweave/offline-baseline.json
 ```
 
 The versioned [evaluation manifest](evaluation/manifest.json) selects repositories, pinned

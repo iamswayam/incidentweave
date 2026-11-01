@@ -19,7 +19,7 @@ from app.retrieval.chunking import (
 )
 from app.secret_scan import find_secret
 from evaluation.build_fixture import write_fixture
-from evaluation.chunk_experiments import (
+from evaluation.chunk_strategies import (
     CANDIDATE_STRATEGIES,
     candidate_chunk_specs,
     candidate_embedding_text,

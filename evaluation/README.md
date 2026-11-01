@@ -15,9 +15,9 @@ Back to the [documentation status index](../docs/README.md).
 
 | Command | What it does | Needs database | Needs Gemini key | Writes tracked files | Source |
 |---|---|---:|---:|---:|---|
-| `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/offline-baseline.json` | Runs retrieval-only evaluation using committed fixtures and cached question vectors; makes no provider calls. This documented invocation overwrites the committed baseline at `evaluation/results/offline-baseline.json`. Safe alternative: `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/runs/offline-check.json` (ignored output). | No | No | Yes | [Root README](../README.md), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md), [CLI](../scripts/run_retrieval_eval.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/repos/incidentweave/offline-baseline.json` | Runs retrieval-only evaluation using committed fixtures and cached question vectors; makes no provider calls. This documented invocation overwrites the committed IncidentWeave baseline. Safe alternative: `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/runs/offline-check.json` (ignored output). | No | No | Yes | [Root README](../README.md), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md), [CLI](../scripts/run_retrieval_eval.py) |
 | `.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke` | Runs each manifest repository's deterministic smoke gate. It exits 0 when every repository meets its baseline minimums. CI starts PostgreSQL, but this gate reads only committed inputs. | No | No | No | [Root README](../README.md), [CI workflow](../.github/workflows/ci.yml), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
-| `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/fixtures/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
+| `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/repos/incidentweave/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` | Writes per-question retrieval cards and repository summaries under ignored `evaluation/inspection/`; defaults to development. | No | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
 | `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI](../scripts/run_chunking_experiment.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_embedding_task_type_experiment --help` | Shows the development-only task-type experiment commands. `plan` is offline, `embed` requires `--confirm-provider-calls` and a Gemini key, and `evaluate` uses cached candidate vectors without provider calls. All candidate artifacts are under ignored `evaluation/cache/embedding_task_type_v1/`. | Yes, for `evaluate` only | Yes, for confirmed `embed` only | No | [Task-type experiment note](../docs/notes/14-embedding-task-type-experiment.md), [CLI](../scripts/run_embedding_task_type_experiment.py) |
@@ -42,13 +42,13 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | Path | Role | Status |
 |---|---|---|
 | [`README.md`](README.md) | Entry point for evaluation commands, organization, data, and rules. | Versioned |
-| [`gate.json`](gate.json) | IncidentWeave full retrieval-gate configuration. | Versioned |
-| [`golden_set.json`](golden_set.json) | IncidentWeave questions and their labels. | Versioned |
+| [`repos/incidentweave/gate.json`](repos/incidentweave/gate.json) | IncidentWeave full retrieval-gate configuration. | Versioned |
+| [`repos/incidentweave/questions.json`](repos/incidentweave/questions.json) | IncidentWeave questions and their labels. | Versioned |
 | [`manifest.json`](manifest.json) | Selects the repositories and pins their evaluation inputs. | Versioned |
-| [`smoke-gate.json`](smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
+| [`repos/incidentweave/smoke-gate.json`](repos/incidentweave/smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
 | `cache/` | Local embedding cache used by fixture construction and experiments, including versioned item 14a and item 18c caches. | Ignored/generated |
 | [`experiments/`](experiments/) | Chunking, full-text, BM25, and local embedding experiment documentation. | Versioned |
-| [`fixtures/`](fixtures/) | Shared IncidentWeave offline retrieval fixture. | Versioned |
+| [`fixtures/`](fixtures/) | Legacy directory retained for navigation; IncidentWeave's manifest-selected fixture is under `repos/incidentweave/`. | README only |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
 | [`repos/`](repos/) | Questions, fixtures, gates, and baselines for the other repositories. | Versioned |
 | [`results/`](results/) | Committed baselines plus ignored run artifacts. | Mixed; see section 8 |
@@ -94,7 +94,7 @@ The descriptions below are taken from each module's docstring.
 
 ### Experiments
 
-- [`chunk_experiments.py`](chunk_experiments.py) — Chunking strategies supported by the evaluation harness only.
+- [`chunk_strategies.py`](chunk_strategies.py) — Chunking strategies supported by the evaluation harness only.
 - [`chunking_experiment.py`](chunking_experiment.py) — Deterministic preparation and analysis for the chunking comparison.
 - [`compare_chunking_runs.py`](compare_chunking_runs.py) — Compare two saved chunking-evaluation runs without database or API access.
 - [`fulltext_ablation.py`](fulltext_ablation.py) — Fixture-backed runners and metrics for the registered full-text ablation.
@@ -105,11 +105,11 @@ The descriptions below are taken from each module's docstring.
 - [`local_embedding.py`](local_embedding.py) — Cache identity, vector validation, exact cosine ranking, RRF, and decision helpers for item 18c.
 - [`run_local_embedding_experiment.py`](../scripts/run_local_embedding_experiment.py) — Plan, embed, and evaluate item 18c with development-only inputs.
 
-`chunk_experiments.py` defines chunking strategies; `chunking_experiment.py` runs the experiment. Item 27b may rename `chunk_experiments.py`.
+`chunk_strategies.py` defines chunking strategies; `chunking_experiment.py` runs the experiment.
 
 ## 5. Data model
 
-[`manifest.json`](manifest.json) is the versioned source of truth for three repositories. Each entry selects the repository's pinned source revision, question file, retrieval fixture, full and smoke baselines, and full and smoke gates, with SHA-256 values for the resources. The IncidentWeave questions are in `golden_set.json`; the other repositories' question sets are in `repos/<name>/questions.json`.
+[`manifest.json`](manifest.json) is the versioned source of truth for three repositories. Each entry selects the repository's pinned source revision, question file, retrieval fixture, full and smoke baselines, and full and smoke gates, with SHA-256 values for the resources. IncidentWeave and the other repositories use the common layout under `repos/<name>/`.
 
 Each question file has 24 questions per repository. The manifest assigns 16 to development and 8 to held-out; the fixed 8-question smoke subset is drawn from development. The manifest records split counts of 11 answerable and 5 unanswerable development questions, 5 answerable and 3 unanswerable held-out questions, and 5 answerable and 3 unanswerable smoke questions per repository. No held-out question IDs or results are included in this guide.
 
@@ -163,9 +163,31 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 | `_snapshot/` | Local pinned-source snapshots and experiment working copies. | Generated and ignored |
 | `inspection/` | Generated per-question cards and repository summaries. | Generated and ignored |
 | `results/runs/` | Timestamped run reports and related artifacts; `.gitkeep` is the only tracked file under this directory. | Generated and ignored, except tracked `.gitkeep` |
-| `results/run-*.json` and `results/evaluation_report.json` | Non-baseline run output. | Generated and ignored |
-| `results/baseline.json`, `results/offline-baseline.json`, `results/incidentweave-smoke-baseline.json` | Versioned evaluation baseline reports. | Committed |
-| `experiments/`, `fixtures/`, `repos/`, `manifest.json`, question files, gates, and Python modules | Registered experiment artifacts, evaluation inputs, baselines/gates, and implementation. | Committed |
+| `results/run-*.json` and `results/evaluation_report.json` | Legacy flat run outputs; ignored to prevent accidental tracking. Current evaluation runs use `results/runs/`. | Generated and ignored |
+| `results/baseline.json` | Legacy Phase 8 answer-evaluation baseline; not selected by the manifest. | Committed |
+| `repos/<name>/offline-baseline.json` and `repos/<name>/smoke-baseline.json` | Manifest-selected retrieval baseline reports. | Committed |
+| `experiments/`, `repos/`, `manifest.json`, question files, gates, and Python modules | Registered experiment artifacts, evaluation inputs, baselines/gates, and implementation. | Committed |
 | `__pycache__/` | Python bytecode cache. | Generated and ignored |
 
 The ignore rules are in [`.gitignore`](../.gitignore). Do not commit local cache, snapshot, inspection, or ignored run-output files.
+
+The `results/run-*.json` and `results/evaluation_report.json` ignore patterns remain as
+protection for legacy flat outputs; current code writes timestamped runs under `results/runs/`.
+No ignore rule targets `results/baseline.json`, which remains a tracked historical Phase 8
+artifact and is not required by the manifest.
+
+## Moved paths (item 27b)
+
+| Old path | New path |
+|---|---|
+| `evaluation/golden_set.json` | `evaluation/repos/incidentweave/questions.json` |
+| `evaluation/gate.json` | `evaluation/repos/incidentweave/gate.json` |
+| `evaluation/smoke-gate.json` | `evaluation/repos/incidentweave/smoke-gate.json` |
+| `evaluation/fixtures/retrieval_fixture.json.gz` | `evaluation/repos/incidentweave/retrieval_fixture.json.gz` |
+| `evaluation/results/offline-baseline.json` | `evaluation/repos/incidentweave/offline-baseline.json` |
+| `evaluation/results/incidentweave-smoke-baseline.json` | `evaluation/repos/incidentweave/smoke-baseline.json` |
+| `evaluation/chunk_experiments.py` | `evaluation/chunk_strategies.py` |
+| `evaluation/results/baseline.json` | Remains at `evaluation/results/baseline.json`; legacy Phase 8 artifact, not selected by the manifest |
+
+The IncidentWeave `gate.json` and `smoke-gate.json` had only their `baseline_report` path
+changed; their threshold and tolerance values are unchanged.

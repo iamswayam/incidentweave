@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from evaluation.chunk_experiments import resolve_split
+from evaluation.chunk_strategies import resolve_split
 from evaluation.gate import pooled_report
 from scripts import check_retrieval_gate
 

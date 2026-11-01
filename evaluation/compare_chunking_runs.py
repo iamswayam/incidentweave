@@ -654,7 +654,7 @@ def compare_runs(
     split: str = "development",
     confirm_frozen_heldout: bool = False,
 ) -> dict[str, Any]:
-    from .chunk_experiments import resolve_split
+    from .chunk_strategies import resolve_split
     from .golden import load_golden_set
     from .manifest import load_manifest, questions_for_split, repository_entry
 
@@ -777,7 +777,7 @@ def main() -> None:
     )
     parser.add_argument("baseline_run", type=Path)
     parser.add_argument("experiment_run", type=Path)
-    from .chunk_experiments import SPLIT_CHOICES
+    from .chunk_strategies import SPLIT_CHOICES
 
     parser.add_argument("--split", choices=SPLIT_CHOICES, default="development")
     parser.add_argument("--confirm-frozen-heldout", action="store_true")
