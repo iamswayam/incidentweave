@@ -1,6 +1,6 @@
 # Later Optimizations and Follow-up Notes
 
-**As of 2026-11-01.**
+**As of 2026-11-02.**
 
 This file tracks issues and improvements that are valid, useful, and worth doing later, but are not required for the current phase to function correctly.
 
@@ -365,6 +365,12 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Add a closed-book generation baseline. **Why:** Models may memorize popular repositories, confounding retrieval-supported answer claims. **Evidence needed:** A paired answer-quality comparison with and without retrieved context on the frozen evaluation set.
 - **Idea:** Add a second human annotator. **Why:** Independent labels measure inter-rater agreement beyond maintainer self-review. **Evidence needed:** Blinded dual labels and agreement results for gold files and answerability.
 - **Idea:** Extend coverage to multi-language and non-code repositories through item 20. **Why:** Dataset v2 is Python-only. **Evidence needed:** A registered protocol with validated parsing, labels, and per-domain results.
+
+## Ideas for later from item 30
+
+- **Idea:** Verify qualifying issue counts through the GitHub API. **Why:** Commit-message closing keywords are only a history proxy for issues closed by merged pull requests. **Evidence needed:** A pinned-SHA report of distinct issues linked to merged PRs that changed source Python files.
+- **Idea:** Schedule a candidate eligibility re-check. **Why:** License or activity changes may make a pinned repository unsuitable for a later dataset version. **Evidence needed:** A dated comparison of license, activity, and default-branch status against the registered candidate record.
+- **Idea:** Add a per-repository chunk-count budget alert. **Why:** Large chunk growth can push committed fixtures beyond the registered size cap. **Evidence needed:** A repeatable estimate compared with actual built-fixture sizes across development repositories.
 
 ## Later ideas after the 18c comparison
 

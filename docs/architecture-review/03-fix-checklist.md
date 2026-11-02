@@ -68,14 +68,14 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 27a | Done | #73 | Evaluation README indexes and documentation map |
 | 27b | Done | #108 | Evaluation layout normalized: IncidentWeave data now at evaluation/repos/incidentweave/; chunk_experiments.py renamed to chunk_strategies.py; only the two gate files' baseline_report path and their manifest pins changed |
 | 28 | Done | #92 | Test tiers; 294 passed in 24.81 seconds locally on 2026-11-01 |
-| 29 | In review | pending | Evaluation dataset v2 protocol |
-| 30 | Not started | pending | Dataset repositories and ingestion |
+| 29 | Done | #112 | Evaluation dataset v2 protocol |
+| 30 | In review | pending | Dataset repositories and ingestion |
 | 31 | Not started | pending | Dataset questions v2 |
 | 32 | Not started | pending | Retrieval and guard scorecard |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-**Next:** item 30 (dataset repositories and ingestion) after protocol 15 merges.
+**Next:** item 31 (dataset questions v2) after item 30 merges.
 
 ## 1. Fix-order checklist (summary)
 
@@ -139,7 +139,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
 | 27b | ☑ | Evaluation layout normalization | Medium | M | Maintainer |
 | 28 | ☑ | Test tiers and CI speed | Medium | M | Maintainer |
-| 29 | ☐ | Evaluation dataset v2 protocol | High | M | Maintainer |
+| 29 | ☑ | Evaluation dataset v2 protocol | High | M | Maintainer |
 | 30 | ☐ | Dataset repositories and ingestion | High | L | Maintainer |
 | 31 | ☐ | Dataset questions v2 | High | L | Maintainer |
 | 32 | ☐ | Retrieval and guard scorecard | High | M | Maintainer |
@@ -537,13 +537,13 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Why:** The v1 development set has 33 answerable and 15 unanswerable questions across three small repositories; it detects only about 0.14 pooled MRR, and v1 held-out data was exposed once.
 - **Fix:** Register dataset construction, quality gates, repository roles, split policy, and freeze rules in [protocol 15](15-evaluation-dataset-protocol.md).
 - **Done when:** Protocol 15 is merged and indexed.
-- **Status:** In review.
+- **Status:** Done (PR #112).
 
 **30. Dataset repositories and ingestion.**
 - **Why:** Dataset v2 needs qualified, pinned repositories with verified licensing and issue provenance.
-- **Fix:** Re-measure and pin the seven candidates, verify licenses and linked-issue counts, ingest development repositories, settle fixture storage, and implement manifest schema v2 and its validator. Do not build held-out fixtures.
-- **Done when:** Development repositories meet the protocol, their data card and manifest validate, and held-out fixtures remain unbuilt.
-- **Status:** Not started.
+- **Fix:** Qualify and pin the seven candidates (measured lines, licenses, linked-issue counts, chunk and fixture-size estimates), record them as manifest candidates, extend the validator to schema v2 and write the data card. Fixtures are built in item 31 once questions exist, because fixtures contain question embeddings; held-out fixtures are not built before item 3b.
+- **Done when:** Candidates qualify under protocol 15 section 4, the manifest validates, the data card is complete, and no held-out fixture exists.
+- **Status:** In review.
 
 **31. Dataset questions v2.**
 - **Why:** The evaluation set needs broader repository coverage, controlled question provenance, and measured label quality.
