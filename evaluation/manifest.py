@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import calendar
 import gzip
 import hashlib
 import json
 import math
-import zlib
-import calendar
 import re
+import zlib
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -231,11 +231,16 @@ def _validate_candidates(
         pinned_sha = candidate.get("pinned_sha")
         if not isinstance(pinned_sha, str) or SHA1_PATTERN.fullmatch(pinned_sha) is None:
             errors.append(f"{candidate_id or '<unknown>'}: pinned_sha must be 40 hex characters")
-        if candidate.get("license") not in SUPPORTED_CANDIDATE_LICENSES:
+        license_id = candidate.get("license")
+        if (
+            not isinstance(license_id, str)
+            or license_id not in SUPPORTED_CANDIDATE_LICENSES
+        ):
             errors.append(
                 f"{candidate_id or '<unknown>'}: license must be an allowed SPDX identifier"
             )
-        if candidate.get("role") not in {"development", "held_out"}:
+        role = candidate.get("role")
+        if not isinstance(role, str) or role not in {"development", "held_out"}:
             errors.append(
                 f"{candidate_id or '<unknown>'}: role must be development or held_out"
             )
@@ -262,12 +267,15 @@ def _validate_candidates(
                 f"{candidate_id or '<unknown>'}: qualifying_issue_count must be at least 40"
             )
         method = candidate.get("qualifying_method")
-        if method not in {"git-closing-keywords", "gh"}:
+        if not isinstance(method, str) or method not in {
+            "git-closing-keywords",
+            "gh",
+        }:
             errors.append(
                 f"{candidate_id or '<unknown>'}: qualifying_method is invalid"
             )
         location = candidate.get("fixture_location")
-        if location not in {"committed", "release"}:
+        if not isinstance(location, str) or location not in {"committed", "release"}:
             errors.append(
                 f"{candidate_id or '<unknown>'}: fixture_location is invalid"
             )
@@ -276,6 +284,7 @@ def _validate_candidates(
             isinstance(estimated_bytes, int)
             and not isinstance(estimated_bytes, bool)
             and estimated_bytes >= 0
+            and isinstance(location, str)
             and location in {"committed", "release"}
         ):
             expected_location = (

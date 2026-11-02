@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import calendar
+import io
 import json
 import math
 import re
@@ -12,6 +13,8 @@ from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
+from urllib.request import urlopen
+from zipfile import ZipFile
 
 from evaluation.chunk_strategies import candidate_chunk_specs
 from scripts.ingest_repo import iter_python_files
@@ -119,18 +122,59 @@ def spdx_from_license_text(text: str) -> str | None:
 def copyright_holder_line(text: str) -> str | None:
     """Return the first copyright attribution line without altering its wording."""
 
+    attribution = re.compile(
+        r"^(?:copyright(?:\s*\(c\))?\s+|©\s*|\(c\)\s*)"
+        r"(?:©\s*)?\d{4}(?:-\d{4}|-present)?\b",
+        re.IGNORECASE,
+    )
     for line in text.splitlines():
         stripped = line.strip()
-        lowered = stripped.casefold()
-        if "copyright" in lowered or "©" in stripped or "(c)" in lowered:
+        if attribution.match(stripped):
             return stripped
     return None
+
+
+def bsd_clause_count(text: str) -> int | None:
+    """Count numbered or bulleted conditions in a BSD license text."""
+
+    clauses = re.findall(r"(?m)^\s*(\d+)\.\s+", text)
+    numbers = {int(number) for number in clauses if 1 <= int(number) <= 3}
+    if numbers:
+        return len(numbers)
+    conditions = re.search(
+        r"following conditions are met\s*:?(.*?)(?:\n\s*\n|$)",
+        text,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if conditions is None:
+        return None
+    bullets = re.findall(r"(?m)^\s*[*-]\s+\S", conditions.group(1))
+    return len(bullets) if bullets else None
 
 
 def closing_issue_numbers(commit_message: str) -> set[int]:
     """Extract issue numbers explicitly named by GitHub closing keywords."""
 
     return {int(number) for number in CLOSING_ISSUE.findall(commit_message)}
+
+
+def qualifying_issues_from_git_log(log_output: str) -> set[int]:
+    """Count distinct closing-keyword issues from commits changing source Python."""
+
+    issues: set[int] = set()
+    for record in log_output.split("\x1e"):
+        record = record.strip("\r\n")
+        if not record:
+            continue
+        _commit, separator, after_commit = record.partition("\x00")
+        if not separator:
+            continue
+        message, separator, changed_files = after_commit.partition("\x00")
+        if separator and any(
+            is_source_python_path(path) for path in changed_files.splitlines()
+        ):
+            issues.update(closing_issue_numbers(message))
+    return issues
 
 
 def estimate_fixture_bytes(chunk_count: int, gzip_bytes_per_chunk: Iterable[float]) -> int:
@@ -170,12 +214,15 @@ def fixture_bytes_per_chunk(manifest_path: Path) -> list[float]:
     """Measure the three committed v1 fixtures through the registered loader."""
 
     from evaluation.build_fixture import load_fixture
-    from evaluation.manifest import load_manifest, manifest_root
+    from evaluation.manifest import manifest_root
 
     root = manifest_root(manifest_path)
-    manifest = load_manifest(manifest_path, root=root)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    repositories = manifest.get("repositories")
+    if not isinstance(repositories, list):
+        raise CandidateQualificationError("manifest repositories must be a list")
     rates: list[float] = []
-    for entry in manifest["repositories"]:
+    for entry in repositories:
         fixture_path = root / entry["fixture"]["path"]
         fixture = load_fixture(fixture_path)
         chunks = fixture.get("chunks")
@@ -198,8 +245,10 @@ def _run_git(repository: Path, *arguments: str, input_text: str | None = None) -
         input=input_text,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=True,
-        timeout=1800,
+        timeout=3600,
     )
     return completed.stdout
 
@@ -210,6 +259,27 @@ def _clone_repository(
     cache_root: Path,
     run_id: str,
 ) -> Path:
+    existing_clones = sorted(
+        cache_root.glob(f"{repository_name}-*/repo"),
+        key=lambda path: path.parent.name,
+        reverse=True,
+    )
+    for existing in existing_clones:
+        if not (existing / ".git").exists():
+            continue
+        try:
+            is_shallow = _run_git(
+                existing, "rev-parse", "--is-shallow-repository"
+            ).strip()
+            branch_ref = _run_git(
+                existing, "symbolic-ref", "refs/remotes/origin/HEAD"
+            ).strip()
+            _run_git(existing, "rev-parse", branch_ref)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if is_shallow == "false":
+            return existing
+
     repository = cache_root / f"{repository_name}-{run_id}" / "repo"
     repository.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
@@ -217,13 +287,17 @@ def _clone_repository(
             "git",
             "clone",
             "--filter=blob:none",
+            "--single-branch",
+            "--no-tags",
             "--no-checkout",
             f"https://github.com/{repository_url}.git",
             str(repository),
         ],
         check=True,
-        timeout=1800,
+        timeout=7200,
     )
+    if _run_git(repository, "rev-parse", "--is-shallow-repository").strip() != "false":
+        raise CandidateQualificationError("candidate clone is not full-history")
     return repository
 
 
@@ -259,42 +333,32 @@ def _python_tree(repository: Path, pinned_sha: str) -> list[tuple[str, str]]:
 
 def _read_python_tree(
     repository: Path,
+    repository_url: str,
     pinned_sha: str,
     snapshot_root: Path,
 ) -> list[tuple[str, str]]:
     entries = _python_tree(repository, pinned_sha)
-    object_ids = [object_id for object_id, _ in entries]
-    if object_ids:
-        blobs = subprocess.run(
-            ["git", "cat-file", "--batch"],
-            cwd=repository,
-            input="".join(f"{object_id}\n" for object_id in object_ids).encode("ascii"),
-            capture_output=True,
-            text=False,
-            check=True,
-            timeout=1800,
-        ).stdout
-    else:
-        blobs = b""
-
+    archive_url = f"https://codeload.github.com/{repository_url}/zip/{pinned_sha}"
+    with urlopen(archive_url, timeout=1200) as response:
+        archive_bytes = response.read()
     snapshot_root.mkdir(parents=True, exist_ok=True)
-    cursor = 0
-    for _, relative_path in entries:
-        header_end = blobs.find(b"\n", cursor)
-        if header_end < 0:
-            raise CandidateQualificationError("incomplete git cat-file response")
-        header = blobs[cursor:header_end].decode("ascii").split()
-        if len(header) != 3 or header[1] != "blob":
-            raise CandidateQualificationError("unexpected git cat-file response")
-        size = int(header[2])
-        content_start = header_end + 1
-        content_end = content_start + size
-        if content_end >= len(blobs) or blobs[content_end : content_end + 1] != b"\n":
-            raise CandidateQualificationError("truncated git cat-file blob")
-        destination = snapshot_root / relative_path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(blobs[content_start:content_end])
-        cursor = content_end + 1
+    with ZipFile(io.BytesIO(archive_bytes)) as archive:
+        archive_root = archive.namelist()[0].split("/", maxsplit=1)[0]
+        archive_names = set(archive.namelist())
+        for _, relative_path in entries:
+            member = f"{archive_root}/{relative_path}"
+            if member not in archive_names:
+                raise CandidateQualificationError(
+                    f"pinned source archive is missing Python file {relative_path!r}"
+                )
+            destination = snapshot_root / relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            resolved_destination = destination.resolve()
+            if not resolved_destination.is_relative_to(snapshot_root.resolve()):
+                raise CandidateQualificationError(
+                    f"unsafe Python file path in candidate tree: {relative_path!r}"
+                )
+            destination.write_bytes(archive.read(member))
     return entries
 
 
@@ -329,22 +393,12 @@ def _qualifying_issue_numbers(repository: Path, pinned_sha: str) -> set[int]:
         "--diff-merges=first-parent",
         "--format=%x1e%H%x00%B%x00",
         "--name-only",
+        "--no-renames",
         pinned_sha,
+        "--",
+        ":(glob)**/*.py",
     )
-    issues: set[int] = set()
-    for record in output.split("\x1e"):
-        record = record.strip("\r\n")
-        if not record:
-            continue
-        _commit, separator, after_commit = record.partition("\x00")
-        if not separator:
-            continue
-        message, separator, changed_files = after_commit.partition("\x00")
-        if not separator:
-            continue
-        if any(is_source_python_path(path) for path in changed_files.splitlines()):
-            issues.update(closing_issue_numbers(message))
-    return issues
+    return qualifying_issues_from_git_log(output)
 
 
 def _gh_qualifying_issue_numbers(
@@ -388,7 +442,10 @@ def _gh_qualifying_issue_numbers(
     issue_numbers: set[int] = set()
     for pull_request in pull_requests:
         merged_at = pull_request.get("mergedAt")
-        if not isinstance(merged_at, str) or date.fromisoformat(merged_at[:10]) > pinned_commit_date:
+        if (
+            not isinstance(merged_at, str)
+            or date.fromisoformat(merged_at[:10]) > pinned_commit_date
+        ):
             continue
         files = pull_request.get("files", [])
         if not any(
@@ -411,8 +468,6 @@ def _candidate_failures(candidate: dict[str, Any]) -> list[str]:
         failures.append("source Python lines outside 5,000-30,000")
     if candidate["license"] not in LICENSE_IDS:
         failures.append(f"unrecognized or unsupported license {candidate['license']!r}")
-    if candidate["copyright_holder"] is None:
-        failures.append("copyright-holder line not found")
     if candidate["qualifying_issue_count"] < 40:
         failures.append(
             f"only {candidate['qualifying_issue_count']} qualifying issues; at least 40 required"
@@ -444,6 +499,7 @@ def qualify_repository(
     )
     py_tree = _read_python_tree(
         repository,
+        repository_url,
         pinned_sha,
         repository.parent / "python-snapshot",
     )
@@ -469,6 +525,7 @@ def qualify_repository(
     license_text, license_path = _license_blob(repository, pinned_sha)
     license_id = spdx_from_license_text(license_text or "")
     holder = copyright_holder_line(license_text or "")
+    clause_count = bsd_clause_count(license_text or "")
     issue_numbers = _qualifying_issue_numbers(repository, pinned_sha)
     method = "git-closing-keywords"
     if len(issue_numbers) < 40:
@@ -485,7 +542,7 @@ def qualify_repository(
         "pinned_sha": pinned_sha,
         "pinned_commit_date": commit_date.isoformat(),
         "license": license_id,
-        "copyright_holder": holder,
+        "copyright_holder": holder or "Not stated in LICENSE",
         "role": role,
         "source_python_lines": source_python_lines,
         "all_python_lines": all_python_lines,
@@ -497,6 +554,7 @@ def qualify_repository(
         "qualifying_method": method,
         "measured_at": measured_at.isoformat(),
         "license_path": license_path,
+        "bsd_clause_count": clause_count,
     }
     return candidate
 
@@ -509,7 +567,7 @@ def run_qualification(
 ) -> dict[str, Any]:
     """Qualify the registered candidates, substituting backups when needed."""
 
-    measured_at = measured_at or datetime.now(UTC).date()
+    measured_at = measured_at or date.today()
     fixture_rates = fixture_bytes_per_chunk(manifest_path)
     candidates: list[dict[str, Any]] = []
     pending: list[dict[str, Any]] = []
@@ -534,7 +592,7 @@ def run_qualification(
                     {
                         key: value
                         for key, value in candidate.items()
-                        if key != "license_path"
+                        if key not in {"license_path", "bsd_clause_count"}
                     }
                 )
                 if current_id != original_id:
@@ -543,6 +601,11 @@ def run_qualification(
                             "replaced": original_id,
                             "replacement": current_id,
                             "role": role,
+                            "reason": "; ".join(
+                                item["reason"]
+                                for item in pending + rejected
+                                if item["id"] == original_id
+                            ),
                         }
                     )
                 break
@@ -553,6 +616,11 @@ def run_qualification(
                 and len(failures) == 1
             )
             result = {
+                **{
+                    key: value
+                    for key, value in candidate.items()
+                    if key not in {"license_path", "bsd_clause_count"}
+                },
                 "id": current_id,
                 "role": role,
                 "status": "pending verification" if issue_only_unverified else "failed",

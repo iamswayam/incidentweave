@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from evaluation.manifest import validate_manifest
+from evaluation.manifest import select_repositories, validate_manifest
 
 MEASURED_AT = "2026-11-02"
 VALID_CANDIDATE = {
@@ -54,8 +54,10 @@ def test_manifest_accepts_valid_v2_candidate() -> None:
         ("pinned_sha", "not-a-sha", "pinned_sha must be 40 hex characters"),
         ("pinned_commit_date", "not-a-date", "pinned_commit_date must be ISO date"),
         ("license", "GPL-3.0", "license must be an allowed SPDX identifier"),
+        ("license", [], "license must be an allowed SPDX identifier"),
         ("copyright_holder", "", "copyright_holder is required"),
         ("role", "test", "role must be development or held_out"),
+        ("role", [], "role must be development or held_out"),
         ("source_python_lines", 4_999, "source_python_lines must be 5,000-30,000"),
         ("source_python_lines", 30_001, "source_python_lines must be 5,000-30,000"),
         ("all_python_lines", -1, "all_python_lines must be non-negative"),
@@ -66,6 +68,8 @@ def test_manifest_accepts_valid_v2_candidate() -> None:
         ("fixture_location", "cache", "fixture_location is invalid"),
         ("qualifying_issue_count", 39, "qualifying_issue_count must be at least 40"),
         ("qualifying_method", "manual", "qualifying_method is invalid"),
+        ("qualifying_method", [], "qualifying_method is invalid"),
+        ("fixture_location", [], "fixture_location is invalid"),
         ("measured_at", "not-a-date", "measured_at must be ISO date"),
         ("pinned_commit_date", "2025-11-01", "pinned commit must be within 12 months"),
         ("pinned_commit_date", "2026-11-03", "pinned commit must be within 12 months"),
@@ -105,3 +109,13 @@ def test_v1_manifest_without_candidate_fields_remains_valid() -> None:
             "repositories": [],
         }
     ) == []
+
+
+def test_repository_selection_ignores_candidates() -> None:
+    repositories = [{"id": "v1"}]
+    manifest = {
+        "repositories": repositories,
+        "candidates": [{"id": "not-yet-evaluation-data"}],
+    }
+
+    assert select_repositories(manifest, None) == repositories
