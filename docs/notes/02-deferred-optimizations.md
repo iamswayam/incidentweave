@@ -372,6 +372,12 @@ This file is intentionally a holding area for improvement work that should be re
 - **Idea:** Schedule a candidate eligibility re-check. **Why:** License or activity changes may make a pinned repository unsuitable for a later dataset version. **Evidence needed:** A dated comparison of license, activity, and default-branch status against the registered candidate record.
 - **Idea:** Add a per-repository chunk-count budget alert. **Why:** Large chunk growth can push committed fixtures beyond the registered size cap. **Evidence needed:** A repeatable estimate compared with actual built-fixture sizes across development repositories.
 
+## Ideas for later from item 31a
+
+- **Idea:** Build a local HTML review page with a per-question timer. **Why:** A focused interface may reduce review friction and improve effort measurements. **Evidence needed:** A usability pilot against the Markdown pack and a comparison of completion time and data-entry errors.
+- **Idea:** Use an independent model as a second reviewer, explicitly labelled as model-generated. **Why:** It could flag disagreements for maintainer attention without being represented as a human label. **Evidence needed:** A blinded comparison against maintainer labels, measured precision of flagged disagreements, and a privacy review before sending repository content to any provider.
+- **Idea:** Add a pack diff tool that highlights edits between draft and reviewed versions. **Why:** It could make review changes easier to audit. **Evidence needed:** A synthetic-pack test showing stable field-level diffs without exposing held-out content or changing the ingest result.
+
 ## Later ideas after the 18c comparison
 
 ### Register Voyage AI embedding and reranking candidates

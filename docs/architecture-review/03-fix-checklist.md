@@ -69,13 +69,16 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 27b | Done | #108 | Evaluation layout normalized: IncidentWeave data now at evaluation/repos/incidentweave/; chunk_experiments.py renamed to chunk_strategies.py; only the two gate files' baseline_report path and their manifest pins changed |
 | 28 | Done | #92 | Test tiers; 294 passed in 24.81 seconds locally on 2026-11-01 |
 | 29 | Done | #112 | Evaluation dataset v2 protocol |
-| 30 | In review | pending | Dataset repositories and ingestion |
+| 30 | Done | #114 | Dataset repositories and ingestion |
 | 31 | Not started | pending | Dataset questions v2 |
+| 31a | In review | pending | Dataset question tooling and labelling guidelines |
+| 31b | Not started | pending | Pilot questions for rq and kopf, second pass and pilot gate |
+| 31c | Not started | pending | Scale to remaining repositories, development fixtures, freeze v2.0 |
 | 32 | Not started | pending | Retrieval and guard scorecard |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-**Next:** item 31 (dataset questions v2) after item 30 merges.
+Next: item 31b (pilot questions for rq and kopf) after 31a merges.
 
 ## 1. Fix-order checklist (summary)
 
@@ -140,8 +143,11 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 27b | ☑ | Evaluation layout normalization | Medium | M | Maintainer |
 | 28 | ☑ | Test tiers and CI speed | Medium | M | Maintainer |
 | 29 | ☑ | Evaluation dataset v2 protocol | High | M | Maintainer |
-| 30 | ☐ | Dataset repositories and ingestion | High | L | Maintainer |
+| 30 | ☑ | Dataset repositories and ingestion | High | L | Maintainer |
 | 31 | ☐ | Dataset questions v2 | High | L | Maintainer |
+| 31a | ☐ | Dataset question tooling and labelling guidelines | High | M | Maintainer |
+| 31b | ☐ | Pilot questions for rq and kopf, second pass and pilot gate | High | M | Maintainer |
+| 31c | ☐ | Scale to remaining repositories, development fixtures, freeze v2.0 | High | L | Maintainer |
 | 32 | ☐ | Retrieval and guard scorecard | High | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
@@ -154,7 +160,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 2 | **7**, **8** (with a minimal terminal trace event), **9**, **11**, **12a** | Auditable, versioned, validated answers; security boundary |
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
 | 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a-1**, **14a-2**, **14d**, **18b-1**, **18d-1**, **18d-2**, **18d-3**, **18d-4**, **18c** (done); **18b-2** and **14b-3** remain open | Settle retrieval and provider/fallback design before the final guard validation |
-| 5 | **29**, **30**, **31** | Register the dataset protocol, qualify repositories, and build/freeze v2 questions |
+| 5 | **29**, **30** (done), **31a**, **31b**, **31c** | Register the dataset protocol, qualify repositories, build and pilot questions, then scale and freeze v2 |
 | 6 | **32** | Freeze the retrieval and guard scorecard before item 3b |
 | 7 | **33** | Report operational metrics and estimated costs |
 | 8 | **21** (development only) | Evaluate reranking before the held-out run |
@@ -162,7 +168,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 10 | **3b** (including **14b-3**) | Run one registered v2 held-out evaluation with the frozen scorecard and threshold validation |
 | 11 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
 
-Remaining implementation sequence: dataset (**29**, **30**, **31**) → scorecard **32** →
+Remaining implementation sequence: dataset (**29**, **30**, **31a**, **31b**, **31c**) → scorecard **32** →
 operational report **33** → reranker **21** (development only) → citation validity **34** →
 **3b** (one registered run on v2 held-out repositories with the frozen scorecard, threshold
 validation, and the 14b-3 decision) → **17** (its “grow unanswerable to at least 20” target
@@ -541,14 +547,29 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 
 **30. Dataset repositories and ingestion.**
 - **Why:** Dataset v2 needs qualified, pinned repositories with verified licensing and issue provenance.
-- **Fix:** Qualify and pin the seven candidates (measured lines, licenses, linked-issue counts, chunk and fixture-size estimates), record them as manifest candidates, extend the validator to schema v2 and write the data card. Fixtures are built in item 31 once questions exist, because fixtures contain question embeddings; held-out fixtures are not built before item 3b.
+- **Fix:** Qualify and pin the seven candidates (measured lines, licenses, linked-issue counts, chunk and fixture-size estimates), record them as manifest candidates, extend the validator to schema v2 and write the data card. Fixtures are built in item 31c once questions exist, because fixtures contain question embeddings; held-out fixtures are not built before item 3b.
 - **Done when:** Candidates qualify under protocol 15 section 4, the manifest validates, the data card is complete, and no held-out fixture exists.
-- **Status:** In review.
+- **Status:** Done (PR #114).
 
 **31. Dataset questions v2.**
 - **Why:** The evaluation set needs broader repository coverage, controlled question provenance, and measured label quality.
-- **Fix:** Pilot `rq` and `kopf`, pass the pilot gate, scale to the registered quotas, complete quality control, freeze v2.0, and publish the data card.
+- **Fix:** Complete 31a tooling and guidelines, 31b pilot and pilot gate, then 31c scale, quality control, v2.0 freeze, and data card.
 - **Done when:** V2 questions meet protocol quotas and quality gates, are frozen as v2.0, and are documented in the data card.
+- **Status:** Not started.
+
+**31a. Dataset question tooling and labelling guidelines.**
+- **Fix:** Add the v2 question schema and validator, issue mining, review-pack and ingest workflow, blind second-pass sampling and agreement reporting, manifest support, tests, and labelling guidelines. Do not write questions in this sub-item.
+- **Done when:** Tools, tests, guidelines, and validator exist and CI passes.
+- **Status:** In review (PR pending).
+
+**31b. Pilot questions for `rq` and `kopf`, second pass and pilot gate.**
+- **Fix:** Author pilot packs with mined, drafted, and unanswerable items; record the drafting model; complete maintainer review with per-item minutes; ingest and commit the questions; run the blind second pass at least seven days later; and write a pilot results note with the gate decision in protocol 15 section 6. Items 32 and 33 (code only) may proceed during the seven-day wait.
+- **Done when:** Both pilot sets pass the registered questions, review, and agreement gates, and the pilot results note records the decision.
+- **Status:** Not started.
+
+**31c. Scale questions, development fixtures, and freeze v2.0.**
+- **Fix:** Add questions for `luigi` and `client_python` (development), and `locust`, `docker-py`, and `uvicorn` (held-out); build development fixtures with provider embeddings only for development data (do not build held-out fixtures); graduate development repositories into `repositories` with v2 splits and a generalized validator; freeze v2.0; and complete the data card.
+- **Done when:** The registered repositories, questions, splits, development fixtures, validator, freeze, and data card meet protocol 15.
 - **Status:** Not started.
 
 **32. Retrieval and guard scorecard.**
