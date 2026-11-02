@@ -368,7 +368,7 @@ This file is intentionally a holding area for improvement work that should be re
 
 ## Ideas for later from item 30
 
-- **Idea:** Verify qualifying issue counts through the GitHub API. **Why:** Commit-message closing keywords are only a history proxy for issues closed by merged pull requests. **Evidence needed:** A pinned-SHA report of distinct issues linked to merged PRs that changed source Python files.
+- **Idea:** Paginate beyond the 1,000 most recent merged pull requests for older candidates. **Why:** The current query limit makes issue counts conservative lower bounds. **Evidence needed:** A reproducible paginated count showing whether any candidate's qualifying issue total changes.
 - **Idea:** Schedule a candidate eligibility re-check. **Why:** License or activity changes may make a pinned repository unsuitable for a later dataset version. **Evidence needed:** A dated comparison of license, activity, and default-branch status against the registered candidate record.
 - **Idea:** Add a per-repository chunk-count budget alert. **Why:** Large chunk growth can push committed fixtures beyond the registered size cap. **Evidence needed:** A repeatable estimate compared with actual built-fixture sizes across development repositories.
 
