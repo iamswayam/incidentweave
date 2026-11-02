@@ -1,6 +1,6 @@
 # Scripts catalog
 
-**As of 2026-11-01.**
+**As of 2026-11-02.**
 
 “Test coverage” and “documentation” describe direct matches found in the repository inventory;
 they are not claims of complete behavioral coverage. For entries marked no direct test, the
@@ -22,6 +22,7 @@ never put them in command arguments.
 | `ingest_repo.py` | Ingest a local Python repository and update its chunk records. | operational | DB; no provider key or quota | Checklist 9; [architecture reference](../docs/architecture/01-architecture-overview.md) | Tests yes; docs yes | No; mutates the selected database |
 | `inspect_retrieval.py` | Render deterministic inspection cards from offline development evaluation inputs. | evaluation runner | No DB, key, or quota | Checklist 13c; [inspection note](../docs/notes/07-retrieval-inspection-report.md) | Tests yes; docs yes | Yes; writes ignored inspection output |
 | `investigate.py` | Run the full repository investigation pipeline from the CLI. | operational | DB + Gemini key; may use enabled Groq fallback and provider quota | Checklist 18d; [degraded-mode runbook](../docs/runbooks/degraded-modes-and-cache.md) | Tests yes; docs yes | No; provider calls and persistence |
+| `mine_candidates.py` | Qualify pinned dataset repository candidates and write results under ignored `evaluation/cache/qualify/`. | evaluation runner | Git/network; no database, provider key, or quota | Checklist 30/31; [evaluation guide](../evaluation/README.md) | Unit tests yes; docs yes | No; clones repositories and may query GitHub CLI |
 | `run_chunking_experiment.py` | Plan, embed, and evaluate registered chunking candidates. | experiment runner | Provider key/quota for `embed`; DB as required by the selected subcommand | Checklist 15a/15b; [experiment guide](../evaluation/README.md) | Tests yes; docs yes | No; `evaluate` rewrites tracked aggregate reports |
 | `run_embedding_task_type_experiment.py` | Plan, embed, and evaluate Gemini task-type candidates. | experiment runner | DB for evaluate; confirmed embed requires Gemini key and quota | Checklist 14a; [protocol](../docs/notes/14-embedding-task-type-experiment.md) | Tests yes; docs yes | No; only run under the registered protocol |
 | `run_eval.py` | Run the Phase 8 answer evaluation and write run artifacts. | evaluation runner | DB + Gemini key; spends quota | Phase 8; [evaluation guide](../evaluation/README.md) | Tests yes; docs yes | No; answer generation and persistence |

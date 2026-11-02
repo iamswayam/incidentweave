@@ -1,6 +1,6 @@
 # Evaluation
 
-**As of 2026-11-01.**
+**As of 2026-11-02.**
 
 ## 1. Purpose
 
@@ -15,6 +15,7 @@ Back to the [documentation status index](../docs/README.md).
 
 | Command | What it does | Needs database | Needs Gemini key | Writes tracked files | Source |
 |---|---|---:|---:|---:|---|
+| `.\.venv\Scripts\python.exe -m scripts.mine_candidates qualify` | Uses blobless full-history clones of default branches and downloads each pinned source archive for Python-line measurement. Writes the report and source snapshots under ignored `evaluation/cache/qualify/`; does not build fixtures or embed repositories. | No | No | No | [Candidate CLI](../scripts/mine_candidates.py), [protocol 15](../docs/architecture-review/15-evaluation-dataset-protocol.md) |
 | `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/repos/incidentweave/offline-baseline.json` | Runs retrieval-only evaluation using committed fixtures and cached question vectors; makes no provider calls. This documented invocation overwrites the committed IncidentWeave baseline. Safe alternative: `.\.venv\Scripts\python.exe -m scripts.run_retrieval_eval --out evaluation/results/runs/offline-check.json` (ignored output). | No | No | Yes | [Root README](../README.md), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md), [CLI](../scripts/run_retrieval_eval.py) |
 | `.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke` | Runs each manifest repository's deterministic smoke gate. It exits 0 when every repository meets its baseline minimums. CI starts PostgreSQL, but this gate reads only committed inputs. | No | No | No | [Root README](../README.md), [CI workflow](../.github/workflows/ci.yml), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/repos/incidentweave/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
@@ -44,20 +45,21 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | [`README.md`](README.md) | Entry point for evaluation commands, organization, data, and rules. | Versioned |
 | [`repos/incidentweave/gate.json`](repos/incidentweave/gate.json) | IncidentWeave full retrieval-gate configuration. | Versioned |
 | [`repos/incidentweave/questions.json`](repos/incidentweave/questions.json) | IncidentWeave questions and their labels. | Versioned |
-| [`manifest.json`](manifest.json) | Selects the repositories and pins their evaluation inputs. | Versioned |
+| [`manifest.json`](manifest.json) | Selects evaluation repositories and records qualified v2 candidates. | Versioned |
 | [`repos/incidentweave/smoke-gate.json`](repos/incidentweave/smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
 | `cache/` | Local embedding cache used by fixture construction and experiments, including versioned item 14a and item 18c caches. | Ignored/generated |
 | [`experiments/`](experiments/) | Chunking, full-text, BM25, and local embedding experiment documentation. | Versioned |
 | [`fixtures/`](fixtures/) | Legacy directory retained for navigation; IncidentWeave's manifest-selected fixture is under `repos/incidentweave/`. | README only |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
-| [`repos/`](repos/) | Questions, fixtures, gates, and baselines for the other repositories. | Versioned |
+| [`repos/README.md`](repos/README.md) | Candidate qualification data card and repository organization. | Versioned |
+| [`repos/`](repos/) | Questions, fixtures, gates, and baselines for evaluation repositories. | Versioned |
 | [`results/`](results/) | Committed baselines plus ignored run artifacts. | Mixed; see section 8 |
 | `_snapshot/` | Local source snapshots and experiment working data. | Ignored/generated |
 | `__pycache__/` | Python bytecode cache. | Ignored/generated |
 
 Python modules are listed by role in section 4.
 
-The IncidentWeave questions and full gate are at the evaluation root; its retrieval fixture is in `fixtures/`, and its baselines are in `results/`. The `batch-processing-service` and `lifeos` questions, fixtures, gates, and baselines are grouped under [`repos/`](repos/) by repository name. This asymmetry is a known layout issue handled in item 27b.
+The IncidentWeave questions and full gate are at the evaluation root; its retrieval fixture is in `fixtures/`, and its baselines are in `results/`. The `batch-processing-service` and `lifeos` questions, fixtures, gates, and baselines are grouped under [`repos/`](repos/) by repository name. The [repository data card](repos/README.md) records item 30 candidate qualifications. This asymmetry is a known layout issue handled in item 27b.
 
 ## 4. Module map
 
@@ -65,6 +67,7 @@ The descriptions below are taken from each module's docstring.
 
 ### Data and labels
 
+- [`candidates.py`](candidates.py) — Qualify and measure pinned repository candidates without embedding.
 - [`manifest.py`](manifest.py) — Loading and fail-closed validation for the multi-repository evaluation manifest.
 - [`golden.py`](golden.py) — Golden-set loading and validation.
 - [`splits.py`](splits.py) — Deterministic stratified question assignments for repository evaluations.
@@ -109,7 +112,7 @@ The descriptions below are taken from each module's docstring.
 
 ## 5. Data model
 
-[`manifest.json`](manifest.json) is the versioned source of truth for three repositories. Each entry selects the repository's pinned source revision, question file, retrieval fixture, full and smoke baselines, and full and smoke gates, with SHA-256 values for the resources. IncidentWeave and the other repositories use the common layout under `repos/<name>/`.
+[`manifest.json`](manifest.json) is the versioned source of truth for the three evaluation repositories and may also list qualified v2 candidates. Runners select only `repositories`; candidates are not evaluated. Repository entries select a pinned source revision, question file, retrieval fixture, full and smoke baselines, and full and smoke gates, with SHA-256 values for the resources. IncidentWeave and the other repositories use the common layout under `repos/<name>/`.
 
 Each question file has 24 questions per repository. The manifest assigns 16 to development and 8 to held-out; the fixed 8-question smoke subset is drawn from development. The manifest records split counts of 11 answerable and 5 unanswerable development questions, 5 answerable and 3 unanswerable held-out questions, and 5 answerable and 3 unanswerable smoke questions per repository. No held-out question IDs or results are included in this guide.
 

@@ -199,6 +199,18 @@ def test_manifest_rejects_unknown_schema_version(tmp_path: Path) -> None:
     )
 
 
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_manifest_accepts_supported_schema_versions(
+    tmp_path: Path,
+    schema_version: int,
+) -> None:
+    path, manifest = valid_manifest(tmp_path)
+    manifest["schema_version"] = schema_version
+    _write_json(path, manifest)
+
+    assert load_manifest(path, expected_counts=COUNTS)["schema_version"] == schema_version
+
+
 def test_manifest_rejects_duplicate_repository_ids(tmp_path: Path) -> None:
     assert_manifest_invalid(
         tmp_path,
