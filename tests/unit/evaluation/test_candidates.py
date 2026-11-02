@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import io
+import json
+import subprocess
 from datetime import date
+from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
@@ -180,3 +183,178 @@ def test_python_tree_reads_only_pinned_archive_members(
     ]
     assert result == [("blob", "pkg/module.py")]
     assert (tmp_path / "snapshot" / "pkg" / "module.py").read_text() == "value = 1\n"
+
+
+def test_github_issue_count_filters_merged_date_and_source_files(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+    pull_requests = [
+        {
+            "mergedAt": "2026-10-30T12:00:00Z",
+            "files": [{"path": "src/app.py"}],
+            "closingIssuesReferences": [{"number": 12}, {"number": 15}],
+        },
+        {
+            "mergedAt": "2026-11-02T12:00:00Z",
+            "files": [{"path": "src/new.py"}],
+            "closingIssuesReferences": [{"number": 20}],
+        },
+        {
+            "mergedAt": "2026-10-20T12:00:00Z",
+            "files": [{"path": "docs/readme.py"}],
+            "closingIssuesReferences": [{"number": 25}],
+        },
+        {
+            "mergedAt": "2026-10-20T12:00:00Z",
+            "files": [{"path": "tests/test_app.py"}],
+            "closingIssuesReferences": [{"number": 30}],
+        },
+    ]
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1:3] == ["auth", "status"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(
+            command, 0, json.dumps(pull_requests), ""
+        )
+
+    monkeypatch.setattr(candidates.shutil, "which", lambda _name: "gh")
+    monkeypatch.setattr(candidates.subprocess, "run", fake_run)
+
+    assert candidates._gh_qualifying_issue_numbers(
+        "owner/repo", date(2026, 11, 1)
+    ) == {12, 15}
+    pr_command = calls[1]
+    assert pr_command[pr_command.index("--limit") + 1] == "1000"
+    assert "closingIssuesReferences,files,mergedAt" in pr_command
+
+
+def test_github_issue_query_retries_once_without_proxy_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1:3] == ["auth", "status"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if len([item for item in calls if item[1:3] == ["pr", "list"]]) == 1:
+            return subprocess.CompletedProcess(command, 1, "", "rate limit")
+        return subprocess.CompletedProcess(command, 0, "[]", "")
+
+    monkeypatch.setattr(candidates.shutil, "which", lambda _name: "gh")
+    monkeypatch.setattr(candidates.subprocess, "run", fake_run)
+
+    assert candidates._gh_qualifying_issue_numbers("owner/repo", date(2026, 11, 1)) == set()
+    assert len([item for item in calls if item[1:3] == ["pr", "list"]]) == 2
+
+
+def test_github_auth_status_retries_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1:3] == ["auth", "status"] and len(calls) == 1:
+            return subprocess.CompletedProcess(command, 1, "", "temporary auth error")
+        if command[1:3] == ["auth", "status"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(command, 0, "[]", "")
+
+    monkeypatch.setattr(candidates.shutil, "which", lambda _name: "gh")
+    monkeypatch.setattr(candidates.subprocess, "run", fake_run)
+
+    assert candidates._gh_qualifying_issue_numbers("owner/repo", date(2026, 11, 1)) == set()
+    assert len([item for item in calls if item[1:3] == ["auth", "status"]]) == 2
+
+
+def test_github_issue_query_surfaces_failure_after_one_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        if command[1:3] == ["auth", "status"]:
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(command, 1, "", "API error")
+
+    monkeypatch.setattr(candidates.shutil, "which", lambda _name: "gh")
+    monkeypatch.setattr(candidates.subprocess, "run", fake_run)
+
+    with pytest.raises(candidates.CandidateQualificationError, match="after one retry"):
+        candidates._gh_qualifying_issue_numbers("owner/repo", date(2026, 11, 1))
+    assert len([item for item in calls if item[1:3] == ["pr", "list"]]) == 2
+
+
+def test_qualification_skips_unqualified_backups(monkeypatch: pytest.MonkeyPatch) -> None:
+    issue_counts = {
+        "rq": 109,
+        "kopf": 59,
+        "apscheduler": 17,
+        "client_python": 45,
+        "locust": 119,
+        "docker_py": 82,
+        "uvicorn": 116,
+        "huey": 4,
+        "luigi": 43,
+    }
+
+    def fake_qualify(
+        repository_name: str,
+        repository_url: str,
+        role: str,
+        **_kwargs,
+    ) -> dict[str, object]:
+        return {
+            "id": repository_name,
+            "url": f"https://github.com/{repository_url}",
+            "default_branch": "main",
+            "pinned_sha": "a" * 40,
+            "pinned_commit_date": "2026-11-01",
+            "license": "MIT",
+            "copyright_holder": "Copyright 2026 Example",
+            "role": role,
+            "source_python_lines": 8_000,
+            "all_python_lines": 10_000,
+            "indexed_python_lines": 10_000,
+            "estimated_chunks": 100,
+            "estimated_fixture_bytes": 100_000,
+            "fixture_location": "committed",
+            "qualifying_issue_count": issue_counts[repository_name],
+            "qualifying_method": "gh",
+            "measured_at": "2026-11-02",
+            "license_path": "LICENSE",
+            "bsd_clause_count": None,
+        }
+
+    monkeypatch.setattr(candidates, "fixture_bytes_per_chunk", lambda _path: [1.0])
+    monkeypatch.setattr(candidates, "qualify_repository", fake_qualify)
+
+    report = candidates.run_qualification(
+        cache_root=Path("cache"),
+        manifest_path=Path("manifest.json"),
+        measured_at=date(2026, 11, 2),
+    )
+
+    assert [candidate["id"] for candidate in report["candidates"]] == [
+        "rq",
+        "kopf",
+        "luigi",
+        "client_python",
+        "locust",
+        "docker_py",
+        "uvicorn",
+    ]
+    assert report["swaps"] == [
+        {
+            "replaced": "apscheduler",
+            "replacement": "luigi",
+            "role": "development",
+            "reason": "only 17 qualifying issues; at least 40 required",
+        }
+    ]
+    assert report["qualified_backups"] == []

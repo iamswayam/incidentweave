@@ -26,13 +26,18 @@ def main() -> None:
             print(
                 f"QUALIFIED {candidate['id']} ({candidate['role']}): "
                 f"{candidate['source_python_lines']} source lines, "
-                f"{candidate['qualifying_issue_count']} issues, "
+                f"{candidate['qualifying_issue_count']} gh issues, "
                 f"{candidate['fixture_location']} fixture"
             )
-        for item in report["pending_verification"]:
-            print(f"PENDING {item['id']}: {item['reason']}")
+        for candidate in report["qualified_backups"]:
+            print(
+                f"QUALIFIED BACKUP {candidate['id']}: "
+                f"{candidate['qualifying_issue_count']} gh issues"
+            )
         for item in report["rejected"]:
             print(f"REJECTED {item['id']}: {item['reason']}")
+        for item in report["verification_errors"]:
+            print(f"VERIFICATION ERROR {item['id']}: {item['reason']}")
         for swap in report["swaps"]:
             print(f"SWAP {swap['replaced']} -> {swap['replacement']}")
         print(f"Qualification report: {CACHE_ROOT / 'results.json'}")

@@ -71,10 +71,14 @@ INITIAL_CANDIDATES = (
     ("uvicorn", "encode/uvicorn", "held_out"),
 )
 BACKUP_REPOSITORIES = (
-    ("structlog", "hynek/structlog"),
     ("huey", "coleifer/huey"),
-    ("flower", "mher/flower"),
     ("luigi", "spotify/luigi"),
+    ("gunicorn", "benoitc/gunicorn"),
+    ("alembic", "sqlalchemy/alembic"),
+)
+QUALIFICATION_REPOSITORIES = INITIAL_CANDIDATES + (
+    ("huey", "coleifer/huey", "development"),
+    ("luigi", "spotify/luigi", "development"),
 )
 
 
@@ -404,41 +408,86 @@ def _qualifying_issue_numbers(repository: Path, pinned_sha: str) -> set[int]:
 def _gh_qualifying_issue_numbers(
     repository_url: str,
     pinned_commit_date: date,
-) -> set[int] | None:
+) -> set[int]:
     gh = shutil.which("gh")
     if gh is None:
-        return None
-    auth = subprocess.run(
-        [gh, "auth", "status"],
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=30,
-    )
-    if auth.returncode != 0:
-        return None
-    completed = subprocess.run(
-        [
-            gh,
-            "pr",
-            "list",
-            "--repo",
-            repository_url,
-            "--state",
-            "merged",
-            "--limit",
-            "1000",
-            "--json",
-            "closingIssuesReferences,files,mergedAt",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=300,
-    )
-    if completed.returncode != 0:
-        return None
-    pull_requests = json.loads(completed.stdout)
+        raise CandidateQualificationError("GitHub CLI (gh) is not installed or on PATH")
+    auth_errors: list[str] = []
+    authenticated = False
+    for _attempt in range(2):
+        try:
+            auth = subprocess.run(
+                [gh, "auth", "status"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=30,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            auth_errors.append(str(exc))
+            continue
+        if auth.returncode == 0:
+            authenticated = True
+            break
+        auth_errors.append(auth.stderr.strip() or "not authenticated")
+    if not authenticated:
+        raise CandidateQualificationError(
+            f"gh auth status failed for {repository_url} after one retry: "
+            + "; ".join(auth_errors)
+        )
+
+    command = [
+        gh,
+        "pr",
+        "list",
+        "--repo",
+        repository_url,
+        "--state",
+        "merged",
+        "--limit",
+        "1000",
+        "--json",
+        "closingIssuesReferences,files,mergedAt",
+    ]
+    errors: list[str] = []
+    pull_requests: list[dict[str, Any]] | None = None
+    for _attempt in range(2):
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=300,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(str(exc))
+            continue
+        if completed.returncode != 0:
+            errors.append(completed.stderr.strip() or "gh pr list failed")
+            continue
+        try:
+            response = json.loads(completed.stdout)
+        except json.JSONDecodeError as exc:
+            errors.append(f"gh returned invalid JSON: {exc}")
+            continue
+        if not isinstance(response, list) or any(
+            not isinstance(item, dict) for item in response
+        ):
+            errors.append("gh returned an invalid pull-request list")
+            continue
+        pull_requests = response
+        break
+    if pull_requests is None:
+        raise CandidateQualificationError(
+            f"GitHub PR query failed for {repository_url} after one retry: "
+            + "; ".join(errors)
+        )
+
     issue_numbers: set[int] = set()
     for pull_request in pull_requests:
         merged_at = pull_request.get("mergedAt")
@@ -457,7 +506,9 @@ def _gh_qualifying_issue_numbers(
         issue_numbers.update(
             int(issue["number"])
             for issue in pull_request.get("closingIssuesReferences", [])
-            if isinstance(issue, dict) and isinstance(issue.get("number"), int)
+            if isinstance(issue, dict)
+            and isinstance(issue.get("number"), int)
+            and not isinstance(issue.get("number"), bool)
         )
     return issue_numbers
 
@@ -526,13 +577,7 @@ def qualify_repository(
     license_id = spdx_from_license_text(license_text or "")
     holder = copyright_holder_line(license_text or "")
     clause_count = bsd_clause_count(license_text or "")
-    issue_numbers = _qualifying_issue_numbers(repository, pinned_sha)
-    method = "git-closing-keywords"
-    if len(issue_numbers) < 40:
-        verified_issues = _gh_qualifying_issue_numbers(repository_url, commit_date)
-        if verified_issues is not None:
-            issue_numbers = verified_issues
-            method = "gh"
+    issue_numbers = _gh_qualifying_issue_numbers(repository_url, commit_date)
 
     estimate = estimate_fixture_bytes(estimated_chunks, fixture_rates)
     candidate = {
@@ -551,7 +596,7 @@ def qualify_repository(
         "estimated_fixture_bytes": estimate,
         "fixture_location": fixture_location(estimate),
         "qualifying_issue_count": len(issue_numbers),
-        "qualifying_method": method,
+        "qualifying_method": "gh",
         "measured_at": measured_at.isoformat(),
         "license_path": license_path,
         "bsd_clause_count": clause_count,
@@ -565,81 +610,145 @@ def run_qualification(
     manifest_path: Path,
     measured_at: date | None = None,
 ) -> dict[str, Any]:
-    """Qualify the registered candidates, substituting backups when needed."""
+    """Qualify registered repositories and select replacements when required."""
 
     measured_at = measured_at or date.today()
     fixture_rates = fixture_bytes_per_chunk(manifest_path)
-    candidates: list[dict[str, Any]] = []
-    pending: list[dict[str, Any]] = []
+    selected: list[dict[str, Any]] = []
+    qualified: dict[str, dict[str, Any]] = {}
+    measured: dict[str, dict[str, Any] | None] = {}
     rejected: list[dict[str, Any]] = []
+    verification_errors: list[dict[str, str]] = []
     swaps: list[dict[str, str]] = []
-    backup_index = 0
 
-    for original_id, original_url, role in INITIAL_CANDIDATES:
-        current_id, current_url = original_id, original_url
-        while True:
+    inputs = list(QUALIFICATION_REPOSITORIES)
+
+    def measure(
+        repository_id: str,
+        repository_url: str,
+        role: str,
+    ) -> dict[str, Any] | None:
+        if repository_id in measured:
+            return measured[repository_id]
+        try:
             candidate = qualify_repository(
-                current_id,
-                current_url,
+                repository_id,
+                repository_url,
                 role,
                 cache_root=cache_root,
                 measured_at=measured_at,
                 fixture_rates=fixture_rates,
             )
-            failures = _candidate_failures(candidate)
-            if not failures:
-                candidates.append(
-                    {
+        except CandidateQualificationError as exc:
+            measured[repository_id] = None
+            verification_errors.append(
+                {
+                    "id": repository_id,
+                    "role": role,
+                    "reason": str(exc),
+                }
+            )
+            return None
+        measured[repository_id] = candidate
+        failures = _candidate_failures(candidate)
+        if failures:
+            rejected.append(
+                {
+                    **{
                         key: value
                         for key, value in candidate.items()
                         if key not in {"license_path", "bsd_clause_count"}
-                    }
-                )
-                if current_id != original_id:
-                    swaps.append(
-                        {
-                            "replaced": original_id,
-                            "replacement": current_id,
-                            "role": role,
-                            "reason": "; ".join(
-                                item["reason"]
-                                for item in pending + rejected
-                                if item["id"] == original_id
-                            ),
-                        }
-                    )
-                break
-
-            issue_only_unverified = (
-                candidate["qualifying_issue_count"] < 40
-                and candidate["qualifying_method"] == "git-closing-keywords"
-                and len(failures) == 1
+                    },
+                    "status": "failed",
+                    "reason": "; ".join(failures),
+                }
             )
-            result = {
-                **{
-                    key: value
-                    for key, value in candidate.items()
-                    if key not in {"license_path", "bsd_clause_count"}
-                },
-                "id": current_id,
-                "role": role,
-                "status": "pending verification" if issue_only_unverified else "failed",
-                "reason": "; ".join(failures),
-                "qualifying_issue_count": candidate["qualifying_issue_count"],
-                "qualifying_method": candidate["qualifying_method"],
-            }
-            (pending if issue_only_unverified else rejected).append(result)
-            if backup_index >= len(BACKUP_REPOSITORIES):
+        else:
+            qualified[repository_id] = candidate
+        return candidate
+
+    for repository_id, repository_url, role in inputs:
+        measure(repository_id, repository_url, role)
+
+    def get_backup(
+        backup_id: str,
+        role: str,
+    ) -> dict[str, Any] | None:
+        repository_url = next(
+            url for candidate_id, url in BACKUP_REPOSITORIES if candidate_id == backup_id
+        )
+        return measure(backup_id, repository_url, role)
+
+    for original_id, _original_url, role in INITIAL_CANDIDATES:
+        original = qualified.get(original_id)
+        if original is not None:
+            selected.append(original)
+            continue
+        if measured.get(original_id) is None:
+            continue
+
+        backup_ids = (
+            ("huey", "luigi", "gunicorn", "alembic")
+            if role == "development"
+            else ("gunicorn", "alembic")
+        )
+        replacement: dict[str, Any] | None = None
+        for backup_id in backup_ids:
+            replacement = qualified.get(backup_id)
+            if replacement is None:
+                if backup_id not in measured:
+                    get_backup(backup_id, role)
+                replacement = qualified.get(backup_id)
+            if replacement is not None:
                 break
-            current_id, current_url = BACKUP_REPOSITORIES[backup_index]
-            backup_index += 1
+        if replacement is None:
+            continue
+        selected.append(replacement)
+        original_failures = next(
+            (
+                item["reason"]
+                for item in rejected
+                if item["id"] == original_id
+            ),
+            "candidate did not qualify",
+        )
+        swaps.append(
+            {
+                "replaced": original_id,
+                "replacement": replacement["id"],
+                "role": role,
+                "reason": original_failures,
+            }
+        )
+
+    selected_ids = {candidate["id"] for candidate in selected}
+    qualified_backups = [
+        candidate
+        for candidate_id, candidate in qualified.items()
+        if candidate_id not in selected_ids
+    ]
 
     return {
         "measured_at": measured_at.isoformat(),
         "fixture_gzip_bytes_per_chunk": fixture_rates,
-        "candidates": candidates,
-        "pending_verification": pending,
+        "candidates": [
+            {
+                key: value
+                for key, value in candidate.items()
+                if key not in {"license_path", "bsd_clause_count"}
+            }
+            for candidate in selected
+        ],
+        "qualified_backups": [
+            {
+                key: value
+                for key, value in candidate.items()
+                if key not in {"license_path", "bsd_clause_count"}
+            }
+            for candidate in qualified_backups
+        ],
         "rejected": rejected,
+        "verification_errors": verification_errors,
         "swaps": swaps,
     }
 
