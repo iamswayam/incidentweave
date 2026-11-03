@@ -43,6 +43,7 @@ operational and evaluation commands.
 | [architecture-review/13-degraded-response-design.md](architecture-review/13-degraded-response-design.md) | Degraded response design (item 18d-1) | decision record | Frozen | — | — |
 | [architecture-review/14-local-embedding-protocol.md](architecture-review/14-local-embedding-protocol.md) | Local embedding-model comparison protocol (item 18c) | protocol | Frozen | — | — |
 | [architecture-review/15-evaluation-dataset-protocol.md](architecture-review/15-evaluation-dataset-protocol.md) | Evaluation dataset v2 protocol (item 29) | protocol | Frozen | — | 2026-11-02 |
+| [architecture-review/16-scorecard-protocol.md](architecture-review/16-scorecard-protocol.md) | Retrieval and guard scorecard protocol (item 32) | protocol | Registered | — | — |
 | [chunking-experiment/README.md](chunking-experiment/README.md) | Chunking experiment | living reference | Living | — | 2026-11-01 |
 | [chunking-experiment/01-experiment-log.md](chunking-experiment/01-experiment-log.md) | IncidentWeave: Chunking Strategy Discussion Log | results | Frozen | — | — |
 | [chunking-experiment/02-decision-report.md](chunking-experiment/02-decision-report.md) | Chunking Strategy Experiment: Decision Report | results | Frozen | — | — |
