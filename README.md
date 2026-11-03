@@ -9,7 +9,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
 
-Evidence-first investigation for local Python repositories
+*Retrieves repository evidence before asking an LLM to explain an incident. Every claim is cited and every outcome is audited.*
 
 [Why](#why) · [Architecture](#architecture) · [Quick start](#quick-start) · [API](#api) · [Evaluation](#evaluation) · [Documentation](#documentation)
 </div>
