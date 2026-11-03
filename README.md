@@ -61,19 +61,20 @@ and current provider data terms first.
 
 ## Results at a glance
 
-IncidentWeave development-split control results:
+Pooled development-split control results:
 
 | Measure | Result |
 |---|---:|
-| Hit@1 | 5/11 |
-| Hit@3 | 7/11 |
-| Hit@5 | 7/11 |
-| MRR | 0.515 |
-| Correct guard refusals | 3/5 |
-| Guard false accepts | 2/5 |
+| Answerable questions | 33 |
+| Hit@1 | 19/33 |
+| Hit@3 | 26/33 |
+| Hit@5 | 28/33 |
+| MRR | 0.674 |
+| Correct guard refusals | 9/15 |
+| Guard false accepts | 6/15 |
 
-Source: [BM25 comparison aggregate](evaluation/experiments/bm25/results.json), control arm for
-IncidentWeave. These development results are diagnostic, not a general benchmark.
+Source: [BM25 comparison aggregate](evaluation/experiments/bm25/results.json). These are pooled
+development-split results for the three original repositories, not a held-out result.
 
 ## Quick start
 
