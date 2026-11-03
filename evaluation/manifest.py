@@ -192,6 +192,8 @@ def _validate_candidates(
     candidates: object,
     repository_ids: set[str],
     errors: list[str],
+    *,
+    root: Path,
 ) -> set[str]:
     if not isinstance(candidates, list):
         errors.append("candidates must be a list")
@@ -312,6 +314,33 @@ def _validate_candidates(
                 f"{candidate_id or '<unknown>'}: pinned commit must be within 12 months "
                 "of measured_at"
             )
+        if "questions" in candidate:
+            question_path = _resolve_file(candidate, "questions", root, errors)
+            if question_path is not None:
+                try:
+                    question_data = json.loads(question_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    errors.append(
+                        f"{candidate_id or '<unknown>'}: invalid v2 questions JSON: {exc}"
+                    )
+                else:
+                    from evaluation.question_set import validate_question_set
+
+                    if not isinstance(question_data, dict):
+                        errors.append(
+                            f"{candidate_id or '<unknown>'}: v2 questions must be an object"
+                        )
+                    else:
+                        question_errors = validate_question_set(
+                            question_data,
+                            repo_id=candidate_id if isinstance(candidate_id, str) else None,
+                            pinned_sha=pinned_sha if isinstance(pinned_sha, str) else None,
+                            targets="full",
+                        )
+                        errors.extend(
+                            f"{candidate_id or '<unknown>'}: {message}"
+                            for message in question_errors
+                        )
     if len(candidate_ids) != len(set(candidate_ids)):
         errors.append("candidate ids must be unique")
     if repository_ids.intersection(candidate_ids):
@@ -349,7 +378,7 @@ def validate_manifest(
         errors.append("repository ids must be unique")
     repository_ids = set(ids)
     if "candidates" in data:
-        _validate_candidates(data["candidates"], repository_ids, errors)
+        _validate_candidates(data["candidates"], repository_ids, errors, root=root)
 
     configured_counts = data.get("counts", expected_counts)
     if not isinstance(configured_counts, dict):

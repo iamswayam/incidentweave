@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import calendar
 import io
 import json
@@ -11,8 +12,9 @@ import shutil
 import subprocess
 from collections.abc import Iterable
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import urlopen
 from zipfile import ZipFile
 
@@ -84,6 +86,88 @@ QUALIFICATION_REPOSITORIES = INITIAL_CANDIDATES + (
 
 class CandidateQualificationError(RuntimeError):
     """A candidate cannot be qualified against the registered criteria."""
+
+
+def _gh_executable() -> str:
+    executable = shutil.which("gh")
+    if executable:
+        return executable
+    windows_path = Path(r"C:\Program Files\GitHub CLI\gh.exe")
+    if windows_path.is_file():
+        return str(windows_path)
+    raise CandidateQualificationError("GitHub CLI (gh) is not installed or on PATH")
+
+
+def _gh_json(command: list[str], description: str) -> Any:
+    errors: list[str] = []
+    for _attempt in range(2):
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=300,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(type(exc).__name__)
+            continue
+        if completed.returncode != 0:
+            errors.append(f"exit code {completed.returncode}")
+            continue
+        try:
+            return json.loads(completed.stdout)
+        except json.JSONDecodeError:
+            errors.append("invalid JSON")
+    raise CandidateQualificationError(
+        f"{description} failed after one retry ({'; '.join(errors)})"
+    )
+
+
+def _gh_text(command: list[str], description: str) -> str:
+    errors: list[str] = []
+    for _attempt in range(2):
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=300,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(type(exc).__name__)
+            continue
+        if completed.returncode == 0:
+            return completed.stdout
+        errors.append(f"exit code {completed.returncode}")
+    raise CandidateQualificationError(
+        f"{description} failed after one retry ({'; '.join(errors)})"
+    )
+
+
+def _cached_clone(cache_root: Path, repository_id: str, pinned_sha: str) -> Path:
+    clones = sorted(
+        cache_root.glob(f"{repository_id}-*/repo"),
+        key=lambda path: path.parent.name,
+        reverse=True,
+    )
+    for clone in clones:
+        if not (clone / ".git").exists():
+            continue
+        try:
+            _run_git(clone, "cat-file", "-e", f"{pinned_sha}^{{commit}}")
+        except (OSError, subprocess.SubprocessError):
+            continue
+        return clone
+    raise CandidateQualificationError(
+        f"no cached clone for {repository_id} contains pinned commit {pinned_sha}; "
+        "run qualify first"
+    )
 
 
 def is_source_python_path(path: str | Path) -> bool:
@@ -409,9 +493,7 @@ def _gh_qualifying_issue_numbers(
     repository_url: str,
     pinned_commit_date: date,
 ) -> set[int]:
-    gh = shutil.which("gh")
-    if gh is None:
-        raise CandidateQualificationError("GitHub CLI (gh) is not installed or on PATH")
+    gh = _gh_executable()
     auth_errors: list[str] = []
     authenticated = False
     for _attempt in range(2):
@@ -511,6 +593,346 @@ def _gh_qualifying_issue_numbers(
             and not isinstance(issue.get("number"), bool)
         )
     return issue_numbers
+
+
+def proposed_spans_from_diff(
+    diff_text: str,
+    source_root: Path,
+    pinned_python_paths: set[str],
+) -> dict[str, list[dict[str, int | str]]]:
+    """Map PR hunk headers to enclosing pinned-snapshot definitions or files."""
+
+    file_patch = re.compile(r"^\+\+\+ b/(.+)$")
+    hunk_header = re.compile(
+        r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@(?:\s*(.*))?$"
+    )
+    context_symbol = re.compile(r"\b(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w*)")
+    output: dict[str, list[dict[str, int | str]]] = {}
+    current_path: str | None = None
+    for line in diff_text.splitlines():
+        file_match = file_patch.match(line)
+        if file_match:
+            path = file_match.group(1)
+            current_path = path if path in pinned_python_paths else None
+            continue
+        hunk_match = hunk_header.match(line)
+        if not hunk_match or current_path is None:
+            continue
+        root = source_root.resolve()
+        source = (root / Path(*PurePosixPath(current_path).parts)).resolve()
+        if not source.is_relative_to(root) or not source.is_file():
+            continue
+        source_lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
+        if not source_lines:
+            continue
+        changed_start = int(hunk_match.group(1))
+        changed_count = int(hunk_match.group(2) or "1")
+        changed_end = max(changed_start, changed_start + changed_count - 1)
+        context_match = context_symbol.search(hunk_match.group(3) or "")
+        context_name = context_match.group(1) if context_match else None
+        try:
+            tree = ast.parse("\n".join(source_lines))
+        except SyntaxError:
+            tree = None
+        definitions: list[
+            ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+        ] = []
+        if tree is not None:
+            definitions = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(
+                    node,
+                    (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
+                )
+            ]
+        containing = [
+            node
+            for node in definitions
+            if node.lineno <= changed_start <= getattr(node, "end_lineno", node.lineno)
+            or (
+                node.lineno <= changed_end
+                and changed_start <= getattr(node, "end_lineno", node.lineno)
+            )
+        ]
+        matching_context = [
+            node for node in definitions if context_name and node.name == context_name
+        ]
+        candidates = containing or matching_context
+        if candidates:
+            node = min(
+                candidates,
+                key=lambda item: (
+                    getattr(item, "end_lineno", item.lineno) - item.lineno,
+                    -item.lineno,
+                ),
+            )
+            proposed: dict[str, int | str] = {
+                "start": node.lineno,
+                "end": getattr(node, "end_lineno", node.lineno),
+                "symbol": node.name,
+            }
+        else:
+            proposed = {"start": 1, "end": len(source_lines), "symbol": "<file>"}
+        output.setdefault(current_path, [])
+        if proposed not in output[current_path]:
+            output[current_path].append(proposed)
+    return output
+
+
+def collect_mined_issues(
+    pinned_commit_date: date,
+    pull_requests: list[dict[str, Any]],
+    issue_details: dict[int, dict[str, str]],
+    pull_request_diffs: dict[int, str],
+    source_root: Path,
+    pinned_python_paths: set[str],
+) -> list[dict[str, Any]]:
+    """Build deterministic mined-issue records from synthetic or live GH data."""
+
+    linked: list[tuple[int, int, list[str]]] = []
+    for pull_request in pull_requests:
+        merged_at = pull_request.get("mergedAt")
+        number = pull_request.get("number")
+        if (
+            not isinstance(merged_at, str)
+            or not isinstance(number, int)
+            or isinstance(number, bool)
+            or date.fromisoformat(merged_at[:10]) > pinned_commit_date
+        ):
+            continue
+        files = pull_request.get("files", [])
+        source_files = (
+            sorted(
+                {
+                    item["path"]
+                    for item in files
+                    if isinstance(item, dict)
+                    and isinstance(item.get("path"), str)
+                    and is_source_python_path(item["path"])
+                    and item["path"] in pinned_python_paths
+                }
+            )
+            if isinstance(files, list)
+            else []
+        )
+        if not 1 <= len(source_files) <= 4:
+            continue
+        issues = pull_request.get("closingIssuesReferences", [])
+        for issue in issues if isinstance(issues, list) else []:
+            issue_number = issue.get("number") if isinstance(issue, dict) else None
+            if (
+                isinstance(issue_number, int)
+                and not isinstance(issue_number, bool)
+                and issue_number > 0
+            ):
+                linked.append((issue_number, number, source_files))
+
+    linked.sort(key=lambda item: (item[0], item[1]))
+    records: list[dict[str, Any]] = []
+    seen: set[tuple[int, int]] = set()
+    for issue_number, pr_number, files in linked:
+        pair = (issue_number, pr_number)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        details = issue_details.get(issue_number, {})
+        proposed = proposed_spans_from_diff(
+            pull_request_diffs.get(pr_number, ""),
+            source_root,
+            pinned_python_paths,
+        )
+        file_records = [
+            {
+                "path": path,
+                "proposed_spans": proposed.get(
+                    path,
+                    [
+                        {
+                            "start": 1,
+                            "end": max(
+                                1,
+                                len(
+                                    (source_root / Path(*PurePosixPath(path).parts))
+                                    .read_text(encoding="utf-8", errors="replace")
+                                    .splitlines()
+                                ),
+                            ),
+                            "symbol": "<file>",
+                        }
+                    ],
+                ),
+            }
+            for path in files
+        ]
+        records.append(
+            {
+                "candidate_id": f"M-{len(records) + 1:03d}",
+                "issue_number": issue_number,
+                "issue_title": details.get("title", ""),
+                "issue_body": details.get("body", "")[:2000],
+                "pr_number": pr_number,
+                "files": file_records,
+            }
+        )
+    return records
+
+
+def mine_candidate_issues(
+    candidate: dict[str, Any],
+    *,
+    cache_root: Path,
+    question_cache_root: Path,
+) -> Path:
+    """Query GitHub for qualifying merged PRs and write ignored mined.json."""
+
+    repository_url = candidate.get("url")
+    repository_id = candidate.get("id")
+    if not isinstance(repository_url, str) or not isinstance(repository_id, str):
+        raise CandidateQualificationError("candidate needs id and GitHub URL")
+    slug = urlparse(repository_url).path.strip("/")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", slug):
+        raise CandidateQualificationError("candidate URL must identify a GitHub repository")
+    pinned_sha = candidate.get("pinned_sha")
+    if not isinstance(pinned_sha, str):
+        raise CandidateQualificationError("candidate needs a pinned SHA")
+    try:
+        pinned_date = date.fromisoformat(candidate["pinned_commit_date"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise CandidateQualificationError("candidate needs an ISO pinned commit date") from exc
+
+    repository = _cached_clone(cache_root, repository_id, pinned_sha)
+    source_root = repository.parent / "python-snapshot"
+    if not source_root.is_dir():
+        raise CandidateQualificationError(
+            f"pinned Python snapshot missing for {repository_id}; run qualify first"
+        )
+    python_paths = {path for _, path in _python_tree(repository, pinned_sha)}
+    gh = _gh_executable()
+    auth = subprocess.run(
+        [gh, "auth", "status"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        timeout=30,
+    )
+    if auth.returncode != 0:
+        raise CandidateQualificationError("gh auth status failed; authenticate with gh")
+    pull_requests_raw = _gh_json(
+        [
+            gh,
+            "pr",
+            "list",
+            "--repo",
+            slug,
+            "--state",
+            "merged",
+            "--limit",
+            "1000",
+            "--json",
+            "closingIssuesReferences,files,mergedAt,number",
+        ],
+        f"merged PR query for {slug}",
+    )
+    if not isinstance(pull_requests_raw, list) or any(
+        not isinstance(item, dict) for item in pull_requests_raw
+    ):
+        raise CandidateQualificationError(f"gh returned invalid PR data for {slug}")
+
+    selected_prs: dict[int, dict[str, Any]] = {}
+    issue_numbers: set[int] = set()
+    for pr in pull_requests_raw:
+        merged_at = pr.get("mergedAt")
+        pr_number = pr.get("number")
+        if (
+            not isinstance(merged_at, str)
+            or not isinstance(pr_number, int)
+            or isinstance(pr_number, bool)
+            or date.fromisoformat(merged_at[:10]) > pinned_date
+        ):
+            continue
+        files = pr.get("files")
+        source_files = (
+            [
+                item.get("path")
+                for item in files
+                if isinstance(item, dict)
+                and isinstance(item.get("path"), str)
+                and is_source_python_path(item["path"])
+                and item["path"] in python_paths
+            ]
+            if isinstance(files, list)
+            else []
+        )
+        source_files = sorted(set(source_files))
+        if not 1 <= len(source_files) <= 4:
+            continue
+        issues = pr.get("closingIssuesReferences", [])
+        valid_issues = (
+            [
+                issue["number"]
+                for issue in issues
+                if isinstance(issue, dict)
+                and isinstance(issue.get("number"), int)
+                and not isinstance(issue.get("number"), bool)
+                and issue["number"] > 0
+            ]
+            if isinstance(issues, list)
+            else []
+        )
+        if not valid_issues:
+            continue
+        selected_prs[pr_number] = pr
+        issue_numbers.update(valid_issues)
+
+    issue_details: dict[int, dict[str, str]] = {}
+    for issue_number in sorted(issue_numbers):
+        raw_issue = _gh_json(
+            [
+                gh,
+                "issue",
+                "view",
+                str(issue_number),
+                "--repo",
+                slug,
+                "--json",
+                "title,body",
+            ],
+            f"issue #{issue_number} query for {slug}",
+        )
+        if not isinstance(raw_issue, dict):
+            raise CandidateQualificationError(
+                f"gh returned invalid issue #{issue_number} data"
+            )
+        issue_details[issue_number] = {
+            "title": str(raw_issue.get("title") or ""),
+            "body": str(raw_issue.get("body") or "")[:2000],
+        }
+
+    diffs = {
+        number: _gh_text(
+            [gh, "pr", "diff", str(number), "--repo", slug],
+            f"PR #{number} diff query for {slug}",
+        )
+        for number in sorted(selected_prs)
+    }
+    records = collect_mined_issues(
+        pinned_date,
+        pull_requests_raw,
+        issue_details,
+        diffs,
+        source_root,
+        python_paths,
+    )
+    output = question_cache_root / repository_id / "mined.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(records, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return output
 
 
 def _candidate_failures(candidate: dict[str, Any]) -> list[str]:

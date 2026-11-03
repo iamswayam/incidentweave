@@ -48,6 +48,40 @@ Backups assessed: `huey` (MIT, 4 issues; did not qualify) and `luigi` (Apache-2.
 - The GitHub CLI query is capped at the 1,000 most recent merged PRs; its issue counts are conservative lower bounds.
 - Fixture bytes = candidate chunk count × median compressed bytes per chunk from the three v1 fixtures × 1.2 for query vectors. The median rate was 3,754.96 bytes/chunk; estimates at or below 1,572,864 bytes are `committed`, otherwise `release`. No candidate fixture was built.
 
+## Labelling guidelines
+
+### Gold files and spans
+
+- A **gold file** is a pinned source file that contains evidence needed to answer the question.
+- A **gold span** is the inclusive line range within a gold file that supports the answer. Prefer the smallest complete function, class, or relevant configuration block.
+- A question can have multiple gold files and spans. Use only paths and line numbers from the candidate's pinned snapshot.
+
+### Answerability and unanswerable kinds
+
+Answerable questions have a code-supported answer and one of the registered types: `direct`,
+`paraphrase`, `multi-file`, `config-env`, `error-message`, or `how-it-works`.
+
+| Label | Meaning | Invented generic example |
+|---|---|---|
+| `far` | The requested feature is absent from the repository. | “Which module implements the library's imaginary moon-phase scheduler?” |
+| `near-miss` | Related code exists, but not the requested behavior or setting. | “Which `retry_count` option controls requests?” when the toy library only has `timeout_count`. |
+| `false-premise` | The question assumes behavior that the pinned code does not perform. | “Why does `parse_config` retry until success?” when the toy function does not retry. |
+
+### Leakage, pack review, and effort
+
+- Do not put a gold file path or basename in the question, in any casing. Do not include secrets in question or evidence text.
+- Work only in ignored `evaluation/cache/questions/<repo-id>/`. The `issues` command writes `mined.json`; Copilot or a human prepares `drafts.json`; `pack` renders `pack.md`.
+- Each `drafts.json` record has `candidate_id` (`M-...` for mined issues or `D-...` for a new item), `source` (`mined`, `drafted`, or `human`), `question`, and `evidence` (at most 300 characters). Answerable records add `type` and `gold: [{path, start, end}]`; unanswerable records add `kind` and `absence_check: {terms, hits}`. Drafted records also name `drafting_model`.
+- In the pack, edit the question, type/kind, gold spans or absence check, evidence, Decision, Minutes, and Notes in place. Accept or reject every item. Use whole-number minutes for time spent on that item, including review.
+- `ingest` writes only accepted questions to `evaluation/repos/<repo-id>/questions.json` after validation. The blind `second-pass.md` hides first-pass labels; a second reviewer fills it independently at least seven days after `reviewed_on`.
+- Answerability agreement requires identical yes/no labels. Gold-file agreement is a shared-file overlap for sampled answerable questions; exact set match is reported descriptively. Each agreement gate is at least 90%, and median first-pass effort must be at most eight minutes. With 16 sampled questions, the 90% gate allows at most one disagreement.
+
+### Implementation notes
+
+- The existing retrieval evaluator requires v1-compatible `category`, `relevant`, and `relevant_spans` labels. Reviewed spans deterministically derive each `relevant` substring from the first nonblank source line (trimmed and capped at 120 characters); the full inclusive ranges remain in `relevant_spans`.
+- `direct` remains category `direct`; every other answerable type maps to legacy `paraphrased`. `far` maps to `unanswerable_far`; `near-miss` and `false-premise` map to `unanswerable_near`. The evaluator's existing answerability and scoring behavior is unchanged.
+- Candidate question paths and hashes are optional in the manifest until questions are committed; this task adds none.
+
 ## Changelog
 
 | Date | Change |

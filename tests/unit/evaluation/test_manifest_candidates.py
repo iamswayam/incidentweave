@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
+from datetime import date
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from evaluation.manifest import select_repositories, validate_manifest
+from evaluation.manifest import select_repositories, sha256_file, validate_manifest
 
 MEASURED_AT = "2026-11-02"
 VALID_CANDIDATE = {
@@ -119,3 +122,106 @@ def test_repository_selection_ignores_candidates() -> None:
     }
 
     assert select_repositories(manifest, None) == repositories
+
+
+def _full_v2_questions() -> dict[str, Any]:
+    questions: list[dict[str, Any]] = []
+    question_types = (
+        "direct",
+        "paraphrase",
+        "multi-file",
+        "config-env",
+        "error-message",
+        "how-it-works",
+    )
+    for index in range(30):
+        source = "mined" if index < 15 else "human"
+        question: dict[str, Any] = {
+            "id": f"Q-{index + 1:03d}",
+            "question": f"What does operation {index} return?",
+            "answerable": True,
+            "source": source,
+            "reviewed": True,
+            "evidence": "operation return",
+            "type": question_types[index % len(question_types)],
+            "category": "direct" if index % len(question_types) == 0 else "paraphrased",
+            "relevant": [
+                {"file_path": f"src/file_{index}.py", "substring": "return value"}
+            ],
+            "relevant_spans": [
+                {
+                    "file_path": f"src/file_{index}.py",
+                    "line_start": 1,
+                    "line_end": 1,
+                }
+            ],
+        }
+        if source == "mined":
+            question["source_ref"] = {"issue": index + 1, "pr": index + 101}
+        questions.append(question)
+    for index, kind in enumerate(
+        ["far"] * 4 + ["near-miss"] * 3 + ["false-premise"] * 3,
+        start=31,
+    ):
+        questions.append(
+            {
+                "id": f"Q-{index:03d}",
+                "question": f"Does operation {index} provide an invented feature?",
+                "answerable": False,
+                "source": "human",
+                "reviewed": True,
+                "evidence": "",
+                "kind": kind,
+                "category": "unanswerable_far" if kind == "far" else "unanswerable_near",
+                "relevant": [],
+                "relevant_spans": [],
+                "absence_check": {
+                    "terms": [f"invented_feature_{index}"],
+                    "hits": 0,
+                    "pinned_sha": "a" * 40,
+                },
+            }
+        )
+    return {
+        "repo_id": "candidate",
+        "pinned_sha": "a" * 40,
+        "dataset_version": "2.0-draft",
+        "review_status": "maintainer reviewed",
+        "reviewed_on": date(2026, 11, 2).isoformat(),
+        "counts": {"total": 40, "answerable": 30, "unanswerable": 10},
+        "questions": questions,
+    }
+
+
+def test_candidate_questions_require_file_hash_and_valid_v2_schema(tmp_path: Path) -> None:
+    question_path = tmp_path / "candidate-questions.json"
+    serialized = json.dumps(_full_v2_questions(), indent=2).replace("\n", "\r\n")
+    question_path.write_bytes(serialized.encode("utf-8"))
+    candidate = deepcopy(VALID_CANDIDATE)
+    candidate["questions"] = {
+        "path": question_path.name,
+        "sha256": sha256_file(question_path),
+    }
+
+    assert validate_manifest(_manifest(candidate), root=tmp_path) == []
+
+    candidate["questions"]["sha256"] = "0" * 64
+    assert any("questions SHA-256 mismatch" in error for error in validate_manifest(
+        _manifest(candidate), root=tmp_path
+    ))
+
+
+def test_candidate_questions_fail_v2_schema_validation(tmp_path: Path) -> None:
+    question_path = tmp_path / "candidate-questions.json"
+    data = _full_v2_questions()
+    data["questions"][0]["reviewed"] = False
+    question_path.write_text(json.dumps(data), encoding="utf-8")
+    candidate = deepcopy(VALID_CANDIDATE)
+    candidate["questions"] = {
+        "path": question_path.name,
+        "sha256": sha256_file(question_path),
+    }
+
+    assert any("reviewed must be true" in error for error in validate_manifest(
+        _manifest(candidate), root=tmp_path
+    ))

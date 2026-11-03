@@ -358,3 +358,102 @@ def test_qualification_skips_unqualified_backups(monkeypatch: pytest.MonkeyPatch
         }
     ]
     assert report["qualified_backups"] == []
+
+
+def test_issue_mining_uses_synthetic_gh_json_and_pinned_ast_spans(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "clone"
+    source_root = tmp_path / "python-snapshot"
+    source_file = source_root / "src" / "feature.py"
+    source_file.parent.mkdir(parents=True)
+    source_file.write_text("def chosen():\n    return 'pinned'\n", encoding="utf-8")
+    pull_requests = [
+        {
+            "mergedAt": "2026-10-30T12:00:00Z",
+            "number": 21,
+            "files": [{"path": "src/feature.py"}],
+            "closingIssuesReferences": [{"number": 34}, {"number": 12}],
+        },
+        {
+            "mergedAt": "2026-11-03T12:00:00Z",
+            "number": 22,
+            "files": [{"path": "src/feature.py"}],
+            "closingIssuesReferences": [{"number": 99}],
+        },
+    ]
+    issue_calls: list[int] = []
+
+    def fake_json(command: list[str], _description: str):
+        if command[1:3] == ["pr", "list"]:
+            return pull_requests
+        issue_number = int(command[3])
+        issue_calls.append(issue_number)
+        return {
+            "title": f"Issue {issue_number}",
+            "body": "body " + ("x" * 2100),
+        }
+
+    def fake_auth(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        assert command[1:3] == ["auth", "status"]
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(candidates, "_cached_clone", lambda *_args: repo)
+    monkeypatch.setattr(
+        candidates,
+        "_python_tree",
+        lambda *_args: [("blob", "src/feature.py")],
+    )
+    monkeypatch.setattr(candidates, "_gh_executable", lambda: "gh")
+    monkeypatch.setattr(candidates, "_gh_json", fake_json)
+    monkeypatch.setattr(
+        candidates,
+        "_gh_text",
+        lambda *_args: (
+            "diff --git a/src/feature.py b/src/feature.py\n"
+            "--- a/src/feature.py\n"
+            "+++ b/src/feature.py\n"
+            "@@ -1,2 +1,2 @@ def chosen()\n"
+        ),
+    )
+    monkeypatch.setattr(candidates.subprocess, "run", fake_auth)
+
+    output = candidates.mine_candidate_issues(
+        {
+            "id": "candidate",
+            "url": "https://github.com/example/candidate",
+            "pinned_sha": "a" * 40,
+            "pinned_commit_date": "2026-11-01",
+        },
+        cache_root=tmp_path / "qualify",
+        question_cache_root=tmp_path / "questions",
+    )
+    result = json.loads(output.read_text(encoding="utf-8"))
+
+    assert issue_calls == [12, 34]
+    assert [item["issue_number"] for item in result] == [12, 34]
+    assert len(result[0]["issue_body"]) == 2000
+    assert result[0]["files"][0]["proposed_spans"] == [
+        {"start": 1, "end": 2, "symbol": "chosen"}
+    ]
+
+
+def test_issue_json_query_retries_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    def fake_run(command: list[str], **_kwargs) -> subprocess.CompletedProcess[str]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return subprocess.CompletedProcess(command, 1, "", "temporary failure")
+        return subprocess.CompletedProcess(command, 0, '{"title":"Synthetic"}', "")
+
+    monkeypatch.setattr(candidates.subprocess, "run", fake_run)
+
+    assert candidates._gh_json(["gh", "issue"], "issue query") == {
+        "title": "Synthetic"
+    }
+    assert calls == 2
