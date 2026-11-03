@@ -11,6 +11,34 @@ This guide points to the relevant commands, data, modules, and evaluation record
 
 Back to the [documentation status index](../docs/README.md).
 
+## Phase 8 evaluation method and recorded result
+
+The evaluation harness compares vector-only, full-text-only, and hybrid retrieval; records guard
+decisions; and performs two end-to-end passes against a pinned source snapshot. The original
+24-question golden set contains:
+
+- 8 direct answerable questions
+- 8 paraphrased answerable questions
+- 4 far-unanswerable questions
+- 4 near-unanswerable questions
+
+The recorded Phase 8 baseline on the pinned 70-chunk snapshot found vector and hybrid retrieval
+tied at hit@1 `8/16`, hit@3 `11/16`, hit@5 `11/16`, and MRR `0.573`; full-text was empty for 14 of
+16 answerable questions. The guard recorded 16 true accepts, 0 false refusals, 4 true refusals,
+and 4 false accepts.
+
+These are diagnostic measurements, not a general benchmark: the set covers one source snapshot,
+labels are pending maintainer review, and answer screening uses keywords rather than human or
+LLM-judge adjudication. See the [Phase 8 log](../docs/phases/08-evaluation.md) and
+[Phase 8b improvements](../docs/phases/08b-evaluation-improvements.md) for the full historical
+methodology and limitations.
+
+Offline retrieval replays a committed fixture with cached query embeddings and makes no Gemini
+calls. The manifest-driven runner reports per-repository and pooled retrieval metrics with Wilson
+95% intervals; `--repo` selects a repository and `--split smoke` selects the fixed development-only
+smoke set. Evaluation runs set temperature to 0 and record the generation configuration; older
+recorded runs used the provider default and are not directly comparable.
+
 ## 2. Commands
 
 | Command | What it does | Needs database | Needs Gemini key | Writes tracked files | Source |
