@@ -1,0 +1,1079 @@
+{
+  "repo_id": "rq",
+  "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+  "dataset_version": "2.0-draft",
+  "review_status": "maintainer reviewed",
+  "reviewed_on": "2026-11-04",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "Q-001",
+      "question": "How does the CLI choose between a Redis URL, Sentinel settings, and individual connection settings, and which route wins when more than one is present?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The helper checks REDIS_URL first, Sentinel second, then creates a client from individual REDIS_* settings.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "rq/cli/helpers.py",
+          "substring": "def get_redis_from_config(settings, connection_class=Redis):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/helpers.py",
+          "line_start": 40,
+          "line_end": 88
+        }
+      ],
+      "source_ref": {
+        "issue": 1342,
+        "pr": 1472
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-002",
+      "question": "How are dependency inputs normalized into job IDs, and how does enqueueing defer a job while any dependency is unfinished?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 2,
+      "evidence": "Jobs collect dependency IDs; queue setup watches dependency states and leaves jobs with unfinished dependencies deferred.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "rq/job.py",
+          "substring": "def process_dependencies(self, depends_on: JobDependencyType) -> None:"
+        },
+        {
+          "file_path": "rq/queue.py",
+          "substring": "def setup_dependencies(self, job: Job, pipeline: Pipeline | None = None) -> Job:"
+        },
+        {
+          "file_path": "rq/queue.py",
+          "substring": "def enqueue_job("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/job.py",
+          "line_start": 1484,
+          "line_end": 1506
+        },
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 668,
+          "line_end": 730
+        },
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 1254,
+          "line_end": 1301
+        }
+      ],
+      "source_ref": {
+        "issue": 1404,
+        "pr": 1837
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-003",
+      "question": "When the CLI's empty command receives no queue names and isn't asked to empty all queues, what does it do?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It prints 'Nothing to do' and exits successfully before queue operations.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "rq/cli/cli.py",
+          "substring": "def empty(cli_config, all, queues, serializer, **options):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/cli.py",
+          "line_start": 44,
+          "line_end": 68
+        }
+      ],
+      "source_ref": {
+        "issue": 1464,
+        "pr": 1465
+      },
+      "category": "direct"
+    },
+    {
+      "id": "Q-004",
+      "question": "What scheduler metadata is persisted on each save, and for how long does the Redis key live?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The scheduler stores its metadata hash and expires it after the scheduling interval plus 60 seconds.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "rq/scheduler.py",
+          "substring": "def to_dict(self) -> dict:"
+        },
+        {
+          "file_path": "rq/scheduler.py",
+          "substring": "def save(self, pipeline: Pipeline | None = None) -> None:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/scheduler.py",
+          "line_start": 171,
+          "line_end": 181
+        },
+        {
+          "file_path": "rq/scheduler.py",
+          "line_start": 193,
+          "line_end": 200
+        }
+      ],
+      "source_ref": {
+        "issue": 1531,
+        "pr": 1555
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-005",
+      "question": "How is job timeout handling selected on a platform that does not expose SIGALRM?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The default timeout class uses Unix signals when SIGALRM exists and a timer-based strategy otherwise.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "rq/timeouts.py",
+          "substring": "def get_default_death_penalty_class() -> type[BaseDeathPenalty]:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/timeouts.py",
+          "line_start": 126,
+          "line_end": 131
+        }
+      ],
+      "source_ref": {
+        "issue": 1625,
+        "pr": 1629
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-006",
+      "question": "When a job returns a Retry value, what status path does the worker use once the configured retry limit is reached?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The worker marks an exhausted retry as failed, records a max-retries result, then handles dependent jobs and releases the rate-limit slot.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "rq/worker/base.py",
+          "substring": "def handle_job_retry("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/base.py",
+          "line_start": 1402,
+          "line_end": 1479
+        }
+      ],
+      "source_ref": {
+        "issue": 1631,
+        "pr": 2363
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-007",
+      "question": "Which failure text is logged when a work-horse process terminates unexpectedly, and what condition triggers that path?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A non-zero child exit is treated as unexpected unless the job is already finished, failed, or deliberately stopped.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "substring": "def monitor_work_horse(self, job: Job, queue: Queue, execution: Execution):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "line_start": 79,
+          "line_end": 151
+        }
+      ],
+      "source_ref": {
+        "issue": 1791,
+        "pr": 2364
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-009",
+      "question": "When no queue names are passed to the worker-pool command, which configured value supplies the queue list and what fallback is used?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The command prefers explicit queues, then the QUEUES setting, and finally the default queue.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "rq/cli/workers.py",
+          "substring": "settings = read_config_file(cli_config.config) if cli_config.config else {}"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/workers.py",
+          "line_start": 201,
+          "line_end": 204
+        }
+      ],
+      "source_ref": {
+        "issue": 2051,
+        "pr": 2444
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-010",
+      "question": "How does batch lookup normalize a colon-delimited execution key before reading job hashes?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The lookup parses each input ID first, then pipelines one hash read per parsed ID while preserving result order.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "rq/job.py",
+          "substring": "def parse_job_id(job_or_execution_id: str) -> str:"
+        },
+        {
+          "file_path": "rq/job.py",
+          "substring": "def fetch_many(cls, job_ids: Iterable[str], connection: Redis, serializer=None) -> list[Job | None]:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/job.py",
+          "line_start": 74,
+          "line_end": 78
+        },
+        {
+          "file_path": "rq/job.py",
+          "line_start": 718,
+          "line_end": 749
+        }
+      ],
+      "source_ref": {
+        "issue": 2137,
+        "pr": 2138
+      },
+      "category": "direct"
+    },
+    {
+      "id": "Q-011",
+      "question": "What does the queue do when a rate-limited job is enqueued with a caller-supplied pipeline?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The enqueue path rejects a supplied pipeline for a rate-limited job with a ValueError.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "rq/queue.py",
+          "substring": "def enqueue_job("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 1254,
+          "line_end": 1301
+        }
+      ],
+      "source_ref": {
+        "issue": 2483,
+        "pr": 2493
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-012",
+      "question": "How does maintain_heartbeats ensure a worker hash recreated after expiration gets a TTL?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "If the heartbeat update recreates the worker hash, the pipeline writes the serialized worker fields and reapplies worker_ttl.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "rq/worker/base.py",
+          "substring": "def maintain_heartbeats(self, job: Job, execution: Execution):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/base.py",
+          "line_start": 1241,
+          "line_end": 1276
+        }
+      ],
+      "source_ref": {
+        "issue": 2539,
+        "pr": 2540
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-014",
+      "question": "When the CLI empties all queues, how does it obtain the queue objects and report the number of removed jobs?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "With --all it enumerates every queue, empties each one, and prints a per-queue removal count.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "rq/cli/cli.py",
+          "substring": "def empty(cli_config, all, queues, serializer, **options):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/cli.py",
+          "line_start": 44,
+          "line_end": 68
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-015",
+      "question": "How does the scheduler decide which queue locks it owns, and when can it start its process after acquiring them?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Only acquired or refreshed locks count as owned; auto-start begins the process when at least one lock is held and no live process exists.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "rq/scheduler.py",
+          "substring": "def acquire_locks(self, auto_start=False):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/scheduler.py",
+          "line_start": 127,
+          "line_end": 154
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-016",
+      "question": "What exception and message does the timer-based timeout strategy use when asynchronous exception injection targets an invalid thread ID?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A zero return from PyThreadState_SetAsyncExc raises ValueError with the target thread ID in the message.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "rq/timeouts.py",
+          "substring": "def handle_death_penalty(self):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/timeouts.py",
+          "line_start": 97,
+          "line_end": 109
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-018",
+      "question": "For a SimpleWorker job with timeout -1, what heartbeat TTL is returned, and how are other timeout values handled?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "An infinite timeout uses DEFAULT_WORKER_TTL; other jobs use their timeout (or that default) plus 60 seconds.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "substring": "def get_heartbeat_ttl(self, job: Job, working_time: float = 0.0) -> int:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "line_start": 293,
+          "line_end": 307
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-019",
+      "question": "How does the configuration loader interpret string values for REDIS_SSL, and what happens for an unrecognized value?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Common true/false strings are normalized; anything else raises ValueError.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "rq/cli/helpers.py",
+          "substring": "ssl = settings.get('REDIS_SSL', False)"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/helpers.py",
+          "line_start": 66,
+          "line_end": 73
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-020",
+      "question": "When an enqueued function is decorated with a string queue name, how does the wrapper choose or construct the queue used for the call?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The wrapper constructs the configured queue class for a string name, but reuses an already supplied Queue instance.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "rq/decorators.py",
+          "substring": "def __call__(self, f):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/decorators.py",
+          "line_start": 92,
+          "line_end": 132
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-021",
+      "question": "How does the ready-job registry avoid duplicate enqueues while moving eligible dependents onto a queue?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 2,
+      "evidence": "The registry watches both its sorted set and the job hash, verifies ownership and READY_TO_ENQUEUE status, then commits removal and enqueue atomically.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "rq/registry.py",
+          "substring": "def enqueue_jobs(self, job_ids: list[str]) -> list[Job]:"
+        },
+        {
+          "file_path": "rq/queue.py",
+          "substring": "def _enqueue_job("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/registry.py",
+          "line_start": 565,
+          "line_end": 624
+        },
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 1359,
+          "line_end": 1379
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-022",
+      "question": "How is a job's expiration score calculated when it is added to a registry, including the special value for a non-expiring job?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Finite TTLs are added to the current timestamp; a TTL of -1 is stored as positive infinity.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "rq/registry.py",
+          "substring": "def add(self, job: Job, ttl: int = 0, pipeline: Pipeline | None = None, xx: bool = False) -> int:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/registry.py",
+          "line_start": 117,
+          "line_end": 135
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-023",
+      "question": "Which runtime-only Redis connection-pool kwargs are removed before a connection is rebuilt in a child process?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The helper drops known runtime maintenance/event fields and values represented by the redis-py sentinel object.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "rq/connections.py",
+          "substring": "def get_connection_kwargs(connection: Redis) -> dict:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/connections.py",
+          "line_start": 24,
+          "line_end": 32
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-024",
+      "question": "What error does import_attribute raise when neither a module nor a matching attribute can be resolved?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Invalid dotted references are rejected with ValueError using an invalid-attribute message.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "rq/utils.py",
+          "substring": "def import_attribute(name: str) -> Callable[..., Any]:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/utils.py",
+          "line_start": 166,
+          "line_end": 216
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-025",
+      "question": "How does Result.fetch_latest behave differently when a blocking timeout is supplied versus when it is zero?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A non-zero timeout uses XREAD and returns the newest stream entry; zero uses XREVRANGE with count one.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "rq/results.py",
+          "substring": "def fetch_latest(cls, job: Job, serializer=None, timeout: int = 0) -> Result | None:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/results.py",
+          "line_start": 250,
+          "line_end": 274
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-026",
+      "question": "How does a cron job calculate its next run when it has an interval, and what happens when neither interval nor cron is configured?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Interval jobs add seconds to their latest run; jobs without either schedule return datetime.max.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "rq/cron.py",
+          "substring": "def get_next_enqueue_time(self) -> datetime:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cron.py",
+          "line_start": 167,
+          "line_end": 184
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-027",
+      "question": "How do the worker-pool CLI queue selection and worker count reach the pool instance that starts workers?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The CLI selects explicit or configured queues and passes num_workers; WorkerPool stores both during initialization.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "rq/cli/workers.py",
+          "substring": "def worker_pool("
+        },
+        {
+          "file_path": "rq/worker_pool.py",
+          "substring": "def __init__("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/workers.py",
+          "line_start": 186,
+          "line_end": 233
+        },
+        {
+          "file_path": "rq/worker_pool.py",
+          "line_start": 50,
+          "line_end": 80
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-028",
+      "question": "What InvalidJobOperation error is raised when a stop-job command targets a job that has no active worker?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The command fetches the job and rejects it if worker_name is empty.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "rq/command.py",
+          "substring": "def send_stop_job_command(connection: 'Redis', job_id: str, serializer=None):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/command.py",
+          "line_start": 89,
+          "line_end": 101
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-029",
+      "question": "Which serializer is selected when no serializer is configured, and how can a caller request a named built-in serializer?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 2,
+      "evidence": "The default is pickle; the string aliases json and pickle resolve to their built-in implementations.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "rq/serializers.py",
+          "substring": "SERIALIZER_ALIASES: dict[str, Serializer] = {"
+        },
+        {
+          "file_path": "rq/serializers.py",
+          "substring": "def resolve_serializer(serializer: Serializer | str | None = None) -> Serializer:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/serializers.py",
+          "line_start": 37,
+          "line_end": 40
+        },
+        {
+          "file_path": "rq/serializers.py",
+          "line_start": 43,
+          "line_end": 67
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-031",
+      "question": "How does cron configuration loading turn a relative file path into an importable module name before importing it?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 2,
+      "evidence": "The loader normalizes relative paths to dotted names, then imports or reloads that module.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "rq/utils.py",
+          "substring": "def normalize_config_path(config_path: str) -> str:"
+        },
+        {
+          "file_path": "rq/cron.py",
+          "substring": "else:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/utils.py",
+          "line_start": 264,
+          "line_end": 304
+        },
+        {
+          "file_path": "rq/cron.py",
+          "line_start": 494,
+          "line_end": 505
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-033",
+      "question": "How does the cron scheduler choose its sleep interval when no jobs are due soon, or when the next job is overdue?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It defaults to 60 seconds without scheduled jobs, returns zero for overdue jobs, and caps future waits at 60 seconds.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "rq/cron.py",
+          "substring": "def calculate_sleep_interval(self) -> float:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/cron.py",
+          "line_start": 384,
+          "line_end": 409
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-034",
+      "question": "Which result type and execution metadata does create_failure attach to a failed job result?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Failure results retain the exception text, worker name, and execution identifiers/timestamps.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "rq/results.py",
+          "substring": "def create_failure("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/results.py",
+          "line_start": 95,
+          "line_end": 118
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-035",
+      "question": "How does get_keys choose the Redis set from which worker keys are read when given a queue versus only a connection?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A queue selects its per-queue worker set; a bare connection selects the global worker set.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "rq/worker_registration.py",
+          "substring": "def get_keys(queue: Queue | None = None, connection: Redis | None = None) -> set[str]:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker_registration.py",
+          "line_start": 58,
+          "line_end": 82
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-038",
+      "question": "Where is the automatic cross-region Redis failover planner configured?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Redis connection helpers include URL and Sentinel configuration, not this planner.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "CrossRegionRedisFailoverPlanner"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-039",
+      "question": "Which component encrypts every job payload with rotating tenant keys before it is stored?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The pinned source has serializers and job persistence but no tenant-key rotation cipher.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "TenantPayloadRotationCipher"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-040",
+      "question": "Which admin API renders a dependency graph for all queued jobs?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The source provides dependency tracking and registries but no dependency-graph admin view.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "DependencyGraphAdminView"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-041",
+      "question": "Which built-in trigger schedules jobs from satellite telemetry windows?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The cron scheduler accepts time schedules; this telemetry trigger is absent.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "SatelliteTelemetryJobTrigger"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-042",
+      "question": "Which per-queue option caps idle workers and shuts excess workers down automatically?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Worker commands expose worker counts and max_idle_time, but not this per-queue idle-worker cap.",
+      "kind": "near-miss",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "max_idle_workers_per_queue"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-043",
+      "question": "Which serializer setting truncates successful results at a configured byte limit?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Serializers encode values and result streams persist them, but no size-limit setting appears.",
+      "kind": "near-miss",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "max_result_size_bytes"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-045",
+      "question": "Which Retry option adds exponential jitter to every retry delay?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 2,
+      "evidence": "Retry intervals are supported, but this jitter option is not defined.",
+      "kind": "near-miss",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "exponential_jitter"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-046",
+      "question": "Why does fetch_many retry until every unknown job ID appears in Redis?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A missing hash appends None to the result list; the method does not retry.",
+      "kind": "false-premise",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "retry_missing_job_fetch"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-047",
+      "question": "Why does SimpleWorker spawn a child process for every job before waiting for its result?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "SimpleWorker executes in the same process; child work-horse management belongs to other worker classes.",
+      "kind": "false-premise",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "simple_worker_child_process"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-048",
+      "question": "Why does RQ sort all queue names lexicographically before its round-robin dequeue strategy runs?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The worker strategies reorder queues according to their selected strategy; the premise of universal sorting is unsupported.",
+      "kind": "false-premise",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "sort_queue_names_before_dequeue"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    }
+  ]
+}

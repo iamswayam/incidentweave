@@ -267,7 +267,11 @@
       "fixture_location": "release",
       "qualifying_issue_count": 109,
       "qualifying_method": "gh",
-      "measured_at": "2026-11-02"
+      "measured_at": "2026-11-02",
+      "questions": {
+        "path": "evaluation/repos/rq/questions.json",
+        "sha256": "7b189232a575dc70b6e07cc6c7e9c0089eadbb8d5c0d285e730a0b3e197d67a8"
+      }
     },
     {
       "id": "kopf",
