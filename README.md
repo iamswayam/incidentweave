@@ -1,10 +1,6 @@
 <div align="center">
 
-# IncidentWeave
-
-**As of 2026-11-01.**
-
-### Evidence-first investigation for local Python repositories
+<img src="docs/assets/social-preview2.png" alt="IncidentWeave: repository-aware incident investigation" width="100%">
 
 [![CI](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml/badge.svg)](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
@@ -12,12 +8,9 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
 ![Status](https://img.shields.io/badge/Roadmap-Phase%209%20complete-2EA44F)
 
-*A backend/AI engineering project that retrieves repository evidence before asking an LLM to explain an incident.*
+Evidence-first investigation for local Python repositories
 
 [Quick start](#quick-start) · [Architecture](#architecture) · [Evaluation](#evaluation) · [Documentation](#documentation)
-
-![IW | IncidentWeave — Repository-aware AI incident investigation](docs/assets/social-preview.png)
-
 </div>
 
 ## License
