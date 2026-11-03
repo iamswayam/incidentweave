@@ -6,7 +6,6 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
-![Status](https://img.shields.io/badge/Roadmap-Phase%209%20complete-2EA44F)
 
 Evidence-first investigation for local Python repositories
 
@@ -247,10 +246,6 @@ full command runs every test serially. GitHub Actions runs lint/build, network-b
 PostgreSQL integration, and evaluation/smoke-gate jobs in parallel. See the
 [test-tier guide](docs/notes/16-test-tiers.md) and [CI configuration](.github/workflows/ci.yml).
 
-**As of 2026-11-01:** `pytest --collect-only -q` collected 489 tests (294 unit, 16 integration,
-179 evaluation). The unit command passed all 294 tests in 24.81 seconds on this machine; this is
-a local measurement, not a CI timing guarantee.
-
 ## Project structure
 
 ```text
@@ -293,9 +288,7 @@ IncidentWeave intentionally makes its current boundaries visible:
 | [Documentation status index](docs/README.md) | Cross-folder document status and registered-experiment index. |
 | [Scripts catalog](scripts/README.md) | Script purpose, side effects, requirements and test/doc coverage. |
 
-## Roadmap status
-
-The approved project roadmap contains nine phases: setup, persistence, ingestion, retrieval, investigation, grounding, controlled tools/audit, evaluation, and production CLI/API. **All nine phases are complete; Phase 9 is the final phase on the current roadmap.**
+Project status: [live fix checklist](docs/architecture-review/03-fix-checklist.md).
 
 ---
 
