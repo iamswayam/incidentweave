@@ -2,6 +2,8 @@
 
 <img src="docs/assets/social-preview2.png" alt="IncidentWeave: repository-aware incident investigation" width="100%">
 
+---
+
 [![CI](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml/badge.svg)](https://github.com/iamswayam/incidentweave/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
