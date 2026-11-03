@@ -1,0 +1,1082 @@
+{
+  "repo_id": "kopf",
+  "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+  "dataset_version": "2.0-draft",
+  "review_status": "maintainer reviewed",
+  "reviewed_on": "2026-11-04",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "Q-001",
+      "question": "How does timer registration keep its handler associated with a resource so deletion can stop it cleanly?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Timer handlers are registered as spawning handlers and require a finalizer.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/on.py",
+          "substring": "def timer(  # lgtm[py/similar-function]"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/on.py",
+          "line_start": 725,
+          "line_end": 783
+        }
+      ],
+      "source_ref": {
+        "issue": 390,
+        "pr": 548
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-002",
+      "question": "How does the watch loop resume after a disconnect, and what does it do when the resource version is too old?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The loop carries forward the latest resourceVersion; a 410 error returns to the outer reconnecting stream.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/watching.py",
+          "substring": "async def continuous_watch("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/watching.py",
+          "line_start": 157,
+          "line_end": 237
+        }
+      ],
+      "source_ref": {
+        "issue": 787,
+        "pr": 821
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-003",
+      "question": "How does resource discovery include selectors from webhook handlers when deciding which API groups to scan?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The observer gathers handlers across registries, including webhooks, then filters the scan by their groups unless a core group requires all resources.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "substring": "async def resource_observer("
+        },
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "substring": "def revise_resources("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "line_start": 94,
+          "line_end": 142
+        },
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "line_start": 215,
+          "line_end": 247
+        }
+      ],
+      "source_ref": {
+        "issue": 816,
+        "pr": 826
+      },
+      "category": "direct"
+    },
+    {
+      "id": "Q-004",
+      "question": "Which request failures, including asyncio timeouts, are retried by the Kubernetes API client?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The retry handler catches connection errors, server errors, timeouts, forbidden responses, and too-many-requests responses.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/api.py",
+          "substring": "async def request("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/api.py",
+          "line_start": 45,
+          "line_end": 132
+        }
+      ],
+      "source_ref": {
+        "issue": 840,
+        "pr": 841
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-005",
+      "question": "How does as_json_patch choose its comparison body and omit changes that have no effect?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It compares a copied body against the changed result and returns no operations for an empty patch.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/patches.py",
+          "substring": "def as_json_patch(self, body: bodies.Body | bodies.RawBody | None = None) -> JSONPatch:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/patches.py",
+          "line_start": 117,
+          "line_end": 147
+        }
+      ],
+      "source_ref": {
+        "issue": 918,
+        "pr": 919
+      },
+      "category": "direct"
+    },
+    {
+      "id": "Q-006",
+      "question": "In what order does startup_cleanup_activities run cleanup relative to root tasks and core tasks during shutdown?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Shutdown waits for root tasks, stops core tasks, then runs cleanup activities and closes the credential vault.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/running.py",
+          "substring": "async def startup_cleanup_activities("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/running.py",
+          "line_start": 482,
+          "line_end": 566
+        }
+      ],
+      "source_ref": {
+        "issue": 1033,
+        "pr": 1286
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-007",
+      "question": "What consistency behavior is used after a deletion removes the last finalizer from an object?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The finalizer helper removes the field when empty; patch verification avoids waiting for a resource version that will never arrive.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "substring": "def allow_deletion(body: bodies.RawBody, finalizer: str) -> None:"
+        },
+        {
+          "file_path": "kopf/_core/actions/application.py",
+          "substring": "async def patch_and_check("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "line_start": 30,
+          "line_end": 36
+        },
+        {
+          "file_path": "kopf/_core/actions/application.py",
+          "line_start": 107,
+          "line_end": 166
+        }
+      ],
+      "source_ref": {
+        "issue": 1106,
+        "pr": 1252
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-008",
+      "question": "How does the webhook server detect renewed TLS files and restart its endpoint?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The server hashes the configured certificate, key, and CA files and restarts after their contents change.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "kopf/_kits/webhooks.py",
+          "substring": "async def __call__(self, fn: reviews.WebhookFn) -> AsyncIterator[reviews.WebhookClientConfig]:"
+        },
+        {
+          "file_path": "kopf/_kits/webhooks.py",
+          "substring": "async def __sleep_forever_or_until_ssl_files_change(self) -> None:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_kits/webhooks.py",
+          "line_start": 158,
+          "line_end": 196
+        },
+        {
+          "file_path": "kopf/_kits/webhooks.py",
+          "line_start": 353,
+          "line_end": 378
+        }
+      ],
+      "source_ref": {
+        "issue": 1135,
+        "pr": 1217
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-009",
+      "question": "How does the operator reconcile watcher tasks when resource insights change or a watched task exits?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The orchestrator waits for task completion or revised insights, removes completed tasks, and adjusts the remaining task set.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/orchestration.py",
+          "substring": "async def orchestrator("
+        },
+        {
+          "file_path": "kopf/_core/reactor/orchestration.py",
+          "substring": "async def adjust_tasks("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/orchestration.py",
+          "line_start": 112,
+          "line_end": 160
+        },
+        {
+          "file_path": "kopf/_core/reactor/orchestration.py",
+          "line_start": 165,
+          "line_end": 195
+        }
+      ],
+      "source_ref": {
+        "issue": 1145,
+        "pr": 1313
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-010",
+      "question": "What is the default chunk size for the initial resource listing, and what does that default mean?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A None chunk size means the whole list is retrieved without chunking.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "substring": "chunk_size: int | None = None"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "line_start": 251,
+          "line_end": 272
+        }
+      ],
+      "source_ref": {
+        "issue": 1184,
+        "pr": 1222
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-011",
+      "question": "How does a sharp timer align repeated handler runs when each callback takes a variable amount of time?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "For sharp intervals the next delay is the remainder to the next interval boundary after the handler duration.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/engines/daemons.py",
+          "substring": "async def _timer("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/engines/daemons.py",
+          "line_start": 557,
+          "line_end": 664
+        }
+      ],
+      "source_ref": {
+        "issue": 1196,
+        "pr": 1214
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-012",
+      "question": "How does the timed flag waiter avoid creating its inner event-wait coroutine before the task actually starts?",
+      "answerable": true,
+      "source": "mined",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The wait coroutine creates the Event.wait awaitable only after the wrapper task begins, avoiding an unawaited inner coroutine on early cancellation.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/aiokits/aioenums.py",
+          "substring": "def __await__(self) -> Generator[None, None, AsyncFlagWaiter[FlagReasonT]]:"
+        },
+        {
+          "file_path": "kopf/_cogs/aiokits/aioenums.py",
+          "substring": "async def _wait(self) -> None:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/aiokits/aioenums.py",
+          "line_start": 170,
+          "line_end": 177
+        },
+        {
+          "file_path": "kopf/_cogs/aiokits/aioenums.py",
+          "line_start": 179,
+          "line_end": 182
+        }
+      ],
+      "source_ref": {
+        "issue": 1315,
+        "pr": 1336
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-013",
+      "question": "Which reason and change-detection setting does the update decorator assign to its registered handler?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The handler is tagged with UPDATE and sets field_needs_change to true.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "kopf/on.py",
+          "substring": "def update(  # lgtm[py/similar-function]"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/on.py",
+          "line_start": 380,
+          "line_end": 436
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-016",
+      "question": "When an API request receives 429 with Retry-After, how can the server-provided delay affect the next retry?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Retry-After or retryAfterSeconds can override the backoff when enforcement is enabled or the server delay is longer.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/api.py",
+          "substring": "async def request("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/api.py",
+          "line_start": 45,
+          "line_end": 132
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-019",
+      "question": "When a finalizer is removed, how does the helper clean up empty finalizer and metadata containers?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It removes every matching finalizer and deletes the now-empty finalizers list and metadata mapping.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "substring": "def allow_deletion(body: bodies.RawBody, finalizer: str) -> None:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "line_start": 30,
+          "line_end": 36
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-020",
+      "question": "What synthetic resource-version value is used when deletion is ongoing and the last finalizer has disappeared?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The code appends a never-arriving marker to the most recent resource version.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/application.py",
+          "substring": "async def patch_and_check("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/application.py",
+          "line_start": 107,
+          "line_end": 166
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-022",
+      "question": "How do resource-observation updates cause obsolete watchers to stop and missing watchers to start?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The observer revises the shared insights; the orchestrator reconciles its task set from the updated resources and namespaces.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "substring": "async def resource_observer("
+        },
+        {
+          "file_path": "kopf/_core/reactor/orchestration.py",
+          "substring": "async def adjust_tasks("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "line_start": 94,
+          "line_end": 142
+        },
+        {
+          "file_path": "kopf/_core/reactor/orchestration.py",
+          "line_start": 165,
+          "line_end": 195
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-023",
+      "question": "What is the default for initial streaming, and how does enabling it change the initial resource listing?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The default is false; when enabled, the initial list is obtained through server-side streaming instead of a separate list request.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "substring": "initial_streaming: bool = False"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "line_start": 275,
+          "line_end": 291
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-025",
+      "question": "What does a timed flag wait do when its timeout expires, and what is returned to the caller?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "TimeoutError is swallowed and the original waiter is returned after the time-limited wait task completes.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/aiokits/aioenums.py",
+          "substring": "def __await__(self) -> Generator[None, None, AsyncFlagWaiter[FlagReasonT]]:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/aiokits/aioenums.py",
+          "line_start": 170,
+          "line_end": 177
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-026",
+      "question": "How does an authenticated API call react to an unauthorized response or a closed session while trying credentials?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The wrapper invalidates the failing vault item and waits for replacement credentials before trying again.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "substring": "def authenticated(fn: _F) -> _F:"
+        },
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "substring": "async def invalidate("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "line_start": 22,
+          "line_end": 61
+        },
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "line_start": 401,
+          "line_end": 449
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-027",
+      "question": "Which specialized API error is raised for HTTP 429, and what response details are preserved on it?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "A 429 maps to APITooManyRequestsError and the raised error includes status, headers, and safe parsed payload.",
+      "type": "error-message",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/errors.py",
+          "substring": "async def check_response("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/errors.py",
+          "line_start": 157,
+          "line_end": 198
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-028",
+      "question": "When several valid credentials share the highest priority, how does the vault choose which one to try next?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The vault groups credentials by priority, picks the greatest priority, then randomly selects among that group.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "substring": "def select(self) -> tuple[VaultKey, VaultItem]:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "line_start": 339,
+          "line_end": 357
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-029",
+      "question": "What routing key is used for an object with a UID, and what fallback is used when it has none?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The UID is the stable key; otherwise API version, kind, namespace, and name form the key.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/engines/posting.py",
+          "substring": "def _event_key(ref: bodies.ObjectReference) -> Hashable:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/engines/posting.py",
+          "line_start": 63,
+          "line_end": 73
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-030",
+      "question": "How does event posting choose a namespace for cluster-scoped objects, and what happens to an oversized message?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It uses the current default namespace or default, and shortens messages over 1024 characters with an infix.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/events.py",
+          "substring": "async def post_event("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/events.py",
+          "line_start": 16,
+          "line_end": 103
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-031",
+      "question": "When KUBECONFIG names multiple files, how does the login handler choose the current context and merge named entries?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The first configured current-context wins, and the first occurrence of each context, cluster, or user name is retained.",
+      "type": "config-env",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "substring": "def login_with_kubeconfig("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "line_start": 296,
+          "line_end": 370
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-032",
+      "question": "Which scheduling fields distinguish a timer handler from a generic spawning handler?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "TimerHandler adds sharp, idle, and interval fields.",
+      "type": "direct",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/intents/handlers.py",
+          "substring": "class TimerHandler(SpawningHandler):"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/intents/handlers.py",
+          "line_start": 108,
+          "line_end": 115
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "direct"
+    },
+    {
+      "id": "Q-033",
+      "question": "How do comma-separated namespace patterns combine inclusive globs and exclusions when matching a namespace?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Patterns are evaluated left to right; exclusions remove a prior match, while later inclusions can re-include only a namespace matched initially.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "substring": "def match_namespace(name: NamespaceName, pattern: NamespacePattern) -> bool:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "line_start": 38,
+          "line_end": 94
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-034",
+      "question": "How does processing a watch event accumulate and apply a patch, and what happens for a DELETED event?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Processing builds a Patch and calls application.apply for non-deleted objects; deleted objects skip that apply step.",
+      "type": "multi-file",
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/processing.py",
+          "substring": "async def process_resource_event("
+        },
+        {
+          "file_path": "kopf/_core/actions/application.py",
+          "substring": "async def apply("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/processing.py",
+          "line_start": 31,
+          "line_end": 149
+        },
+        {
+          "file_path": "kopf/_core/actions/application.py",
+          "line_start": 43,
+          "line_end": 104
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-035",
+      "question": "How does an API context close outstanding responses before shutting down its session?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It closes every still-open tracked response, clears the response list, and then closes the aiohttp session.",
+      "type": "paraphrase",
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "substring": "def close_open_responses(self) -> None:"
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "line_start": 137,
+          "line_end": 142
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-036",
+      "question": "What changes does adopt apply to child objects based on their owner?",
+      "answerable": true,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "It appends an owner reference, harmonizes names, adjusts namespaces, and copies labels.",
+      "type": "how-it-works",
+      "relevant": [
+        {
+          "file_path": "kopf/_kits/hierarchies.py",
+          "substring": "def adopt("
+        }
+      ],
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_kits/hierarchies.py",
+          "line_start": 299,
+          "line_end": 317
+        }
+      ],
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "paraphrased"
+    },
+    {
+      "id": "Q-038",
+      "question": "How does the operator sentiment index prioritize custom resources by user mood?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The pinned source contains resource selectors and indices but no sentiment-analysis index.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "OperatorSentimentIndex"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-039",
+      "question": "Which component re-encrypts webhook request bodies with rotating tenant keys before handlers run?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The webhook server routes requests and builds TLS contexts, but no tenant-key re-encryption component exists.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "WebhookPayloadReencryptor"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-040",
+      "question": "Which controller balances leases across namespaces using a weighted shard score?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The source has peering and sharding selectors, but no weighted lease balancer.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "CrossNamespaceLeaseBalancer"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-041",
+      "question": "Where does the built-in cluster-weather forecast feed change resource scheduling?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Timers and resource scheduling are present, but no weather forecast feed is implemented.",
+      "kind": "far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "ClusterWeatherCondition"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_far"
+    },
+    {
+      "id": "Q-042",
+      "question": "Which setting caps failed watch reconnect attempts before the operator exits?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Watch settings include reconnect_backoff and inactivity_timeout; the watch loop continues until paused or a fatal error occurs.",
+      "kind": "near-miss",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "watcher_retry_limit"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-043",
+      "question": "Which timer option seeds random jitter so identical handlers run at different offsets?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Timer handlers expose interval, idle, and sharp scheduling controls, but no jitter seed.",
+      "kind": "near-miss",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "timer_jitter_seed"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-045",
+      "question": "Which posting setting rate-limits Kubernetes event writes per resource?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Events are routed per object and posted with backoffs, but no per-object event rate-limit setting is defined.",
+      "kind": "near-miss",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "event_rate_limit_per_object"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-046",
+      "question": "Why does an update handler run only after every field on the resource changes?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Update handlers can use field/value filters; the registration code does not require every resource field to change.",
+      "kind": "false-premise",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "all_fields_must_change"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-047",
+      "question": "Why does the framework remove a deletion-blocking finalizer before running the delete handler?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "The finalizer helper adds and removes finalizers explicitly; the removal is not an automatic pre-handler step.",
+      "kind": "false-premise",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "remove_finalizer_before_delete_handler"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    },
+    {
+      "id": "Q-048",
+      "question": "Why does the continuous watch drop every ADDED event until it reconnects?",
+      "answerable": false,
+      "source": "drafted",
+      "reviewed": true,
+      "review_minutes": 1,
+      "evidence": "Only ADDED events during server-side initial streaming are converted to type None; normal events are yielded.",
+      "kind": "false-premise",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "drop_every_added_event"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "drafting_model": "GPT-6 Luna via GitHub Copilot Chat in VS Code",
+      "category": "unanswerable_near"
+    }
+  ]
+}
