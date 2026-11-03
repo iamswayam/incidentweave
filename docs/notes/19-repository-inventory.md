@@ -248,7 +248,7 @@ generated appearance alone does not make them junk.
 
 | Path | Size (bytes) | Observed classification |
 |---|---:|---|
-| `docs/assets/social-preview.png` | 784,658 | Image asset; sizable but intentional-looking |
+| `docs/assets/social-preview2.png` | 1,501,305 | Image asset; sizable but intentional-looking |
 | `docs/chunking-experiment/03-human-review-workbook.md` | 363,843 | Frozen review workbook |
 | `docs/chunking-experiment/06-review-chatgpt.md` | 125,782 | Frozen review |
 | `docs/phases/08b-evaluation-improvements.md` | 124,945 | Historical phase record |
