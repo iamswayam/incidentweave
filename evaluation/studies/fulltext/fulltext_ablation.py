@@ -12,20 +12,12 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.retrieval.fulltext_variants import (
-    BuiltFulltextQuery,
-    build_c1_query,
-    extract_query_tokens,
-)
 from evaluation.chunking_experiment import paired_statistics
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 EXPERIMENT_ROOT = ROOT / "evaluation" / "experiments" / "fulltext"
 PROTOCOL_REFERENCE = (
     "docs/architecture-review/08-retrieval-ablation-protocol.md"
-)
-STOP_WORDS_SQL = text(
-    "SELECT lexemes FROM ts_debug('english', :term)"
 )
 ANSWERABLE_CATEGORIES = {"direct", "paraphrased"}
 TESTS_PREFIX = "tests/"
@@ -42,22 +34,6 @@ DECISION_THRESHOLDS = {
     "minimum_pooled_span_mrr_delta": 0.02,
     "nonempty_text_branch_share_must_increase": True,
 }
-
-
-async def build_protocol_query(
-    session: AsyncSession,
-    question: str,
-) -> BuiltFulltextQuery:
-    """Build c1 using stop words reported by PostgreSQL's English config."""
-
-    stop_words: set[str] = set()
-    for token in extract_query_tokens(question):
-        rows = (
-            await session.execute(STOP_WORDS_SQL, {"term": token})
-        ).scalars().all()
-        if not any(row for row in rows):
-            stop_words.add(token)
-    return build_c1_query(question, stop_words)
 
 
 def reciprocal_rank(rank: int | None) -> float:

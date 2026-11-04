@@ -24,10 +24,12 @@ from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.investigation.guard import evaluate_evidence_sufficiency  # noqa: E402
 from evaluation.bm25 import TOP_K, BM25Index, decide_b1  # noqa: E402
 from evaluation.build_fixture import load_fixture  # noqa: E402
-from evaluation.fulltext_ablation import build_protocol_query  # noqa: E402
-from evaluation.fulltext_experiment import _assert_control_matches_baseline  # noqa: E402
 from evaluation.manifest import load_manifest  # noqa: E402
 from evaluation.metrics import first_relevant_rank, first_relevant_span_rank  # noqa: E402
+from evaluation.retrieval_eval import build_protocol_query  # noqa: E402
+from evaluation.studies.fulltext.fulltext_experiment import (  # noqa: E402
+    _assert_control_matches_baseline,
+)
 from evaluation.test_file_comparison import (  # noqa: E402
     paired_mrr_statistics,
     summarize_control_guard,
