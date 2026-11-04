@@ -274,7 +274,7 @@ async def _embed(manifest_path: Path, document_delay: float, query_delay: float)
         print("All development task-type embeddings are cached; no provider call made.")
         return 0
 
-    from scripts.embed_chunks import embed_text, embed_texts
+    from app.retrieval.embeddings import embed_text, embed_texts
 
     batches = [
         documents[offset : offset + DOCUMENT_BATCH_SIZE]

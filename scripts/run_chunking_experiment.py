@@ -216,7 +216,7 @@ async def _embed(manifest_path: Path, batch_delay_seconds: float) -> int:
     if not os.environ.get("GEMINI_API_KEY"):
         raise ValueError("GEMINI_API_KEY is required for the confirmed embed command")
     from app.providers.usage import usage_operation
-    from scripts.embed_chunks import embed_texts
+    from app.retrieval.embeddings import embed_texts
 
     with usage_operation("experiment_embedding"):
         await embed_missing(

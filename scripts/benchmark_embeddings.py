@@ -24,7 +24,7 @@ if str(REPO_ROOT) not in sys.path:
 from app.db.models import Chunk, Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.providers import gemini  # noqa: E402
-from scripts.embed_chunks import (  # noqa: E402
+from app.retrieval.embeddings import (  # noqa: E402
     EMBED_BATCH_SIZE,
     EMBED_CONCURRENCY,
     embed_text,

@@ -27,7 +27,7 @@ from evaluation.manifest import (
     manifest_root,
     repository_entry,
 )
-from scripts.embed_chunks import GEMINI_MODEL
+from app.retrieval.embeddings import GEMINI_MODEL
 from app.ingestion import CHUNKER_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]

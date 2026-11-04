@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 from app.providers.gemini import ProviderSchemaInvalidError
-from scripts import embed_chunks
+from app.retrieval import embeddings as embed_chunks
 from tests.unit.httpx_client import make_test_client
 
 

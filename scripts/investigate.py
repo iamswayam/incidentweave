@@ -73,7 +73,7 @@ from app.retrieval.query_embedding_cache import (  # noqa: E402
     get_query_embedding,
     put_query_embedding,
 )
-from scripts.embed_chunks import (  # noqa: E402
+from app.retrieval.embeddings import (  # noqa: E402
     EMBEDDING_DIMENSION,
     GEMINI_MODEL,
     MAX_EMBEDDING_ATTEMPTS,

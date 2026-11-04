@@ -27,7 +27,8 @@ from app.providers.usage import usage_operation
 from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
-from scripts import embed_chunks, investigate
+from app.retrieval import embeddings as embed_chunks
+from scripts import investigate
 from app.ingestion import iter_python_files
 
 from .chunk_strategies import (

@@ -19,7 +19,7 @@ from sqlalchemy import select  # noqa: E402
 from app.db.models import Repository  # noqa: E402
 from app.db.session import AsyncSessionLocal  # noqa: E402
 from app.retrieval.hybrid_search import hybrid_search  # noqa: E402
-from scripts.embed_chunks import embed_text  # noqa: E402
+from app.retrieval.embeddings import embed_text  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
