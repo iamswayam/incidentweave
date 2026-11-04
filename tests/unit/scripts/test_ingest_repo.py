@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import scripts.ingest_repo as ingest_repo
+import app.ingestion as ingest_repo
 from app.db.models import IngestRun
-from scripts.ingest_repo import chunk_lines
+from app.ingestion import chunk_lines
 
 
 @pytest.mark.parametrize(

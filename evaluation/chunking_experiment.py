@@ -32,7 +32,7 @@ from evaluation.manifest import (
     sha256_file,
 )
 from evaluation.stats import exact_sign_test
-from scripts.ingest_repo import iter_python_files
+from app.ingestion import iter_python_files
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENT_ROOT = ROOT / "evaluation" / "experiments" / "chunking"

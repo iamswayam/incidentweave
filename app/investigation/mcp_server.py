@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.db.models import Repository
 from app.db.session import AsyncSessionLocal
 from app.retrieval.hybrid_search import hybrid_search
-from scripts.ingest_repo import iter_python_files
+from app.ingestion import iter_python_files
 
 server = FastMCP("IncidentWeave local investigation tools")
 

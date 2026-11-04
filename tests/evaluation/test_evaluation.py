@@ -47,8 +47,8 @@ from evaluation.runner import (
     run_pipeline_once,
     summarize_run,
 )
-from scripts import ingest_repo
-from scripts.ingest_repo import chunk_lines, iter_python_files
+from app import ingestion as ingest_repo
+from app.ingestion import chunk_lines, iter_python_files
 
 
 def result(file_path: str, content: str) -> dict[str, object]:

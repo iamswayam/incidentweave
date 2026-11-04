@@ -19,7 +19,7 @@ from urllib.request import urlopen
 from zipfile import ZipFile
 
 from evaluation.chunk_strategies import candidate_chunk_specs
-from scripts.ingest_repo import iter_python_files
+from app.ingestion import iter_python_files
 
 MAX_FIXTURE_BYTES = 1_572_864
 LICENSE_IDS = {"MIT", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0"}

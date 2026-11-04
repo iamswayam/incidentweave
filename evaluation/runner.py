@@ -28,7 +28,7 @@ from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
 from scripts import embed_chunks, investigate
-from scripts.ingest_repo import iter_python_files
+from app.ingestion import iter_python_files
 
 from .chunk_strategies import (
     DEFAULT_STRATEGY,

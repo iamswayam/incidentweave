@@ -24,7 +24,7 @@ from evaluation.chunk_strategies import (
     candidate_embedding_text,
     get_candidate_strategy,
 )
-from scripts.ingest_repo import chunk_lines
+from app.ingestion import chunk_lines
 
 
 @pytest.mark.parametrize("line_count", [0, 5, 60, 61, 201])

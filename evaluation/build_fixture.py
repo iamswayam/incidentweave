@@ -28,7 +28,7 @@ from evaluation.manifest import (
     repository_entry,
 )
 from scripts.embed_chunks import GEMINI_MODEL
-from scripts.ingest_repo import CHUNKER_VERSION
+from app.ingestion import CHUNKER_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
