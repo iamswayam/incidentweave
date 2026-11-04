@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from evaluation.test_file_comparison import (
+from evaluation.studies.test_files.compare_test_file_variants import render_results
+from evaluation.studies.test_files.test_file_comparison import (
     compare_development_variants,
     evaluate_variant_rules,
     mechanical_decision,
     paired_mrr_statistics,
 )
-from scripts.compare_test_file_variants import render_results
 
 
 def _rule_result(

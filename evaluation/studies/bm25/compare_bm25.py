@@ -30,13 +30,15 @@ from evaluation.studies.bm25.bm25 import TOP_K, BM25Index, decide_b1  # noqa: E4
 from evaluation.studies.fulltext.fulltext_experiment import (  # noqa: E402
     _assert_control_matches_baseline,
 )
-from evaluation.test_file_comparison import (  # noqa: E402
+from evaluation.studies.test_files.diagnose_test_files import (  # noqa: E402
+    collect_diagnostics,
+)
+from evaluation.studies.test_files.test_file_comparison import (  # noqa: E402
     paired_mrr_statistics,
     summarize_control_guard,
     summarize_method,
 )
-from evaluation.test_file_variants import control_top_five  # noqa: E402
-from scripts.diagnose_test_files import collect_diagnostics  # noqa: E402
+from evaluation.studies.test_files.test_file_variants import control_top_five  # noqa: E402
 
 PROTOCOL_PATH = "docs/architecture-review/12-bm25-comparison-protocol.md"
 PROTOCOL_COMMIT = "a47e6fc0c981f28530a89c710bda12371f9d30e1"
