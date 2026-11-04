@@ -61,8 +61,10 @@ from evaluation.manifest import (  # noqa: E402
     manifest_root,
     questions_for_split,
 )
+from evaluation.studies.test_files.diagnose_test_files import (  # noqa: E402
+    _development_question_records,
+)
 from evaluation.test_files import is_test_path  # noqa: E402
-from scripts.diagnose_test_files import _development_question_records  # noqa: E402
 
 CACHE_ROOT = ROOT / "evaluation" / "cache" / EXPERIMENT_VERSION
 RESULTS_JSON_PATH = CACHE_ROOT / "results-development.json"

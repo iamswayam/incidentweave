@@ -132,5 +132,6 @@ operational and evaluation commands.
 - [Notes](notes/README.md)
 - [Phases](phases/README.md)
 - [Evaluation](../evaluation/README.md)
+- [Evaluation studies](../evaluation/studies/README.md)
 - [Runbooks](runbooks/README.md)
 - [API reference](reference/README.md)

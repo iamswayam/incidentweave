@@ -13,7 +13,7 @@ from evaluation.metrics import (
     is_relevant_span,
 )
 from evaluation.stats import exact_sign_test
-from evaluation.test_file_variants import (
+from evaluation.studies.test_files.test_file_variants import (
     control_top_five,
     downweight_test_chunks,
     exclude_test_chunks,

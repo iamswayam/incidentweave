@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.investigation.guard import evaluate_evidence_sufficiency
-from evaluation.test_file_variants import (
+from evaluation.studies.test_files.test_file_variants import (
     control_top_five,
     downweight_test_chunks,
     exclude_test_chunks,

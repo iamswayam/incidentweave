@@ -10,15 +10,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Chunk, Repository
 from app.db.session import AsyncSessionLocal
 from app.retrieval.fulltext_search import search_fulltext
-from app.retrieval.fulltext_variants import SEARCHABLE_TEXT_VERSION
+from app.retrieval.fulltext_variants import (
+    SEARCHABLE_TEXT_VERSION,
+    BuiltFulltextQuery,
+    build_c1_query,
+    extract_query_tokens,
+)
 from app.retrieval.hybrid_search import hybrid_search
 from evaluation.build_fixture import load_fixture
-from evaluation.fulltext_ablation import build_protocol_query
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
     MANIFEST_PATH,
@@ -33,6 +38,25 @@ from evaluation.stats import paired_comparison, wilson_interval
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
 DEFAULT_REPOSITORY_ID = "incidentweave"
+STOP_WORDS_SQL = text(
+    "SELECT lexemes FROM ts_debug('english', :term)"
+)
+
+
+async def build_protocol_query(
+    session: AsyncSession,
+    question: str,
+) -> BuiltFulltextQuery:
+    """Build c1 using stop words reported by PostgreSQL's English config."""
+
+    stop_words: set[str] = set()
+    for token in extract_query_tokens(question):
+        rows = (
+            await session.execute(STOP_WORDS_SQL, {"term": token})
+        ).scalars().all()
+        if not any(row for row in rows):
+            stop_words.add(token)
+    return build_c1_query(question, stop_words)
 
 
 def _explicit_development_questions(

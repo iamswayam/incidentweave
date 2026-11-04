@@ -1,15 +1,16 @@
-"""Run the registered item 14c-2 development-only full-text ablation."""
+"""CLI wrapper for the registered full-text ablation study."""
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+import argparse
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+from evaluation.studies.fulltext.run_fulltext_ablation import main
 
-from evaluation.fulltext_experiment import main  # noqa: E402
+
+def cli() -> None:
+    argparse.ArgumentParser(description=__doc__).parse_known_args()
+    raise SystemExit(main())
+
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    cli()

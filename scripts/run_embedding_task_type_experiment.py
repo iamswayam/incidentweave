@@ -45,7 +45,9 @@ from evaluation.manifest import (  # noqa: E402
     MANIFEST_PATH,
     manifest_root,
 )
-from scripts.diagnose_test_files import _development_question_records  # noqa: E402
+from evaluation.studies.test_files.diagnose_test_files import (  # noqa: E402
+    _development_question_records,
+)
 
 CACHE_ROOT = ROOT / "evaluation" / "cache" / "embedding_task_type_v1"
 RESULTS_NOTE_PATH = ROOT / "docs" / "notes" / "15-embedding-task-type-results.md"

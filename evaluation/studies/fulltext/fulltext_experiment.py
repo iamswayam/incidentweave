@@ -12,7 +12,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.db.session import AsyncSessionLocal as SessionFactory
 from evaluation.build_fixture import load_fixture
 from evaluation.chunking_experiment import discover_sources
-from evaluation.fulltext_ablation import (
+from evaluation.golden import load_golden_set
+from evaluation.manifest import load_manifest, questions_for_split
+from evaluation.retrieval_eval import run_offline_retrieval
+from evaluation.studies.fulltext.fulltext_ablation import (
     ANSWERABLE_CATEGORIES,
     BOOTSTRAP_PROTOCOL,
     DECISION_THRESHOLDS,
@@ -24,11 +27,8 @@ from evaluation.fulltext_ablation import (
     summarize_variant,
     unique_source_characters,
 )
-from evaluation.golden import load_golden_set
-from evaluation.manifest import load_manifest, questions_for_split
-from evaluation.retrieval_eval import run_offline_retrieval
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 SOURCE_ROOT = ROOT / "evaluation" / "_snapshot" / "chunking-sources"
 VARIANTS = ("control", "c1", "c2")
 

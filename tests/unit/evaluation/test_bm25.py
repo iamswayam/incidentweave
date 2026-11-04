@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from evaluation.bm25 import BM25Index, decide_b1, tokenize
+from evaluation.studies.bm25.bm25 import BM25Index, decide_b1, tokenize
 
 
 def test_tokenize_keeps_identifiers_and_lowercases() -> None:

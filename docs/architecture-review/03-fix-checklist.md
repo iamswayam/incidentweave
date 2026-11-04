@@ -77,13 +77,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 32a | In review | pending | Provisional v1 development scorecard and registered production/deep views; results in docs/reference/metrics.md. |
 | 32b | Not started | pending | Final v2 development baseline after item 31c; frozen before item 3b. |
 | 35a | In review | pending | Move ingestion, embedding, and investigation logic under app/; retain the documented script commands. |
-| 35b | Not started | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
+| 35b | In review | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
 | 35c | Not started | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 35a (app/evaluation layering; this work), followed by 35b–35d; item 35 precedes item 33. Dataset work 31b/31c remains open, and item 32b follows item 31c.
+Next: item 35b (completed-study organization; this work), followed by 35c–35d; item 35 precedes item 33. Dataset work 31b/31c remains open, and item 32b follows item 31c.
 
 ## 1. Fix-order checklist (summary)
 
@@ -602,10 +602,11 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Done when:** An AST boundary test confirms no Python module under `app/` or `evaluation/` imports `scripts/`, the three existing commands retain their arguments and behavior, and the full test tiers pass.
 - **Status:** In review.
 
-**35b. Move test-file helpers and retrieval studies (Not started).**
+**35b. Move test-file helpers and retrieval studies (In review).**
 - **Fix:** Move test-file helpers out of CLI modules and move full-text, BM25, and test-file experiment implementations into `evaluation/studies/<name>/`; preserve stable CLI entry points.
 - **Done when:** Script-to-script helper imports are removed for these studies, their tests pass, and docs/results still identify reproducible commands and locations.
-- **Status:** Not started.
+- **Progress:** Full-text, BM25, and test-file implementations are under `evaluation/studies/`; documented script commands remain thin wrappers. No result artifacts were moved.
+- **Status:** In review.
 
 **35c. Move chunking and embedding studies (Not started).**
 - **Fix:** Move chunking, embedding task-type, and local-embedding experiment implementations into `evaluation/studies/<name>/`; preserve stable CLI entry points.

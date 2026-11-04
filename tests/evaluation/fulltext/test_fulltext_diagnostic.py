@@ -1,4 +1,4 @@
-from evaluation.fulltext_diagnostic import (
+from evaluation.studies.fulltext.fulltext_diagnostic import (
     build_or_query,
     classify_query_terms,
     extract_query_terms,

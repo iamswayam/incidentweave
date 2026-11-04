@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from evaluation.test_file_diagnostic import (
+from evaluation.studies.test_files.test_file_diagnostic import (
     build_repository_diagnostic,
     reconcile_control,
     summarize_fixture_paths,
