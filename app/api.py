@@ -12,7 +12,7 @@ from app.api_security import require_api_access
 from app.db.models import Audit, Chunk, Investigation, Repository
 from app.db.session import AsyncSessionLocal
 from app.investigation.limits import MAX_LIMIT, MAX_QUERY_CHARS
-from scripts.investigate import investigate_repository
+from app.investigation.service import investigate_repository
 
 router = APIRouter()
 

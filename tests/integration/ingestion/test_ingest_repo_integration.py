@@ -9,9 +9,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import delete, select
 
-import scripts.investigate as investigate_module
 from app.db.models import Audit, Chunk, IngestRun, Repository
 from app.db.session import AsyncSessionLocal
+from app.investigation import service as investigate_module
 from app.ingestion import CHUNKER_VERSION, ingest_repository
 
 pytestmark = pytest.mark.integration
