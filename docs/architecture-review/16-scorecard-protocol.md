@@ -94,3 +94,31 @@ a failure to explain and resolve, not a value to hide or silently reconcile.
 
 This scorecard does not measure latency, cost, or errors (item 33), citation validity or
 stability (item 34), or answer faithfulness and correctness (item 17).
+
+## Amendment 1 — 2026-11-04
+
+The registered cross-check failed on one question: for `batch-processing-service`
+`direct-02`, the gold chunk ranked 5th with a retrieval limit of 5 and 6th with a limit
+of 20. Each retrieval leg's candidate pool size equals its limit, so the limit-20 run
+uses a different candidate pool and is a different retrieval from the published top-5
+control. This amendment was made after seeing that discrepancy; no scorecard result had
+been written.
+
+The scorecard now keeps two separate ranked views for each development question:
+
+- **Production view:** control retrieval limit 5, matching the published control setting.
+- **Deep view:** control retrieval limit 20, used for diagnostic depth.
+
+Metric assignment is fixed: the production view supplies Hit@1/3/5, MRR@5, nDCG@5,
+context precision@5, and all guard metrics. The deep view supplies Hit@10, Hit@20,
+nDCG@10, and Recall@20. Every scorecard table row identifies its view. A metric must
+consume only its assigned view.
+
+The cross-check applies only to the production view, which must reproduce Hit@1/3/5 =
+19/26/28 of 33, MRR = 0.674, correct refusals = 9/15, and false accepts = 6/15 exactly.
+Deep-view values are diagnostic and are not compared with published values.
+
+Best vector distance is the minimum distance among the vector candidates returned for
+the view. Because both views use the same vector ordering and the production pool is
+contained in the deeper pool, the best distance must be identical across the two views.
+The exported data must verify this equality before scorecard computation.
