@@ -205,17 +205,17 @@ counts of files containing the basename, not a proof of complete coverage or a d
 | Module | Observed purpose | Test matches | Doc matches |
 |---|---|---:|---:|
 | [__init__.py](../../evaluation/__init__.py) | Evaluation utilities for the retrieval and investigation pipeline. | 11* | 4* |
-| [bm25.py](../../evaluation/bm25.py) | Pure BM25 ranking and decision helpers for item 14d. | 1 | 5 |
+| [bm25.py](../../evaluation/studies/bm25/bm25.py) | Pure BM25 ranking and decision helpers for item 14d. | 1 | 5 |
 | [build_fixture.py](../../evaluation/build_fixture.py) | Build the offline retrieval fixture from cached embeddings and the evaluation DB. | 1 | 4 |
-| [chunk_experiments.py](../../evaluation/chunk_experiments.py) | Chunking strategies supported by the evaluation harness only. | 3 | 6 |
+| [chunk_strategies.py](../../evaluation/chunk_strategies.py) | Chunking strategies supported by the evaluation harness only. | 3 | 6 |
 | [chunking_experiment.py](../../evaluation/chunking_experiment.py) | Deterministic preparation and analysis for the chunking comparison. | 1 | 1 |
 | [compare.py](../../evaluation/compare.py) | Compare evaluation runs in a stable, legacy-tolerant way. | 6 | 22 |
 | [compare_chunking_runs.py](../../evaluation/compare_chunking_runs.py) | Compare saved chunking-evaluation runs without a DB or API. | 1 | 3 |
 | [corpus.py](../../evaluation/corpus.py) | Pinned evaluation corpus setup, restricted to `incidentweave-eval`. | 3 | 26 |
 | [embedding_task_type.py](../../evaluation/embedding_task_type.py) | Pure helpers for the registered Gemini embedding task-type experiment. | 1 | 2 |
-| [fulltext_ablation.py](../../evaluation/fulltext_ablation.py) | Fixture-backed runners and metrics for the registered full-text ablation. | No direct match | No direct match |
-| [fulltext_diagnostic.py](../../evaluation/fulltext_diagnostic.py) | Pure helpers for diagnosing PostgreSQL full-text query terms. | 1 | No direct match |
-| [fulltext_experiment.py](../../evaluation/fulltext_experiment.py) | Execute and render the item 14c-2 development-only full-text ablation. | No direct match | No direct match |
+| [fulltext_ablation.py](../../evaluation/studies/fulltext/fulltext_ablation.py) | Fixture-backed runners and metrics for the registered full-text ablation. | No direct match | No direct match |
+| [fulltext_diagnostic.py](../../evaluation/studies/fulltext/fulltext_diagnostic.py) | Pure helpers for diagnosing PostgreSQL full-text query terms. | 1 | No direct match |
+| [fulltext_experiment.py](../../evaluation/studies/fulltext/fulltext_experiment.py) | Execute and render the item 14c-2 development-only full-text ablation. | No direct match | No direct match |
 | [gate.py](../../evaluation/gate.py) | Pure loading and evaluation for the offline retrieval regression gate. | 14 | 42 |
 | [golden.py](../../evaluation/golden.py) | Golden-set loading and validation. | 5 | 21 |
 | [inspection.py](../../evaluation/inspection.py) | Pure Markdown rendering for offline retrieval inspection reports. | 1 | 19 |
@@ -227,9 +227,9 @@ counts of files containing the basename, not a proof of complete coverage or a d
 | [span_labels.py](../../evaluation/span_labels.py) | Derive stable, chunk-independent relevance spans from golden substring labels. | 1 | 1 |
 | [splits.py](../../evaluation/splits.py) | Deterministic stratified question assignments for repository evaluations. | 8 | 6 |
 | [stats.py](../../evaluation/stats.py) | Small, dependency-free statistics for retrieval evaluation. | 2 | 2 |
-| [test_file_comparison.py](../../evaluation/test_file_comparison.py) | Metrics and preregistered decision rules for test-file ranking variants. | 1 | No direct match |
-| [test_file_diagnostic.py](../../evaluation/test_file_diagnostic.py) | Pure helpers for the test-file retrieval diagnostic. | 1 | No direct match |
-| [test_file_variants.py](../../evaluation/test_file_variants.py) | Pure implementations of the registered test-file ranking variants. | 2 | No direct match |
+| [test_file_comparison.py](../../evaluation/studies/test_files/test_file_comparison.py) | Metrics and preregistered decision rules for test-file ranking variants. | 1 | No direct match |
+| [test_file_diagnostic.py](../../evaluation/studies/test_files/test_file_diagnostic.py) | Pure helpers for the test-file retrieval diagnostic. | 1 | No direct match |
+| [test_file_variants.py](../../evaluation/studies/test_files/test_file_variants.py) | Pure implementations of the registered test-file ranking variants. | 2 | No direct match |
 | [test_files.py](../../evaluation/test_files.py) | Path rules for identifying test-source files in evaluation fixtures. | 1 | 3 |
 
 **Observed maintenance signals:** `benchmark_embeddings.py` explicitly makes live provider

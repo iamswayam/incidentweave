@@ -58,6 +58,8 @@ recorded runs used the provider default and are not directly comparable.
 | `.\.venv\Scripts\python.exe -m scripts.run_fulltext_ablation` | Rewrites tracked `evaluation/experiments/fulltext/results.json` and `report.md`. No help mode; do not run it to check usage. | Yes | No | Yes | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
 | `.\.venv\Scripts\python.exe -m scripts.compare_bm25` | Runs the preregistered BM25/control/C1 comparison on development fixtures and writes the aggregate result JSON and note. | Yes | No | Yes | [BM25 protocol](../docs/architecture-review/12-bm25-comparison-protocol.md), [results](../docs/notes/17-bm25-comparison-results.md), [entry point](../scripts/compare_bm25.py) |
 | `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` | Has `--help`; writes tracked `docs/notes/08-fulltext-diagnostic.md` by default; pass `--output` to write elsewhere. | Yes | No | Yes by default | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
+| `.\.venv\Scripts\python.exe -m scripts.diagnose_test_files --help` | Shows options for the development-only test-file diagnostic. | No | No | No, unless run | [Study index](studies/README.md), [CLI wrapper](../scripts/diagnose_test_files.py) |
+| `.\.venv\Scripts\python.exe -m scripts.compare_test_file_variants --help` | Shows options for the registered development-only test-file comparison. | Yes | No | No, unless run | [Study index](studies/README.md), [CLI wrapper](../scripts/compare_test_file_variants.py) |
 | `.\.venv\Scripts\python.exe scripts\run_eval.py` | Runs the two-pass answer evaluation against an allowlisted repository and writes run artifacts under ignored `evaluation/results/runs/`. | Yes | Yes | No | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
 
 The fixture builder needs existing database embeddings and cached question embeddings; it does not fetch embeddings.
@@ -85,6 +87,7 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | [`repos/incidentweave/smoke-gate.json`](repos/incidentweave/smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
 | `cache/` | Local embedding cache used by fixture construction and experiments, including versioned item 14a and item 18c caches. | Ignored/generated |
 | [`experiments/`](experiments/) | Chunking, full-text, BM25, and local embedding experiment documentation. | Versioned |
+| [`studies/`](studies/README.md) | Reproducible implementations for completed full-text, BM25, and test-file studies; result artifacts remain in their existing locations. | Versioned |
 | [`fixtures/`](fixtures/) | Legacy directory retained for navigation; IncidentWeave's manifest-selected fixture is under `repos/incidentweave/`. | README only |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
 | [`repos/README.md`](repos/README.md) | Candidate qualification data card and repository organization. | Versioned |
@@ -138,15 +141,12 @@ The descriptions below are taken from each module's docstring.
 - [`chunk_strategies.py`](chunk_strategies.py) — Chunking strategies supported by the evaluation harness only.
 - [`chunking_experiment.py`](chunking_experiment.py) — Deterministic preparation and analysis for the chunking comparison.
 - [`compare_chunking_runs.py`](compare_chunking_runs.py) — Compare two saved chunking-evaluation runs without database or API access.
-- [`fulltext_ablation.py`](fulltext_ablation.py) — Fixture-backed runners and metrics for the registered full-text ablation.
-- [`fulltext_diagnostic.py`](fulltext_diagnostic.py) — Pure helpers for diagnosing PostgreSQL full-text query terms.
-- [`fulltext_experiment.py`](fulltext_experiment.py) — Execute and render the item 14c-2 development-only full-text ablation.
-- [`bm25.py`](bm25.py) — Pure fixed-parameter BM25 ranking and item 14d decision helpers.
-- [`compare_bm25.py`](../scripts/compare_bm25.py) — Run the item 14d development-only BM25 comparison.
 - [`local_embedding.py`](local_embedding.py) — Cache identity, vector validation, exact cosine ranking, RRF, and decision helpers for item 18c.
 - [`run_local_embedding_experiment.py`](../scripts/run_local_embedding_experiment.py) — Plan, embed, and evaluate item 18c with development-only inputs.
 
 `chunk_strategies.py` defines chunking strategies; `chunking_experiment.py` runs the experiment.
+Completed full-text, BM25, and test-file study implementations are indexed in
+[`studies/README.md`](studies/README.md); the `scripts.*` commands remain stable wrappers.
 
 ## 5. Data model
 
