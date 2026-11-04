@@ -133,9 +133,16 @@ def ndcg_at_k(
 
     if k < 1:
         raise ValueError("k must be positive")
-    relevant_corpus_count = sum(
-        is_relevant_span(chunk, spans) for chunk in corpus_chunks
-    )
+    relevant_corpus_chunks = {
+        (
+            str(chunk.get("file_path") or ""),
+            chunk.get("line_start"),
+            chunk.get("line_end"),
+        )
+        for chunk in corpus_chunks
+        if is_relevant_span(chunk, spans)
+    }
+    relevant_corpus_count = len(relevant_corpus_chunks)
     if not relevant_corpus_count:
         raise ValueError("The pinned corpus contains no chunk overlapping a gold span")
     dcg = sum(

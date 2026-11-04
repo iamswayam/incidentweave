@@ -38,6 +38,18 @@ BOOTSTRAP_RESAMPLES = 10_000
 GUARD_THRESHOLD = 0.5
 
 
+def ranked_chunks_for_view(row: Mapping[str, Any], view: str) -> list[dict[str, Any]]:
+    """Return one explicitly named ranking view; never substitute another view."""
+
+    fields = {"production": "ranked_chunks_limit5", "deep": "ranked_chunks_limit20"}
+    if view not in fields:
+        raise ValueError(f"Unknown retrieval view {view!r}")
+    ranked = row.get(fields[view])
+    if not isinstance(ranked, list):
+        raise ValueError(f"Question does not contain the {view} ranking view")
+    return ranked
+
+
 def _validate_export(
     export: Mapping[str, Any],
     manifest: Mapping[str, Any],
@@ -53,6 +65,12 @@ def _validate_export(
         raise ValueError("V1 scorecard requires dataset_version 'v1'")
     if metadata.get("repository_ids") != list(V1_REPOSITORIES):
         raise ValueError("Rankings export must contain exactly the v1 repositories")
+    if metadata.get("retrieval_limits") != {"production": 5, "deep": 20}:
+        raise ValueError("Rankings export must declare production limit 5 and deep limit 20")
+    if metadata.get("guard_view") != "production":
+        raise ValueError("Rankings export must declare the production guard view")
+    if metadata.get("guard_threshold") != GUARD_THRESHOLD:
+        raise ValueError("Rankings export must declare guard threshold 0.5")
     if not isinstance(metadata.get("git_commit"), str) or not metadata["git_commit"]:
         raise ValueError("Rankings export must record the retrieval code commit")
     if metadata.get("manifest_sha256") != sha256_file(manifest_path):
@@ -95,58 +113,80 @@ def _validate_export(
             row = by_id[question_id]
             if row.get("repository") != repo_id or row.get("category") != question["category"]:
                 raise ValueError(f"{repo_id}:{question_id}: exported labels do not match")
-            ranked = row.get("ranked_chunks")
-            if not isinstance(ranked, list) or len(ranked) > 20:
-                raise ValueError(f"{repo_id}:{question_id}: invalid top-20 ranked chunks")
-            for chunk in ranked:
-                if (
-                    not isinstance(chunk, Mapping)
-                    or not isinstance(chunk.get("chunk_id"), str)
-                    or not isinstance(chunk.get("file_path"), str)
-                    or not isinstance(chunk.get("line_start"), int)
-                    or not isinstance(chunk.get("line_end"), int)
-                    or (
-                        chunk.get("vector_distance") is not None
-                        and not isinstance(chunk.get("vector_distance"), (int, float))
+            ranked_by_view = {
+                view: ranked_chunks_for_view(row, view)
+                for view in ("production", "deep")
+            }
+            for view, ranked in ranked_by_view.items():
+                maximum = 5 if view == "production" else 20
+                if not isinstance(ranked, list) or len(ranked) > maximum:
+                    raise ValueError(
+                        f"{repo_id}:{question_id}: invalid {view} ranked chunks"
                     )
-                ):
-                    raise ValueError(f"{repo_id}:{question_id}: malformed ranked chunk")
+                for chunk in ranked:
+                    if (
+                        not isinstance(chunk, Mapping)
+                        or not isinstance(chunk.get("chunk_id"), str)
+                        or not isinstance(chunk.get("file_path"), str)
+                        or not isinstance(chunk.get("line_start"), int)
+                        or not isinstance(chunk.get("line_end"), int)
+                        or (
+                            chunk.get("vector_distance") is not None
+                            and not isinstance(chunk.get("vector_distance"), (int, float))
+                        )
+                    ):
+                        raise ValueError(
+                            f"{repo_id}:{question_id}: malformed {view} ranked chunk"
+                        )
             best_distance = row.get("best_vector_distance")
             if best_distance is not None and not isinstance(best_distance, (int, float)):
                 raise ValueError(f"{repo_id}:{question_id}: invalid best vector distance")
-            observed_distances = [
-                float(chunk["vector_distance"])
-                for chunk in ranked[:5]
-                if chunk["vector_distance"] is not None
-            ]
-            observed_best = min(observed_distances) if observed_distances else None
+            observed_by_view = {}
+            for view, ranked in ranked_by_view.items():
+                distances = [
+                    float(chunk["vector_distance"])
+                    for chunk in ranked
+                    if chunk["vector_distance"] is not None
+                ]
+                observed_by_view[view] = min(distances) if distances else None
+            production_best = observed_by_view["production"]
+            deep_best = observed_by_view["deep"]
             if (
-                (best_distance is None) != (observed_best is None)
+                (best_distance is None) != (production_best is None)
                 or (
                     best_distance is not None
-                    and observed_best is not None
-                    and not math.isclose(float(best_distance), observed_best)
+                    and production_best is not None
+                    and not math.isclose(float(best_distance), production_best)
+                )
+                or (production_best is None) != (deep_best is None)
+                or (
+                    production_best is not None
+                    and deep_best is not None
+                    and not math.isclose(production_best, deep_best)
                 )
             ):
-                raise ValueError(f"{repo_id}:{question_id}: best vector distance is inconsistent")
+                raise ValueError(
+                    f"{repo_id}:{question_id}: best vector distance differs between views"
+                )
             refused = row.get("guard_refused")
             if not isinstance(refused, bool):
                 raise ValueError(f"{repo_id}:{question_id}: missing guard decision")
             expected_refusal = best_distance is None or best_distance > GUARD_THRESHOLD
             if refused != expected_refusal:
                 raise ValueError(f"{repo_id}:{question_id}: guard decision is inconsistent")
-            selected.append({**row, **question})
+            selected.append({**question, **row})
         selected_by_repo[repo_id] = selected
     return selected_by_repo
 
 
-def _wilson(successes: int, n: int) -> dict[str, Any]:
+def _wilson(successes: int, n: int, *, view: str) -> dict[str, Any]:
     low, high = wilson_interval(successes, n)
     return {
         "value": successes / n if n else None,
         "successes": successes,
         "n": n,
         "wilson_95": [low, high],
+        "view": view,
     }
 
 
@@ -154,10 +194,12 @@ def _bootstrap_mean(
     rows_by_repo: Mapping[str, Sequence[dict[str, Any]]],
     field: str,
     repo_ids: Sequence[str],
+    *,
+    view: str,
 ) -> dict[str, Any]:
     rows = [row for repo_id in repo_ids for row in rows_by_repo[repo_id]]
     if not rows:
-        return {"value": None, "n": 0, "bootstrap_95": None}
+        return {"value": None, "n": 0, "bootstrap_95": None, "view": view}
     value = sum(float(row[field]) for row in rows) / len(rows)
     interval = stratified_bootstrap_interval(
         {repo: rows_by_repo[repo] for repo in repo_ids},
@@ -165,12 +207,19 @@ def _bootstrap_mean(
         seed=BOOTSTRAP_SEED,
         resamples=BOOTSTRAP_RESAMPLES,
     )
-    return {"value": value, "n": len(rows), "bootstrap_95": list(interval)}
+    return {
+        "value": value,
+        "n": len(rows),
+        "bootstrap_95": list(interval),
+        "view": view,
+    }
 
 
 def _auroc_metric(
     rows_by_repo: Mapping[str, Sequence[dict[str, Any]]],
     repo_ids: Sequence[str],
+    *,
+    view: str,
 ) -> dict[str, Any]:
     rows = [row for repo_id in repo_ids for row in rows_by_repo[repo_id]]
     if any(row["best_vector_distance"] is None for row in rows):
@@ -179,6 +228,7 @@ def _auroc_metric(
             "n": len(rows),
             "bootstrap_95": None,
             "reason": "one or more questions have no vector distance",
+            "view": view,
         }
     def positive(row: dict[str, Any]) -> bool:
         return str(row["category"]).startswith("unanswerable")
@@ -201,7 +251,12 @@ def _auroc_metric(
         seed=BOOTSTRAP_SEED,
         resamples=BOOTSTRAP_RESAMPLES,
     )
-    return {"value": value, "n": len(rows), "bootstrap_95": list(interval)}
+    return {
+        "value": value,
+        "n": len(rows),
+        "bootstrap_95": list(interval),
+        "view": view,
+    }
 
 
 def _threshold_sweep(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -225,8 +280,13 @@ def _threshold_sweep(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
         output.append(
             {
                 "threshold": threshold,
-                "false_accept_rate": _wilson(false_accepts, len(unanswerable)),
-                "false_refusal_rate": _wilson(false_refusals, len(answerable)),
+                "false_accept_rate": _wilson(
+                    false_accepts, len(unanswerable), view="production"
+                ),
+                "false_refusal_rate": _wilson(
+                    false_refusals, len(answerable), view="production"
+                ),
+                "view": "production",
             }
         )
     return output
@@ -245,7 +305,9 @@ def _kind_breakdown(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
             "refusal_rate": _wilson(
                 sum(bool(row["guard_refused"]) for row in subset),
                 len(subset),
+                view="production",
             ),
+            "view": "production",
         }
         for kind, subset in sorted(grouped.items())
     }
@@ -258,13 +320,6 @@ def _score_scope(
 ) -> dict[str, Any]:
     answerable = [row for row in rows if not str(row["category"]).startswith("unanswerable")]
     unanswerable = [row for row in rows if row not in answerable]
-    hits: dict[str, Any] = {}
-    for k in (1, 3, 5, 10, 20):
-        count = sum(
-            span_hit_at_k([row["ranked_chunks"]], [row["relevant_spans"]], k)
-            for row in answerable
-        )
-        hits[f"hit_at_{k}"] = _wilson(count, len(answerable))
     answerable_by_repo = {
         repo_id: [
             row
@@ -273,15 +328,34 @@ def _score_scope(
         ]
         for repo_id in repo_ids
     }
-    retrieval = dict(hits)
-    for field in (
-        "mrr_at_5",
-        "ndcg_at_5",
-        "ndcg_at_10",
-        "recall_at_20",
-        "context_precision_at_5",
-    ):
-        retrieval[field] = _bootstrap_mean(answerable_by_repo, field, repo_ids)
+    production_hits = {}
+    for k in (1, 3, 5):
+        successes = sum(row[f"hit_at_{k}_production"] for row in answerable)
+        production_hits[f"hit_at_{k}"] = _wilson(
+            successes, len(answerable), view="production"
+        )
+    deep_hits = {}
+    for k in (10, 20):
+        successes = sum(row[f"hit_at_{k}_deep"] for row in answerable)
+        deep_hits[f"hit_at_{k}"] = _wilson(
+            successes, len(answerable), view="deep"
+        )
+    production_retrieval = dict(production_hits)
+    for field in ("mrr_at_5", "ndcg_at_5", "context_precision_at_5"):
+        production_retrieval[field] = _bootstrap_mean(
+            answerable_by_repo,
+            field,
+            repo_ids,
+            view="production",
+        )
+    deep_retrieval = dict(deep_hits)
+    for field in ("ndcg_at_10", "recall_at_20"):
+        deep_retrieval[field] = _bootstrap_mean(
+            answerable_by_repo,
+            field,
+            repo_ids,
+            view="deep",
+        )
 
     labels = [not str(row["category"]).startswith("unanswerable") for row in rows]
     refused = [bool(row["guard_refused"]) for row in rows]
@@ -290,24 +364,33 @@ def _score_scope(
     precision_n = int(refusal["true_positive"]) + int(refusal["false_positive"])
     recall_n = int(refusal["true_positive"]) + int(refusal["false_negative"])
     guard = {
+        "view": "production",
         "false_accept_rate": _wilson(
-            confusion["false_accept"], len(unanswerable)
+            confusion["false_accept"], len(unanswerable), view="production"
         ),
         "correct_refusal_rate": _wilson(
-            confusion["true_refusal"], len(unanswerable)
+            confusion["true_refusal"], len(unanswerable), view="production"
         ),
         "false_refusal_rate": _wilson(
-            confusion["false_refusal"], len(answerable)
+            confusion["false_refusal"], len(answerable), view="production"
         ),
         "refusal_precision": {
-            **_wilson(int(refusal["true_positive"]), precision_n),
+            **_wilson(
+                int(refusal["true_positive"]),
+                precision_n,
+                view="production",
+            ),
             "value": refusal["precision"],
         },
         "refusal_recall": {
-            **_wilson(int(refusal["true_positive"]), recall_n),
+            **_wilson(
+                int(refusal["true_positive"]),
+                recall_n,
+                view="production",
+            ),
             "value": refusal["recall"],
         },
-        "auroc": _auroc_metric(rows_by_repo, repo_ids),
+        "auroc": _auroc_metric(rows_by_repo, repo_ids, view="production"),
         "threshold_sweep": _threshold_sweep(rows),
         "unanswerable_kind": _kind_breakdown(unanswerable),
         "confusion": confusion,
@@ -316,7 +399,10 @@ def _score_scope(
         "n": len(rows),
         "answerable_n": len(answerable),
         "unanswerable_n": len(unanswerable),
-        "retrieval": retrieval,
+        "retrieval": {
+            "production": production_retrieval,
+            "deep": deep_retrieval,
+        },
         "guard": guard,
     }
 
@@ -343,26 +429,25 @@ def build_scorecard(
                 scored.append(row)
                 continue
             spans = row["relevant_spans"]
-            ranked = row["ranked_chunks"]
-            row.update(
-                {
-                    f"ndcg_at_{k}": ndcg_at_k(ranked, spans, fixture_chunks, k)
-                    for k in (5, 10)
-                }
-            )
-            row["recall_at_20"] = recall_at_k(ranked, spans, 20)
-            row["context_precision_at_5"] = context_precision_at_k(ranked, spans, 5)
+            production = ranked_chunks_for_view(row, "production")
+            deep = ranked_chunks_for_view(row, "deep")
+            for k in (1, 3, 5):
+                row[f"hit_at_{k}_production"] = int(
+                    span_hit_at_k([production], [spans], k)
+                )
+            for k in (10, 20):
+                row[f"hit_at_{k}_deep"] = int(span_hit_at_k([deep], [spans], k))
             row["mrr_at_5"] = (
                 1 / rank
-                if (rank := first_relevant_span_rank(ranked[:5], spans)) is not None
+                if (rank := first_relevant_span_rank(production[:5], spans)) is not None
                 else 0.0
             )
-            row.update(
-                {
-                    f"hit_at_{k}": int(span_hit_at_k([ranked], [spans], k))
-                    for k in (1, 3, 5, 10, 20)
-                }
+            row["ndcg_at_5"] = ndcg_at_k(production, spans, fixture_chunks, 5)
+            row["context_precision_at_5"] = context_precision_at_k(
+                production, spans, 5
             )
+            row["ndcg_at_10"] = ndcg_at_k(deep, spans, fixture_chunks, 10)
+            row["recall_at_20"] = recall_at_k(deep, spans, 20)
             scored.append(row)
         scored_by_repo[repo_id] = scored
         per_repository[repo_id] = _score_scope(
@@ -385,6 +470,7 @@ def build_scorecard(
         "metadata": {
             "dataset_version": "v1",
             "repository_ids": list(V1_REPOSITORIES),
+            "retrieval_views": {"production": 5, "deep": 20},
             "n": len(pooled_rows),
             "seed": BOOTSTRAP_SEED,
             "resamples": BOOTSTRAP_RESAMPLES,
@@ -416,7 +502,7 @@ def verify_registered_crosscheck(
     if sorted(metadata.get("repositories", [])) != expected_repositories:
         raise ValueError("Registered BM25 cross-check repository set does not match v1")
     control = artifact["pooled"]["methods"]["control"]
-    computed_retrieval = scorecard["pooled"]["retrieval"]
+    computed_retrieval = scorecard["pooled"]["retrieval"]["production"]
     computed_guard = scorecard["pooled"]["guard"]["confusion"]
     expected_guard = {
         "correct_refusals": sum(
@@ -429,13 +515,26 @@ def verify_registered_crosscheck(
         ),
     }
     comparisons = [
-        ("Hit@1", f"{control['hit_at_1_successes']}/33",
-         f"{computed_retrieval['hit_at_1']['successes']}/{computed_retrieval['hit_at_1']['n']}"),
-        ("Hit@3", f"{control['hit_at_3_successes']}/33",
-         f"{computed_retrieval['hit_at_3']['successes']}/{computed_retrieval['hit_at_3']['n']}"),
-        ("Hit@5", f"{control['hit_at_5_successes']}/33",
-         f"{computed_retrieval['hit_at_5']['successes']}/{computed_retrieval['hit_at_5']['n']}"),
-        ("MRR", f"{control['mrr']:.6f}", f"{computed_retrieval['mrr_at_5']['value']:.6f}"),
+        (
+            "Hit@1",
+            f"{control['hit_at_1_successes']}/33",
+            f"{computed_retrieval['hit_at_1']['successes']}/{computed_retrieval['hit_at_1']['n']}",
+        ),
+        (
+            "Hit@3",
+            f"{control['hit_at_3_successes']}/33",
+            f"{computed_retrieval['hit_at_3']['successes']}/{computed_retrieval['hit_at_3']['n']}",
+        ),
+        (
+            "Hit@5",
+            f"{control['hit_at_5_successes']}/33",
+            f"{computed_retrieval['hit_at_5']['successes']}/{computed_retrieval['hit_at_5']['n']}",
+        ),
+        (
+            "MRR",
+            f"{control['mrr']:.6f}",
+            f"{computed_retrieval['mrr_at_5']['value']:.6f}",
+        ),
         ("Correct refusals", f"{expected_guard['correct_refusals']}/15",
          f"{computed_guard['true_refusal']}/15"),
         ("False accepts", f"{expected_guard['false_accepts']}/15",

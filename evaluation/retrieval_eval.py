@@ -75,7 +75,7 @@ async def export_development_rankings(
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
 ) -> dict[str, Any]:
-    """Export top-20 control rankings for the three v1 development repositories."""
+    """Export production limit-5 and deep limit-20 rankings for v1 development."""
 
     manifest = load_manifest(manifest_path, root=root)
     if manifest.get("schema_version") != 2:
@@ -87,42 +87,67 @@ async def export_development_rankings(
 
     exported_repositories = []
     for entry in sorted(manifest["repositories"], key=lambda row: row["id"]):
-        report = await run_offline_retrieval(
-            limit=20,
-            repo_id=entry["id"],
-            split="development",
-            entry=entry,
-            root=root,
-            record_details=True,
-        )
+        reports = {}
+        for limit in (5, 20):
+            reports[limit] = await run_offline_retrieval(
+                limit=limit,
+                repo_id=entry["id"],
+                split="development",
+                entry=entry,
+                root=root,
+                record_details=True,
+            )
+        questions_by_limit = {
+            limit: {row["id"]: row for row in report["questions"]}
+            for limit, report in reports.items()
+        }
         questions = []
-        for record in report["questions"]:
-            ranked_chunks = [
-                {
-                    "chunk_id": (
-                        f"{chunk['file_path']}:{chunk['line_start']}-{chunk['line_end']}"
-                    ),
-                    "file_path": chunk["file_path"],
-                    "line_start": chunk["line_start"],
-                    "line_end": chunk["line_end"],
-                    "vector_distance": chunk["vector_score"],
-                }
-                for chunk in record.get("retrieved", [])
-            ]
-            guard_distances = [
+        for record in reports[5]["questions"]:
+            question_id = record["id"]
+
+            def ranked_chunks(limit: int) -> list[dict[str, Any]]:
+                detail = questions_by_limit[limit][question_id]
+                return [
+                    {
+                        "chunk_id": (
+                            f"{chunk['file_path']}:{chunk['line_start']}-{chunk['line_end']}"
+                        ),
+                        "file_path": chunk["file_path"],
+                        "line_start": chunk["line_start"],
+                        "line_end": chunk["line_end"],
+                        "vector_distance": chunk["vector_score"],
+                    }
+                    for chunk in detail.get("retrieved", [])
+                ]
+
+            production_chunks = ranked_chunks(5)
+            deep_chunks = ranked_chunks(20)
+            production_distances = [
                 float(chunk["vector_distance"])
-                for chunk in ranked_chunks[:5]
+                for chunk in production_chunks
                 if chunk["vector_distance"] is not None
             ]
-            best_distance = min(guard_distances) if guard_distances else None
+            deep_distances = [
+                float(chunk["vector_distance"])
+                for chunk in deep_chunks
+                if chunk["vector_distance"] is not None
+            ]
+            production_best = min(production_distances) if production_distances else None
+            deep_best = min(deep_distances) if deep_distances else None
+            if production_best != deep_best:
+                raise ValueError(
+                    f"{entry['id']}:{question_id}: best vector distance differs "
+                    "between production and deep views"
+                )
             questions.append(
                 {
-                    "id": record["id"],
+                    "id": question_id,
                     "repository": entry["id"],
                     "category": record["category"],
-                    "ranked_chunks": ranked_chunks,
-                    "best_vector_distance": best_distance,
-                    "guard_refused": best_distance is None or best_distance > 0.5,
+                    "ranked_chunks_limit5": production_chunks,
+                    "ranked_chunks_limit20": deep_chunks,
+                    "best_vector_distance": production_best,
+                    "guard_refused": production_best is None or production_best > 0.5,
                 }
             )
         exported_repositories.append(
@@ -141,8 +166,8 @@ async def export_development_rankings(
             "dataset_version": "v1",
             "repository_ids": expected_ids,
             "split": "development",
-            "top_k": 20,
-            "guard_top_k": 5,
+            "retrieval_limits": {"production": 5, "deep": 20},
+            "guard_view": "production",
             "guard_threshold": 0.5,
             "git_commit": commit,
             "manifest_sha256": sha256_file(manifest_path),
