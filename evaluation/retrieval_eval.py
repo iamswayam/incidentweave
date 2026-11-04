@@ -375,7 +375,6 @@ async def run_offline_retrieval(
                 if record_details:
                     record["retrieved"] = [
                         {
-                            "id": result["id"],
                             "rank": rank,
                             "file_path": result["file_path"],
                             "line_start": result["line_start"],
