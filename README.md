@@ -154,7 +154,8 @@ Offline retrieval uses committed fixtures and cached query embeddings; answer ev
 investigation pipeline. The reports are regression-oriented and repository-specific. See the
 [evaluation guide](evaluation/README.md), [repository data cards](evaluation/repos/README.md), and
 [dataset protocol](docs/architecture-review/15-evaluation-dataset-protocol.md) for methods, data,
-artifacts, and limits.
+artifacts, and limits. The provisional v1 development retrieval and guard results are in the
+[metrics reference](docs/reference/metrics.md).
 
 ## Quality checks
 

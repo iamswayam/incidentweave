@@ -1,6 +1,6 @@
 # Documentation status index
 
-**As of 2026-11-02.**
+**As of 2026-11-04.**
 
 This is the single cross-folder status index for tracked Markdown under `docs/`. Folder
 README files remain navigation indexes. The [scripts catalog](../scripts/README.md) covers
@@ -21,7 +21,7 @@ operational and evaluation commands.
 
 | Path | Title | Kind | Status | Superseded-by | Last verified |
 |---|---|---|---|---|---|
-| [README.md](README.md) | Documentation status index | living reference | Living | — | 2026-11-02 |
+| [README.md](README.md) | Documentation status index | living reference | Living | — | 2026-11-04 |
 | [architecture/README.md](architecture/README.md) | Architecture | living reference | Living | — | 2026-11-01 |
 | [architecture/01-architecture-overview.md](architecture/01-architecture-overview.md) | IncidentWeave Architecture | living reference | Living | — | 2026-11-01 |
 | [architecture/02-high-level-design.md](architecture/02-high-level-design.md) | IncidentWeave High-Level Design | living reference | Living | — | 2026-11-01 |
@@ -95,7 +95,8 @@ operational and evaluation commands.
 | [phases/09-production-api.md](phases/09-production-api.md) | Phase 9 — Production CLI / API | phase log | Frozen | — | — |
 | [runbooks/README.md](runbooks/README.md) | Runbooks | living reference | Living | — | 2026-11-01 |
 | [runbooks/degraded-modes-and-cache.md](runbooks/degraded-modes-and-cache.md) | Degraded modes and query-embedding cache | how-to | Living | — | 2026-11-01 |
-| [reference/README.md](reference/README.md) | Generated API reference | living reference | Living | — | 2026-11-01 |
+| [reference/README.md](reference/README.md) | Reference documents | living reference | Living | — | 2026-11-04 |
+| [reference/metrics.md](reference/metrics.md) | Provisional v1 development scorecard | results | Provisional | — | 2026-11-04 |
 
 ## Experiments
 
@@ -107,6 +108,7 @@ operational and evaluation commands.
 | Embedding task type 14a | [14-embedding-task-type-experiment.md](notes/14-embedding-task-type-experiment.md) | [15-embedding-task-type-results.md](notes/15-embedding-task-type-results.md) | `evaluation/cache/embedding_task_type_v1/report-development.json` (ignored) | `scripts/run_embedding_task_type_experiment.py` | Keep control |
 | BM25 14d | [12-bm25-comparison-protocol.md](architecture-review/12-bm25-comparison-protocol.md) | [17-bm25-comparison-results.md](notes/17-bm25-comparison-results.md) | `evaluation/experiments/bm25/results.json` | `scripts/compare_bm25.py` | Keep control; B1 failed R1 and R2 |
 | Local embeddings 18c | [14-local-embedding-protocol.md](architecture-review/14-local-embedding-protocol.md) | [18-local-embedding-results.md](notes/18-local-embedding-results.md) | `evaluation/cache/local_embedding_v1/results-development.json` (ignored) | `scripts/run_local_embedding_experiment.py` | Keep control; both candidates failed R1–R3 |
+| Scorecard 32a | [16-scorecard-protocol.md](architecture-review/16-scorecard-protocol.md) | [metrics.md](reference/metrics.md) | `evaluation/experiments/scorecard/v1-development.json` | `scripts/run_scorecard.py` | Provisional v1 development baseline; production control cross-check passed |
 
 ## Where to look
 
@@ -115,6 +117,7 @@ operational and evaluation commands.
 - **How to run tests:** [test tiers](notes/16-test-tiers.md).
 - **How to run experiments:** [the paired experiment table](#experiments) and
   [evaluation guide](../evaluation/README.md).
+- **Current retrieval and guard metrics:** [provisional scorecard](reference/metrics.md).
 - **Decisions:** [LLM gateway direction](architecture-review/09-llm-gateway-decision.md),
   [degraded-response contract](architecture-review/13-degraded-response-design.md), and
   the decisions linked from each experiment row.

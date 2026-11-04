@@ -74,11 +74,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 31a | In review | pending | Dataset question tooling and labelling guidelines |
 | 31b | Not started | pending | Pilot questions for rq and kopf, second pass and pilot gate |
 | 31c | Not started | pending | Scale to remaining repositories, development fixtures, freeze v2.0 |
-| 32 | Not started | pending | Retrieval and guard scorecard |
+| 32a | In review | pending | Provisional v1 development scorecard and registered production/deep views; results in docs/reference/metrics.md. |
+| 32b | Not started | pending | Final v2 development baseline after item 31c; frozen before item 3b. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 31b (pilot questions for rq and kopf) after 31a merges.
+Next: item 31b (pilot questions for rq and kopf) after 31a merges. Item 32b follows item 31c; item 32a is in review.
 
 ## 1. Fix-order checklist (summary)
 
@@ -148,7 +149,8 @@ Next: item 31b (pilot questions for rq and kopf) after 31a merges.
 | 31a | ☐ | Dataset question tooling and labelling guidelines | High | M | Maintainer |
 | 31b | ☐ | Pilot questions for rq and kopf, second pass and pilot gate | High | M | Maintainer |
 | 31c | ☐ | Scale to remaining repositories, development fixtures, freeze v2.0 | High | L | Maintainer |
-| 32 | ☐ | Retrieval and guard scorecard | High | M | Maintainer |
+| 32a | ☐ | Provisional v1 retrieval and guard scorecard | High | M | Maintainer |
+| 32b | ☐ | Final v2 development scorecard before item 3b | High | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
 
@@ -161,14 +163,14 @@ Next: item 31b (pilot questions for rq and kopf) after 31a merges.
 | 3 | **13**, **16a**, **16b**, **16c**, **15a-1**, **15a-2**, **15b**, **17** | Measurement you can trust before tuning |
 | 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a-1**, **14a-2**, **14d**, **18b-1**, **18d-1**, **18d-2**, **18d-3**, **18d-4**, **18c** (done); **18b-2** and **14b-3** remain open | Settle retrieval and provider/fallback design before the final guard validation |
 | 5 | **29**, **30** (done), **31a**, **31b**, **31c** | Register the dataset protocol, qualify repositories, build and pilot questions, then scale and freeze v2 |
-| 6 | **32** | Freeze the retrieval and guard scorecard before item 3b |
+| 6 | **32a**, **32b** | Provisional v1 scorecard now; freeze the final v2 development scorecard before item 3b |
 | 7 | **33** | Report operational metrics and estimated costs |
 | 8 | **21** (development only) | Evaluate reranking before the held-out run |
 | 9 | **34** | Freeze deterministic citation and end-to-end checks |
 | 10 | **3b** (including **14b-3**) | Run one registered v2 held-out evaluation with the frozen scorecard and threshold validation |
 | 11 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
 
-Remaining implementation sequence: dataset (**29**, **30**, **31a**, **31b**, **31c**) → scorecard **32** →
+Remaining implementation sequence: dataset (**29**, **30**, **31a**, **31b**, **31c**) → provisional scorecard **32a** → final v2 development scorecard **32b** →
 operational report **33** → reranker **21** (development only) → citation validity **34** →
 **3b** (one registered run on v2 held-out repositories with the frozen scorecard, threshold
 validation, and the 14b-3 decision) → **17** (its “grow unanswerable to at least 20” target
@@ -572,10 +574,16 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Done when:** The registered repositories, questions, splits, development fixtures, validator, freeze, and data card meet protocol 15.
 - **Status:** Not started.
 
-**32. Retrieval and guard scorecard.**
+**32a. Provisional v1 retrieval and guard scorecard.**
 - **Why:** The v2 comparison needs a fixed retrieval and guard measurement contract before held-out validation.
-- **Fix:** Define nDCG@5/@10, context precision@5, Recall@20, Hit@k, MRR with 95% intervals; guard false-accept/refusal rates, refusal precision/recall, AUROC, and a descriptive threshold sweep. Produce the v2 development control baseline.
-- **Done when:** The scorecard and development baseline are frozen before item 3b.
+- **Fix:** Register dual production (limit 5) and deep (limit 20) retrieval views; compute registered retrieval and guard measures with intervals on the three v1 development repositories.
+- **Done when:** The production view reproduces the published control; results and protocol are documented without using held-out data.
+- **Status:** In review. Protocol and dual-view implementation are committed; production cross-check passed and provisional results are recorded in [the metrics reference](../reference/metrics.md).
+
+**32b. Final v2 development scorecard.**
+- **Why:** Item 3b needs a frozen development baseline and a stable measurement contract after the v2 dataset is complete.
+- **Fix:** Add the v2 development repositories from item 31c and produce the final scorecard under the registered protocol. Do not use held-out data.
+- **Done when:** The v2 development baseline is recorded and frozen before item 3b.
 - **Status:** Not started.
 
 **33. Operational metrics report.**

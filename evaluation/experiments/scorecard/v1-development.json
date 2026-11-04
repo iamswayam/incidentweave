@@ -1,0 +1,2490 @@
+{
+  "metadata": {
+    "dataset_version": "v1",
+    "repository_ids": [
+      "batch-processing-service",
+      "incidentweave",
+      "lifeos"
+    ],
+    "retrieval_views": {
+      "production": 5,
+      "deep": 20
+    },
+    "n": 48,
+    "seed": 20261031,
+    "resamples": 10000,
+    "git_commit": "7d235785a6af453d0adbc4b0a168c1e74ad015c3",
+    "scorecard_git_commit": "7d235785a6af453d0adbc4b0a168c1e74ad015c3",
+    "protocol": "docs/architecture-review/16-scorecard-protocol.md",
+    "split": "development",
+    "manifest_sha256": "363cf08650d17f65fe5fc39c3255ccbeacbe4ef7f3cbd113c127da71a732dcf5",
+    "run_date": "2026-11-04",
+    "rankings_export": "evaluation\\experiments\\scorecard\\v1-development-rankings.json"
+  },
+  "per_repository": {
+    "batch-processing-service": {
+      "n": 16,
+      "answerable_n": 11,
+      "unanswerable_n": 5,
+      "retrieval": {
+        "production": {
+          "hit_at_1": {
+            "value": 0.5454545454545454,
+            "successes": 6,
+            "n": 11,
+            "wilson_95": [
+              0.28008775568998817,
+              0.7872904245601196
+            ],
+            "view": "production"
+          },
+          "hit_at_3": {
+            "value": 0.8181818181818182,
+            "successes": 9,
+            "n": 11,
+            "wilson_95": [
+              0.5230138624217553,
+              0.9486333993289995
+            ],
+            "view": "production"
+          },
+          "hit_at_5": {
+            "value": 0.9090909090909091,
+            "successes": 10,
+            "n": 11,
+            "wilson_95": [
+              0.6226353745137962,
+              0.9837682477371741
+            ],
+            "view": "production"
+          },
+          "mrr_at_5": {
+            "value": 0.6848484848484848,
+            "n": 11,
+            "bootstrap_95": [
+              0.4606060606060606,
+              0.893939393939394
+            ],
+            "view": "production"
+          },
+          "ndcg_at_5": {
+            "value": 0.7130175290987322,
+            "n": 11,
+            "bootstrap_95": [
+              0.5124305904035656,
+              0.8845496024836905
+            ],
+            "view": "production"
+          },
+          "context_precision_at_5": {
+            "value": 0.2727272727272727,
+            "n": 11,
+            "bootstrap_95": [
+              0.18181818181818182,
+              0.36363636363636365
+            ],
+            "view": "production"
+          }
+        },
+        "deep": {
+          "hit_at_10": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "hit_at_20": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "ndcg_at_10": {
+            "value": 0.7389101887950239,
+            "n": 11,
+            "bootstrap_95": [
+              0.5767600981619867,
+              0.8858251769397196
+            ],
+            "view": "deep"
+          },
+          "recall_at_20": {
+            "value": 0.9545454545454546,
+            "n": 11,
+            "bootstrap_95": [
+              0.8636363636363636,
+              1.0
+            ],
+            "view": "deep"
+          }
+        }
+      },
+      "guard": {
+        "view": "production",
+        "false_accept_rate": {
+          "value": 0.4,
+          "successes": 2,
+          "n": 5,
+          "wilson_95": [
+            0.1176182311592533,
+            0.769280067791163
+          ],
+          "view": "production"
+        },
+        "correct_refusal_rate": {
+          "value": 0.6,
+          "successes": 3,
+          "n": 5,
+          "wilson_95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ],
+          "view": "production"
+        },
+        "false_refusal_rate": {
+          "value": 0.0,
+          "successes": 0,
+          "n": 11,
+          "wilson_95": [
+            2.7755575615628914e-17,
+            0.2588400172488141
+          ],
+          "view": "production"
+        },
+        "refusal_precision": {
+          "value": 1.0,
+          "successes": 3,
+          "n": 3,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ],
+          "view": "production"
+        },
+        "refusal_recall": {
+          "value": 0.6,
+          "successes": 3,
+          "n": 5,
+          "wilson_95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ],
+          "view": "production"
+        },
+        "auroc": {
+          "value": 0.8727272727272727,
+          "n": 16,
+          "bootstrap_95": [
+            0.6363636363636364,
+            1.0
+          ],
+          "view": "production"
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.3,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.6363636363636364,
+              "successes": 7,
+              "n": 11,
+              "wilson_95": [
+                0.35379677689163724,
+                0.8483377638586862
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.325,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.36363636363636365,
+              "successes": 4,
+              "n": 11,
+              "wilson_95": [
+                0.15166223614131383,
+                0.6462032231083628
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.35,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.18181818181818182,
+              "successes": 2,
+              "n": 11,
+              "wilson_95": [
+                0.05136660067100063,
+                0.4769861375782448
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.375,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.18181818181818182,
+              "successes": 2,
+              "n": 11,
+              "wilson_95": [
+                0.05136660067100063,
+                0.4769861375782448
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.4,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.09090909090909091,
+              "successes": 1,
+              "n": 11,
+              "wilson_95": [
+                0.01623175226282597,
+                0.3773646254862038
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.425,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.09090909090909091,
+              "successes": 1,
+              "n": 11,
+              "wilson_95": [
+                0.01623175226282597,
+                0.3773646254862038
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.45,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.09090909090909091,
+              "successes": 1,
+              "n": 11,
+              "wilson_95": [
+                0.01623175226282597,
+                0.3773646254862038
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.475,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.5,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.525,
+            "false_accept_rate": {
+              "value": 0.6,
+              "successes": 3,
+              "n": 5,
+              "wilson_95": [
+                0.23071993220883708,
+                0.8823817688407467
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.55,
+            "false_accept_rate": {
+              "value": 0.8,
+              "successes": 4,
+              "n": 5,
+              "wilson_95": [
+                0.3755282641185388,
+                0.9637768390302125
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.575,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.6,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.625,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.65,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.675,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.7,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          }
+        ],
+        "unanswerable_kind": {
+          "far": {
+            "refused": 3,
+            "n": 3,
+            "refusal_rate": {
+              "value": 1.0,
+              "successes": 3,
+              "n": 3,
+              "wilson_95": [
+                0.43849391955098227,
+                1.0
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          "near-miss": {
+            "refused": 0,
+            "n": 2,
+            "refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 2,
+              "wilson_95": [
+                0.0,
+                0.6576280471103807
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          }
+        },
+        "confusion": {
+          "true_accept": 11,
+          "false_refusal": 0,
+          "true_refusal": 3,
+          "false_accept": 2
+        }
+      }
+    },
+    "incidentweave": {
+      "n": 16,
+      "answerable_n": 11,
+      "unanswerable_n": 5,
+      "retrieval": {
+        "production": {
+          "hit_at_1": {
+            "value": 0.45454545454545453,
+            "successes": 5,
+            "n": 11,
+            "wilson_95": [
+              0.21270957543988045,
+              0.7199122443100118
+            ],
+            "view": "production"
+          },
+          "hit_at_3": {
+            "value": 0.6363636363636364,
+            "successes": 7,
+            "n": 11,
+            "wilson_95": [
+              0.35379677689163724,
+              0.8483377638586862
+            ],
+            "view": "production"
+          },
+          "hit_at_5": {
+            "value": 0.6363636363636364,
+            "successes": 7,
+            "n": 11,
+            "wilson_95": [
+              0.35379677689163724,
+              0.8483377638586862
+            ],
+            "view": "production"
+          },
+          "mrr_at_5": {
+            "value": 0.5151515151515151,
+            "n": 11,
+            "bootstrap_95": [
+              0.2424242424242424,
+              0.7878787878787878
+            ],
+            "view": "production"
+          },
+          "ndcg_at_5": {
+            "value": 0.5454545454545454,
+            "n": 11,
+            "bootstrap_95": [
+              0.2727272727272727,
+              0.8181818181818182
+            ],
+            "view": "production"
+          },
+          "context_precision_at_5": {
+            "value": 0.1272727272727273,
+            "n": 11,
+            "bootstrap_95": [
+              0.07272727272727274,
+              0.18181818181818182
+            ],
+            "view": "production"
+          }
+        },
+        "deep": {
+          "hit_at_10": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "hit_at_20": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "ndcg_at_10": {
+            "value": 0.6570232955784705,
+            "n": 11,
+            "bootstrap_95": [
+              0.4717764109492142,
+              0.8484848484848485
+            ],
+            "view": "deep"
+          },
+          "recall_at_20": {
+            "value": 1.0,
+            "n": 11,
+            "bootstrap_95": [
+              1.0,
+              1.0
+            ],
+            "view": "deep"
+          }
+        }
+      },
+      "guard": {
+        "view": "production",
+        "false_accept_rate": {
+          "value": 0.4,
+          "successes": 2,
+          "n": 5,
+          "wilson_95": [
+            0.1176182311592533,
+            0.769280067791163
+          ],
+          "view": "production"
+        },
+        "correct_refusal_rate": {
+          "value": 0.6,
+          "successes": 3,
+          "n": 5,
+          "wilson_95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ],
+          "view": "production"
+        },
+        "false_refusal_rate": {
+          "value": 0.0,
+          "successes": 0,
+          "n": 11,
+          "wilson_95": [
+            2.7755575615628914e-17,
+            0.2588400172488141
+          ],
+          "view": "production"
+        },
+        "refusal_precision": {
+          "value": 1.0,
+          "successes": 3,
+          "n": 3,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ],
+          "view": "production"
+        },
+        "refusal_recall": {
+          "value": 0.6,
+          "successes": 3,
+          "n": 5,
+          "wilson_95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ],
+          "view": "production"
+        },
+        "auroc": {
+          "value": 0.9272727272727272,
+          "n": 16,
+          "bootstrap_95": [
+            0.7818181818181819,
+            1.0
+          ],
+          "view": "production"
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.3,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.8181818181818182,
+              "successes": 9,
+              "n": 11,
+              "wilson_95": [
+                0.5230138624217553,
+                0.9486333993289995
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.325,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.8181818181818182,
+              "successes": 9,
+              "n": 11,
+              "wilson_95": [
+                0.5230138624217553,
+                0.9486333993289995
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.35,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.5454545454545454,
+              "successes": 6,
+              "n": 11,
+              "wilson_95": [
+                0.28008775568998817,
+                0.7872904245601196
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.375,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.18181818181818182,
+              "successes": 2,
+              "n": 11,
+              "wilson_95": [
+                0.05136660067100063,
+                0.4769861375782448
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.4,
+            "false_accept_rate": {
+              "value": 0.2,
+              "successes": 1,
+              "n": 5,
+              "wilson_95": [
+                0.03622316096978745,
+                0.6244717358814613
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.18181818181818182,
+              "successes": 2,
+              "n": 11,
+              "wilson_95": [
+                0.05136660067100063,
+                0.4769861375782448
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.425,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.45,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.475,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.5,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.525,
+            "false_accept_rate": {
+              "value": 0.6,
+              "successes": 3,
+              "n": 5,
+              "wilson_95": [
+                0.23071993220883708,
+                0.8823817688407467
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.55,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.575,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.6,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.625,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.65,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.675,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.7,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          }
+        ],
+        "unanswerable_kind": {
+          "far": {
+            "refused": 3,
+            "n": 3,
+            "refusal_rate": {
+              "value": 1.0,
+              "successes": 3,
+              "n": 3,
+              "wilson_95": [
+                0.43849391955098227,
+                1.0
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          "near-miss": {
+            "refused": 0,
+            "n": 2,
+            "refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 2,
+              "wilson_95": [
+                0.0,
+                0.6576280471103807
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          }
+        },
+        "confusion": {
+          "true_accept": 11,
+          "false_refusal": 0,
+          "true_refusal": 3,
+          "false_accept": 2
+        }
+      }
+    },
+    "lifeos": {
+      "n": 16,
+      "answerable_n": 11,
+      "unanswerable_n": 5,
+      "retrieval": {
+        "production": {
+          "hit_at_1": {
+            "value": 0.7272727272727273,
+            "successes": 8,
+            "n": 11,
+            "wilson_95": [
+              0.4343497069897537,
+              0.9025411942607853
+            ],
+            "view": "production"
+          },
+          "hit_at_3": {
+            "value": 0.9090909090909091,
+            "successes": 10,
+            "n": 11,
+            "wilson_95": [
+              0.6226353745137962,
+              0.9837682477371741
+            ],
+            "view": "production"
+          },
+          "hit_at_5": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "production"
+          },
+          "mrr_at_5": {
+            "value": 0.8212121212121212,
+            "n": 11,
+            "bootstrap_95": [
+              0.6303030303030304,
+              1.0
+            ],
+            "view": "production"
+          },
+          "ndcg_at_5": {
+            "value": 0.8652529600732727,
+            "n": 11,
+            "bootstrap_95": [
+              0.7202198117133218,
+              1.0
+            ],
+            "view": "production"
+          },
+          "context_precision_at_5": {
+            "value": 0.21818181818181823,
+            "n": 11,
+            "bootstrap_95": [
+              0.2,
+              0.2545454545454546
+            ],
+            "view": "production"
+          }
+        },
+        "deep": {
+          "hit_at_10": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "hit_at_20": {
+            "value": 1.0,
+            "successes": 11,
+            "n": 11,
+            "wilson_95": [
+              0.7411599827511859,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "ndcg_at_10": {
+            "value": 0.8652529600732727,
+            "n": 11,
+            "bootstrap_95": [
+              0.7202198117133218,
+              1.0
+            ],
+            "view": "deep"
+          },
+          "recall_at_20": {
+            "value": 1.0,
+            "n": 11,
+            "bootstrap_95": [
+              1.0,
+              1.0
+            ],
+            "view": "deep"
+          }
+        }
+      },
+      "guard": {
+        "view": "production",
+        "false_accept_rate": {
+          "value": 0.4,
+          "successes": 2,
+          "n": 5,
+          "wilson_95": [
+            0.1176182311592533,
+            0.769280067791163
+          ],
+          "view": "production"
+        },
+        "correct_refusal_rate": {
+          "value": 0.6,
+          "successes": 3,
+          "n": 5,
+          "wilson_95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ],
+          "view": "production"
+        },
+        "false_refusal_rate": {
+          "value": 0.0,
+          "successes": 0,
+          "n": 11,
+          "wilson_95": [
+            2.7755575615628914e-17,
+            0.2588400172488141
+          ],
+          "view": "production"
+        },
+        "refusal_precision": {
+          "value": 1.0,
+          "successes": 3,
+          "n": 3,
+          "wilson_95": [
+            0.43849391955098227,
+            1.0
+          ],
+          "view": "production"
+        },
+        "refusal_recall": {
+          "value": 0.6,
+          "successes": 3,
+          "n": 5,
+          "wilson_95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ],
+          "view": "production"
+        },
+        "auroc": {
+          "value": 0.9636363636363636,
+          "n": 16,
+          "bootstrap_95": [
+            0.8363636363636363,
+            1.0
+          ],
+          "view": "production"
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.3,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.5454545454545454,
+              "successes": 6,
+              "n": 11,
+              "wilson_95": [
+                0.28008775568998817,
+                0.7872904245601196
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.325,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.5454545454545454,
+              "successes": 6,
+              "n": 11,
+              "wilson_95": [
+                0.28008775568998817,
+                0.7872904245601196
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.35,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.36363636363636365,
+              "successes": 4,
+              "n": 11,
+              "wilson_95": [
+                0.15166223614131383,
+                0.6462032231083628
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.375,
+            "false_accept_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 5,
+              "wilson_95": [
+                -2.7755575615628914e-17,
+                0.43449149475208104
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.2727272727272727,
+              "successes": 3,
+              "n": 11,
+              "wilson_95": [
+                0.09745880573921467,
+                0.5656502930102463
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.4,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.09090909090909091,
+              "successes": 1,
+              "n": 11,
+              "wilson_95": [
+                0.01623175226282597,
+                0.3773646254862038
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.425,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.09090909090909091,
+              "successes": 1,
+              "n": 11,
+              "wilson_95": [
+                0.01623175226282597,
+                0.3773646254862038
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.45,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.09090909090909091,
+              "successes": 1,
+              "n": 11,
+              "wilson_95": [
+                0.01623175226282597,
+                0.3773646254862038
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.475,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.5,
+            "false_accept_rate": {
+              "value": 0.4,
+              "successes": 2,
+              "n": 5,
+              "wilson_95": [
+                0.1176182311592533,
+                0.769280067791163
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.525,
+            "false_accept_rate": {
+              "value": 0.6,
+              "successes": 3,
+              "n": 5,
+              "wilson_95": [
+                0.23071993220883708,
+                0.8823817688407467
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.55,
+            "false_accept_rate": {
+              "value": 0.8,
+              "successes": 4,
+              "n": 5,
+              "wilson_95": [
+                0.3755282641185388,
+                0.9637768390302125
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.575,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.6,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.625,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.65,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.675,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          {
+            "threshold": 0.7,
+            "false_accept_rate": {
+              "value": 1.0,
+              "successes": 5,
+              "n": 5,
+              "wilson_95": [
+                0.5655085052479191,
+                1.0000000000000002
+              ],
+              "view": "production"
+            },
+            "false_refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 11,
+              "wilson_95": [
+                2.7755575615628914e-17,
+                0.2588400172488141
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          }
+        ],
+        "unanswerable_kind": {
+          "far": {
+            "refused": 3,
+            "n": 3,
+            "refusal_rate": {
+              "value": 1.0,
+              "successes": 3,
+              "n": 3,
+              "wilson_95": [
+                0.43849391955098227,
+                1.0
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          },
+          "near-miss": {
+            "refused": 0,
+            "n": 2,
+            "refusal_rate": {
+              "value": 0.0,
+              "successes": 0,
+              "n": 2,
+              "wilson_95": [
+                0.0,
+                0.6576280471103807
+              ],
+              "view": "production"
+            },
+            "view": "production"
+          }
+        },
+        "confusion": {
+          "true_accept": 11,
+          "false_refusal": 0,
+          "true_refusal": 3,
+          "false_accept": 2
+        }
+      }
+    }
+  },
+  "pooled": {
+    "n": 48,
+    "answerable_n": 33,
+    "unanswerable_n": 15,
+    "retrieval": {
+      "production": {
+        "hit_at_1": {
+          "value": 0.5757575757575758,
+          "successes": 19,
+          "n": 33,
+          "wilson_95": [
+            0.4080697369146003,
+            0.7276464100497011
+          ],
+          "view": "production"
+        },
+        "hit_at_3": {
+          "value": 0.7878787878787878,
+          "successes": 26,
+          "n": 33,
+          "wilson_95": [
+            0.6224802241287064,
+            0.8932411343356381
+          ],
+          "view": "production"
+        },
+        "hit_at_5": {
+          "value": 0.8484848484848485,
+          "successes": 28,
+          "n": 33,
+          "wilson_95": [
+            0.6907978686153953,
+            0.9334964074203904
+          ],
+          "view": "production"
+        },
+        "mrr_at_5": {
+          "value": 0.6737373737373737,
+          "n": 33,
+          "bootstrap_95": [
+            0.5434343434343435,
+            0.7999999999999999
+          ],
+          "view": "production"
+        },
+        "ndcg_at_5": {
+          "value": 0.7079083448755168,
+          "n": 33,
+          "bootstrap_95": [
+            0.5896346052884353,
+            0.8216133628427335
+          ],
+          "view": "production"
+        },
+        "context_precision_at_5": {
+          "value": 0.20606060606060608,
+          "n": 33,
+          "bootstrap_95": [
+            0.1696969696969697,
+            0.24242424242424243
+          ],
+          "view": "production"
+        }
+      },
+      "deep": {
+        "hit_at_10": {
+          "value": 1.0,
+          "successes": 33,
+          "n": 33,
+          "wilson_95": [
+            0.8957265699643882,
+            1.0
+          ],
+          "view": "deep"
+        },
+        "hit_at_20": {
+          "value": 1.0,
+          "successes": 33,
+          "n": 33,
+          "wilson_95": [
+            0.8957265699643882,
+            1.0
+          ],
+          "view": "deep"
+        },
+        "ndcg_at_10": {
+          "value": 0.7537288148155891,
+          "n": 33,
+          "bootstrap_95": [
+            0.6602006998726041,
+            0.8446084308077202
+          ],
+          "view": "deep"
+        },
+        "recall_at_20": {
+          "value": 0.9848484848484849,
+          "n": 33,
+          "bootstrap_95": [
+            0.9545454545454546,
+            1.0
+          ],
+          "view": "deep"
+        }
+      }
+    },
+    "guard": {
+      "view": "production",
+      "false_accept_rate": {
+        "value": 0.4,
+        "successes": 6,
+        "n": 15,
+        "wilson_95": [
+          0.19824228082594664,
+          0.642535572434923
+        ],
+        "view": "production"
+      },
+      "correct_refusal_rate": {
+        "value": 0.6,
+        "successes": 9,
+        "n": 15,
+        "wilson_95": [
+          0.357464427565077,
+          0.8017577191740534
+        ],
+        "view": "production"
+      },
+      "false_refusal_rate": {
+        "value": 0.0,
+        "successes": 0,
+        "n": 33,
+        "wilson_95": [
+          0.0,
+          0.10427343003561192
+        ],
+        "view": "production"
+      },
+      "refusal_precision": {
+        "value": 1.0,
+        "successes": 9,
+        "n": 9,
+        "wilson_95": [
+          0.7008472464490407,
+          1.0
+        ],
+        "view": "production"
+      },
+      "refusal_recall": {
+        "value": 0.6,
+        "successes": 9,
+        "n": 15,
+        "wilson_95": [
+          0.357464427565077,
+          0.8017577191740534
+        ],
+        "view": "production"
+      },
+      "auroc": {
+        "value": 0.8929292929292929,
+        "n": 48,
+        "bootstrap_95": [
+          0.7898989898989899,
+          0.9757575757575757
+        ],
+        "view": "production"
+      },
+      "threshold_sweep": [
+        {
+          "threshold": 0.3,
+          "false_accept_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 15,
+            "wilson_95": [
+              -1.3877787807814457e-17,
+              0.20388926630434784
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.6666666666666666,
+            "successes": 22,
+            "n": 33,
+            "wilson_95": [
+              0.4960758179994997,
+              0.8024997053219629
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.325,
+          "false_accept_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 15,
+            "wilson_95": [
+              -1.3877787807814457e-17,
+              0.20388926630434784
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.5757575757575758,
+            "successes": 19,
+            "n": 33,
+            "wilson_95": [
+              0.4080697369146003,
+              0.7276464100497011
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.35,
+          "false_accept_rate": {
+            "value": 0.13333333333333333,
+            "successes": 2,
+            "n": 15,
+            "wilson_95": [
+              0.0373604698913593,
+              0.3788249920651624
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.36363636363636365,
+            "successes": 12,
+            "n": 33,
+            "wilson_95": [
+              0.22186966167959873,
+              0.5338412737846591
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.375,
+          "false_accept_rate": {
+            "value": 0.13333333333333333,
+            "successes": 2,
+            "n": 15,
+            "wilson_95": [
+              0.0373604698913593,
+              0.3788249920651624
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.21212121212121213,
+            "successes": 7,
+            "n": 33,
+            "wilson_95": [
+              0.1067588656643618,
+              0.3775197758712936
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.4,
+          "false_accept_rate": {
+            "value": 0.3333333333333333,
+            "successes": 5,
+            "n": 15,
+            "wilson_95": [
+              0.15176100694691236,
+              0.5828687484878701
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.12121212121212122,
+            "successes": 4,
+            "n": 33,
+            "wilson_95": [
+              0.04816083267584231,
+              0.2732584325026516
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.425,
+          "false_accept_rate": {
+            "value": 0.4,
+            "successes": 6,
+            "n": 15,
+            "wilson_95": [
+              0.19824228082594664,
+              0.642535572434923
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.06060606060606061,
+            "successes": 2,
+            "n": 33,
+            "wilson_95": [
+              0.016780530429070947,
+              0.19606581717798194
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.45,
+          "false_accept_rate": {
+            "value": 0.4,
+            "successes": 6,
+            "n": 15,
+            "wilson_95": [
+              0.19824228082594664,
+              0.642535572434923
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.06060606060606061,
+            "successes": 2,
+            "n": 33,
+            "wilson_95": [
+              0.016780530429070947,
+              0.19606581717798194
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.475,
+          "false_accept_rate": {
+            "value": 0.4,
+            "successes": 6,
+            "n": 15,
+            "wilson_95": [
+              0.19824228082594664,
+              0.642535572434923
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.5,
+          "false_accept_rate": {
+            "value": 0.4,
+            "successes": 6,
+            "n": 15,
+            "wilson_95": [
+              0.19824228082594664,
+              0.642535572434923
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.525,
+          "false_accept_rate": {
+            "value": 0.6,
+            "successes": 9,
+            "n": 15,
+            "wilson_95": [
+              0.357464427565077,
+              0.8017577191740534
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.55,
+          "false_accept_rate": {
+            "value": 0.8666666666666667,
+            "successes": 13,
+            "n": 15,
+            "wilson_95": [
+              0.6211750079348376,
+              0.9626395301086407
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.575,
+          "false_accept_rate": {
+            "value": 1.0,
+            "successes": 15,
+            "n": 15,
+            "wilson_95": [
+              0.7961107336956521,
+              1.0
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.6,
+          "false_accept_rate": {
+            "value": 1.0,
+            "successes": 15,
+            "n": 15,
+            "wilson_95": [
+              0.7961107336956521,
+              1.0
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.625,
+          "false_accept_rate": {
+            "value": 1.0,
+            "successes": 15,
+            "n": 15,
+            "wilson_95": [
+              0.7961107336956521,
+              1.0
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.65,
+          "false_accept_rate": {
+            "value": 1.0,
+            "successes": 15,
+            "n": 15,
+            "wilson_95": [
+              0.7961107336956521,
+              1.0
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.675,
+          "false_accept_rate": {
+            "value": 1.0,
+            "successes": 15,
+            "n": 15,
+            "wilson_95": [
+              0.7961107336956521,
+              1.0
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        {
+          "threshold": 0.7,
+          "false_accept_rate": {
+            "value": 1.0,
+            "successes": 15,
+            "n": 15,
+            "wilson_95": [
+              0.7961107336956521,
+              1.0
+            ],
+            "view": "production"
+          },
+          "false_refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 33,
+            "wilson_95": [
+              0.0,
+              0.10427343003561192
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        }
+      ],
+      "unanswerable_kind": {
+        "far": {
+          "refused": 9,
+          "n": 9,
+          "refusal_rate": {
+            "value": 1.0,
+            "successes": 9,
+            "n": 9,
+            "wilson_95": [
+              0.7008472464490407,
+              1.0
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        },
+        "near-miss": {
+          "refused": 0,
+          "n": 6,
+          "refusal_rate": {
+            "value": 0.0,
+            "successes": 0,
+            "n": 6,
+            "wilson_95": [
+              0.0,
+              0.3903430336530645
+            ],
+            "view": "production"
+          },
+          "view": "production"
+        }
+      },
+      "confusion": {
+        "true_accept": 33,
+        "false_refusal": 0,
+        "true_refusal": 9,
+        "false_accept": 6
+      }
+    }
+  }
+}
