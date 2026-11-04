@@ -97,7 +97,7 @@ flowchart TD
     O --> J
 ```
 
-`scripts/ingest_repo.py` admits only `*.py` files and stores relative path, line range, file/document type, content hash, and the creating ingest-run ID. Each run records its resolved source path, available Git commit/dirty/remote metadata, and `chunker_version="lines-60-10-v1"`; remote URL userinfo is stripped. Before hashing, it skips nonblank chunks matching supported secret patterns and prints a warning with the pattern name and source location, never the match. Existing chunks with identical repository/path/range/hash identities keep their IDs and embeddings. New identities are inserted, and chunks absent from the latest ingest are deleted. The latter are not archived, so historical evidence text is preserved only after checklist item 8. `scripts/embed_chunks.py` processes only missing embeddings in batches of 50, runs at most four batches concurrently, reports failed batches, and commits successful embeddings after all batches finish.
+`app/ingestion.py` admits only `*.py` files and stores relative path, line range, file/document type, content hash, and the creating ingest-run ID. Each run records its resolved source path, available Git commit/dirty/remote metadata, and `chunker_version="lines-60-10-v1"`; remote URL userinfo is stripped. Before hashing, it skips nonblank chunks matching supported secret patterns and prints a warning with the pattern name and source location, never the match. Existing chunks with identical repository/path/range/hash identities keep their IDs and embeddings. New identities are inserted, and chunks absent from the latest ingest are deleted. The latter are not archived, so historical evidence text is preserved only after checklist item 8. `app/retrieval/embeddings.py` processes only missing embeddings in batches of 50, runs at most four batches concurrently, reports failed batches, and commits successful embeddings after all batches finish. The commands remain `python -m scripts.ingest_repo` and `python -m scripts.embed_chunks`; those modules are thin CLI wrappers.
 
 Provider requests use an async HTTP client, bounded retries with jitter for selected transient failures, a 90-second generation deadline, and a 120-second end-to-end investigation deadline. Batch size 50, concurrency 4, and both deadlines are initial defaults. The first live embedding benchmark and its limits are recorded in [the benchmark note](../notes/03-embedding-benchmark.md); one run is indicative only, and no throughput promise is made from it.
 
@@ -126,7 +126,7 @@ flowchart TD
     K --> P
 ```
 
-The API handler delegates to [`scripts/investigate.py`](../../scripts/investigate.py). The graph executes hybrid search in-process and does not invoke the MCP server. The server module still exposes `grep_search` and `hybrid_search`; its future is deferred to checklist item 25 ([`app/investigation/graph.py`](../../app/investigation/graph.py), [`app/investigation/mcp_server.py`](../../app/investigation/mcp_server.py)).
+The API handler delegates to [`app/investigation/service.py`](../../app/investigation/service.py); `python -m scripts.investigate` remains the CLI wrapper. The graph executes hybrid search in-process and does not invoke the MCP server. The server module still exposes `grep_search` and `hybrid_search`; its future is deferred to checklist item 25 ([`app/investigation/graph.py`](../../app/investigation/graph.py), [`app/investigation/mcp_server.py`](../../app/investigation/mcp_server.py)).
 
 ### 5.3 Retrieval composition
 
@@ -171,8 +171,8 @@ The items below are current implementation facts, not planned components:
 | Concern | Primary source |
 |---|---|
 | HTTP app, routes, protection | [`app/main.py`](../../app/main.py), [`app/api.py`](../../app/api.py), [`app/api_security.py`](../../app/api_security.py) |
-| Ingestion and embeddings | [`scripts/ingest_repo.py`](../../scripts/ingest_repo.py), [`scripts/embed_chunks.py`](../../scripts/embed_chunks.py) |
-| Investigation boundary | [`scripts/investigate.py`](../../scripts/investigate.py) |
+| Ingestion and embeddings | [`app/ingestion.py`](../../app/ingestion.py), [`app/retrieval/embeddings.py`](../../app/retrieval/embeddings.py); CLI wrappers: [`scripts/ingest_repo.py`](../../scripts/ingest_repo.py), [`scripts/embed_chunks.py`](../../scripts/embed_chunks.py) |
+| Investigation boundary | [`app/investigation/service.py`](../../app/investigation/service.py); CLI wrapper: [`scripts/investigate.py`](../../scripts/investigate.py) |
 | Retrieval | [`app/retrieval/`](../../app/retrieval/) |
 | Workflow, generation, prompts, parsing | [`app/investigation/`](../../app/investigation/) |
 | Models and migration | [`app/db/models/`](../../app/db/models/), [`migrations/versions/20260819_0001_initial_schema.py`](../../migrations/versions/20260819_0001_initial_schema.py) |

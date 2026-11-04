@@ -12,10 +12,11 @@ This document records the low-level design implemented on the `main` branch. It 
 flowchart TB
     Main[app/main.py] --> API[app/api.py]
     API --> Security[app/api_security.py]
-    API --> Investigate[scripts/investigate.py]
+    API --> Investigate[app/investigation/service.py]
 
-    Ingest[scripts/ingest_repo.py]
-    Embed[scripts/embed_chunks.py]
+    IngestCLI[scripts/ingest_repo.py] --> Ingest[app/ingestion.py]
+    EmbedCLI[scripts/embed_chunks.py] --> Embed[app/retrieval/embeddings.py]
+    InvestigateCLI[scripts/investigate.py] --> Investigate
     Search[scripts/search_repo.py]
     RunEval[scripts/run_eval.py]
     Serve[scripts/serve.py]
@@ -47,10 +48,13 @@ flowchart TB
 |---|---|---|
 | `app.main:app` | ASGI requests | Builds FastAPI, registers router and normalizes HTTP/validation/unexpected errors. |
 | `scripts/serve.py` | None | Windows-safe Uvicorn launcher that selects `WindowsSelectorEventLoopPolicy` before loading the app. |
-| `scripts/ingest_repo.py` | `<repo_path> <repo_name>` | Record an IngestRun and upsert the named repository’s source chunks by content identity, skipping chunks matching supported secret patterns. |
-| `scripts/embed_chunks.py` | `<repo_name>` | Embed only chunks with null vectors; print embedded/failed/skipped counts. |
+| `app/ingestion.py` | Local repository path and name | Traversal, chunking, secret scanning, and database upsert logic used by ingestion. |
+| `app/retrieval/embeddings.py` | Repository name or text/batch | Gemini embedding functions and the database chunk-embedding operation. |
+| `app/investigation/service.py` | Repository name, query, optional limit | Investigation service called by both the API and CLI. |
+| `scripts/ingest_repo.py` | `<repo_path> <repo_name>` | Thin CLI wrapper for application ingestion; preserves the existing command. |
+| `scripts/embed_chunks.py` | `<repo_name>` | Thin CLI wrapper; prints embedded/failed/skipped counts. |
 | `scripts/search_repo.py` | repository name, query, optional limit | Embed query, run hybrid search and print ranked evidence. |
-| `scripts/investigate.py` | repository name, query, optional limit/path | Run full investigation graph; persist generated sufficient-evidence results by default. |
+| `scripts/investigate.py` | repository name, query, optional limit/path | Thin CLI wrapper for the application investigation service; persists sufficient-evidence results by default. |
 | `scripts/run_eval.py` | evaluation CLI options | Validate/evaluate pinned corpus and write run artifacts. |
 | `app.investigation.mcp_server` | stdio MCP transport | Exposes local `hybrid_search` and `grep_search` tools; the investigation graph does not invoke them. |
 
@@ -190,7 +194,7 @@ sequenceDiagram
 
 ### 5.2 Embedding algorithm
 
-`embed_repository_chunks()` selects all chunks for a named repository, filters to `embedding is None`, splits the missing chunks into batches of 50, and runs at most four batches concurrently. Each batch uses Gemini `batchEmbedContents` with model `models/gemini-embedding-001` and `outputDimensionality` 768; response count and vector dimensions are validated before assignment. Failed batches are reported and counted while other batches continue. Successful assignments are committed after all batches finish ([`scripts/embed_chunks.py`](../../scripts/embed_chunks.py)).
+`embed_repository_chunks()` selects all chunks for a named repository, filters to `embedding is None`, splits the missing chunks into batches of 50, and runs at most four batches concurrently. Each batch uses Gemini `batchEmbedContents` with model `models/gemini-embedding-001` and `outputDimensionality` 768; response count and vector dimensions are validated before assignment. Failed batches are reported and counted while other batches continue. Successful assignments are committed after all batches finish ([`app/retrieval/embeddings.py`](../../app/retrieval/embeddings.py)).
 
 The embedding helpers accept an optional typed `task_type` and add it as the REST `taskType` field to the single or per-item batch request. The default remains `None`, which preserves the production request shape. The item 14a experiment sends `RETRIEVAL_DOCUMENT` for chunk text and `CODE_RETRIEVAL_QUERY` for development questions in a distinct cache/version; it does not write database vectors or adopt a task type before the registered comparison ([experiment note](../notes/14-embedding-task-type-experiment.md)).
 
@@ -394,7 +398,7 @@ shape. A full response example is maintained as [Example B in the approved desig
 
 ### Query cache and embedding-unavailable path
 
-Before calling Gemini for a query vector, `scripts/investigate.py` builds a cache identity from
+Before calling Gemini for a query vector, `app/investigation/service.py` builds a cache identity from
 the embedding model, task type (`default`), 768 dimensions, and SHA-256 of the trimmed,
 whitespace-collapsed query with case preserved. The persistent cache stores the vector, identity
 fields, and creation time, never the source query. Reads expire rows older than 30 days and reject
@@ -439,7 +443,8 @@ degraded fields from the existing audit JSONB; no schema migration is required f
 
 - [Application and API](../../app/main.py), [routes](../../app/api.py), [security](../../app/api_security.py)
 - [Database infrastructure](../../app/db/session.py), [models](../../app/db/models/), [initial migration](../../migrations/versions/20260819_0001_initial_schema.py), [query cache migration](../../migrations/versions/20261031_0006_query_embedding_cache.py)
-- [Ingestion](../../scripts/ingest_repo.py), [embedding](../../scripts/embed_chunks.py), [investigation](../../scripts/investigate.py)
+- [Ingestion logic](../../app/ingestion.py), [embedding logic](../../app/retrieval/embeddings.py), [investigation service](../../app/investigation/service.py)
+- CLI wrappers: [ingestion](../../scripts/ingest_repo.py), [embedding](../../scripts/embed_chunks.py), [investigation](../../scripts/investigate.py)
 - [Retrieval package](../../app/retrieval/), [query embedding cache](../../app/retrieval/query_embedding_cache.py), [degraded lexical retrieval](../../app/retrieval/degraded_search.py), [investigation package](../../app/investigation/)
 - [Evaluation package](../../evaluation/), [Phase 8 evaluation log](../phases/08-evaluation.md)
 - [Phase documentation index](../README.md), [project README and roadmap](../../README.md)

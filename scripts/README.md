@@ -7,6 +7,10 @@ they are not claims of complete behavioral coverage. For entries marked no direc
 related evaluation helper may still have tests. Provider keys stay in the local environment;
 never put them in command arguments.
 
+For the ingestion, embedding, and investigation commands, `scripts/` contains thin CLI
+wrappers; the reusable application logic lives under `app/`. Application and evaluation
+modules must not import from `scripts/`.
+
 | Script | Purpose | Kind | Database / key / quota | Belongs to | Tests / docs | Safe quick check? |
 |---|---|---|---|---|---|---|
 | `__init__.py` | Make `scripts` importable for `python -m scripts.<name>` commands. | operational | No DB, key, or quota | Scripts package | Package-wide matches only; no dedicated docs | Yes; importing the package has no command side effect |
