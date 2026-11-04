@@ -8,7 +8,7 @@ import pytest
 
 from app.investigation import generation
 from app.providers import gemini
-from scripts import embed_chunks
+from app.retrieval import embeddings as embed_chunks
 from tests.unit.httpx_client import make_test_client
 
 

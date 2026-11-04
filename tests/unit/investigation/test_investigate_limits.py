@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-import scripts.investigate as investigate_module
+import app.investigation.service as investigate_module
+import scripts.investigate as investigate_cli
 from app.investigation.replay import ReplayRecord
 from app.providers.gemini import (
     ProviderAuthError,
@@ -469,18 +471,28 @@ def test_cli_prints_generation_trace_and_degraded_state_without_raw_text(
             }
         ],
     }
-    monkeypatch.setattr(
-        investigate_module,
-        "parse_args",
-        lambda: SimpleNamespace(repo_name="test-repo", query="question", limit=5),
-    )
+    monkeypatch.setattr(sys, "argv", ["investigate", "test-repo", "question"])
+
+    async def fake_investigate(
+        repo_name: str,
+        query: str,
+        *,
+        limit: int,
+    ) -> dict[str, object]:
+        assert repo_name == "test-repo"
+        assert query == "question"
+        assert limit == 5
+        return result
+
+    monkeypatch.setattr(investigate_cli, "investigate_repository", fake_investigate)
+
     def fake_run(coroutine: Any) -> dict[str, object]:
         coroutine.close()
         return result
 
     monkeypatch.setattr(asyncio, "run", fake_run)
 
-    investigate_module.main()
+    investigate_cli.main()
     output = capsys.readouterr().out
 
     assert "Outcome: generation_unavailable" in output

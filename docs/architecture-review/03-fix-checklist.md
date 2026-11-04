@@ -76,10 +76,14 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 31c | Not started | pending | Scale to remaining repositories, development fixtures, freeze v2.0 |
 | 32a | In review | pending | Provisional v1 development scorecard and registered production/deep views; results in docs/reference/metrics.md. |
 | 32b | Not started | pending | Final v2 development baseline after item 31c; frozen before item 3b. |
+| 35a | In review | pending | Move ingestion, embedding, and investigation logic under app/; retain the documented script commands. |
+| 35b | Not started | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
+| 35c | Not started | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
+| 35d | Not started | pending | Split question_review.py into focused modules. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 31b (pilot questions for rq and kopf) after 31a merges. Item 32b follows item 31c; item 32a is in review.
+Next: item 35a (app/evaluation layering; this work), followed by 35b–35d; item 35 precedes item 33. Dataset work 31b/31c remains open, and item 32b follows item 31c.
 
 ## 1. Fix-order checklist (summary)
 
@@ -139,7 +143,7 @@ Next: item 31b (pilot questions for rq and kopf) after 31a merges. Item 32b foll
 | 23 | ☐ | Security and operability layer (auth scopes, distributed limits, load test; threat model and secret scanning moved to 12a) | Medium | L | Codex |
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
 | 25 | ☐ | Three separate decisions: grep fallback (settled by 2 and 3a), MCP/LangGraph rationale, hosted demo | Low | M | Both |
-| 26 | ☐ | Layering cleanup: `app/api.py` must not import `scripts/investigate.py` | Low | S | Codex review |
+| 26 | ☐ | Layering cleanup (expanded as item 35) | Low | S | Codex review |
 | 27a | ☑ | Evaluation README indexes and documentation map | Medium | S | Maintainer |
 | 27b | ☑ | Evaluation layout normalization | Medium | M | Maintainer |
 | 28 | ☑ | Test tiers and CI speed | Medium | M | Maintainer |
@@ -151,6 +155,10 @@ Next: item 31b (pilot questions for rq and kopf) after 31a merges. Item 32b foll
 | 31c | ☐ | Scale to remaining repositories, development fixtures, freeze v2.0 | High | L | Maintainer |
 | 32a | ☐ | Provisional v1 retrieval and guard scorecard | High | M | Maintainer |
 | 32b | ☐ | Final v2 development scorecard before item 3b | High | M | Maintainer |
+| 35a | ☐ | Move ingestion, embedding, and investigation logic into app packages; keep script commands | High | M | Maintainer |
+| 35b | ☐ | Move test-file helpers and fulltext, BM25, and test-file studies | Medium | M | Maintainer |
+| 35c | ☐ | Move chunking, embedding task-type, and local-embedding studies | Medium | M | Maintainer |
+| 35d | ☐ | Split question_review.py into focused modules | Medium | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
 
@@ -164,14 +172,15 @@ Next: item 31b (pilot questions for rq and kopf) after 31a merges. Item 32b foll
 | 4 | **14c-2**, **14c-3**, **18a**, **14b-1**, **14b-2**, **14a-1**, **14a-2**, **14d**, **18b-1**, **18d-1**, **18d-2**, **18d-3**, **18d-4**, **18c** (done); **18b-2** and **14b-3** remain open | Settle retrieval and provider/fallback design before the final guard validation |
 | 5 | **29**, **30** (done), **31a**, **31b**, **31c** | Register the dataset protocol, qualify repositories, build and pilot questions, then scale and freeze v2 |
 | 6 | **32a**, **32b** | Provisional v1 scorecard now; freeze the final v2 development scorecard before item 3b |
-| 7 | **33** | Report operational metrics and estimated costs |
-| 8 | **21** (development only) | Evaluate reranking before the held-out run |
-| 9 | **34** | Freeze deterministic citation and end-to-end checks |
-| 10 | **3b** (including **14b-3**) | Run one registered v2 held-out evaluation with the frozen scorecard and threshold validation |
-| 11 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
+| 7 | **35a–35d** | Move runtime logic and studies to their owning packages before further operational and architecture work |
+| 8 | **33** | Report operational metrics and estimated costs |
+| 9 | **21** (development only) | Evaluate reranking before the held-out run |
+| 10 | **34** | Freeze deterministic citation and end-to-end checks |
+| 11 | **3b** (including **14b-3**) | Run one registered v2 held-out evaluation with the frozen scorecard and threshold validation |
+| 12 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
 
 Remaining implementation sequence: dataset (**29**, **30**, **31a**, **31b**, **31c**) → provisional scorecard **32a** → final v2 development scorecard **32b** →
-operational report **33** → reranker **21** (development only) → citation validity **34** →
+layering and studies (**35a–35d**) → operational report **33** → reranker **21** (development only) → citation validity **34** →
 **3b** (one registered run on v2 held-out repositories with the frozen scorecard, threshold
 validation, and the 14b-3 decision) → **17** (its “grow unanswerable to at least 20” target
 is superseded by item 31) → **15c**, **5b**, **20**, **12b**, and **22–26**.
@@ -521,7 +530,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 
 **25. MCP, LangGraph, deployment.** Either remove the per-call stdio MCP grep (use in-process exact search) or expose IncidentWeave as a read-only MCP server. Keep LangGraph only if the hypothesis loop genuinely needs branching or checkpoints. Deploy a hosted demo. These are three separate decisions: (1) the grep fallback, settled by items 2 and 3a; (2) the MCP and LangGraph rationale; (3) the hosted deployment.
 
-**26. Layering cleanup.** `app/api.py` imports `scripts/investigate.py`; move the shared logic into `app/` so the API does not depend on a script. *Done when:* no module under `app/` imports from `scripts/`. Low priority.
+**26. Layering cleanup.** The original API-to-script dependency is expanded into item 35, which covers both `app/` and `evaluation/` boundaries and the study-module moves.
 
 **27a. Evaluation README indexes and documentation map.**
 - *Why:* evaluation commands, modules, data, and generated outputs are spread across the root README, scripts, notes, phase logs, experiment records, and several evaluation directories.
@@ -585,6 +594,30 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Fix:** Add the v2 development repositories from item 31c and produce the final scorecard under the registered protocol. Do not use held-out data.
 - **Done when:** The v2 development baseline is recorded and frozen before item 3b.
 - **Status:** Not started.
+
+**35. App/evaluation layering and study organization.**
+
+**35a. Move application logic out of scripts (In review).**
+- **Fix:** Move repository ingestion to `app/ingestion.py`, chunk embedding to `app/retrieval/embeddings.py`, and the investigation service to `app/investigation/service.py`. Keep `python -m scripts.ingest_repo`, `scripts.embed_chunks`, and `scripts.investigate` as thin CLI wrappers; update imports and test patch targets.
+- **Done when:** An AST boundary test confirms no Python module under `app/` or `evaluation/` imports `scripts/`, the three existing commands retain their arguments and behavior, and the full test tiers pass.
+- **Status:** In review.
+
+**35b. Move test-file helpers and retrieval studies (Not started).**
+- **Fix:** Move test-file helpers out of CLI modules and move full-text, BM25, and test-file experiment implementations into `evaluation/studies/<name>/`; preserve stable CLI entry points.
+- **Done when:** Script-to-script helper imports are removed for these studies, their tests pass, and docs/results still identify reproducible commands and locations.
+- **Status:** Not started.
+
+**35c. Move chunking and embedding studies (Not started).**
+- **Fix:** Move chunking, embedding task-type, and local-embedding experiment implementations into `evaluation/studies/<name>/`; preserve stable CLI entry points.
+- **Done when:** Experiment tests and documented commands pass with implementations under `evaluation/studies/`.
+- **Status:** Not started.
+
+**35d. Split question review (Not started).**
+- **Fix:** Split `evaluation/question_review.py` into focused modules for pack rendering/parsing and question ingestion/review workflows.
+- **Done when:** Existing question-review behavior and tests are preserved without a large monolithic module.
+- **Status:** Not started.
+
+The v0 harness archive and moves of `manifest.py`, `metrics.py`, `retrieval_eval.py`, and `scorecard.py` are deferred: item 33/34 designs may reuse the v0 runner, and these modules have high fan-out.
 
 **33. Operational metrics report.**
 - **Why:** Quality results need latency, usage, cost, failure, degradation, and cache context.

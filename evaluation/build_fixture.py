@@ -19,6 +19,8 @@ from sqlalchemy import select
 
 from app.db.models import Chunk, Repository
 from app.db.session import AsyncSessionLocal
+from app.ingestion import CHUNKER_VERSION
+from app.retrieval.embeddings import GEMINI_MODEL
 from evaluation.chunk_strategies import DEFAULT_STRATEGY, get_strategy
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
@@ -27,8 +29,6 @@ from evaluation.manifest import (
     manifest_root,
     repository_entry,
 )
-from scripts.embed_chunks import GEMINI_MODEL
-from scripts.ingest_repo import CHUNKER_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"

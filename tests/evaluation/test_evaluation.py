@@ -9,7 +9,9 @@ from pathlib import Path
 import httpx
 import pytest
 
+from app import ingestion as ingest_repo
 from app.db.models import Repository
+from app.ingestion import chunk_lines, iter_python_files
 from app.investigation.parsing import extract_generation_trace
 from evaluation.chunk_strategies import (
     DEFAULT_STRATEGY,
@@ -47,8 +49,6 @@ from evaluation.runner import (
     run_pipeline_once,
     summarize_run,
 )
-from scripts import ingest_repo
-from scripts.ingest_repo import chunk_lines, iter_python_files
 
 
 def result(file_path: str, content: str) -> dict[str, object]:
