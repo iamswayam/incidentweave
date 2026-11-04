@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import subprocess
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +25,7 @@ from evaluation.manifest import (
     load_manifest,
     questions_for_split,
     repository_entry,
+    sha256_file,
 )
 from evaluation.metrics import first_relevant_rank, first_relevant_span_rank
 from evaluation.stats import paired_comparison, wilson_interval
@@ -63,6 +67,95 @@ def fixture_repository_name(repo_id: str) -> str:
         for character in repo_id
     )
     return f"incidentweave-fixture-{safe_id}"
+
+
+async def export_development_rankings(
+    output_path: Path,
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    """Export top-20 control rankings for the three v1 development repositories."""
+
+    manifest = load_manifest(manifest_path, root=root)
+    if manifest.get("schema_version") != 2:
+        raise ValueError("Rankings export requires manifest schema version 2")
+    repository_ids = sorted(entry["id"] for entry in manifest["repositories"])
+    expected_ids = ["batch-processing-service", "incidentweave", "lifeos"]
+    if repository_ids != expected_ids:
+        raise ValueError("Rankings export requires exactly the three v1 repositories")
+
+    exported_repositories = []
+    for entry in sorted(manifest["repositories"], key=lambda row: row["id"]):
+        report = await run_offline_retrieval(
+            limit=20,
+            repo_id=entry["id"],
+            split="development",
+            entry=entry,
+            root=root,
+            record_details=True,
+        )
+        questions = []
+        for record in report["questions"]:
+            ranked_chunks = [
+                {
+                    "chunk_id": (
+                        f"{chunk['file_path']}:{chunk['line_start']}-{chunk['line_end']}"
+                    ),
+                    "file_path": chunk["file_path"],
+                    "line_start": chunk["line_start"],
+                    "line_end": chunk["line_end"],
+                    "vector_distance": chunk["vector_score"],
+                }
+                for chunk in record.get("retrieved", [])
+            ]
+            guard_distances = [
+                float(chunk["vector_distance"])
+                for chunk in ranked_chunks[:5]
+                if chunk["vector_distance"] is not None
+            ]
+            best_distance = min(guard_distances) if guard_distances else None
+            questions.append(
+                {
+                    "id": record["id"],
+                    "repository": entry["id"],
+                    "category": record["category"],
+                    "ranked_chunks": ranked_chunks,
+                    "best_vector_distance": best_distance,
+                    "guard_refused": best_distance is None or best_distance > 0.5,
+                }
+            )
+        exported_repositories.append(
+            {"id": entry["id"], "questions": questions}
+        )
+
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    export = {
+        "metadata": {
+            "dataset_version": "v1",
+            "repository_ids": expected_ids,
+            "split": "development",
+            "top_k": 20,
+            "guard_top_k": 5,
+            "guard_threshold": 0.5,
+            "git_commit": commit,
+            "manifest_sha256": sha256_file(manifest_path),
+            "exported_at": datetime.now(UTC).isoformat(),
+        },
+        "repositories": exported_repositories,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(export, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return export
 
 
 async def _delete_fixture_repository(repository_name: str) -> None:
@@ -257,6 +350,7 @@ async def run_offline_retrieval(
                 if record_details:
                     record["retrieved"] = [
                         {
+                            "id": result["id"],
                             "rank": rank,
                             "file_path": result["file_path"],
                             "line_start": result["line_start"],
