@@ -12,8 +12,8 @@ from sqlalchemy import select
 
 from app.db.models import Repository
 from app.db.session import AsyncSessionLocal
-from app.retrieval.hybrid_search import hybrid_search
 from app.ingestion import iter_python_files
+from app.retrieval.hybrid_search import hybrid_search
 
 server = FastMCP("IncidentWeave local investigation tools")
 

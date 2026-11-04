@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from app.db.session import AsyncSessionLocal
+from app.ingestion import iter_python_files
+from app.investigation import service as investigate
 from app.investigation.confidence import MAX_CLEAR_VECTOR_DISTANCE, MIN_CLEAR_RRF_SCORE
 from app.investigation.generation import GEMINI_GENERATION_MODEL
 from app.investigation.guard import (
@@ -24,12 +26,10 @@ from app.investigation.guard import (
 from app.investigation.prompt import SYSTEM_INSTRUCTION
 from app.providers import gemini as gemini_provider
 from app.providers.usage import usage_operation
+from app.retrieval import embeddings as embed_chunks
 from app.retrieval.fulltext_search import search_fulltext
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import search_vector
-from app.retrieval import embeddings as embed_chunks
-from app.investigation import service as investigate
-from app.ingestion import iter_python_files
 
 from .chunk_strategies import (
     DEFAULT_STRATEGY,

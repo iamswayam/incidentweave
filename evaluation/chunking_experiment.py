@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 from statistics import median
 from typing import Any
 
+from app.ingestion import iter_python_files
 from app.retrieval.chunking import (
     EMBEDDING_TEXT_VERSION,
     describe_chunker,
@@ -32,7 +33,6 @@ from evaluation.manifest import (
     sha256_file,
 )
 from evaluation.stats import exact_sign_test
-from app.ingestion import iter_python_files
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENT_ROOT = ROOT / "evaluation" / "experiments" / "chunking"

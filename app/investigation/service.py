@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from time import perf_counter
 from uuid import uuid4
 
@@ -56,17 +57,17 @@ from app.investigation.replay import ReplayRecord, build_chunk_records  # noqa: 
 from app.providers.gemini import ProviderError  # noqa: E402
 from app.providers.usage import correlation_id_var  # noqa: E402
 from app.retrieval.degraded_search import search_degraded_lexical_only  # noqa: E402
-from app.retrieval.query_embedding_cache import (  # noqa: E402
-    QueryEmbeddingKey,
-    build_query_embedding_key,
-    get_query_embedding,
-    put_query_embedding,
-)
 from app.retrieval.embeddings import (  # noqa: E402
     EMBEDDING_DIMENSION,
     GEMINI_MODEL,
     MAX_EMBEDDING_ATTEMPTS,
     embed_text,
+)
+from app.retrieval.query_embedding_cache import (  # noqa: E402
+    QueryEmbeddingKey,
+    build_query_embedding_key,
+    get_query_embedding,
+    put_query_embedding,
 )
 
 INVESTIGATION_DEADLINE_SECONDS = 120
@@ -714,4 +715,3 @@ def _current_thresholds() -> dict[str, object]:
         "max_limit": MAX_LIMIT,
         "max_query_chars": MAX_QUERY_CHARS,
     }
-

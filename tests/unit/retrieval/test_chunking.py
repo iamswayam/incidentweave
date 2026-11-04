@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from app.ingestion import chunk_lines
 from app.retrieval.chunking import (
     AST_CHUNKER_VERSION,
     AST_MAX_LINES,
@@ -24,7 +25,6 @@ from evaluation.chunk_strategies import (
     candidate_embedding_text,
     get_candidate_strategy,
 )
-from app.ingestion import chunk_lines
 
 
 @pytest.mark.parametrize("line_count", [0, 5, 60, 61, 201])
