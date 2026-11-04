@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import random
+from collections.abc import Callable, Mapping, Sequence
 from math import comb, sqrt
+from typing import TypeVar
 
+T = TypeVar("T")
 
 def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """Return the Wilson score interval for a binomial proportion."""
@@ -22,6 +26,47 @@ def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, flo
         / denominator
     )
     return center - margin, center + margin
+
+
+def stratified_bootstrap_interval(
+    strata: Mapping[str, Sequence[T]],
+    statistic: Callable[[list[T]], float],
+    *,
+    seed: int,
+    resamples: int = 10_000,
+    confidence: float = 0.95,
+) -> tuple[float, float]:
+    """Return a percentile interval by resampling each supplied stratum in place."""
+
+    if not strata or any(not values for values in strata.values()):
+        raise ValueError("bootstrap strata must be non-empty")
+    if resamples < 1:
+        raise ValueError("resamples must be positive")
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be between zero and one")
+    generator = random.Random(seed)
+    estimates = []
+    for _ in range(resamples):
+        sample = [
+            generator.choice(values)
+            for values in strata.values()
+            for _ in range(len(values))
+        ]
+        estimates.append(float(statistic(sample)))
+    estimates.sort()
+    alpha = (1 - confidence) / 2
+    return (
+        _linear_percentile(estimates, alpha),
+        _linear_percentile(estimates, 1 - alpha),
+    )
+
+
+def _linear_percentile(values: Sequence[float], percentile: float) -> float:
+    position = (len(values) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(values) - 1)
+    fraction = position - lower
+    return values[lower] + (values[upper] - values[lower]) * fraction
 
 
 def exact_sign_test(wins: int, losses: int) -> float:

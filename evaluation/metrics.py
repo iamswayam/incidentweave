@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
+from math import log2
 from statistics import median
 
 
@@ -120,6 +121,139 @@ def span_mrr(
         rank = first_relevant_span_rank(results, spans)
         reciprocal_ranks.append(1 / rank if rank is not None else 0.0)
     return sum(reciprocal_ranks) / len(reciprocal_ranks)
+
+
+def ndcg_at_k(
+    results: Sequence[Mapping[str, object]],
+    spans: Sequence[Mapping[str, object]],
+    corpus_chunks: Sequence[Mapping[str, object]],
+    k: int,
+) -> float:
+    """Return binary-gain nDCG@k with ideal DCG based on the pinned corpus."""
+
+    if k < 1:
+        raise ValueError("k must be positive")
+    relevant_corpus_chunks = {
+        (
+            str(chunk.get("file_path") or ""),
+            chunk.get("line_start"),
+            chunk.get("line_end"),
+        )
+        for chunk in corpus_chunks
+        if is_relevant_span(chunk, spans)
+    }
+    relevant_corpus_count = len(relevant_corpus_chunks)
+    if not relevant_corpus_count:
+        raise ValueError("The pinned corpus contains no chunk overlapping a gold span")
+    dcg = sum(
+        1 / log2(rank + 1)
+        for rank, result in enumerate(results[:k], start=1)
+        if is_relevant_span(result, spans)
+    )
+    ideal_dcg = sum(
+        1 / log2(rank + 1)
+        for rank in range(1, min(k, relevant_corpus_count) + 1)
+    )
+    return dcg / ideal_dcg
+
+
+def recall_at_k(
+    results: Sequence[Mapping[str, object]],
+    spans: Sequence[Mapping[str, object]],
+    k: int,
+) -> float:
+    """Return the fraction of distinct gold spans covered in the first k results."""
+
+    if k < 1:
+        raise ValueError("k must be positive")
+    distinct_spans = {
+        (
+            str(span.get("file_path") or ""),
+            span.get("line_start"),
+            span.get("line_end"),
+        )
+        for span in spans
+    }
+    if not distinct_spans:
+        return 0.0
+    covered = sum(
+        any(is_relevant_span(result, [span]) for result in results[:k])
+        for span in (
+            {"file_path": file_path, "line_start": start, "line_end": end}
+            for file_path, start, end in distinct_spans
+        )
+    )
+    return covered / len(distinct_spans)
+
+
+def context_precision_at_k(
+    results: Sequence[Mapping[str, object]],
+    spans: Sequence[Mapping[str, object]],
+    k: int,
+) -> float:
+    """Return the relevant share of returned chunks in the first k results."""
+
+    if k < 1:
+        raise ValueError("k must be positive")
+    selected = results[:k]
+    if not selected:
+        return 0.0
+    return sum(is_relevant_span(result, spans) for result in selected) / len(selected)
+
+
+def auroc(scores: Sequence[float], positive: Sequence[bool]) -> float:
+    """Return AUROC using average credit for positive-negative score ties."""
+
+    if len(scores) != len(positive):
+        raise ValueError("scores and labels must have the same length")
+    positives = [score for score, label in zip(scores, positive) if label]
+    negatives = [score for score, label in zip(scores, positive) if not label]
+    if not positives or not negatives:
+        raise ValueError("AUROC requires at least one positive and one negative")
+    wins = sum(
+        1.0
+        if positive_score > negative_score
+        else 0.5
+        if positive_score == negative_score
+        else 0.0
+        for positive_score in positives
+        for negative_score in negatives
+    )
+    return wins / (len(positives) * len(negatives))
+
+
+def refusal_precision_recall(
+    answerable: Sequence[bool],
+    refused: Sequence[bool],
+) -> dict[str, int | float | None]:
+    """Return refusal precision and recall, treating unanswerable as positive."""
+
+    if len(answerable) != len(refused):
+        raise ValueError("answerability and refusal lists must have the same length")
+    true_positive = sum(
+        not answer and refusal for answer, refusal in zip(answerable, refused)
+    )
+    false_positive = sum(
+        answer and refusal for answer, refusal in zip(answerable, refused)
+    )
+    false_negative = sum(
+        not answer and not refusal for answer, refusal in zip(answerable, refused)
+    )
+    return {
+        "true_positive": true_positive,
+        "false_positive": false_positive,
+        "false_negative": false_negative,
+        "precision": (
+            true_positive / (true_positive + false_positive)
+            if true_positive + false_positive
+            else None
+        ),
+        "recall": (
+            true_positive / (true_positive + false_negative)
+            if true_positive + false_negative
+            else None
+        ),
+    }
 
 
 def retrieval_summary(

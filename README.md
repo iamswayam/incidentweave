@@ -59,20 +59,15 @@ and current provider data terms first.
 
 ## Results at a glance
 
-Pooled development-split control results:
+Provisional v1 development results (not held-out); the full scorecard and definitions are in the [metrics reference](docs/reference/metrics.md).
 
-| Measure | Result |
-|---|---:|
-| Answerable questions | 33 |
-| Hit@1 | 19/33 |
-| Hit@3 | 26/33 |
-| Hit@5 | 28/33 |
-| MRR | 0.674 |
-| Correct guard refusals | 9/15 |
-| Guard false accepts | 6/15 |
-
-Source: [BM25 comparison aggregate](evaluation/experiments/bm25/results.json). These are pooled
-development-split results for the three original repositories, not a held-out result.
+| Measure | Result | 95% interval | n |
+|---|---:|---|---:|
+| Hit@5 | 28/33 | [0.691, 0.933] | 33 |
+| MRR@5 | 0.674 | [0.543, 0.800] | 33 |
+| False-accept rate | 6/15 | [0.198, 0.643] | 15 |
+| Near-miss refusal rate | 0/6 | [0.000, 0.390] | 6 |
+| Guard AUROC | 0.893 | [0.790, 0.976] | 48 |
 
 ## Quick start
 
@@ -154,7 +149,8 @@ Offline retrieval uses committed fixtures and cached query embeddings; answer ev
 investigation pipeline. The reports are regression-oriented and repository-specific. See the
 [evaluation guide](evaluation/README.md), [repository data cards](evaluation/repos/README.md), and
 [dataset protocol](docs/architecture-review/15-evaluation-dataset-protocol.md) for methods, data,
-artifacts, and limits.
+artifacts, and limits. The provisional v1 development retrieval and guard results are in the
+[metrics reference](docs/reference/metrics.md).
 
 ## Quality checks
 

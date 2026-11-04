@@ -23,7 +23,10 @@ from evaluation.manifest import (  # noqa: E402
     manifest_root,
     select_repositories,
 )
-from evaluation.retrieval_eval import run_offline_retrieval  # noqa: E402
+from evaluation.retrieval_eval import (  # noqa: E402
+    export_development_rankings,
+    run_offline_retrieval,
+)
 from evaluation.splits import SPLIT_CHOICES  # noqa: E402
 
 
@@ -52,6 +55,22 @@ def _compact_table(report: dict[str, Any]) -> str:
 async def _run(args: argparse.Namespace) -> None:
     asset_root = manifest_root(args.manifest)
     manifest = load_manifest(args.manifest, root=asset_root)
+    if args.export_rankings is not None:
+        if args.split != "development":
+            raise ValueError("--export-rankings requires --split development")
+        if args.repo is not None:
+            raise ValueError("--export-rankings exports the complete v1 repository set")
+        export = await export_development_rankings(
+            args.export_rankings,
+            manifest_path=args.manifest,
+            root=asset_root,
+        )
+        print(
+            "Exported development rankings for "
+            f"{len(export['metadata']['repository_ids'])} repositories: "
+            f"{args.export_rankings}"
+        )
+        return
     repositories = select_repositories(manifest, args.repo)
     reports = []
     for entry in repositories:
@@ -88,6 +107,11 @@ def main() -> None:
     parser.add_argument("--repo", help="run one manifest repository (default: all)")
     parser.add_argument("--split", choices=SPLIT_CHOICES, default="all")
     parser.add_argument("--out", type=Path, help="optional path for the JSON report")
+    parser.add_argument(
+        "--export-rankings",
+        type=Path,
+        help="export top-20 control rankings for all v1 development repositories",
+    )
     parser.add_argument("--limit", type=int, default=5, help="retrieval result limit")
     asyncio.run(_run(parser.parse_args()))
 
