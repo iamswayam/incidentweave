@@ -9,8 +9,8 @@ from typing import Any
 
 import pytest
 
-from evaluation.studies.chunking import chunking_experiment as experiment
 from evaluation.retrieval_eval import run_offline_retrieval
+from evaluation.studies.chunking import chunking_experiment as experiment
 from scripts import run_chunking_experiment
 
 

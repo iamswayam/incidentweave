@@ -24,6 +24,10 @@ if str(ROOT) not in sys.path:
 from app.config import settings  # noqa: E402
 from app.providers.gemini import ProviderError  # noqa: E402
 from evaluation.build_fixture import load_fixture, write_fixture  # noqa: E402
+from evaluation.manifest import (  # noqa: E402
+    MANIFEST_PATH,
+    manifest_root,
+)
 from evaluation.studies.embedding_task_type.embedding_task_type import (  # noqa: E402
     DOCUMENT_TASK_TYPE,
     EMBEDDING_DIMENSION,
@@ -40,10 +44,6 @@ from evaluation.studies.embedding_task_type.embedding_task_type import (  # noqa
     render_results,
     summarize_method,
     write_results_note,
-)
-from evaluation.manifest import (  # noqa: E402
-    MANIFEST_PATH,
-    manifest_root,
 )
 from evaluation.studies.test_files.diagnose_test_files import (  # noqa: E402
     _development_question_records,

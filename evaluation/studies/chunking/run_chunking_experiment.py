@@ -19,6 +19,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from evaluation.build_fixture import load_fixture  # noqa: E402
+from evaluation.golden import load_golden_set  # noqa: E402
+from evaluation.manifest import (  # noqa: E402
+    MANIFEST_PATH,
+    load_manifest,
+    manifest_root,
+)
 from evaluation.studies.chunking.chunking_experiment import (  # noqa: E402
     CACHE_ROOT,
     EXPERIMENT_ROOT,
@@ -38,12 +44,6 @@ from evaluation.studies.chunking.chunking_experiment import (  # noqa: E402
     paired_statistics,
     plan_embeddings,
     select_winner,
-)
-from evaluation.golden import load_golden_set  # noqa: E402
-from evaluation.manifest import (  # noqa: E402
-    MANIFEST_PATH,
-    load_manifest,
-    manifest_root,
 )
 
 

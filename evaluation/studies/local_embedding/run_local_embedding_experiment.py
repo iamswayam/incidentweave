@@ -31,6 +31,11 @@ from app.investigation.guard import (  # noqa: E402
     evaluate_evidence_sufficiency,
 )
 from app.retrieval.fulltext_search import search_fulltext  # noqa: E402
+from evaluation.manifest import (  # noqa: E402
+    MANIFEST_PATH,
+    manifest_root,
+    questions_for_split,
+)
 from evaluation.studies.local_embedding.local_embedding import (  # noqa: E402
     ANSWERABLE_CATEGORIES,
     CONTROL_DIMENSIONS,
@@ -55,11 +60,6 @@ from evaluation.studies.local_embedding.local_embedding import (  # noqa: E402
     summarize_ranks,
     text_hash,
     validate_vector,
-)
-from evaluation.manifest import (  # noqa: E402
-    MANIFEST_PATH,
-    manifest_root,
-    questions_for_split,
 )
 from evaluation.studies.test_files.diagnose_test_files import (  # noqa: E402
     _development_question_records,
