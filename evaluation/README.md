@@ -50,16 +50,17 @@ recorded runs used the provider default and are not directly comparable.
 | `.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke` | Runs each manifest repository's deterministic smoke gate. It exits 0 when every repository meets its baseline minimums. CI starts PostgreSQL, but this gate reads only committed inputs. | No | No | No | [Root README](../README.md), [CI workflow](../.github/workflows/ci.yml), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/repos/incidentweave/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` | Writes per-question retrieval cards and repository summaries under ignored `evaluation/inspection/`; defaults to development. | No | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
-| `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking strategy note](../docs/notes/06-chunking-strategies.md), [CLI](../scripts/run_chunking_experiment.py) |
-| `.\.venv\Scripts\python.exe -m scripts.run_embedding_task_type_experiment --help` | Shows the development-only task-type experiment commands. `plan` is offline, `embed` requires `--confirm-provider-calls` and a Gemini key, and `evaluate` uses cached candidate vectors without provider calls. All candidate artifacts are under ignored `evaluation/cache/embedding_task_type_v1/`. | Yes, for `evaluate` only | Yes, for confirmed `embed` only | No | [Task-type experiment note](../docs/notes/14-embedding-task-type-experiment.md), [CLI](../scripts/run_embedding_task_type_experiment.py) |
-| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment plan` | Counts development-only chunks/questions and candidate cache misses. Uses the evaluation database; no model download or API call. | Yes | No | No | [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md), [CLI](../scripts/run_local_embedding_experiment.py) |
-| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment embed` | Uses the optional `local-embeddings` extra to download and embed only development documents and questions with the two registered FastEmbed models. | Yes | No | No; ignored cache only | [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md), [CLI](../scripts/run_local_embedding_experiment.py) |
-| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment evaluate` | Reads validated candidate caches and only development Gemini query vectors, checks 33/33 control rank equivalence before candidate metrics, and writes aggregate-only results. | Yes | No | Yes, results note only | [Local embedding protocol](../docs/architecture-review/14-local-embedding-protocol.md), [results](../docs/notes/18-local-embedding-results.md) |
+| `.\.venv\Scripts\python.exe -m scripts.run_chunking_experiment --help` | Shows `prepare-sources`, `plan`, `embed`, and `evaluate` subcommands. `embed` calls the embedding provider and supports `--batch-delay-seconds`; `evaluate` rewrites tracked `evaluation/experiments/chunking/report-development.json` and `.md`. | No | Yes, for `embed` only | Yes, for `evaluate` | [Chunking study](studies/README.md), [CLI wrapper](../scripts/run_chunking_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_embedding_task_type_experiment --help` | Shows the development-only task-type experiment commands. `plan` is offline, `embed` requires `--confirm-provider-calls` and a Gemini key, and `evaluate` uses cached candidate vectors without provider calls. All candidate artifacts are under ignored `evaluation/cache/embedding_task_type_v1/`. | Yes, for `evaluate` only | Yes, for confirmed `embed` only | No | [Task-type study](studies/README.md), [protocol](../docs/notes/14-embedding-task-type-experiment.md), [CLI wrapper](../scripts/run_embedding_task_type_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment plan` | Counts development-only chunks/questions and candidate cache misses. Uses the evaluation database; no model download or API call. | Yes | No | No | [Local embedding study](studies/README.md), [protocol](../docs/architecture-review/14-local-embedding-protocol.md), [CLI wrapper](../scripts/run_local_embedding_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment embed` | Uses the optional `local-embeddings` extra to download and embed only development documents and questions with the two registered FastEmbed models. | Yes | No | No; ignored cache only | [Local embedding study](studies/README.md), [protocol](../docs/architecture-review/14-local-embedding-protocol.md), [CLI wrapper](../scripts/run_local_embedding_experiment.py) |
+| `.\.venv\Scripts\python.exe -m scripts.run_local_embedding_experiment evaluate` | Reads validated candidate caches and only development Gemini query vectors, checks 33/33 control rank equivalence before candidate metrics, and writes aggregate-only results. | Yes | No | Yes, results note only | [Local embedding study](studies/README.md), [protocol](../docs/architecture-review/14-local-embedding-protocol.md), [results](../docs/notes/18-local-embedding-results.md) |
 | `.\.venv\Scripts\python.exe -m scripts.run_fulltext_ablation` | Rewrites tracked `evaluation/experiments/fulltext/results.json` and `report.md`. No help mode; do not run it to check usage. | Yes | No | Yes | [Ablation protocol](../docs/architecture-review/08-retrieval-ablation-protocol.md), [ablation results](../docs/notes/09-fulltext-ablation-results.md), [entry point](../scripts/run_fulltext_ablation.py) |
 | `.\.venv\Scripts\python.exe -m scripts.compare_bm25` | Runs the preregistered BM25/control/C1 comparison on development fixtures and writes the aggregate result JSON and note. | Yes | No | Yes | [BM25 protocol](../docs/architecture-review/12-bm25-comparison-protocol.md), [results](../docs/notes/17-bm25-comparison-results.md), [entry point](../scripts/compare_bm25.py) |
 | `.\.venv\Scripts\python.exe -m scripts.diagnose_fulltext --help` | Has `--help`; writes tracked `docs/notes/08-fulltext-diagnostic.md` by default; pass `--output` to write elsewhere. | Yes | No | Yes by default | [Full-text diagnostic note](../docs/notes/08-fulltext-diagnostic.md), [entry point](../scripts/diagnose_fulltext.py) |
 | `.\.venv\Scripts\python.exe -m scripts.diagnose_test_files --help` | Shows options for the development-only test-file diagnostic. | No | No | No, unless run | [Study index](studies/README.md), [CLI wrapper](../scripts/diagnose_test_files.py) |
 | `.\.venv\Scripts\python.exe -m scripts.compare_test_file_variants --help` | Shows options for the registered development-only test-file comparison. | Yes | No | No, unless run | [Study index](studies/README.md), [CLI wrapper](../scripts/compare_test_file_variants.py) |
+| `.\.venv\Scripts\python.exe -m evaluation.studies.chunking.compare_chunking_runs --help` | Shows the offline CLI for comparing two saved runs without a database or provider. | No | No | Writes comparison JSON beside the selected experiment run when run | [Chunking study](studies/README.md), [CLI module](studies/chunking/compare_chunking_runs.py) |
 | `.\.venv\Scripts\python.exe scripts\run_eval.py` | Runs the two-pass answer evaluation against an allowlisted repository and writes run artifacts under ignored `evaluation/results/runs/`. | Yes | Yes | No | [Root README](../README.md), [Phase 8 evaluation log](../docs/phases/08-evaluation.md), [runner CLI](../scripts/run_eval.py) |
 
 The fixture builder needs existing database embeddings and cached question embeddings; it does not fetch embeddings.
@@ -86,7 +87,7 @@ Commands with Writes tracked files = Yes change registered artifacts when rerun.
 | [`manifest.json`](manifest.json) | Selects evaluation repositories and records qualified v2 candidates. | Versioned |
 | [`repos/incidentweave/smoke-gate.json`](repos/incidentweave/smoke-gate.json) | IncidentWeave smoke retrieval-gate configuration. | Versioned |
 | `cache/` | Local embedding cache used by fixture construction and experiments, including versioned item 14a and item 18c caches. | Ignored/generated |
-| [`experiments/`](experiments/) | Chunking, full-text, BM25, and local embedding experiment documentation. | Versioned |
+| [`experiments/`](experiments/) | Tracked experiment result artifacts for chunking, full-text, BM25, and scorecard runs. | Versioned |
 | [`studies/`](studies/README.md) | Reproducible implementations for completed full-text, BM25, and test-file studies; result artifacts remain in their existing locations. | Versioned |
 | [`fixtures/`](fixtures/) | Legacy directory retained for navigation; IncidentWeave's manifest-selected fixture is under `repos/incidentweave/`. | README only |
 | `inspection/` | Generated retrieval-inspection cards and summaries. | Ignored/generated |
@@ -127,7 +128,6 @@ The descriptions below are taken from each module's docstring.
 ### Retrieval evaluation
 
 - [`retrieval_eval.py`](retrieval_eval.py) — Offline hybrid-retrieval evaluation using committed embeddings.
-- [`embedding_task_type.py`](embedding_task_type.py) — Typed cache identity, metrics, and decision rules for item 14a.
 - [`gate.py`](gate.py) — Pure loading and evaluation for the offline retrieval regression gate.
 - [`inspection.py`](inspection.py) — Pure Markdown rendering for offline retrieval inspection reports.
 
@@ -139,14 +139,12 @@ The descriptions below are taken from each module's docstring.
 ### Experiments
 
 - [`chunk_strategies.py`](chunk_strategies.py) — Chunking strategies supported by the evaluation harness only.
-- [`chunking_experiment.py`](chunking_experiment.py) — Deterministic preparation and analysis for the chunking comparison.
-- [`compare_chunking_runs.py`](compare_chunking_runs.py) — Compare two saved chunking-evaluation runs without database or API access.
-- [`local_embedding.py`](local_embedding.py) — Cache identity, vector validation, exact cosine ranking, RRF, and decision helpers for item 18c.
-- [`run_local_embedding_experiment.py`](../scripts/run_local_embedding_experiment.py) — Plan, embed, and evaluate item 18c with development-only inputs.
+- [`test_files.py`](test_files.py) — Shared test-source path classification used by evaluation helpers.
 
-`chunk_strategies.py` defines chunking strategies; `chunking_experiment.py` runs the experiment.
-Completed full-text, BM25, and test-file study implementations are indexed in
-[`studies/README.md`](studies/README.md); the `scripts.*` commands remain stable wrappers.
+Completed chunking, full-text, BM25, test-file, and embedding study implementations are
+indexed in [`studies/README.md`](studies/README.md). Their documented `scripts.*` commands
+remain stable thin wrappers; the chunking run-comparison CLI is
+`python -m evaluation.studies.chunking.compare_chunking_runs`.
 
 ## 5. Data model
 

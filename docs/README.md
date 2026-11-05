@@ -110,6 +110,10 @@ operational and evaluation commands.
 | Local embeddings 18c | [14-local-embedding-protocol.md](architecture-review/14-local-embedding-protocol.md) | [18-local-embedding-results.md](notes/18-local-embedding-results.md) | `evaluation/cache/local_embedding_v1/results-development.json` (ignored) | `scripts/run_local_embedding_experiment.py` | Keep control; both candidates failed R1–R3 |
 | Scorecard 32a | [16-scorecard-protocol.md](architecture-review/16-scorecard-protocol.md) | [metrics.md](reference/metrics.md) | `evaluation/experiments/scorecard/v1-development.json` | `scripts/run_scorecard.py` | Provisional v1 development baseline; production control cross-check passed |
 
+Experiment implementations and the offline chunking run-comparison CLI are indexed in the
+[evaluation studies guide](../evaluation/studies/README.md); documented script commands
+remain stable wrappers.
+
 ## Where to look
 
 - **Current behavior:** [architecture overview](architecture/01-architecture-overview.md) and

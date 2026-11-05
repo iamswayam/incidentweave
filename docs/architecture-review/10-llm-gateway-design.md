@@ -15,7 +15,7 @@ The project makes Gemini provider calls today in four categories:
 - generation: grounded answer generation via `app/investigation/generation.py`
 - query embedding: `scripts/investigate.py` and `scripts/search_repo.py`
 - repository/document embedding: `scripts/embed_chunks.py` and the evaluation embedding cache path
-- experiment pacing: `evaluation/chunking_experiment.py` and `scripts/run_chunking_experiment.py` for `--batch-delay-seconds`
+- experiment pacing: `evaluation/studies/chunking/chunking_experiment.py` and `evaluation/studies/chunking/run_chunking_experiment.py` for `--batch-delay-seconds`
 
 The direct call path is centralized in `app/providers/gemini.py`, which enforces the `x-goog-api-key` header and bounded retry logic. Higher layers mostly call it indirectly without custom retry logic. The API layer delegates to the investigation script, which then reaches the shared provider helper and the embedding helper.
 
@@ -31,8 +31,8 @@ The direct call path is centralized in `app/providers/gemini.py`, which enforces
 | `scripts/search_repo.py` | `main()`, `search_repository()` | Query embedding for a repo search | Shared helper | No custom retry; provider helper handles it | CLI flows are mocked or bypassed | CI-safe |
 | `app/api.py` | `create_investigation()`, `get_investigation()` | Delegates to `investigate_repository()`, no direct provider call | No direct key handling | Converts provider or validation failures into HTTP errors | API tests assert response shape and error mapping | CI-safe |
 | `evaluation/runner.py` | `load_key_without_logging()`, `cached_embedding()`, `_counted_send_once()` | Evaluation-only cache + generation throttle | Reads `.env` if needed and never logs the secret | `MIN_API_DELAY_SECONDS` pacing and generation budget; `429` is counted | Tests validate budget and cache logic | CI-safe |
-| `evaluation/chunking_experiment.py` | `embed_missing()`, `_embed()` | Embedding batches with `--batch-delay-seconds` pacing | Reads env or settings | Pacing is implemented between batches; no explicit fallback | Unit tests validate schedule and cache ordering | Evaluation-only |
-| `scripts/run_chunking_experiment.py` | `_embed()` CLI | Same as above | env / settings | Fails fast if key missing | Unit tests validate the CLI path | Not part of default CI |
+| `evaluation/studies/chunking/chunking_experiment.py` | `embed_missing()`, `_embed()` | Embedding batches with `--batch-delay-seconds` pacing | Reads env or settings | Pacing is implemented between batches; no explicit fallback | Unit tests validate schedule and cache ordering | Evaluation-only |
+| `evaluation/studies/chunking/run_chunking_experiment.py` | `_embed()` CLI | Same as above | env / settings | Fails fast if key missing | Unit tests validate the CLI path | Not part of default CI |
 | `tests/unit/providers/test_gemini_provider.py` | retry and redaction tests | Mocked provider contract | Sets `GEMINI_API_KEY` in env | Verifies retries and redaction | Canonical provider contract tests | CI-safe |
 | `tests/unit/providers/test_gemini_api_key_header.py` | request-header tests | Mocked generation + embedding contract | Sets `GEMINI_API_KEY` in env | Asserts key is in header and not URL | Canonical replacement for provider | CI-safe |
 | `tests/unit/test_chunking_experiment.py` | pacing tests | Mocked embed function | `monkeypatch.setenv` coupled with fake embed | Verifies delay between batches | Official pacing test replacement | CI-safe |
