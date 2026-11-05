@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.session import AsyncSessionLocal as SessionFactory
 from evaluation.build_fixture import load_fixture
-from evaluation.chunking_experiment import discover_sources
+from evaluation.studies.chunking.chunking_experiment import discover_sources
 from evaluation.golden import load_golden_set
 from evaluation.manifest import load_manifest, questions_for_split
 from evaluation.retrieval_eval import run_offline_retrieval

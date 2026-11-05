@@ -12,7 +12,7 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 RUNS_ROOT = ROOT / "evaluation" / "results" / "runs"
 PASS_NAMES = ("pass-1", "pass-2")
 HIT_CUTOFFS = (1, 3, 5)
@@ -654,9 +654,9 @@ def compare_runs(
     split: str = "development",
     confirm_frozen_heldout: bool = False,
 ) -> dict[str, Any]:
-    from .chunk_strategies import resolve_split
-    from .golden import load_golden_set
-    from .manifest import load_manifest, questions_for_split, repository_entry
+    from evaluation.chunk_strategies import resolve_split
+    from evaluation.golden import load_golden_set
+    from evaluation.manifest import load_manifest, questions_for_split, repository_entry
 
     split = resolve_split(split, confirm_frozen_heldout=confirm_frozen_heldout)
     baseline_metadata, baseline_passes = load_run(baseline_dir)
@@ -777,7 +777,7 @@ def main() -> None:
     )
     parser.add_argument("baseline_run", type=Path)
     parser.add_argument("experiment_run", type=Path)
-    from .chunk_strategies import SPLIT_CHOICES
+    from evaluation.chunk_strategies import SPLIT_CHOICES
 
     parser.add_argument("--split", choices=SPLIT_CHOICES, default="development")
     parser.add_argument("--confirm-frozen-heldout", action="store_true")
