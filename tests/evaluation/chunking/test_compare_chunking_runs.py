@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
-from evaluation import compare_chunking_runs
-from evaluation.compare_chunking_runs import compare_runs, format_report
+from evaluation.studies.chunking import compare_chunking_runs
+from evaluation.studies.chunking.compare_chunking_runs import compare_runs, format_report
 
 PINNED_SOURCE = (
     "MODULE_LABEL = 1\n"

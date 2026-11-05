@@ -78,12 +78,12 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 32b | Not started | pending | Final v2 development baseline after item 31c; frozen before item 3b. |
 | 35a | In review | pending | Move ingestion, embedding, and investigation logic under app/; retain the documented script commands. |
 | 35b | In review | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
-| 35c | Not started | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
+| 35c | In review | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 35b (completed-study organization; this work), followed by 35c–35d; item 35 precedes item 33. Dataset work 31b/31c remains open, and item 32b follows item 31c.
+Next: item 35c (chunking and embedding studies; this work), followed by 35d; item 35 precedes item 33. Dataset work 31b/31c remains open, and item 32b follows item 31c.
 
 ## 1. Fix-order checklist (summary)
 
@@ -608,10 +608,11 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Progress:** Full-text, BM25, and test-file implementations are under `evaluation/studies/`; documented script commands remain thin wrappers. No result artifacts were moved.
 - **Status:** In review.
 
-**35c. Move chunking and embedding studies (Not started).**
+**35c. Move chunking and embedding studies (In review).**
 - **Fix:** Move chunking, embedding task-type, and local-embedding experiment implementations into `evaluation/studies/<name>/`; preserve stable CLI entry points.
 - **Done when:** Experiment tests and documented commands pass with implementations under `evaluation/studies/`.
-- **Status:** Not started.
+- **Progress:** Chunking, embedding task-type, and local-embedding implementations are under `evaluation/studies/`; documented script commands remain thin wrappers, and the chunking comparison runs with `python -m evaluation.studies.chunking.compare_chunking_runs`. No result artifacts or datasets were moved.
+- **Status:** In review.
 
 **35d. Split question review (Not started).**
 - **Fix:** Split `evaluation/question_review.py` into focused modules for pack rendering/parsing and question ingestion/review workflows.

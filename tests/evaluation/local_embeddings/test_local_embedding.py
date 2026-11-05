@@ -4,8 +4,10 @@ import json
 
 import pytest
 
-import scripts.run_local_embedding_experiment as runner
-from evaluation.local_embedding import (
+from evaluation.studies.local_embedding import (
+    run_local_embedding_experiment as runner,
+)
+from evaluation.studies.local_embedding.local_embedding import (
     MODELS,
     cache_path,
     cache_record,

@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from app.config import settings
-from evaluation.embedding_task_type import (
+from evaluation.retrieval_eval import _explicit_development_questions
+from evaluation.studies.embedding_task_type import (
+    run_embedding_task_type_experiment as experiment,
+)
+from evaluation.studies.embedding_task_type.embedding_task_type import (
     DOCUMENT_TASK_TYPE,
     QUERY_TASK_TYPE,
     EmbeddingInputs,
@@ -20,8 +24,6 @@ from evaluation.embedding_task_type import (
     summarize_method,
     write_results_note,
 )
-from evaluation.retrieval_eval import _explicit_development_questions
-from scripts import run_embedding_task_type_experiment as experiment
 
 
 def _metrics(

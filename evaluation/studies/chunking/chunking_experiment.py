@@ -34,7 +34,7 @@ from evaluation.manifest import (
 )
 from evaluation.stats import exact_sign_test
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 EXPERIMENT_ROOT = ROOT / "evaluation" / "experiments" / "chunking"
 PROTOCOL_PATH = EXPERIMENT_ROOT / "protocol.json"
 SOURCE_ROOT = ROOT / "evaluation" / "_snapshot" / "chunking-sources"

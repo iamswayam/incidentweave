@@ -602,8 +602,8 @@ git status --short
 .\.venv\Scripts\python.exe scripts\run_eval.py --help
 .\.venv\Scripts\python.exe scripts\run_eval.py --strategy baseline --passes 2
 .\.venv\Scripts\python.exe scripts\run_eval.py --strategy w100_o20 --passes 2
-.\.venv\Scripts\python.exe evaluation\compare_chunking_runs.py --help
-.\.venv\Scripts\python.exe evaluation\compare_chunking_runs.py evaluation\results\runs\20261018T123627Z-2274338-baseline evaluation\results\runs\20261018T124223Z-2274338-w100_o20
+.\.venv\Scripts\python.exe -m evaluation.studies.chunking.compare_chunking_runs --help
+.\.venv\Scripts\python.exe -m evaluation.studies.chunking.compare_chunking_runs evaluation\results\runs\20261018T123627Z-2274338-baseline evaluation\results\runs\20261018T124223Z-2274338-w100_o20
 ```
 
 No command failed; no other error text was reported. Full comparator output follows verbatim:

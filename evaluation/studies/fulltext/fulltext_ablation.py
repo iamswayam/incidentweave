@@ -12,7 +12,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from evaluation.chunking_experiment import paired_statistics
+from evaluation.studies.chunking.chunking_experiment import paired_statistics
 
 ROOT = Path(__file__).resolve().parents[3]
 EXPERIMENT_ROOT = ROOT / "evaluation" / "experiments" / "fulltext"
