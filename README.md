@@ -82,12 +82,16 @@ Provisional v1 development results (not held-out); the full scorecard and defini
 ```powershell
 git clone https://github.com/iamswayam/incidentweave.git
 cd incidentweave
-python -m venv .venv
+winget install --id=astral-sh.uv -e
+uv sync --all-extras
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
 Copy-Item .env.example .env
 ```
+
+Use the activated `.venv` for project commands. Add runtime dependencies with `uv add <package>`
+and development dependencies with `uv add --dev <package>`; do not use `pip install` inside the
+project. The `local-embeddings` extra supports the registered local embedding study. CI installs
+from the committed `uv.lock` with `uv sync --locked`.
 
 Set `GEMINI_API_KEY` and `API_PROTECTION_SECRET` in `.env`. Embedding and investigation commands
 also need `GEMINI_API_KEY` in the process environment:

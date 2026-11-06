@@ -7,10 +7,9 @@
 From the repository root in PowerShell:
 
 ```powershell
-py -3.12 -m venv .venv
+winget install --id=astral-sh.uv -e
+uv sync --all-extras
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
 Copy-Item .env.example .env
 alembic upgrade head
 ```
@@ -18,14 +17,19 @@ alembic upgrade head
 Equivalent setup from CMD:
 
 ```cmd
-py -3.12 -m venv .venv
+winget install --id=astral-sh.uv -e
+uv sync --all-extras
 .venv\Scripts\activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
 copy .env.example .env
 docker compose up -d db
 alembic upgrade head
 ```
+
+Add runtime dependencies with `uv add <package>` and development dependencies with
+`uv add --dev <package>`. Do not use `pip install` inside the project. The optional
+`local-embeddings` extra is for the registered local embedding study; install it when needed with
+`uv sync --locked --extra local-embeddings`. CI installs from the committed `uv.lock` using
+`uv sync --locked`.
 
 Set `DATABASE_URL` for the local Compose PostgreSQL service and put provider credentials in
 the ignored `.env` file. Never commit `.env`, keys, tokens, or generated run output. Pydantic

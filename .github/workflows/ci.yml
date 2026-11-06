@@ -11,17 +11,18 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: "0.12.11"
           python-version: "3.12"
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install project and development dependencies
-        run: python -m pip install -e ".[dev]"
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
 
       - name: Ruff
-        run: ruff check .
+        run: uv run --no-sync ruff check .
 
       - name: Build Docker image
         run: docker build -f docker/Dockerfile .
@@ -32,17 +33,37 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: "0.12.11"
           python-version: "3.12"
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install project and development dependencies
-        run: python -m pip install -e ".[dev]"
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
 
       - name: Run unit tests
-        run: python -m pytest tests/unit -q --durations=15
+        run: uv run --no-sync python -m pytest tests/unit -q --durations=15
+
+  unit-python-313:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.11"
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
+
+      - name: Run unit tests
+        run: uv run --no-sync python -m pytest tests/unit -q --durations=15
 
   integration:
     runs-on: ubuntu-latest
@@ -64,31 +85,32 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: "0.12.11"
           python-version: "3.12"
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install project and development dependencies
-        run: python -m pip install -e ".[dev]"
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
 
       - name: Verify PostgreSQL
         env:
           PGPASSWORD: incidentweave
         run: |
           pg_isready -h localhost -p 5432 -U incidentweave -d incidentweave
-          python -c "import socket; s=socket.create_connection(('localhost', 5432), 5); print('PostgreSQL TCP connection OK'); s.close()"
+          uv run --no-sync python -c "import socket; s=socket.create_connection(('localhost', 5432), 5); print('PostgreSQL TCP connection OK'); s.close()"
 
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
-        run: alembic upgrade head
+        run: uv run --no-sync alembic upgrade head
 
       - name: Integration tests
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
-        run: python -m pytest tests/integration -q
+        run: uv run --no-sync python -m pytest tests/integration -q
 
   evaluation:
     runs-on: ubuntu-latest
@@ -110,31 +132,32 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
         with:
+          version: "0.12.11"
           python-version: "3.12"
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install project and development dependencies
-        run: python -m pip install -e ".[dev]"
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
 
       - name: Verify PostgreSQL
         env:
           PGPASSWORD: incidentweave
         run: |
           pg_isready -h localhost -p 5432 -U incidentweave -d incidentweave
-          python -c "import socket; s=socket.create_connection(('localhost', 5432), 5); print('PostgreSQL TCP connection OK'); s.close()"
+          uv run --no-sync python -c "import socket; s=socket.create_connection(('localhost', 5432), 5); print('PostgreSQL TCP connection OK'); s.close()"
 
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
-        run: alembic upgrade head
+        run: uv run --no-sync alembic upgrade head
 
       - name: Evaluation harness tests
-        run: python -m pytest tests/evaluation -q
+        run: uv run --no-sync python -m pytest tests/evaluation -q
 
       - name: Offline retrieval gate
         env:
           DATABASE_URL: postgresql+psycopg://incidentweave:incidentweave@localhost:5432/incidentweave
-        run: python -m scripts.check_retrieval_gate --split smoke
+        run: uv run --no-sync python -m scripts.check_retrieval_gate --split smoke

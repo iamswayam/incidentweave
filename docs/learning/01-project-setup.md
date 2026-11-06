@@ -6,9 +6,8 @@
 ## What I built
 
 The project skeleton: a FastAPI app (`app/main.py`) exposing `/health`, a
-`pyproject.toml` pinning a minimal dependency set (FastAPI, Pydantic Settings,
-Uvicorn, SQLAlchemy 2.x, psycopg3, pgvector, Alembic — dev-only: httpx, pytest,
-Ruff), Docker Compose running a `pgvector/pgvector:pg17` Postgres service
+`pyproject.toml` with bounded runtime and development dependencies plus a
+committed `uv.lock`, Docker Compose running a `pgvector/pgvector:pg17` Postgres service
 alongside the app, and a GitHub Actions CI pipeline that spins up the same
 Postgres+pgvector image as a service container, runs Ruff, applies Alembic
 migrations, runs pytest, and builds the Docker image.
@@ -32,10 +31,10 @@ trusting descriptions of what should happen. -->
 
 ## Walkthrough example
 
-CI pipeline, in order, on every push: checkout → set up Python 3.12 → install
-`.[dev]` → `ruff check .` → verify Postgres is reachable (both `pg_isready`
-and a raw socket connection check) → `alembic upgrade head` → `pytest` →
-`docker build -f docker/Dockerfile .`. All 8 steps currently pass.
+CI uses uv to install the locked dependencies (`uv sync --locked`) on Python 3.12; the unit suite
+also runs on Python 3.13. The lint job runs Ruff and builds the Docker image, while separate
+PostgreSQL-backed jobs run migrations, integration and evaluation tests, and the offline retrieval
+gate.
 
 ## What I found, not from reading the code but from actually tracing it
 

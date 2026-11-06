@@ -11,6 +11,8 @@ never put them in command arguments.
 Operational logic lives under `app/`; completed experiment logic lives under
 [`evaluation/studies/`](../evaluation/studies/README.md). Application and evaluation modules
 must not import from `scripts/`, and script modules must not import other script modules.
+Set up the project with `uv sync --all-extras` as described in [Contributing](../CONTRIBUTING.md);
+CI installs from `uv.lock`. Use `uv add` for project dependencies rather than `pip install`.
 
 | Script | Purpose | Kind | Database / key / quota | Belongs to | Tests / docs | Safe quick check? |
 |---|---|---|---|---|---|---|
