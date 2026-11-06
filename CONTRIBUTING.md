@@ -69,6 +69,12 @@ editor defaults, while `.gitattributes` defines repository text and binary handl
 Review Dependabot pull requests like other dependency changes: inspect the updates, check CI,
 and merge only after the relevant checks pass.
 
+## Security checks
+
+CI's `secrets` job scans the full Git history with Gitleaks, and `audit` checks locked
+dependencies with `pip-audit`. If a secret is found, rotate it first; remove it from Git
+history only with maintainer approval. Never commit `.env`.
+
 ## Branches, issues, and pull requests
 
 - Work on one checklist item per branch and one pull request. Use the `fix/<item-id>-short-name`

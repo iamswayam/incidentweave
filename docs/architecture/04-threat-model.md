@@ -32,6 +32,7 @@ This short model covers the current local IncidentWeave workflow.
 - Input caps, a process-local API rate limit, and generic error responses constrain some API abuse and leakage paths.
 - Persisted error outcomes store the exception class name, not the exception message.
 - Replay fields are omitted from both API response models; access is limited to direct database access.
+- CI scans full Git history for secrets and audits locked dependencies; Dependabot reports dependency updates.
 
 ## Residual risks
 

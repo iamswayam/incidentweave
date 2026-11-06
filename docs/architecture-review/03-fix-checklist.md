@@ -81,10 +81,11 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35c | In review | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
 | 36c | In review | pending | Repository hygiene: line-ending/editor settings, pre-commit, CI and Dependabot. |
+| 36e | In review | pending | Security policy, full-history secret scanning, dependency audit, and owner-side GitHub settings. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 36c (repository hygiene; in review); items 36d–36f follow, then item 33. Item 36 follows item 35. Dataset work 31b/31c remains open, and item 32b follows item 31c.
+Next: item 36e (security basics; in review); item 36f follows, then item 33. Item 36 follows item 35. Dataset work 31b/31c remains open, and item 32b follows item 31c.
 
 ## 1. Fix-order checklist (summary)
 
@@ -645,9 +646,11 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Fix:** Extend Ruff rule sets one at a time, add basic-mode type checking for `app/`, and add coverage measurement.
 - **Done when:** Each is enforced in CI without a large baseline of ignores.
 
-**36e. Security basics (Not started).**
+**36e. Security basics (In review).**
 - **Fix:** Add `SECURITY.md`, secret scanning, push protection and branch protection (owner settings), secret scanning of the full git history (gitleaks) in CI, in addition to GitHub secret scanning and push protection, and dependency audit in CI.
 - **Done when:** Security basics are documented and enforced.
+- **Progress:** Added the security policy, full-history Gitleaks scanning, and locked-dependency auditing in CI. The owner must enable GitHub secret scanning, push protection, private vulnerability reporting, Dependabot alerts, and branch protection; these settings are not enabled or verified by this change.
+- **Status:** In review.
 
 **36f. Apply Ruff formatting repository-wide (Not started).**
 - **Fix:** Apply ruff format to the whole repository (119 files would change at the time of 36c) and add the ruff-format hook.
