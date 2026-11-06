@@ -40,6 +40,28 @@ jobs:
       - name: Scan full Git history
         run: ./gitleaks git --log-opts="--all" --redact --exit-code 1
 
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.11"
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
+
+      - name: Export locked requirements
+        run: uv export --locked --no-hashes --no-emit-project --all-groups --format requirements-txt --output-file /tmp/requirements.txt
+
+      - name: Audit locked dependencies
+        run: uv run --no-sync pip-audit --requirement /tmp/requirements.txt
+
   lint:
     runs-on: ubuntu-latest
     steps:
