@@ -46,6 +46,25 @@ jobs:
       - name: Run unit tests
         run: uv run --no-sync python -m pytest tests/unit -q --durations=15
 
+  unit-python-313:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.11"
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Sync dependencies from uv.lock
+        run: uv sync --locked
+
+      - name: Run unit tests
+        run: uv run --no-sync python -m pytest tests/unit -q --durations=15
+
   integration:
     runs-on: ubuntu-latest
     services:
