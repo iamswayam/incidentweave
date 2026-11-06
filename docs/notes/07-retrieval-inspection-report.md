@@ -19,10 +19,10 @@ Limits: reports are offline from committed fixtures and use the development spli
 42 |         .with_for_update(of=BatchItem, skip_locked=True)
 43 |     )
 44 |     rows = result.all()  # list of Row(BatchItem, tenant_id)
-45 | 
+45 |
 46 |     if not rows:
 47 |         return []
-48 | 
+48 |
 49 |     item_ids = [row[0].id for row in rows]
 ```
 

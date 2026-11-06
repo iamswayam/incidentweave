@@ -73,4 +73,3 @@ def test_split_identifier_text_appends_only_identifier_splits(
     expected: str,
 ) -> None:
     assert split_identifier_text(content) == expected
-
