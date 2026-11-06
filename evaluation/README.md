@@ -71,7 +71,7 @@ and summarized in the [metrics reference](../docs/reference/metrics.md). Its ran
 contains separate production-limit-5 and deep-limit-20 views; the scorecard refuses held-out
 data.
 
-For item 18c, install `fastembed==0.9.1` with `.\.venv\Scripts\python.exe -m pip install -e ".[local-embeddings]"` only when intentionally running `embed`. This optional extra is not part of `dev` and is not installed by CI.
+For item 18c, install the `local-embeddings` extra with `uv sync --locked --extra local-embeddings` only when intentionally running `embed`. This optional extra is separate from the `dev` dependency group and is not installed by CI.
 
 Commands with Writes tracked files = Yes change registered artifacts when rerun.
 
