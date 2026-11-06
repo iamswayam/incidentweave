@@ -61,6 +61,14 @@ the retrieval smoke gate. `full` runs all three tiers serially. Network access i
 unit and evaluation tests; tests replace provider calls with fakes or mocks. CI needs neither
 a gateway nor a provider key.
 
+## Repository hygiene
+
+Run pre-commit manually with `.venv\Scripts\pre-commit run --all-files`; installing its hooks
+locally with `pre-commit install` is optional, and CI runs the checks. `.editorconfig` sets
+editor defaults, while `.gitattributes` defines repository text and binary handling.
+Review Dependabot pull requests like other dependency changes: inspect the updates, check CI,
+and merge only after the relevant checks pass.
+
 ## Branches, issues, and pull requests
 
 - Work on one checklist item per branch and one pull request. Use the `fix/<item-id>-short-name`

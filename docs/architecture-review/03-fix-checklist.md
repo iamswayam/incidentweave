@@ -80,10 +80,11 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35b | In review | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
 | 35c | In review | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
+| 36c | In review | pending | Repository hygiene: line-ending/editor settings, pre-commit, CI and Dependabot. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 36a (uv lockfile and CI installation); items 36b–36e follow, then item 33. Item 36 follows item 35. Dataset work 31b/31c remains open, and item 32b follows item 31c.
+Next: item 36c (repository hygiene; in review); items 36d–36f follow, then item 33. Item 36 follows item 35. Dataset work 31b/31c remains open, and item 32b follows item 31c.
 
 ## 1. Fix-order checklist (summary)
 
@@ -164,6 +165,7 @@ Next: item 36a (uv lockfile and CI installation); items 36b–36e follow, then i
 | 36c | ☐ | Repository hygiene | Medium | M | Maintainer |
 | 36d | ☐ | Static analysis | Medium | M | Maintainer |
 | 36e | ☐ | Security basics | Medium | M | Maintainer |
+| 36f | ☐ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
 
@@ -178,7 +180,7 @@ Next: item 36a (uv lockfile and CI installation); items 36b–36e follow, then i
 | 5 | **29**, **30** (done), **31a**, **31b**, **31c** | Register the dataset protocol, qualify repositories, build and pilot questions, then scale and freeze v2 |
 | 6 | **32a**, **32b** | Provisional v1 scorecard now; freeze the final v2 development scorecard before item 3b |
 | 7 | **35a–35d** | Move runtime logic and studies to their owning packages before further operational and architecture work |
-| 8 | **36a–36e** | Adopt a locked toolchain, then continue repository hygiene, static analysis, and security basics |
+| 8 | **36a–36f** | Adopt a locked toolchain, then continue repository hygiene, static analysis, security basics, and repository-wide formatting |
 | 9 | **33** | Report operational metrics and estimated costs |
 | 10 | **21** (development only) | Evaluate reranking before the held-out run |
 | 11 | **34** | Freeze deterministic citation and end-to-end checks |
@@ -186,7 +188,7 @@ Next: item 36a (uv lockfile and CI installation); items 36b–36e follow, then i
 | 13 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
 
 Remaining implementation sequence: dataset (**29**, **30**, **31a**, **31b**, **31c**) → provisional scorecard **32a** → final v2 development scorecard **32b** →
-layering and studies (**35a–35d**) → tooling and security (**36a–36e**) → operational report **33** → reranker **21** (development only) → citation validity **34** →
+layering and studies (**35a–35d**) → tooling and security (**36a–36f**) → operational report **33** → reranker **21** (development only) → citation validity **34** →
 **3b** (one registered run on v2 held-out repositories with the frozen scorecard, threshold
 validation, and the 14b-3 decision) → **17** (its “grow unanswerable to at least 20” target
 is superseded by item 31) → **15c**, **5b**, **20**, **12b**, and **22–26**.
@@ -633,17 +635,23 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Fix:** Build a multi-stage image from `uv.lock`, run as a non-root user, and add a health check if a health route exists.
 - **Done when:** The image builds and starts via Docker Compose.
 
-**36c. Repository hygiene (Not started).**
-- **Fix:** Add `.gitattributes`, `.editorconfig`, pre-commit checks for Ruff, whitespace, end-of-file, large files, and gitleaks; CI triggers/concurrency/permissions; Ruff format check; and Dependabot for pip, Actions, and Docker.
+**36c. Repository hygiene (In review).**
+- **Fix:** Add `.gitattributes`, `.editorconfig`, pre-commit checks for Ruff, whitespace, end-of-file, and large files; CI triggers/concurrency/permissions and pre-commit enforcement; and Dependabot for uv, Actions, and Docker.
 - **Done when:** Hooks and CI enforce them.
+- **Progress:** Added repository text/binary handling and editor defaults, pinned pre-commit checks, tightened CI triggers and permissions, and configured weekly Dependabot updates.
+- **Status:** In review.
 
 **36d. Static analysis (Not started).**
 - **Fix:** Extend Ruff rule sets one at a time, add basic-mode type checking for `app/`, and add coverage measurement.
 - **Done when:** Each is enforced in CI without a large baseline of ignores.
 
 **36e. Security basics (Not started).**
-- **Fix:** Add `SECURITY.md`, secret scanning, push protection and branch protection (owner settings), and dependency audit in CI.
+- **Fix:** Add `SECURITY.md`, secret scanning, push protection and branch protection (owner settings), secret scanning of the full git history (gitleaks) in CI, in addition to GitHub secret scanning and push protection, and dependency audit in CI.
 - **Done when:** Security basics are documented and enforced.
+
+**36f. Apply Ruff formatting repository-wide (Not started).**
+- **Fix:** Apply ruff format to the whole repository (119 files would change at the time of 36c) and add the ruff-format hook.
+- **Done when:** The repository passes the ruff-format hook and CI checks formatting.
 
 The v0 harness archive and moves of `manifest.py`, `metrics.py`, `retrieval_eval.py`, and `scorecard.py` are deferred: item 33/34 designs may reuse the v0 runner, and these modules have high fan-out.
 
