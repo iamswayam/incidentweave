@@ -2,7 +2,16 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   lint:
@@ -23,6 +32,9 @@ jobs:
 
       - name: Ruff
         run: uv run --no-sync ruff check .
+
+      - name: Pre-commit
+        run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
 
       - name: Build Docker image
         run: docker build -f docker/Dockerfile .
