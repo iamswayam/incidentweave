@@ -1,0 +1,22 @@
+exclude: >-
+  ^(evaluation/(repos|results|experiments|fixtures)/|evaluation/manifest\.json|evaluation/cache/|evaluation/_snapshot/|docs/phases/|uv\.lock|.*\.(?:gz|png|jpe?g|gif|webp|svg|ico|bmp|tiff?|pdf|zip|tar|bz2|xz|7z|woff2?|ttf|otf|mp[34]|wav|db|sqlite3?)$)
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.4
+    hooks:
+      - id: ruff
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]

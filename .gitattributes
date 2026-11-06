@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+evaluation/repos/** -text
+evaluation/results/** -text
+evaluation/experiments/** -text
+evaluation/fixtures/** -text
+evaluation/manifest.json -text
+uv.lock text eol=lf
+
+*.gz binary
+*.png binary
