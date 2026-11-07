@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 
-GOOGLE_GEMINI_PRICING_URL = "https://ai.google.dev/gemini-api/docs/pricing"
+GOOGLE_GEMINI_PRICING_URL = "https://aistudio.google.com/docs/pricing"
 PRICING_RETRIEVED_ON = "2026-11-07"
 
 
@@ -21,8 +21,9 @@ class ModelPricing:
 
 
 _GOOGLE_FREE_TIER_NOTE = (
-    "The official page describes free input and output tokens for selected models; "
-    "eligibility for this model is not listed."
+    "This model is not listed on the retrieved official pricing page. The page says the "
+    'Free tier has "Limited access to certain models" and "Free input & output tokens"; '
+    "model-specific eligibility is not stated."
 )
 
 PRICING_TABLE: dict[tuple[str, str], ModelPricing] = {

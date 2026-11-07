@@ -89,8 +89,11 @@ free tier; provider billing actuals are not ingested or verified. The estimate
 and observed figure are never added.
 
 The pricing table records provider, model, currency, input/output price per million
-tokens, source URL, retrieval date, and a text-only free-tier note. To update a
-price, change the entry, its official source URL, and `retrieved_on` together.
+tokens, source URL, retrieval date, and a text-only free-tier note. As of
+2026-11-07, neither configured Gemini model is listed on the
+[official Google AI Studio pricing page](https://aistudio.google.com/docs/pricing),
+so both remain unpriced. To update a price, change the entry, its official source
+URL, `retrieved_on`, and model-specific free-tier note together.
 
 Generate a Markdown report with:
 
