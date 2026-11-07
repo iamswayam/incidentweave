@@ -165,15 +165,16 @@ def test_markdown_is_byte_identical_for_repeated_inputs() -> None:
         )
     ]
     at = datetime(2026, 11, 7, tzinfo=UTC)
-    first = format_operational_markdown(
-        summarize_operational_metrics(rows, investigations, since_hours=24, generated_at=at)
-    )
-    second = format_operational_markdown(
-        summarize_operational_metrics(rows, investigations, since_hours=24, generated_at=at)
-    )
+    summary = summarize_operational_metrics(rows, investigations, since_hours=24, generated_at=at)
+    first = format_operational_markdown(summary)
+    second = format_operational_markdown(summary)
 
     assert first.encode("utf-8") == second.encode("utf-8")
     assert "Generated at: 2026-11-07T00:00:00+00:00" in first
+    operation = summary["operations"][0]
+    assert (operation["p50_ms"], operation["p95_ms"], operation["p99_ms"]) == (11, 21, 21)
+    assert operation["errors"] == 1
+    assert operation["error_rate"] == Decimal("0.5")
 
 
 def test_unknown_models_render_no_official_price() -> None:

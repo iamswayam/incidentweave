@@ -46,7 +46,8 @@ def _method_lines(summary: Mapping[str, Any]) -> list[str]:
         "(excluded from cost where required).",
         "- Prices are in app/providers/pricing.py; unpriced models are reported as "
         "no official price.",
-        "- Observed (free tier): USD 0.00; provider billing actuals are not ingested or verified.",
+        "- Observed (free tier): USD 0.00 if usage is covered by the free tier; "
+        "billing actuals are not ingested or verified.",
         "- Estimated list-price and observed free-tier cost are separate, not added together.",
     ]
 
@@ -181,7 +182,8 @@ def format_operational_markdown(summary: Mapping[str, Any]) -> str:
             f"{cache['successful_lookups']}; failed lookups: {cache['failed_lookups']}; "
             f"hit rate: {_percent(cache['hit_rate'])}.",
             "",
-            "Observed (free tier): USD 0.00 (not combined with estimated list-price cost).",
+            "Observed (free tier): USD 0.00 if usage is covered by the free tier; "
+            "billing actuals are not ingested or verified.",
             "",
             *_method_lines(summary),
         ]
