@@ -606,33 +606,21 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Done when:** Existing question-review behavior and tests are preserved without a large monolithic module.
 - **Status:** Not started.
 
-**36a. Adopt uv and a committed lock file (In review).**
-- **Fix:** Move development tools into a PEP 735 dependency group, commit `uv.lock`, and configure CI to install from it.
-- **Done when:** CI installs from `uv.lock`, unit counts are identical, and CI is green on the PR (integration and evaluation tiers run in CI).
-
-**36b. Docker image from the lock (Not started).**
-- **Fix:** Build a multi-stage image from `uv.lock`, run as a non-root user, and add a health check if a health route exists.
-- **Done when:** The image builds and starts via Docker Compose.
-
-**36c. Repository hygiene (In review).**
-- **Fix:** Add `.gitattributes`, `.editorconfig`, pre-commit checks for Ruff, whitespace, end-of-file, and large files; CI triggers/concurrency/permissions and pre-commit enforcement; and Dependabot for uv, Actions, and Docker.
+**36. Tooling, hygiene, and security (In progress).**
+- [x] uv and lock file.
+- [x] Repository hygiene (line endings, pre-commit, CI, Dependabot).
+- [x] Security basics (secret scanning, dependency audit, policy).
+- [ ] Format the whole repository with `ruff format` and enforce it in pre-commit and CI.
 - **Done when:** Hooks and CI enforce them.
-- **Progress:** Added repository text/binary handling and editor defaults, pinned pre-commit checks, tightened CI triggers and permissions, and configured weekly Dependabot updates.
-- **Status:** In review.
-
-**36d. Static analysis (Not started).**
-- **Fix:** Extend Ruff rule sets one at a time, add basic-mode type checking for `app/`, and add coverage measurement.
-- **Done when:** Each is enforced in CI without a large baseline of ignores.
-
-**36e. Security basics (In review).**
-- **Fix:** Add `SECURITY.md`, secret scanning, push protection and branch protection (owner settings), secret scanning of the full git history (gitleaks) in CI, in addition to GitHub secret scanning and push protection, and dependency audit in CI.
-- **Done when:** Security basics are documented and enforced.
-- **Progress:** Added the security policy, full-history Gitleaks scanning, and locked-dependency auditing in CI. The owner must enable GitHub secret scanning, push protection, private vulnerability reporting, Dependabot alerts, and branch protection; these settings are not enabled or verified by this change.
-- **Status:** In review.
-
-**36f. Apply Ruff formatting repository-wide (Not started).**
-- **Fix:** Apply ruff format to the whole repository (119 files would change at the time of 36c) and add the ruff-format hook.
-- **Done when:** The repository passes the ruff-format hook and CI checks formatting.
+- **Deferred:**
+  - Docker image from the lock (multi-stage, non-root).
+  - Static analysis.
+- **Owner-side GitHub settings (not claimed enabled):**
+  - Secret scanning.
+  - Push protection.
+  - Private vulnerability reporting.
+  - Dependabot alerts.
+  - Branch protection requiring the secrets, audit, and evaluation checks.
 
 **33. Operational metrics report.**
 - **Why:** Quality results need latency, usage, cost, failure, degradation, and cache context.
