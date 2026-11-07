@@ -21,9 +21,9 @@ class ModelPricing:
 
 
 _GOOGLE_FREE_TIER_NOTE = (
-    "This model is not listed on the retrieved official pricing page. The page says the "
-    'Free tier has "Limited access to certain models" and "Free input & output tokens"; '
-    "model-specific eligibility is not stated."
+    'A price could not be read from the retrieved page. It says the Free tier has "Limited '
+    'access to certain models" and "Free input & output tokens"; a model-specific free-tier '
+    "statement could not be read."
 )
 
 PRICING_TABLE: dict[tuple[str, str], ModelPricing] = {

@@ -225,10 +225,22 @@ def test_markdown_is_byte_identical_for_repeated_inputs() -> None:
 
 
 def test_unknown_models_render_no_official_price() -> None:
+    pricing = {
+        ("gemini", "unpublished-model"): ModelPricing(
+            input_per_million=None,
+            output_per_million=None,
+            output_tokens_billable=True,
+            currency="USD",
+            source_url="https://example.test/pricing",
+            retrieved_on="2026-11-07",
+            free_tier_note="not published",
+        )
+    }
     summary = summarize_operational_metrics(
         [_usage_row(model="unpublished-model")],
         [],
         since_hours=24,
+        prices=pricing,
     )
 
     report = format_operational_markdown(summary)
