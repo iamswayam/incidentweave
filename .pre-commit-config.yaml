@@ -6,6 +6,8 @@ repos:
     rev: v0.17.4
     hooks:
       - id: ruff
+      - id: ruff-format
+        args: [--force-exclude]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

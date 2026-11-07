@@ -68,6 +68,8 @@ locally with `pre-commit install` is optional, and CI runs the checks. `.editorc
 editor defaults, while `.gitattributes` defines repository text and binary handling.
 Review Dependabot pull requests like other dependency changes: inspect the updates, check CI,
 and merge only after the relevant checks pass.
+To ignore the repository-wide formatting commit in blame, contributors can run
+`git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 ## Security checks
 
