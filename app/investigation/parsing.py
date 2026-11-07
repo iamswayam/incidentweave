@@ -6,6 +6,8 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 
+from app.text import normalize_whitespace
+
 
 class ModelOutputError(RuntimeError):
     """Raised when provider output does not match the required JSON contract."""
@@ -33,10 +35,6 @@ def _response_text(response_payload: Mapping[str, object]) -> str:
         for part in parts
         if isinstance(part, Mapping) and isinstance(part.get("text"), str)
     ).strip()
-
-
-def _normalized_whitespace(text: str) -> str:
-    return " ".join(text.split())
 
 
 def _structured_response(response_text: str) -> Mapping[str, object]:
@@ -165,8 +163,8 @@ def parse_investigation_response(
                     quote = item.get("quote")
                     result = retrieved_by_id.get(chunk_id)
                     content = str(result.get("content") or "") if result is not None else ""
-                    normalized_quote = _normalized_whitespace(quote)
-                    if len(normalized_quote) < 10 or normalized_quote not in _normalized_whitespace(
+                    normalized_quote = normalize_whitespace(quote)
+                    if len(normalized_quote) < 10 or normalized_quote not in normalize_whitespace(
                         content
                     ):
                         continue
