@@ -82,6 +82,7 @@ operational and evaluation commands.
 | [notes/17-bm25-comparison-results.md](notes/17-bm25-comparison-results.md) | BM25 comparison results (item 14d) | results | Frozen | — | — |
 | [notes/18-local-embedding-results.md](notes/18-local-embedding-results.md) | Local embedding-model comparison results | results | Frozen | — | — |
 | [notes/19-repository-inventory.md](notes/19-repository-inventory.md) | Repository inventory | note | Superseded | docs/README.md | — |
+| [notes/20-end-to-end-checks.md](notes/20-end-to-end-checks.md) | End-to-end checks (item 34) | how-to | Living | — | — |
 | [phases/README.md](phases/README.md) | Phase build logs | living reference | Living | — | 2026-11-01 |
 | [phases/01-project-setup.md](phases/01-project-setup.md) | Phase 1 — Project Setup | phase log | Frozen | — | — |
 | [phases/02-database-persistence.md](phases/02-database-persistence.md) | Phase 2 — Database & Persistence | phase log | Frozen | — | — |

@@ -23,5 +23,6 @@
 | 17 | [17-bm25-comparison-results.md](17-bm25-comparison-results.md) | Development-only Python BM25 comparison, registered decision, and measured cost (item 14d) |
 | 18 | [18-local-embedding-results.md](18-local-embedding-results.md) | Aggregate-only development comparison of local open embedding models against the retrieval control (item 18c) |
 | 19 | [19-repository-inventory.md](19-repository-inventory.md) | Frozen inventory snapshot, superseded for navigation by the cross-folder index |
+| 20 | [20-end-to-end-checks.md](20-end-to-end-checks.md) | How to run registered development-only citation and end-to-end checks (item 34) |
 
 Back to the [documentation status index](../README.md).

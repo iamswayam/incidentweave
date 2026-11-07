@@ -59,9 +59,9 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35d | Not started | pending | Split question_review.py into focused modules. |
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
 | 33 | In review | pending | Gemini prices remain unpriced: target rows could not be read from https://aistudio.google.com/docs/pricing (retrieved 2026-11-07); outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
-| 34 | Not started | pending | Citation validity and end-to-end checks |
+| 34 | In review | pending | Protocol registered; deterministic checks, runner, report command, and synthetic tests implemented. |
 
-Next: item 34.
+Next: item 21.
 
 Deferred (no dependency): Docker image from the lock (multi-stage, non-root), static analysis.
 
@@ -633,7 +633,8 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Why:** Retrieval scores alone do not measure citation validity or answer/refusal stability.
 - **Fix:** Add deterministic quote-in-cited-chunk and chunk-in-retrieved-set checks, end-to-end refusal correctness, and three temperature-0 runs for stability.
 - **Done when:** Checks and reporting are registered before evaluation and run reproducibly on the approved data.
-- **Status:** Not started.
+- **Progress:** Protocol registered; pure checks and a fake-tested runner/report are implemented. No live development run has been done.
+- **Status:** In review.
 
 ---
 
