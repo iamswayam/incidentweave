@@ -52,9 +52,7 @@ def test_cache_identity_labels_model_dimension_version_role_and_text(tmp_path) -
     assert record["library_version"] == "0.9.1"
     assert record["role"] == "document"
     assert value not in json.dumps(record)
-    assert read_cache_record(record, MODELS[0], "document", value) == [
-        0.0
-    ] * MODELS[0].dimensions
+    assert read_cache_record(record, MODELS[0], "document", value) == [0.0] * MODELS[0].dimensions
 
     changed_version = dict(record, library_version="0.9.2")
     with pytest.raises(ValueError, match="identity"):
@@ -166,15 +164,9 @@ def test_same_candidate_ranking_and_fusion_path_reconciles_control_baseline() ->
     )
     assert [row["id"] for row in fused] == [2, 1]
 
-    questions = [
-        {"id": f"q{index}", "category": "direct"}
-        for index in range(33)
-    ]
+    questions = [{"id": f"q{index}", "category": "direct"} for index in range(33)]
     baseline = [{"id": f"q{index}", "label_rank": 1} for index in range(33)]
-    per_question = {
-        f"q{index}": {"rank": 1}
-        for index in range(33)
-    }
+    per_question = {f"q{index}": {"rank": 1} for index in range(33)}
     identical, differences = runner._baseline_reconciliation(
         {"repo": questions},
         {"repo": baseline},

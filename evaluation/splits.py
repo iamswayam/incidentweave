@@ -35,9 +35,9 @@ def _allocate_quotas(
         quotas[category] = int(exact)
         remainders.append((exact - int(exact), rng.random(), category))
     remaining = count - sum(quotas.values())
-    for _fraction, _tie_break, category in sorted(
-        remainders, key=lambda item: (-item[0], item[1])
-    )[:remaining]:
+    for _fraction, _tie_break, category in sorted(remainders, key=lambda item: (-item[0], item[1]))[
+        :remaining
+    ]:
         quotas[category] += 1
     return quotas
 
@@ -57,9 +57,7 @@ def _stratified_selection(
         for question in questions:
             if _is_answerable(question) is answerable:
                 category = question.get("category")
-                groups[category if isinstance(category, str) else None].append(
-                    str(question["id"])
-                )
+                groups[category if isinstance(category, str) else None].append(str(question["id"]))
         quotas = _allocate_quotas(groups, target, rng)
         for category, ids in groups.items():
             shuffled_ids = list(ids)
@@ -108,7 +106,5 @@ def assign_splits(
         "held_out": [
             question_id for question_id in question_ids if question_id not in development_ids
         ],
-        "smoke": [
-            question_id for question_id in question_ids if question_id in smoke_ids
-        ],
+        "smoke": [question_id for question_id in question_ids if question_id in smoke_ids],
     }

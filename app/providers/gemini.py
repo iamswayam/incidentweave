@@ -405,11 +405,7 @@ class GeminiProviderAdapter:
         self.usage_logger = (
             usage_logger
             if usage_logger is not None
-            else (
-                DbUsageLogger()
-                if settings.provider_usage_log_enabled
-                else NullUsageLogger()
-            )
+            else (DbUsageLogger() if settings.provider_usage_log_enabled else NullUsageLogger())
         )
 
     @staticmethod
@@ -430,9 +426,7 @@ class GeminiProviderAdapter:
     ) -> None:
         usage = result.get("usageMetadata") if result is not None else None
         input_tokens = usage.get("promptTokenCount") if isinstance(usage, dict) else None
-        output_tokens = (
-            usage.get("candidatesTokenCount") if isinstance(usage, dict) else None
-        )
+        output_tokens = usage.get("candidatesTokenCount") if isinstance(usage, dict) else None
         try:
             await asyncio.wait_for(
                 self.usage_logger.record(
@@ -444,12 +438,8 @@ class GeminiProviderAdapter:
                         error_class=error_class,
                         attempt_count=attempt_count,
                         latency_ms=latency_ms,
-                        input_tokens=(
-                            input_tokens if type(input_tokens) is int else None
-                        ),
-                        output_tokens=(
-                            output_tokens if type(output_tokens) is int else None
-                        ),
+                        input_tokens=(input_tokens if type(input_tokens) is int else None),
+                        output_tokens=(output_tokens if type(output_tokens) is int else None),
                         correlation_id=correlation_id_var.get() or uuid4().hex,
                     )
                 ),

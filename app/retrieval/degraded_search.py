@@ -19,9 +19,7 @@ async def search_degraded_lexical_only(
 
     stop_words: set[str] = set()
     for token in extract_query_tokens(query_text):
-        lexemes = (
-            await session.execute(_STOP_WORDS_SQL, {"term": token})
-        ).scalars().all()
+        lexemes = (await session.execute(_STOP_WORDS_SQL, {"term": token})).scalars().all()
         if not any(lexemes):
             stop_words.add(token)
     built_query = build_c1_query(query_text, stop_words)
@@ -29,9 +27,10 @@ async def search_degraded_lexical_only(
         return []
 
     rows = (
-        await session.execute(
-            text(
-                """
+        (
+            await session.execute(
+                text(
+                    """
                 SELECT
                     c.id,
                     c.repository_id,
@@ -56,14 +55,17 @@ async def search_degraded_lexical_only(
                     c.content_hash
                 LIMIT :limit
                 """
-            ),
-            {
-                "query_text": built_query.query_text,
-                "repository_id": repository_id,
-                "limit": limit,
-            },
+                ),
+                {
+                    "query_text": built_query.query_text,
+                    "repository_id": repository_id,
+                    "limit": limit,
+                },
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     return [
         {
             "id": row["id"],

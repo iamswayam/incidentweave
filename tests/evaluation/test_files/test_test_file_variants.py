@@ -34,11 +34,7 @@ def test_v1_reorders_test_chunks_without_dropping_candidates() -> None:
         _result(
             index,
             path=("tests/test_case.py" if index == 1 else f"src/file_{index}.py"),
-            score=(
-                1.0 - index / 100
-                if index <= 5
-                else 0.4 - index / 100
-            ),
+            score=(1.0 - index / 100 if index <= 5 else 0.4 - index / 100),
             vector_score=0.2,
             vector_rank=index,
             fulltext_rank=index,

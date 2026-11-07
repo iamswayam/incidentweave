@@ -38,9 +38,7 @@ async def search_vector(
         .limit(limit)
     )
 
-    rows = (
-        await session.execute(query)
-    ).mappings().all()
+    rows = (await session.execute(query)).mappings().all()
 
     return [
         {

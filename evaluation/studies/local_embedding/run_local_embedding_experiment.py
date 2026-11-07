@@ -93,9 +93,8 @@ def _load_development_inputs(
     for entry in manifest["repositories"]:
         repository = str(entry["id"])
         development_ids = entry["splits"].get("development")
-        if (
-            not isinstance(development_ids, list)
-            or any(not isinstance(question_id, str) for question_id in development_ids)
+        if not isinstance(development_ids, list) or any(
+            not isinstance(question_id, str) for question_id in development_ids
         ):
             raise ValueError(f"{repository}: invalid development split")
         allowed_ids = set(development_ids)
@@ -128,8 +127,7 @@ def _load_development_inputs(
         if len(questions) != 16 or len(baseline) != 16:
             raise ValueError(f"{repository}: unexpected development question count")
         answerable = sum(
-            question.get("category") in ANSWERABLE_CATEGORIES
-            for question in questions
+            question.get("category") in ANSWERABLE_CATEGORIES for question in questions
         )
         if answerable != 11:
             raise ValueError(f"{repository}: unexpected answerable development count")
@@ -201,9 +199,7 @@ def _unique_texts(
     chunks_by_repository: dict[str, list[dict[str, Any]]],
 ) -> tuple[list[str], list[str]]:
     documents = {
-        str(chunk["content"])
-        for chunks in chunks_by_repository.values()
-        for chunk in chunks
+        str(chunk["content"]) for chunks in chunks_by_repository.values() for chunk in chunks
     }
     queries = {
         str(question["question"])
@@ -378,11 +374,7 @@ def _embed_missing(
     batch_size: int = EMBED_BATCH_SIZE,
     show_progress: bool = False,
 ) -> tuple[float, int]:
-    missing = [
-        value
-        for value in texts
-        if not cache_path(CACHE_ROOT, model, role, value).is_file()
-    ]
+    missing = [value for value in texts if not cache_path(CACHE_ROOT, model, role, value).is_file()]
     for value in texts:
         path = cache_path(CACHE_ROOT, model, role, value)
         if path.is_file():
@@ -429,8 +421,7 @@ async def _embed(manifest_path: Path, threads: int, batch_size: int) -> int:
     installed_version = importlib.metadata.version("fastembed")
     if installed_version != FASTEMBED_VERSION:
         raise RuntimeError(
-            f"Protocol requires fastembed=={FASTEMBED_VERSION}; "
-            f"found {installed_version}"
+            f"Protocol requires fastembed=={FASTEMBED_VERSION}; found {installed_version}"
         )
     try:
         from fastembed import TextEmbedding
@@ -499,9 +490,7 @@ async def _embed(manifest_path: Path, threads: int, batch_size: int) -> int:
             "mean_seconds_per_unique_document": (
                 document_seconds / document_count if document_count else None
             ),
-            "mean_seconds_per_unique_query": (
-                query_seconds / query_count if query_count else None
-            ),
+            "mean_seconds_per_unique_query": (query_seconds / query_count if query_count else None),
         }
         model_directory = CACHE_ROOT / model.slug
         model_directory.mkdir(parents=True, exist_ok=True)
@@ -538,8 +527,7 @@ def _question_rankings(
             "guard_accept": bool(guard["is_sufficient"]),
             "distance": guard["best_vector_score"],
             "top5_test_count": sum(
-                is_test_path(str(result.get("file_path") or ""))
-                for result in results[:TOP_K]
+                is_test_path(str(result.get("file_path") or "")) for result in results[:TOP_K]
             ),
             "top5_count": len(results[:TOP_K]),
         }
@@ -577,9 +565,7 @@ def _baseline_reconciliation(
     identical = 0
     differences: list[dict[str, Any]] = []
     for repository, questions in questions_by_repository.items():
-        baseline_by_id = {
-            str(row["id"]): row for row in baseline_by_repository[repository]
-        }
+        baseline_by_id = {str(row["id"]): row for row in baseline_by_repository[repository]}
         ordinal = 0
         for question in questions:
             if question.get("category") not in ANSWERABLE_CATEGORIES:
@@ -605,8 +591,8 @@ def _baseline_reconciliation(
 async def _evaluate(manifest_path: Path) -> int:
     if MAX_ACCEPTABLE_VECTOR_DISTANCE != GUARD_DISTANCE_THRESHOLD:
         raise RuntimeError("The evidence-guard distance threshold differs from protocol")
-    manifest, _, questions_by_repository, baseline_by_repository = (
-        _load_development_inputs(manifest_path)
+    manifest, _, questions_by_repository, baseline_by_repository = _load_development_inputs(
+        manifest_path
     )
     chunks_by_repository: dict[str, list[dict[str, Any]]] = {}
     repository_ids: dict[str, int] = {}
@@ -719,12 +705,10 @@ async def _evaluate(manifest_path: Path) -> int:
     candidate_reports: dict[str, Any] = {}
     for model in MODELS:
         document_vectors = {
-            value: _read_candidate_vector(model, "document", value)
-            for value in document_texts
+            value: _read_candidate_vector(model, "document", value) for value in document_texts
         }
         query_vectors = {
-            value: _read_candidate_vector(model, "query", value)
-            for value in query_texts
+            value: _read_candidate_vector(model, "query", value) for value in query_texts
         }
         candidate_per_question_by_repository: dict[str, dict[str, dict[str, Any]]] = {}
         candidate_rank_lists: list[int | None] = []
@@ -875,9 +859,7 @@ def _distance_summary(
                 if question.get("category") in ANSWERABLE_CATEGORIES
                 else "unanswerable"
             )
-            distance = per_question_by_repository[repository][
-                str(question["id"])
-            ]["distance"]
+            distance = per_question_by_repository[repository][str(question["id"])]["distance"]
             if distance is not None:
                 grouped[category].append(float(distance))
     return {category: summarize_distances(values) for category, values in grouped.items()}
@@ -1013,8 +995,7 @@ def _render_report(report: dict[str, Any]) -> str:
                 f"- CPU runtime: {candidate['embedding']['cpu']} "
                 f"({candidate['embedding']['logical_cpu_count']} logical CPUs; "
                 f"{candidate['embedding']['execution_provider']}).",
-                f"- Top-five test-file share: "
-                f"{candidate['top5_test_file_share']['share']:.4%}.",
+                f"- Top-five test-file share: {candidate['top5_test_file_share']['share']:.4%}.",
                 "",
                 "| Repository | MRR | Hit@1 | Hit@3 | Hit@5 |",
                 "|---|---:|---:|---:|---:|",
@@ -1033,17 +1014,13 @@ def _render_report(report: dict[str, Any]) -> str:
                 "Per-repository unanswerable false accepts: "
                 + ", ".join(
                     f"{repository}={count}"
-                    for repository, count in candidate[
-                        "guard_false_accepts_by_repository"
-                    ].items()
+                    for repository, count in candidate["guard_false_accepts_by_repository"].items()
                 )
                 + ".",
                 "Per-repository unanswerable guard decisions (accepted/refused): "
                 + ", ".join(
                     f"{repository}={values['accepted']}/{values['refused']}"
-                    for repository, values in candidate[
-                        "guard_decisions_by_repository"
-                    ].items()
+                    for repository, values in candidate["guard_decisions_by_repository"].items()
                 )
                 + ".",
                 "Development ordinals whose unanswerable guard decisions changed: "
@@ -1072,9 +1049,7 @@ def _render_report(report: dict[str, Any]) -> str:
             "Control unanswerable guard decisions (accepted/refused): "
             + ", ".join(
                 f"{repository}={values['accepted']}/{values['refused']}"
-                for repository, values in report["control"][
-                    "guard_decisions_by_repository"
-                ].items()
+                for repository, values in report["control"]["guard_decisions_by_repository"].items()
             )
             + ".",
             f"Control top-five test-file share: "

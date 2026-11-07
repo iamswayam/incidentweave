@@ -19,13 +19,9 @@ if config.config_file_name is not None:
 
 database_url = str(settings.database_url)
 if database_url.startswith("postgresql://"):
-    database_url = database_url.replace(
-        "postgresql://", "postgresql+psycopg://", 1
-    )
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
 elif database_url.startswith("postgres://"):
-    database_url = database_url.replace(
-        "postgres://", "postgresql+psycopg://", 1
-    )
+    database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
 
 config.set_main_option("sqlalchemy.url", database_url)
 
@@ -62,9 +58,7 @@ def run_migrations_online() -> None:
     """Run migrations with a live database connection."""
 
     if sys.platform == "win32":
-        asyncio.set_event_loop_policy(
-            asyncio.WindowsSelectorEventLoopPolicy()
-        )
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),

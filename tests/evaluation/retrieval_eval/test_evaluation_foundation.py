@@ -64,9 +64,7 @@ def test_derive_spans_reads_pinned_paths_and_keeps_empty_questions() -> None:
         return "needle"
 
     assert derive_spans(golden, read_file) == {
-        "answerable": [
-            {"file_path": "a.py", "line_start": 1, "line_end": 1}
-        ],
+        "answerable": [{"file_path": "a.py", "line_start": 1, "line_end": 1}],
         "unanswerable": [],
     }
     assert calls == [("abc123", "a.py")]
@@ -74,15 +72,9 @@ def test_derive_spans_reads_pinned_paths_and_keeps_empty_questions() -> None:
 
 def test_span_relevance_requires_overlap_same_file_and_not_adjacency() -> None:
     spans = [{"file_path": "a.py", "line_start": 3, "line_end": 5}]
-    assert is_relevant_span(
-        {"file_path": "a.py", "line_start": 5, "line_end": 8}, spans
-    )
-    assert not is_relevant_span(
-        {"file_path": "a.py", "line_start": 6, "line_end": 8}, spans
-    )
-    assert not is_relevant_span(
-        {"file_path": "b.py", "line_start": 3, "line_end": 5}, spans
-    )
+    assert is_relevant_span({"file_path": "a.py", "line_start": 5, "line_end": 8}, spans)
+    assert not is_relevant_span({"file_path": "a.py", "line_start": 6, "line_end": 8}, spans)
+    assert not is_relevant_span({"file_path": "b.py", "line_start": 3, "line_end": 5}, spans)
 
 
 def test_span_hit_at_k_and_mrr() -> None:

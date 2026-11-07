@@ -82,9 +82,7 @@ def build_run_metadata(
     code_sha: str,
     code_dirty: bool,
     code_untracked_files: int,
-    golden_set_path: Path | str = (
-        EVALUATION_ROOT / "repos" / "incidentweave" / "questions.json"
-    ),
+    golden_set_path: Path | str = (EVALUATION_ROOT / "repos" / "incidentweave" / "questions.json"),
     models: dict[str, str] | None = None,
     limit: int = LIMIT,
     passes: int = 2,
@@ -110,7 +108,8 @@ def build_run_metadata(
         "pinned_sha": corpus_sha,
         "golden_set_sha256": golden_set_sha256,
         "golden_review_status": golden_data.get("review_status"),
-        "models": models or {
+        "models": models
+        or {
             "embedding": embed_chunks.GEMINI_MODEL,
             "generation": GEMINI_GENERATION_MODEL,
         },
@@ -214,9 +213,9 @@ async def _counted_send_once(
             delay = MIN_API_DELAY_SECONDS - (now - last_call_at)
             if delay > 0:
                 await asyncio.sleep(delay)
-                state["question_throttle_wait_ms"] = (
-                    state.get("question_throttle_wait_ms", 0.0) + round(delay * 1000)
-                )
+                state["question_throttle_wait_ms"] = state.get(
+                    "question_throttle_wait_ms", 0.0
+                ) + round(delay * 1000)
         if generation_budget["http_calls"] >= MAX_GENERATION_HTTP_CALLS:
             raise RuntimeError("Phase 8 generation HTTP call budget reached")
         generation_budget["http_calls"] += 1
@@ -251,9 +250,7 @@ def safe_error_text(exc: Exception) -> str:
 
 
 def snapshot_sha() -> str:
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
 
 
 def build_run_id(
@@ -265,10 +262,7 @@ def build_run_id(
     """Build a run identifier that distinguishes chunking strategies."""
 
     selected_strategy = get_strategy(strategy)
-    run_id = (
-        f"{started_at.strftime('%Y%m%dT%H%M%SZ')}-"
-        f"{code_sha[:7]}-{selected_strategy.name}"
-    )
+    run_id = f"{started_at.strftime('%Y%m%dT%H%M%SZ')}-{code_sha[:7]}-{selected_strategy.name}"
     return run_id if split == "development" else f"{run_id}-{split}"
 
 
@@ -315,14 +309,10 @@ def ensure_non_eval_inventory_unchanged(
         before_count = before.get(name, 0)
         after_count = after.get(name, 0)
         if before_count != after_count and before_count == 0:
-            raise RuntimeError(
-                f"Unexpected repository created: {name!r} "
-                f"(chunks={after_count})"
-            )
+            raise RuntimeError(f"Unexpected repository created: {name!r} (chunks={after_count})")
         if before_count != after_count and after_count == 0:
             raise RuntimeError(
-                f"Unexpected repository disappeared: {name!r} "
-                f"(chunks before={before_count})"
+                f"Unexpected repository disappeared: {name!r} (chunks before={before_count})"
             )
         if before_count != after_count:
             raise RuntimeError(
@@ -354,9 +344,7 @@ async def setup_eval_corpus(
         ):
             content = "\n".join(lines[start_index:end_index])
             if content.strip():
-                snapshot_chunks.append(
-                    (relative_path, start_index + 1, end_index, content)
-                )
+                snapshot_chunks.append((relative_path, start_index + 1, end_index, content))
 
     from sqlalchemy import select
 
@@ -425,9 +413,7 @@ async def setup_eval_corpus(
             should_embed = True
 
     if should_embed:
-        embedded, failed, skipped = await embed_chunks.embed_repository_chunks(
-            repository_name
-        )
+        embedded, failed, skipped = await embed_chunks.embed_repository_chunks(repository_name)
         expected_to_embed = len(snapshot_chunks) if created_repository else expected_to_embed
         expected_skipped = len(snapshot_chunks) - expected_to_embed
 
@@ -474,15 +460,10 @@ async def validate_eval_index(
             return [f"{repository_name} repository is missing"]
         rows = (
             await session.execute(
-                select(Chunk.file_path, Chunk.content).where(
-                    Chunk.repository_id == repository.id
-                )
+                select(Chunk.file_path, Chunk.content).where(Chunk.repository_id == repository.id)
             )
         ).all()
-    indexed_chunks = [
-        {"file_path": file_path, "content": content}
-        for file_path, content in rows
-    ]
+    indexed_chunks = [{"file_path": file_path, "content": content} for file_path, content in rows]
     return validate_index_labels(questions, indexed_chunks)
 
 
@@ -556,9 +537,7 @@ async def run_pipeline_once(
         best_rrf_score: float | None,
         best_vector_score: float | None,
     ) -> tuple[str, str]:
-        calibrated, note = original_calibrator(
-            raw_confidence, best_rrf_score, best_vector_score
-        )
+        calibrated, note = original_calibrator(raw_confidence, best_rrf_score, best_vector_score)
         calibration.update(
             raw_confidence=raw_confidence,
             calibrated_confidence=calibrated,
@@ -613,8 +592,7 @@ async def run_pipeline_once(
                             "id": str(cited_id),
                             "found_in_retrieval_results": cited_chunk is not None,
                             "relevant": bool(
-                                cited_chunk is not None
-                                and is_relevant(cited_chunk, labels)
+                                cited_chunk is not None and is_relevant(cited_chunk, labels)
                             ),
                         }
                     )
@@ -649,16 +627,12 @@ async def run_pipeline_once(
                         "diagnosis": diagnosis,
                         "confidence_raw": calibration.get("raw_confidence"),
                         "confidence": result.get("confidence"),
-                        "confidence_calibrated_value": calibration.get(
-                            "calibrated_confidence"
-                        ),
+                        "confidence_calibrated_value": calibration.get("calibrated_confidence"),
                         "confidence_calibrated": result.get("confidence_calibrated", False),
                         "calibration_note": result.get("calibration_note", ""),
                         "cited_chunk_ids": cited_chunk_ids,
                         "cited_chunk_relevance": cited_relevance,
-                        "submitted_citation_count": result.get(
-                            "submitted_citation_count", 0
-                        ),
+                        "submitted_citation_count": result.get("submitted_citation_count", 0),
                         "valid_citation_count": result.get("valid_citation_count", 0),
                         "claims": result.get("claims", []),
                         "uncertainty_note": result.get("uncertainty_note", ""),
@@ -795,9 +769,7 @@ def summarize_run(records: list[dict[str, Any]]) -> dict[str, Any]:
         and not record.get("error")
         and record.get("diagnosis") != "INSUFFICIENT_EVIDENCE"
     ]
-    submitted = sum(
-        int(record.get("submitted_citation_count") or 0) for record in answered
-    )
+    submitted = sum(int(record.get("submitted_citation_count") or 0) for record in answered)
     valid = sum(int(record.get("valid_citation_count") or 0) for record in answered)
     return {
         "outcome_counts": counts,
@@ -860,9 +832,7 @@ async def run_evaluation(
         data,
         snapshot_root,
         corpus_sha,
-        required_review_status=manifest_entry.get(
-            "review_status", "pending maintainer review"
-        ),
+        required_review_status=manifest_entry.get("review_status", "pending maintainer review"),
         max_questions_per_file=manifest_entry.get("max_questions_per_file", 3),
     )
     if errors:
@@ -913,9 +883,7 @@ async def run_evaluation(
     }.items():
         split_labels = [record["relevant"] for record in split_records]
         split_tables[split_name] = {
-            method: retrieval_summary(
-                [record[method] for record in split_records], split_labels
-            )
+            method: retrieval_summary([record[method] for record in split_records], split_labels)
             for method in ("vector", "fulltext", "hybrid")
         }
     hybrid_checks = [record["evidence_check"] for record in retrieval]
@@ -1035,8 +1003,7 @@ async def run_evaluation(
             1
             for records in run_results
             for record in records
-            if record.get("confidence_raw") == "high"
-            and record.get("confidence") != "high"
+            if record.get("confidence_raw") == "high" and record.get("confidence") != "high"
         ),
         "escalation_counts": {
             "initial_insufficient": sum(

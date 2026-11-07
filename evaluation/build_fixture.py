@@ -33,9 +33,7 @@ from evaluation.manifest import (
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
 CACHE_ROOT = ROOT / "evaluation" / "cache"
-FIXTURE_PATH = (
-    ROOT / "evaluation" / "repos" / "incidentweave" / "retrieval_fixture.json.gz"
-)
+FIXTURE_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "retrieval_fixture.json.gz"
 MAX_FIXTURE_BYTES = int(1.5 * 1024 * 1024)
 EVALUATION_REPOSITORY = get_strategy(DEFAULT_STRATEGY).evaluation_repository
 
@@ -62,8 +60,7 @@ def write_fixture(
     compressed = serialize_fixture(fixture)
     if len(compressed) >= max_bytes:
         raise ValueError(
-            f"retrieval fixture is {len(compressed)} bytes; "
-            f"must be under {max_bytes} bytes"
+            f"retrieval fixture is {len(compressed)} bytes; must be under {max_bytes} bytes"
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(compressed)
@@ -95,18 +92,14 @@ async def build_fixture(
     fixture_path = path or root / entry["fixture"]["path"]
     golden = load_golden_set(golden_path)
     strategy = get_strategy(DEFAULT_STRATEGY)
-    database_repository = entry.get(
-        "database_repository", strategy.evaluation_repository
-    )
+    database_repository = entry.get("database_repository", strategy.evaluation_repository)
     cache_root = root / "evaluation" / "cache"
     async with AsyncSessionLocal() as session:
         repository = await session.scalar(
             select(Repository).where(Repository.name == database_repository)
         )
         if repository is None:
-            raise RuntimeError(
-                f"Evaluation repository {database_repository!r} was not found"
-            )
+            raise RuntimeError(f"Evaluation repository {database_repository!r} was not found")
         rows = (
             await session.execute(
                 select(
@@ -141,9 +134,7 @@ async def build_fixture(
             json.loads(cache_path.read_text(encoding="utf-8"))
         )
     if missing_queries:
-        raise RuntimeError(
-            "Questions missing cached embeddings: " + ", ".join(missing_queries)
-        )
+        raise RuntimeError("Questions missing cached embeddings: " + ", ".join(missing_queries))
 
     fixture = {
         "meta": {

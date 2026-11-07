@@ -31,9 +31,7 @@ def summarize_fixture_paths(
     return {
         "total_chunks": total_chunks,
         "tagged_chunk_count": tagged_chunk_count,
-        "tagged_chunk_share": (
-            tagged_chunk_count / total_chunks if total_chunks else 0.0
-        ),
+        "tagged_chunk_share": (tagged_chunk_count / total_chunks if total_chunks else 0.0),
         "tagged_paths": sorted(tagged_paths),
         "untagged_test_paths": sorted(untagged_test_paths),
     }
@@ -56,9 +54,7 @@ def summarize_question_results(
         if not isinstance(question_id, str) or question_id not in results_by_question:
             raise ValueError("Every selected development question needs retrieval results")
         results = results_by_question[question_id][:5]
-        test_count = sum(
-            is_test_path(str(result.get("file_path") or "")) for result in results
-        )
+        test_count = sum(is_test_path(str(result.get("file_path") or "")) for result in results)
         question_test_counts.append(test_count)
         tagged_test_results += test_count
         result_count += len(results)
@@ -84,9 +80,7 @@ def summarize_question_results(
         "question_top5_test_counts": question_test_counts,
         "top5_test_chunk_count": tagged_test_results,
         "top5_result_count": result_count,
-        "top5_test_share": (
-            tagged_test_results / result_count if result_count else 0.0
-        ),
+        "top5_test_share": (tagged_test_results / result_count if result_count else 0.0),
         "answerable_test_evidence_question_count": answerable_test_evidence_count,
         "answerable_test_evidence_hit_at_5": answerable_test_evidence_hit_count,
     }
@@ -113,9 +107,7 @@ def reconcile_control(
     """Reconcile diagnostic control rankings with committed development baselines."""
 
     baseline_by_id = {
-        row["id"]: row
-        for row in baseline_questions
-        if isinstance(row.get("id"), str)
+        row["id"]: row for row in baseline_questions if isinstance(row.get("id"), str)
     }
     if len(baseline_by_id) != len(baseline_questions):
         raise ValueError("Every baseline development row needs a unique id")
@@ -123,13 +115,9 @@ def reconcile_control(
         raise ValueError("Diagnostic and baseline development question counts differ")
 
     answerable_questions = [
-        question
-        for question in questions
-        if question.get("category") in {"direct", "paraphrased"}
+        question for question in questions if question.get("category") in {"direct", "paraphrased"}
     ]
-    answerable_by_id = {
-        str(question["id"]): question for question in answerable_questions
-    }
+    answerable_by_id = {str(question["id"]): question for question in answerable_questions}
     answerable_ids: list[str] = []
     for question in answerable_questions:
         question_id = question.get("id")
@@ -174,11 +162,8 @@ def reconcile_control(
 
     def rank_metrics(ranks: Sequence[int | None]) -> dict[str, int | float]:
         return {
-            "hit_at_5_successes": sum(
-                rank is not None and rank <= 5 for rank in ranks
-            ),
-            "mrr": sum(1 / rank if rank is not None else 0.0 for rank in ranks)
-            / len(ranks)
+            "hit_at_5_successes": sum(rank is not None and rank <= 5 for rank in ranks),
+            "mrr": sum(1 / rank if rank is not None else 0.0 for rank in ranks) / len(ranks)
             if ranks
             else 0.0,
         }
@@ -199,9 +184,7 @@ def reconcile_control(
         "questions_compared": len(answerable_ids),
         "identical_rank_count": identical_rank_count,
         "differing_ranks": differing_ordinals,
-        "baseline_label_rank_count": sum(
-            rank is not None for rank in baseline_ranks
-        ),
+        "baseline_label_rank_count": sum(rank is not None for rank in baseline_ranks),
         "baseline_metrics": rank_metrics(baseline_ranks),
         "diagnostic_metrics": rank_metrics(diagnostic_ranks),
         "unanswerable_guard_comparison": (

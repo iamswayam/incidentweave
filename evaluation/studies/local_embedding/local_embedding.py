@@ -100,9 +100,7 @@ def cache_record(
 
 def validate_vector(vector: Sequence[object], dimensions: int) -> list[float]:
     if len(vector) != dimensions or any(
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
+        isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
         for value in vector
     ):
         raise ValueError("Embedding cache vector has invalid dimensions or values")
@@ -158,9 +156,7 @@ def cosine_distance(left: Sequence[float], right: Sequence[float]) -> float:
     right_norm = math.sqrt(math.fsum(value * value for value in right))
     if left_norm == 0 or right_norm == 0:
         raise ValueError("Cosine vectors must have non-zero norms")
-    similarity = math.fsum(a * b for a, b in zip(left, right)) / (
-        left_norm * right_norm
-    )
+    similarity = math.fsum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
     return 1.0 - max(-1.0, min(1.0, similarity))
 
 
@@ -188,12 +184,8 @@ def rank_vectors(
         key=lambda row: (
             float(row["distance"]),
             str(row["file_path"]),
-            int(row["line_start"])
-            if isinstance(row.get("line_start"), int)
-            else math.inf,
-            int(row["line_end"])
-            if isinstance(row.get("line_end"), int)
-            else math.inf,
+            int(row["line_start"]) if isinstance(row.get("line_start"), int) else math.inf,
+            int(row["line_end"]) if isinstance(row.get("line_end"), int) else math.inf,
         )
     )
     return ranked[:limit]
@@ -208,18 +200,12 @@ def fuse_rankings(
 ) -> list[dict[str, Any]]:
     """Apply production RRF and deterministic hybrid tie ordering."""
 
-    vector_ranks = {
-        row["id"]: index + 1 for index, row in enumerate(vector_results)
-    }
-    fulltext_ranks = {
-        row["id"]: index + 1 for index, row in enumerate(fulltext_results)
-    }
+    vector_ranks = {row["id"]: index + 1 for index, row in enumerate(vector_results)}
+    fulltext_ranks = {row["id"]: index + 1 for index, row in enumerate(fulltext_results)}
     vector_by_id = {row["id"]: row for row in vector_results}
     fulltext_by_id = {row["id"]: row for row in fulltext_results}
     candidate_ids = list(vector_ranks)
-    candidate_ids.extend(
-        chunk_id for chunk_id in fulltext_ranks if chunk_id not in vector_ranks
-    )
+    candidate_ids.extend(chunk_id for chunk_id in fulltext_ranks if chunk_id not in vector_ranks)
     fused: list[dict[str, Any]] = []
     for chunk_id in candidate_ids:
         vector = vector_by_id.get(chunk_id, {})
@@ -248,12 +234,8 @@ def fuse_rankings(
             vector_ranks.get(row["id"], math.inf),
             fulltext_ranks.get(row["id"], math.inf),
             str(row.get("file_path") or ""),
-            int(row["line_start"])
-            if isinstance(row.get("line_start"), int)
-            else math.inf,
-            int(row["line_end"])
-            if isinstance(row.get("line_end"), int)
-            else math.inf,
+            int(row["line_start"]) if isinstance(row.get("line_start"), int) else math.inf,
+            int(row["line_end"]) if isinstance(row.get("line_end"), int) else math.inf,
         )
     )
     return fused[:limit]
@@ -305,10 +287,7 @@ def summarize_ranks(ranks: Sequence[int | None]) -> dict[str, Any]:
     return {
         "question_count": len(ranks),
         "mrr": sum(_reciprocal_rank(rank) for rank in ranks) / len(ranks),
-        **{
-            f"hit_at_{k}": sum(rank is not None and rank <= k for rank in ranks)
-            for k in (1, 3, 5)
-        },
+        **{f"hit_at_{k}": sum(rank is not None and rank <= k for rank in ranks) for k in (1, 3, 5)},
     }
 
 
@@ -388,6 +367,4 @@ def _linear_percentile(sorted_values: Sequence[float], quantile: float) -> float
     if lower == upper:
         return sorted_values[lower]
     fraction = position - lower
-    return sorted_values[lower] + fraction * (
-        sorted_values[upper] - sorted_values[lower]
-    )
+    return sorted_values[lower] + fraction * (sorted_values[upper] - sorted_values[lower])

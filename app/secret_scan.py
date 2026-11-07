@@ -15,9 +15,7 @@ SECRET_PATTERNS = (
     ),
     (
         "generic_assignment",
-        re.compile(
-            r"""(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['"][^'"\s]{16,}['"]"""
-        ),
+        re.compile(r"""(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['"][^'"\s]{16,}['"]"""),
     ),
 )
 

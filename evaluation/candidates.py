@@ -121,9 +121,7 @@ def _gh_json(command: list[str], description: str) -> Any:
             return json.loads(completed.stdout)
         except json.JSONDecodeError:
             errors.append("invalid JSON")
-    raise CandidateQualificationError(
-        f"{description} failed after one retry ({'; '.join(errors)})"
-    )
+    raise CandidateQualificationError(f"{description} failed after one retry ({'; '.join(errors)})")
 
 
 def _gh_text(command: list[str], description: str) -> str:
@@ -145,9 +143,7 @@ def _gh_text(command: list[str], description: str) -> str:
         if completed.returncode == 0:
             return completed.stdout
         errors.append(f"exit code {completed.returncode}")
-    raise CandidateQualificationError(
-        f"{description} failed after one retry ({'; '.join(errors)})"
-    )
+    raise CandidateQualificationError(f"{description} failed after one retry ({'; '.join(errors)})")
 
 
 def _cached_clone(cache_root: Path, repository_id: str, pinned_sha: str) -> Path:
@@ -198,10 +194,7 @@ def spdx_from_license_text(text: str) -> str | None:
         "redistribution and use in source and binary forms" in normalized
         and "are permitted provided that" in normalized
     ):
-        if (
-            "neither the name of" in normalized
-            or "may be used to endorse or promote" in normalized
-        ):
+        if "neither the name of" in normalized or "may be used to endorse or promote" in normalized:
             return "BSD-3-Clause"
         return "BSD-2-Clause"
     return None
@@ -258,9 +251,7 @@ def qualifying_issues_from_git_log(log_output: str) -> set[int]:
         if not separator:
             continue
         message, separator, changed_files = after_commit.partition("\x00")
-        if separator and any(
-            is_source_python_path(path) for path in changed_files.splitlines()
-        ):
+        if separator and any(is_source_python_path(path) for path in changed_files.splitlines()):
             issues.update(closing_issue_numbers(message))
     return issues
 
@@ -356,12 +347,8 @@ def _clone_repository(
         if not (existing / ".git").exists():
             continue
         try:
-            is_shallow = _run_git(
-                existing, "rev-parse", "--is-shallow-repository"
-            ).strip()
-            branch_ref = _run_git(
-                existing, "symbolic-ref", "refs/remotes/origin/HEAD"
-            ).strip()
+            is_shallow = _run_git(existing, "rev-parse", "--is-shallow-repository").strip()
+            branch_ref = _run_git(existing, "symbolic-ref", "refs/remotes/origin/HEAD").strip()
             _run_git(existing, "rev-parse", branch_ref)
         except (OSError, subprocess.SubprocessError):
             continue
@@ -393,9 +380,7 @@ def _default_branch(repository: Path) -> str:
     symbolic_ref = _run_git(repository, "symbolic-ref", "refs/remotes/origin/HEAD").strip()
     prefix = "refs/remotes/origin/"
     if not symbolic_ref.startswith(prefix):
-        raise CandidateQualificationError(
-            f"unexpected origin/HEAD reference {symbolic_ref!r}"
-        )
+        raise CandidateQualificationError(f"unexpected origin/HEAD reference {symbolic_ref!r}")
     return symbolic_ref.removeprefix(prefix)
 
 
@@ -451,9 +436,7 @@ def _read_python_tree(
 
 
 def _license_blob(repository: Path, pinned_sha: str) -> tuple[str | None, str | None]:
-    names = _run_git(
-        repository, "ls-tree", "--name-only", pinned_sha
-    ).splitlines()
+    names = _run_git(repository, "ls-tree", "--name-only", pinned_sha).splitlines()
     license_path = next(
         (
             name
@@ -516,8 +499,7 @@ def _gh_qualifying_issue_numbers(
         auth_errors.append(auth.stderr.strip() or "not authenticated")
     if not authenticated:
         raise CandidateQualificationError(
-            f"gh auth status failed for {repository_url} after one retry: "
-            + "; ".join(auth_errors)
+            f"gh auth status failed for {repository_url} after one retry: " + "; ".join(auth_errors)
         )
 
     command = [
@@ -557,17 +539,14 @@ def _gh_qualifying_issue_numbers(
         except json.JSONDecodeError as exc:
             errors.append(f"gh returned invalid JSON: {exc}")
             continue
-        if not isinstance(response, list) or any(
-            not isinstance(item, dict) for item in response
-        ):
+        if not isinstance(response, list) or any(not isinstance(item, dict) for item in response):
             errors.append("gh returned an invalid pull-request list")
             continue
         pull_requests = response
         break
     if pull_requests is None:
         raise CandidateQualificationError(
-            f"GitHub PR query failed for {repository_url} after one retry: "
-            + "; ".join(errors)
+            f"GitHub PR query failed for {repository_url} after one retry: " + "; ".join(errors)
         )
 
     issue_numbers: set[int] = set()
@@ -580,9 +559,7 @@ def _gh_qualifying_issue_numbers(
             continue
         files = pull_request.get("files", [])
         if not any(
-            is_source_python_path(item.get("path", ""))
-            for item in files
-            if isinstance(item, dict)
+            is_source_python_path(item.get("path", "")) for item in files if isinstance(item, dict)
         ):
             continue
         issue_numbers.update(
@@ -603,9 +580,7 @@ def proposed_spans_from_diff(
     """Map PR hunk headers to enclosing pinned-snapshot definitions or files."""
 
     file_patch = re.compile(r"^\+\+\+ b/(.+)$")
-    hunk_header = re.compile(
-        r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@(?:\s*(.*))?$"
-    )
+    hunk_header = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@(?:\s*(.*))?$")
     context_symbol = re.compile(r"\b(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w*)")
     output: dict[str, list[dict[str, int | str]]] = {}
     current_path: str | None = None
@@ -634,9 +609,7 @@ def proposed_spans_from_diff(
             tree = ast.parse("\n".join(source_lines))
         except SyntaxError:
             tree = None
-        definitions: list[
-            ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
-        ] = []
+        definitions: list[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef] = []
         if tree is not None:
             definitions = [
                 node
@@ -903,9 +876,7 @@ def mine_candidate_issues(
             f"issue #{issue_number} query for {slug}",
         )
         if not isinstance(raw_issue, dict):
-            raise CandidateQualificationError(
-                f"gh returned invalid issue #{issue_number} data"
-            )
+            raise CandidateQualificationError(f"gh returned invalid issue #{issue_number} data")
         issue_details[issue_number] = {
             "title": str(raw_issue.get("title") or ""),
             "body": str(raw_issue.get("body") or "")[:2000],
@@ -1127,11 +1098,7 @@ def run_qualification(
             continue
         selected.append(replacement)
         original_failures = next(
-            (
-                item["reason"]
-                for item in rejected
-                if item["id"] == original_id
-            ),
+            (item["reason"] for item in rejected if item["id"] == original_id),
             "candidate did not qualify",
         )
         swaps.append(

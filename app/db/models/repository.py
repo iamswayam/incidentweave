@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.db.models.chunk import Chunk
     from app.db.models.investigation import Investigation
 
+
 class Repository(Base):
     """Persisted identity of an indexed repository."""
 

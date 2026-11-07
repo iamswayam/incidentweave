@@ -144,32 +144,22 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
         repository_name=str(result.get("repository") or payload.repository_name),
         query=str(result.get("query") or payload.query),
         diagnosis=(
-            ""
-            if unavailable_answer
-            else str(result.get("diagnosis") or "INSUFFICIENT_EVIDENCE")
+            "" if unavailable_answer else str(result.get("diagnosis") or "INSUFFICIENT_EVIDENCE")
         ),
         outcome=str(result["outcome"]),
         model_self_rating=(
-            "not_applicable"
-            if unavailable_answer
-            else str(result.get("confidence") or "low")
+            "not_applicable" if unavailable_answer else str(result.get("confidence") or "low")
         ),
         rating_note=(
             "No model response was generated."
             if unavailable_answer
-            else (
-                f"{RATING_NOTE} {calibration_note}"
-                if calibration_note
-                else RATING_NOTE
-            )
+            else (f"{RATING_NOTE} {calibration_note}" if calibration_note else RATING_NOTE)
         ),
         cited_chunk_ids=[str(chunk_id) for chunk_id in cited_chunk_ids],
         evidence_check=evidence_check,
         retry_used=bool(result.get("retry_used")),
         tool_calls=tool_calls,
-        claims=[
-            claim for claim in result.get("claims", []) if isinstance(claim, dict)
-        ],
+        claims=[claim for claim in result.get("claims", []) if isinstance(claim, dict)],
         uncertainty_note=str(result.get("uncertainty_note") or ""),
         citation_validation=(
             result.get("citation_validation")
@@ -178,9 +168,7 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
         ),
         model=str(result.get("model") or ""),
         latency_ms=(
-            int(result["latency_ms"])
-            if isinstance(result.get("latency_ms"), int)
-            else None
+            int(result["latency_ms"]) if isinstance(result.get("latency_ms"), int) else None
         ),
         evaluation_note=EVALUATION_NOTE,
         unavailable_answer=unavailable_answer,
@@ -208,10 +196,10 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
             raise _http_error(404, "investigation_not_found", "Investigation not found.")
         repository = await session.get(Repository, investigation.repository_id)
         audits = (
-            await session.execute(
-                select(Audit).where(Audit.investigation_id == investigation.id)
-            )
-        ).scalars().all()
+            (await session.execute(select(Audit).where(Audit.investigation_id == investigation.id)))
+            .scalars()
+            .all()
+        )
 
     if len(audits) != 1:
         raise _http_error(
@@ -223,9 +211,7 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
     audit_payload = audit.tool_calls if isinstance(audit.tool_calls, dict) else {}
     attempts = audit_payload.get("attempts")
     tool_calls = (
-        [item for item in attempts if isinstance(item, dict)]
-        if isinstance(attempts, list)
-        else []
+        [item for item in attempts if isinstance(item, dict)] if isinstance(attempts, list) else []
     )
     latest_attempt = tool_calls[-1] if tool_calls else None
     latest_check = (
@@ -262,22 +248,12 @@ async def get_investigation(investigation_id: int) -> InvestigationResponse:
         investigation_id=investigation.id,
         repository_name=repository.name if repository is not None else "",
         query=investigation.query,
-        diagnosis=(
-            ""
-            if unavailable_answer
-            else investigation.response or "INSUFFICIENT_EVIDENCE"
-        ),
+        diagnosis=("" if unavailable_answer else investigation.response or "INSUFFICIENT_EVIDENCE"),
         outcome=investigation.outcome,
         model_self_rating=(
-            "not_applicable"
-            if unavailable_answer
-            else investigation.confidence or "low"
+            "not_applicable" if unavailable_answer else investigation.confidence or "low"
         ),
-        rating_note=(
-            "No model response was generated."
-            if unavailable_answer
-            else RATING_NOTE
-        ),
+        rating_note=("No model response was generated." if unavailable_answer else RATING_NOTE),
         cited_chunk_ids=[str(item) for item in audit_payload.get("cited_chunk_ids", [])],
         evidence_check=evidence_check,
         retry_used=any(attempt.get("stage") == "widened_retry" for attempt in tool_calls),

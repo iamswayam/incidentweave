@@ -309,17 +309,21 @@ async def _control_top_five(
     async with AsyncSessionLocal() as session:
         await session.execute(text("SET TRANSACTION READ ONLY"))
         rows = (
-            await session.execute(
-                CONTROL_SQL,
-                {
-                    "fixture_chunks": json.dumps(fixture_chunks),
-                    "query_embedding": _vector_literal(query_embedding),
-                    "query_text": question_text,
-                    "branch_limit": TOP_FIVE,
-                    "candidate_limit": candidate_depth,
-                },
+            (
+                await session.execute(
+                    CONTROL_SQL,
+                    {
+                        "fixture_chunks": json.dumps(fixture_chunks),
+                        "query_embedding": _vector_literal(query_embedding),
+                        "query_text": question_text,
+                        "branch_limit": TOP_FIVE,
+                        "candidate_limit": candidate_depth,
+                    },
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
     return [
         {
             "file_path": row["file_path"],
@@ -327,9 +331,7 @@ async def _control_top_five(
             "line_end": row["line_end"],
             "content": row["content"],
             "vector_score": (
-                float(row["vector_score"])
-                if row["vector_score"] is not None
-                else None
+                float(row["vector_score"]) if row["vector_score"] is not None else None
             ),
             "fts_score": float(row["fts_score"]) if row["fts_score"] is not None else None,
             "rrf_score": float(row["rrf_score"]),
@@ -365,9 +367,7 @@ async def collect_diagnostics(
             "development",
         )
         if len(questions) != len(development_ids):
-            raise ValueError(
-                f"{repository_id}: development question records do not match manifest"
-            )
+            raise ValueError(f"{repository_id}: development question records do not match manifest")
 
         fixture_path = manifest_path.resolve().parent.parent / entry["fixture"]["path"]
         baseline_path = manifest_path.resolve().parent.parent / entry["full_baseline"]["path"]
@@ -393,9 +393,7 @@ async def collect_diagnostics(
                 fixture_queries[question_id],
                 candidate_depth=(2 * TOP_FIVE if include_comparison_data else TOP_FIVE),
             )
-        repository_diagnostic = build_repository_diagnostic(
-            chunks, questions, results_by_question
-        )
+        repository_diagnostic = build_repository_diagnostic(chunks, questions, results_by_question)
         repository_diagnostic["control_reconciliation"] = reconcile_control(
             questions,
             results_by_question,
@@ -454,11 +452,13 @@ def render_diagnostic(repositories: list[dict[str, Any]]) -> str:
     ]
     for repository in repositories:
         reconciliation = repository["control_reconciliation"]
-        differing = ", ".join(
-            f"{row['ordinal']}: {row['baseline_rank'] or '—'} → "
-            f"{row['diagnostic_rank'] or '—'}"
-            for row in reconciliation["differing_ranks"]
-        ) or "none"
+        differing = (
+            ", ".join(
+                f"{row['ordinal']}: {row['baseline_rank'] or '—'} → {row['diagnostic_rank'] or '—'}"
+                for row in reconciliation["differing_ranks"]
+            )
+            or "none"
+        )
         baseline_metrics = reconciliation["baseline_metrics"]
         diagnostic_metrics = reconciliation["diagnostic_metrics"]
         lines.append(

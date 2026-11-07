@@ -16,8 +16,7 @@ def is_relevant(
     file_path = str(result.get("file_path") or "")
     content = str(result.get("content") or "").casefold()
     return any(
-        file_path == str(label["file_path"])
-        and str(label["substring"]).casefold() in content
+        file_path == str(label["file_path"]) and str(label["substring"]).casefold() in content
         for label in labels
     )
 
@@ -150,10 +149,7 @@ def ndcg_at_k(
         for rank, result in enumerate(results[:k], start=1)
         if is_relevant_span(result, spans)
     )
-    ideal_dcg = sum(
-        1 / log2(rank + 1)
-        for rank in range(1, min(k, relevant_corpus_count) + 1)
-    )
+    ideal_dcg = sum(1 / log2(rank + 1) for rank in range(1, min(k, relevant_corpus_count) + 1))
     return dcg / ideal_dcg
 
 
@@ -211,11 +207,7 @@ def auroc(scores: Sequence[float], positive: Sequence[bool]) -> float:
     if not positives or not negatives:
         raise ValueError("AUROC requires at least one positive and one negative")
     wins = sum(
-        1.0
-        if positive_score > negative_score
-        else 0.5
-        if positive_score == negative_score
-        else 0.0
+        1.0 if positive_score > negative_score else 0.5 if positive_score == negative_score else 0.0
         for positive_score in positives
         for negative_score in negatives
     )
@@ -230,15 +222,9 @@ def refusal_precision_recall(
 
     if len(answerable) != len(refused):
         raise ValueError("answerability and refusal lists must have the same length")
-    true_positive = sum(
-        not answer and refusal for answer, refusal in zip(answerable, refused)
-    )
-    false_positive = sum(
-        answer and refusal for answer, refusal in zip(answerable, refused)
-    )
-    false_negative = sum(
-        not answer and not refusal for answer, refusal in zip(answerable, refused)
-    )
+    true_positive = sum(not answer and refusal for answer, refusal in zip(answerable, refused))
+    false_positive = sum(answer and refusal for answer, refusal in zip(answerable, refused))
+    false_negative = sum(not answer and not refusal for answer, refusal in zip(answerable, refused))
     return {
         "true_positive": true_positive,
         "false_positive": false_positive,
@@ -371,9 +357,7 @@ def citation_summary(
     submitted_citations = sum(
         int(record.get("submitted_citation_count") or 0) for record in answerable
     )
-    valid_citations = sum(
-        int(record.get("valid_citation_count") or 0) for record in answerable
-    )
+    valid_citations = sum(int(record.get("valid_citation_count") or 0) for record in answerable)
     answers_with_zero_citations = sum(
         1
         for record in answerable
@@ -406,16 +390,11 @@ def guard_diagnostics(
     return {
         "rrf_threshold": rrf_threshold,
         "rrf_rank1_floor": rrf_rank1_floor,
-        "rrf_gate_can_reject_nonempty_vector_results": (
-            rrf_threshold > rrf_rank1_floor
-        ),
+        "rrf_gate_can_reject_nonempty_vector_results": (rrf_threshold > rrf_rank1_floor),
         "rrf_rejections": sum(check.get("reason") == rrf_reason for check in rejected),
-        "vector_rejections": sum(
-            check.get("reason") == vector_reason for check in rejected
-        ),
+        "vector_rejections": sum(check.get("reason") == vector_reason for check in rejected),
         "other_rejections": sum(
-            check.get("reason") not in {rrf_reason, vector_reason}
-            for check in rejected
+            check.get("reason") not in {rrf_reason, vector_reason} for check in rejected
         ),
     }
 

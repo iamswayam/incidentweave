@@ -68,12 +68,7 @@ def split_identifier_text(content: str) -> str:
             continue
         camel_spaced = ACRONYM_BOUNDARY_PATTERN.sub(r"\1 \2", identifier)
         camel_spaced = CAMEL_BOUNDARY_PATTERN.sub(" ", camel_spaced)
-        pieces = [
-            part
-            for segment in camel_spaced.split("_")
-            for part in segment.split()
-            if part
-        ]
+        pieces = [part for segment in camel_spaced.split("_") for part in segment.split() if part]
         if len(pieces) > 1:
             additions.append(" ".join(pieces))
     if not additions:

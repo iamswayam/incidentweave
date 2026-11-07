@@ -77,9 +77,7 @@ def _structured_response(response_text: str) -> Mapping[str, object]:
         for item in evidence:
             if not isinstance(item, Mapping):
                 raise ModelOutputError("Each evidence item must be an object.")
-            if not isinstance(item.get("chunk_id"), str) or not isinstance(
-                item.get("quote"), str
-            ):
+            if not isinstance(item.get("chunk_id"), str) or not isinstance(item.get("quote"), str):
                 raise ModelOutputError("Evidence chunk_id and quote must be strings.")
     return response
 
@@ -109,9 +107,7 @@ def extract_generation_trace(
             candidate = first_candidate
 
     usage = response_payload.get("usageMetadata")
-    usage_dict: dict[str, object] = (
-        dict(usage) if isinstance(usage, Mapping) else {}
-    )
+    usage_dict: dict[str, object] = dict(usage) if isinstance(usage, Mapping) else {}
     total_tokens = (
         usage_dict.get("totalTokenCount")
         if isinstance(usage_dict.get("totalTokenCount"), int)
@@ -168,27 +164,18 @@ def parse_investigation_response(
                     chunk_id = item.get("chunk_id")
                     quote = item.get("quote")
                     result = retrieved_by_id.get(chunk_id)
-                    content = (
-                        str(result.get("content") or "")
-                        if result is not None
-                        else ""
-                    )
+                    content = str(result.get("content") or "") if result is not None else ""
                     normalized_quote = _normalized_whitespace(quote)
-                    if (
-                        len(normalized_quote) < 10
-                        or normalized_quote not in _normalized_whitespace(content)
+                    if len(normalized_quote) < 10 or normalized_quote not in _normalized_whitespace(
+                        content
                     ):
                         continue
-                    valid_evidence.append(
-                        {"chunk_id": chunk_id, "quote": quote}
-                    )
+                    valid_evidence.append({"chunk_id": chunk_id, "quote": quote})
                     valid_citations += 1
                     if chunk_id not in cited_ids:
                         cited_ids.append(chunk_id)
             if valid_evidence:
-                validated_claims.append(
-                    {"text": claim_text.strip(), "evidence": valid_evidence}
-                )
+                validated_claims.append({"text": claim_text.strip(), "evidence": valid_evidence})
 
     requested_outcome = response.get("outcome")
     diagnosis_value = response.get("diagnosis")

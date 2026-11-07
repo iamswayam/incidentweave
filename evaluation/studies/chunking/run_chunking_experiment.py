@@ -99,9 +99,7 @@ def _texts_to_embed_for(
     baseline_fixture: dict[str, Any],
     cache_dir: Path,
 ) -> int:
-    reusable_contents = {
-        str(chunk["content"]) for chunk in baseline_fixture["chunks"]
-    }
+    reusable_contents = {str(chunk["content"]) for chunk in baseline_fixture["chunks"]}
     hashes = {
         _text_hash(str(chunk["embedding_text"]))
         for chunk in chunks
@@ -125,9 +123,7 @@ def _prepare_sources(manifest_path: Path) -> int:
                     text=True,
                 )
             except (OSError, subprocess.SubprocessError) as exc:
-                raise RuntimeError(
-                    f"Could not clone source for {entry['id']}"
-                ) from exc
+                raise RuntimeError(f"Could not clone source for {entry['id']}") from exc
         try:
             subprocess.run(
                 [
@@ -149,9 +145,7 @@ def _prepare_sources(manifest_path: Path) -> int:
                 text=True,
             )
         except (OSError, subprocess.SubprocessError) as exc:
-            raise RuntimeError(
-                f"Could not verify pinned source for {entry['id']}"
-            ) from exc
+            raise RuntimeError(f"Could not verify pinned source for {entry['id']}") from exc
         observed_sha = completed.stdout.strip()
         if observed_sha != entry["pinned_sha"]:
             raise RuntimeError(
@@ -172,9 +166,7 @@ def _plan(manifest_path: Path) -> int:
         return 2
 
     texts = plan_embeddings(all_chunks, baselines, CACHE_ROOT)
-    total_requests = math.ceil(
-        len(texts) / int(protocol["embedding"]["batch_size"])
-    )
+    total_requests = math.ceil(len(texts) / int(protocol["embedding"]["batch_size"]))
     print(
         f"{'Repository':<26} {'Strategy':<27} {'Chunks':>8} "
         f"{'Secret skipped':>15} {'Texts to embed':>15}"
@@ -265,9 +257,7 @@ def _markdown_report(
             "|---|---:|",
         ]
     )
-    lines.extend(
-        f"| {key} | {value} |" for key, value in decision["rules"].items()
-    )
+    lines.extend(f"| {key} | {value} |" for key, value in decision["rules"].items())
     lines.extend(
         [
             "",
@@ -336,10 +326,7 @@ def _markdown_report(
     )
     for repo_id, repo_artifacts in artifacts.items():
         for strategy, artifact in repo_artifacts.items():
-            lines.append(
-                f"| {repo_id} | {strategy} | {artifact['sha256']} | "
-                f"{artifact['bytes']} |"
-            )
+            lines.append(f"| {repo_id} | {strategy} | {artifact['sha256']} | {artifact['bytes']} |")
     return "\n".join(lines) + "\n"
 
 
@@ -350,8 +337,7 @@ async def _evaluate(manifest_path: Path) -> int:
     protocol = load_protocol()
     baselines = _load_baselines(manifest, asset_root)
     strategy_results: dict[str, dict[str, Any]] = {
-        strategy: {"repositories": {}, "paired_vs_s0": None}
-        for strategy in STRATEGIES
+        strategy: {"repositories": {}, "paired_vs_s0": None} for strategy in STRATEGIES
     }
     artifacts: dict[str, dict[str, dict[str, Any]]] = {}
     baseline_rr: dict[str, dict[str, float]] = {}
@@ -361,9 +347,7 @@ async def _evaluate(manifest_path: Path) -> int:
         baseline_fixture = baselines[repo_id]
         sources = discover_sources(
             SOURCE_ROOT / repo_id,
-            exclude_prefixes=("tests/fixtures/",)
-            if repo_id == "incidentweave"
-            else (),
+            exclude_prefixes=("tests/fixtures/",) if repo_id == "incidentweave" else (),
         )
         baseline_path = asset_root / entry["fixture"]["path"]
         artifacts[repo_id] = {
@@ -375,11 +359,9 @@ async def _evaluate(manifest_path: Path) -> int:
         all_chunks: dict[str, list[dict[str, Any]]] = {}
         skipped: dict[str, int] = {}
         for strategy in STRATEGIES:
-            all_chunks[strategy], skipped[strategy] = (
-                build_strategy_chunks_and_count(
-                    strategy,
-                    sources,
-                )
+            all_chunks[strategy], skipped[strategy] = build_strategy_chunks_and_count(
+                strategy,
+                sources,
             )
         check_s0_reproduces_baseline(
             all_chunks[S0_STRATEGY],
@@ -387,8 +369,7 @@ async def _evaluate(manifest_path: Path) -> int:
         )
 
         baseline_vectors = {
-            str(chunk["content"]): chunk["embedding"]
-            for chunk in baseline_fixture["chunks"]
+            str(chunk["content"]): chunk["embedding"] for chunk in baseline_fixture["chunks"]
         }
         for strategy in STRATEGIES:
             if strategy == S0_STRATEGY:
@@ -410,8 +391,7 @@ async def _evaluate(manifest_path: Path) -> int:
                     vectors[digest] = _read_cache_vector(cached_path)
                 if missing_hashes:
                     raise RuntimeError(
-                        f"{repo_id}/{strategy} is missing "
-                        f"{len(missing_hashes)} cached embeddings"
+                        f"{repo_id}/{strategy} is missing {len(missing_hashes)} cached embeddings"
                     )
                 fixture_sha, fixture_bytes = build_candidate_fixture(
                     repo_id,
@@ -494,9 +474,7 @@ async def _evaluate(manifest_path: Path) -> int:
     decision = select_winner(strategy_results, protocol)
     report_data = {
         "protocol": protocol,
-        "repositories": [
-            entry["id"] for entry in manifest["repositories"]
-        ],
+        "repositories": [entry["id"] for entry in manifest["repositories"]],
         "selection_split": "development",
         "strategies": {
             strategy: {
@@ -582,9 +560,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "plan":
             return _plan(args.manifest)
         if args.command == "embed":
-            return asyncio.run(
-                _embed(args.manifest, args.batch_delay_seconds)
-            )
+            return asyncio.run(_embed(args.manifest, args.batch_delay_seconds))
         return asyncio.run(_evaluate(args.manifest))
     except (OSError, RuntimeError, ValueError, SQLAlchemyError) as exc:
         print(f"Error: {exc}", file=sys.stderr)

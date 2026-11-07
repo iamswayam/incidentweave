@@ -152,9 +152,7 @@ def pooled_report(reports: list[dict[str, Any]]) -> dict[str, Any]:
                 "wilson_95": [low, high],
             }
         metrics["mrr"] = (
-            sum(1 / rank if rank else 0.0 for rank in ranked) / len(ranked)
-            if ranked
-            else 0.0
+            sum(1 / rank if rank else 0.0 for rank in ranked) / len(ranked) if ranked else 0.0
         )
         summary[label_type] = metrics
     return {"questions": questions, "summary": summary}

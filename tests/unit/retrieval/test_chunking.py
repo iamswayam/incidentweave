@@ -30,14 +30,8 @@ from evaluation.chunk_strategies import (
 @pytest.mark.parametrize("line_count", [0, 5, 60, 61, 201])
 def test_line_windows_match_ingestion_ranges(line_count: int) -> None:
     source = "\n".join(f"line {index}" for index in range(line_count))
-    expected = [
-        (start + 1, end)
-        for start, end in chunk_lines(source.splitlines(), 60, 10)
-    ]
-    observed = [
-        (spec.line_start, spec.line_end)
-        for spec in line_window_specs(source)
-    ]
+    expected = [(start + 1, end) for start, end in chunk_lines(source.splitlines(), 60, 10)]
+    observed = [(spec.line_start, spec.line_end) for spec in line_window_specs(source)]
 
     assert observed == expected
 
@@ -78,7 +72,7 @@ def test_ast_collects_top_level_sync_async_and_decorated_functions() -> None:
 def test_class_body_and_direct_methods_have_structural_metadata() -> None:
     source = (
         "class Sample:\n"
-        '    \"\"\"Class documentation.\"\"\"\n'
+        '    """Class documentation."""\n'
         "    value = 1\n"
         "    # retained class-body line 1\n"
         "    # retained class-body line 2\n"
@@ -117,12 +111,7 @@ def test_class_body_and_direct_methods_have_structural_metadata() -> None:
 
 
 def test_nested_function_remains_inside_its_enclosing_function() -> None:
-    source = (
-        "def outer():\n"
-        "    def inner():\n"
-        "        return 1\n"
-        "    return inner()\n"
-    )
+    source = "def outer():\n    def inner():\n        return 1\n    return inner()\n"
 
     specs = ast_chunk_specs(source)
 
@@ -159,19 +148,13 @@ def test_ast_specs_cover_each_nonblank_line_once_in_order() -> None:
         for line_number in range(spec.line_start, spec.line_end + 1):
             if source.splitlines()[line_number - 1].strip():
                 covered[line_number] = covered.get(line_number, 0) + 1
-    expected = {
-        index
-        for index, line in enumerate(source.splitlines(), start=1)
-        if line.strip()
-    }
+    expected = {index for index, line in enumerate(source.splitlines(), start=1) if line.strip()}
     assert set(covered) == expected
     assert set(covered.values()) == {1}
 
 
 def test_long_function_splits_into_overlapping_windows_with_same_symbol() -> None:
-    source = "def large():\n" + "".join(
-        f"    value_{index} = {index}\n" for index in range(100)
-    )
+    source = "def large():\n" + "".join(f"    value_{index} = {index}\n" for index in range(100))
 
     specs = ast_chunk_specs(source)
 
@@ -200,12 +183,8 @@ def test_adjacent_tiny_functions_merge_and_oversized_split_is_not_merged() -> No
 
 
 def test_small_function_does_not_merge_with_unit_over_maximum_size() -> None:
-    large = "def large():\n" + "".join(
-        f"    value_{index} = {index}\n" for index in range(74)
-    )
-    tiny = "def tiny():\n" + "".join(
-        f"    value_{index} = {index}\n" for index in range(6)
-    )
+    large = "def large():\n" + "".join(f"    value_{index} = {index}\n" for index in range(74))
+    tiny = "def tiny():\n" + "".join(f"    value_{index} = {index}\n" for index in range(6))
     specs = ast_chunk_specs(large + "\n" + tiny)
 
     assert any(spec.kind == "merged" and spec.symbol == "large" for spec in specs)
@@ -220,11 +199,8 @@ def test_syntax_error_falls_back_to_line_windows() -> None:
 
     assert specs
     assert all(spec.fallback for spec in specs)
-    assert [
-        (spec.line_start, spec.line_end) for spec in specs
-    ] == [
-        (spec.line_start, spec.line_end)
-        for spec in line_window_specs(source)
+    assert [(spec.line_start, spec.line_end) for spec in specs] == [
+        (spec.line_start, spec.line_end) for spec in line_window_specs(source)
     ]
 
 
@@ -240,11 +216,8 @@ def test_parser_and_splitlines_break_mismatch_falls_back(source: str) -> None:
 
     assert specs
     assert all(spec.fallback for spec in specs)
-    assert [
-        (spec.line_start, spec.line_end) for spec in specs
-    ] == [
-        (spec.line_start, spec.line_end)
-        for spec in line_window_specs(source)
+    assert [(spec.line_start, spec.line_end) for spec in specs] == [
+        (spec.line_start, spec.line_end) for spec in line_window_specs(source)
     ]
 
 
@@ -309,9 +282,7 @@ def test_candidate_registry_and_embedding_text_are_isolated() -> None:
     s2_specs = candidate_chunk_specs("s2_ast_v1", source)
     s3_specs = candidate_chunk_specs("s3_ast_v1_embed_text", source)
     assert s2_specs == s3_specs
-    assert candidate_embedding_text("s2_ast_v1", s2_specs[0], "src/run.py") == (
-        s2_specs[0].content
-    )
+    assert candidate_embedding_text("s2_ast_v1", s2_specs[0], "src/run.py") == (s2_specs[0].content)
     assert candidate_embedding_text(
         "s3_ast_v1_embed_text", s3_specs[0], "src/run.py"
     ) == embedding_text(s3_specs[0], "src/run.py")
@@ -357,12 +328,7 @@ def test_chunker_descriptors_are_frozen_and_candidate_module_is_pure() -> None:
 
 
 def test_nested_class_methods_are_not_separate_units() -> None:
-    source = (
-        "class Outer:\n"
-        "    class Inner:\n"
-        "        def method(self):\n"
-        "            return 1\n"
-    )
+    source = "class Outer:\n    class Inner:\n        def method(self):\n            return 1\n"
 
     specs = ast_chunk_specs(source)
 

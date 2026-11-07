@@ -185,13 +185,11 @@ def test_render_strategy_report_includes_hit_miss_and_unanswerable_cards(
     assert "### unknown-01 | unanswerable_far | no answer expected" in rendered
     assert "**Why it missed (fill in by hand):** ______" in rendered
     assert (
-        "Expected: refuse. If the guard would answer here, this is a false-answer risk."
-        in rendered
+        "Expected: refuse. If the guard would answer here, this is a false-answer risk." in rendered
     )
     assert "Missed questions: miss-01" in rendered
     assert (
-        "**Guard (provisional threshold 0.5):** would answer; "
-        "best vector distance: 0.400."
+        "**Guard (provisional threshold 0.5):** would answer; best vector distance: 0.400."
     ) in rendered
 
 
@@ -253,9 +251,7 @@ def test_render_summary_contains_strategy_ranks_totals_and_common_misses(
     ast_report = {
         **report,
         "questions": [
-            {**record, "span_rank": None}
-            if record["id"] == "miss-01"
-            else record
+            {**record, "span_rank": None} if record["id"] == "miss-01" else record
             for record in report["questions"]
         ],
     }
@@ -314,9 +310,7 @@ def test_record_details_adds_full_results_and_defaults_remain_unchanged(
         "category": "direct",
         "question": "find the function",
         "relevant": [{"file_path": "src/a.py", "substring": "value"}],
-        "relevant_spans": [
-            {"file_path": "src/a.py", "line_start": 1, "line_end": 1}
-        ],
+        "relevant_spans": [{"file_path": "src/a.py", "line_start": 1, "line_end": 1}],
     }
 
     class FakeSession:

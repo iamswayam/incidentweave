@@ -57,10 +57,7 @@ def _diff_counts(left: object, right: object) -> dict[str, int]:
     left_map = left if isinstance(left, dict) else {}
     right_map = right if isinstance(right, dict) else {}
     keys = sorted(set(left_map) | set(right_map))
-    return {
-        key: int(right_map.get(key, 0) - left_map.get(key, 0))
-        for key in keys
-    }
+    return {key: int(right_map.get(key, 0) - left_map.get(key, 0)) for key in keys}
 
 
 def _numeric_delta(left: object, right: object) -> dict[str, float | int | None]:

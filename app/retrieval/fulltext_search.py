@@ -23,12 +23,8 @@ async def search_fulltext(
         return []
 
     if searchable_text_version not in {None, SEARCHABLE_TEXT_VERSION}:
-        raise ValueError(
-            f"Unsupported searchable-text version: {searchable_text_version}"
-        )
-    bound_query_text = (
-        query_text if query_text_override is None else query_text_override
-    )
+        raise ValueError(f"Unsupported searchable-text version: {searchable_text_version}")
+    bound_query_text = query_text if query_text_override is None else query_text_override
     if searchable_text_version == SEARCHABLE_TEXT_VERSION:
         query = text(
             """
@@ -110,15 +106,19 @@ async def search_fulltext(
         )
 
     rows = (
-        await session.execute(
-            query,
-            {
-                "query_text": bound_query_text,
-                "repository_id": repository_id,
-                "limit": limit,
-            },
+        (
+            await session.execute(
+                query,
+                {
+                    "query_text": bound_query_text,
+                    "repository_id": repository_id,
+                    "limit": limit,
+                },
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
 
     return [
         {

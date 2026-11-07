@@ -81,10 +81,7 @@ def line_window_specs(
 
 
 def _fallback_specs(source: str) -> list[ChunkSpec]:
-    return [
-        replace(spec, fallback=True)
-        for spec in line_window_specs(source)
-    ]
+    return [replace(spec, fallback=True) for spec in line_window_specs(source)]
 
 
 def _definition_start(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
@@ -153,9 +150,7 @@ def ast_chunk_specs(source: str) -> list[ChunkSpec]:
     lines = source.splitlines()
     if not any(line.strip() for line in lines):
         return []
-    parser_line_count = source.count("\n") + (
-        0 if (source.endswith("\n") or not source) else 1
-    )
+    parser_line_count = source.count("\n") + (0 if (source.endswith("\n") or not source) else 1)
     if parser_line_count != len(lines):
         return _fallback_specs(source)
     try:
@@ -163,9 +158,7 @@ def ast_chunk_specs(source: str) -> list[ChunkSpec]:
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return _fallback_specs(source)
 
-    classes = [
-        node for node in tree.body if isinstance(node, ast.ClassDef)
-    ]
+    classes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
     definitions: list[_Unit] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -204,11 +197,7 @@ def ast_chunk_specs(source: str) -> list[ChunkSpec]:
             continue
 
         class_name = next(
-            (
-                name
-                for start, end, name in class_ranges
-                if start <= line_number <= end
-            ),
+            (name for start, end, name in class_ranges if start <= line_number <= end),
             None,
         )
         kind = "class_body" if class_name else "module"
@@ -217,11 +206,7 @@ def ast_chunk_specs(source: str) -> list[ChunkSpec]:
             if end_line + 1 in definition_by_line:
                 break
             next_class_name = next(
-                (
-                    name
-                    for start, end, name in class_ranges
-                    if start <= end_line + 1 <= end
-                ),
+                (name for start, end, name in class_ranges if start <= end_line + 1 <= end),
                 None,
             )
             if next_class_name != class_name:
@@ -239,9 +224,7 @@ def ast_chunk_specs(source: str) -> list[ChunkSpec]:
         )
         line_number = end_line + 1
 
-    split_units = [
-        piece for unit in raw_units for piece in _split_unit(unit)
-    ]
+    split_units = [piece for unit in raw_units for piece in _split_unit(unit)]
     merged_units: list[_Unit] = []
     current = split_units[0]
     for next_unit in split_units[1:]:

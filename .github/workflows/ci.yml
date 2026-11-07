@@ -81,6 +81,9 @@ jobs:
       - name: Ruff
         run: uv run --no-sync ruff check .
 
+      - name: Ruff format
+        run: uv run --no-sync ruff format --check .
+
       - name: Pre-commit
         run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
 

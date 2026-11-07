@@ -34,9 +34,7 @@ def load_run(run_dir: Path) -> tuple[dict[str, Any], dict[str, list[dict[str, An
         if not path.is_file():
             continue
         records = _read_json(path)
-        if not isinstance(records, list) or not all(
-            isinstance(record, dict) for record in records
-        ):
+        if not isinstance(records, list) or not all(isinstance(record, dict) for record in records):
             raise ValueError(f"{path} must contain a list of JSON objects")
         passes[pass_name] = records
     if not passes:
@@ -82,9 +80,7 @@ def _function_or_class_span(source: str, label: str) -> tuple[int, int] | None:
     for position in positions:
         label_line = source.count("\n", 0, position) + 1
         enclosing = [
-            node
-            for node in scopes
-            if node.lineno <= label_line <= (node.end_lineno or node.lineno)
+            node for node in scopes if node.lineno <= label_line <= (node.end_lineno or node.lineno)
         ]
         if enclosing:
             node = min(
@@ -129,9 +125,7 @@ def _question_function_hit(
 ) -> bool | None:
     labels = [label for label in record.get("relevant") or [] if isinstance(label, dict)]
     top_five = [
-        item
-        for item in (record.get("retrieval_results") or [])[:5]
-        if isinstance(item, dict)
+        item for item in (record.get("retrieval_results") or [])[:5] if isinstance(item, dict)
     ]
     applicable_spans: list[tuple[str, int, int]] = []
     for label in labels:
@@ -139,9 +133,7 @@ def _question_function_hit(
         source = sources.get(file_path)
         if source is None:
             raise ValueError(f"No pinned source loaded for {file_path!r}")
-        span = _function_or_class_span(
-            source, str(label.get("substring") or "")
-        )
+        span = _function_or_class_span(source, str(label.get("substring") or ""))
         if span is not None:
             applicable_spans.append((file_path, span[0], span[1]))
     if not applicable_spans:
@@ -172,8 +164,7 @@ def _summary(
             "hit_at_3": sum(_hit(rank, 3) for rank in group_ranks),
             "hit_at_5": sum(_hit(rank, 5) for rank in group_ranks),
             "mrr": (
-                sum(1 / rank if rank is not None else 0 for rank in group_ranks)
-                / count
+                sum(1 / rank if rank is not None else 0 for rank in group_ranks) / count
                 if count
                 else 0.0
             ),
@@ -205,14 +196,10 @@ def _summary(
     for record in answerable:
         labels = [label for label in record.get("relevant") or [] if isinstance(label, dict)]
         top_five = [
-            item
-            for item in (record.get("retrieval_results") or [])[:5]
-            if isinstance(item, dict)
+            item for item in (record.get("retrieval_results") or [])[:5] if isinstance(item, dict)
         ]
         if any(
-            item.get("file_path") == label.get("file_path")
-            for item in top_five
-            for label in labels
+            item.get("file_path") == label.get("file_path") for item in top_five for label in labels
         ):
             file_hits += 1
 
@@ -256,9 +243,7 @@ def _summary(
         and record["evidence_check"].get("is_sufficient") is True
         for record in records
     )
-    outcomes = Counter(
-        record.get("outcome_v2", "missing") for record in records
-    )
+    outcomes = Counter(record.get("outcome_v2", "missing") for record in records)
     return {
         "overall": summarize_group(answerable),
         "by_category": by_category,
@@ -283,8 +268,7 @@ def _summary(
             "median": median(token_values) if token_values else None,
             "questions": len(token_values),
             "per_question": [
-                {"id": item["id"], "total_tokens": item["total_tokens"]}
-                for item in question_usage
+                {"id": item["id"], "total_tokens": item["total_tokens"]} for item in question_usage
             ],
         },
         "guard_false_accepts": false_accepts,
@@ -321,16 +305,8 @@ def _paired_questions(
     baseline_by_id = {str(record.get("id")): record for record in baseline}
     experiment_by_id = {str(record.get("id")): record for record in experiment}
     answerable_ids = sorted(
-        {
-            identifier
-            for identifier, record in baseline_by_id.items()
-            if _answerable(record)
-        }
-        | {
-            identifier
-            for identifier, record in experiment_by_id.items()
-            if _answerable(record)
-        }
+        {identifier for identifier, record in baseline_by_id.items() if _answerable(record)}
+        | {identifier for identifier, record in experiment_by_id.items() if _answerable(record)}
     )
     rows = []
     for identifier in answerable_ids:
@@ -351,27 +327,19 @@ def _paired_questions(
         rows.append(
             {
                 "id": identifier,
-                "category": experiment_record.get(
-                    "category", baseline_record.get("category")
-                ),
+                "category": experiment_record.get("category", baseline_record.get("category")),
                 "baseline_labeled_rank": baseline_rank,
                 "experiment_labeled_rank": experiment_rank,
                 "baseline_hits": {
-                    f"hit_at_{cutoff}": _hit(baseline_rank, cutoff)
-                    for cutoff in HIT_CUTOFFS
+                    f"hit_at_{cutoff}": _hit(baseline_rank, cutoff) for cutoff in HIT_CUTOFFS
                 },
                 "experiment_hits": {
-                    f"hit_at_{cutoff}": _hit(experiment_rank, cutoff)
-                    for cutoff in HIT_CUTOFFS
+                    f"hit_at_{cutoff}": _hit(experiment_rank, cutoff) for cutoff in HIT_CUTOFFS
                 },
                 "baseline_hit_by_file": _hit_by_file(baseline_record),
                 "experiment_hit_by_file": _hit_by_file(experiment_record),
-                "baseline_hit_by_function": _question_function_hit(
-                    baseline_record, sources
-                ),
-                "experiment_hit_by_function": _question_function_hit(
-                    experiment_record, sources
-                ),
+                "baseline_hit_by_function": _question_function_hit(baseline_record, sources),
+                "experiment_hit_by_function": _question_function_hit(experiment_record, sources),
                 "gained_hits": gained,
                 "lost_hits": lost,
             }
@@ -403,9 +371,7 @@ def _outcome_changes(
     for pass_name in PASS_NAMES:
         if pass_name not in baseline_passes or pass_name not in experiment_passes:
             continue
-        baseline_by_id = {
-            str(record.get("id")): record for record in baseline_passes[pass_name]
-        }
+        baseline_by_id = {str(record.get("id")): record for record in baseline_passes[pass_name]}
         experiment_by_id = {
             str(record.get("id")): record for record in experiment_passes[pass_name]
         }
@@ -434,9 +400,8 @@ def _gates(
     primary = "pass-1" if "pass-1" in baseline_metrics else next(iter(baseline_metrics))
     base = baseline_metrics[primary]
     candidate = experiment_metrics.get(primary, {})
-    hit5_delta = (
-        candidate.get("overall", {}).get("hit_at_5", 0)
-        - base.get("overall", {}).get("hit_at_5", 0)
+    hit5_delta = candidate.get("overall", {}).get("hit_at_5", 0) - base.get("overall", {}).get(
+        "hit_at_5", 0
     )
     hit3_deltas = {
         pass_name: metrics.get("overall", {}).get("hit_at_3", 0)
@@ -453,17 +418,12 @@ def _gates(
     lost_questions = [
         row["id"]
         for row in paired
-        if row["baseline_hits"]["hit_at_5"]
-        and not row["experiment_hits"]["hit_at_5"]
+        if row["baseline_hits"]["hit_at_5"] and not row["experiment_hits"]["hit_at_5"]
     ]
     baseline_false_accepts = base.get("guard_false_accepts", 0)
     experiment_false_accepts = candidate.get("guard_false_accepts", 0)
-    baseline_answered = base.get("outcome_v2_counts", {}).get(
-        "answered_unanswerable", 0
-    )
-    experiment_answered = candidate.get("outcome_v2_counts", {}).get(
-        "answered_unanswerable", 0
-    )
+    baseline_answered = base.get("outcome_v2_counts", {}).get("answered_unanswerable", 0)
+    experiment_answered = candidate.get("outcome_v2_counts", {}).get("answered_unanswerable", 0)
     baseline_answered_ids = {
         str(record.get("id"))
         for record in baseline_records
@@ -490,18 +450,11 @@ def _gates(
     function_candidate = candidate.get("hit_by_function", {})
     function_applicable = function_base.get("applicable_questions", 0)
     candidate_function_applicable = function_candidate.get("applicable_questions", 0)
-    function_ok = (
-        candidate_function_applicable == function_applicable
-        and (
-            function_applicable == 0
-            or function_candidate.get("hit_at_5", 0)
-            > function_base.get("hit_at_5", 0)
-        )
+    function_ok = candidate_function_applicable == function_applicable and (
+        function_applicable == 0
+        or function_candidate.get("hit_at_5", 0) > function_base.get("hit_at_5", 0)
     )
-    mrr_delta = (
-        candidate.get("overall", {}).get("mrr", 0)
-        - base.get("overall", {}).get("mrr", 0)
-    )
+    mrr_delta = candidate.get("overall", {}).get("mrr", 0) - base.get("overall", {}).get("mrr", 0)
     return [
         {
             "gate": "1",
@@ -530,10 +483,7 @@ def _gates(
         {
             "gate": "4",
             "status": (
-                "PASS"
-                if experiment_false_accepts <= 4
-                and not new_answered_ids
-                else "FAIL"
+                "PASS" if experiment_false_accepts <= 4 and not new_answered_ids else "FAIL"
             ),
             "evidence": (
                 f"false accepts baseline={baseline_false_accepts}, "
@@ -558,11 +508,7 @@ def _gates(
         },
         {
             "gate": "7",
-            "status": (
-                "PASS"
-                if file_candidate > file_base and function_ok
-                else "FAIL"
-            ),
+            "status": ("PASS" if file_candidate > file_base and function_ok else "FAIL"),
             "evidence": (
                 f"hit-by-file@5 baseline={file_base}, experiment={file_candidate}; "
                 f"hit-by-function@5 baseline={function_base.get('hit_at_5', 0)}, "
@@ -604,8 +550,7 @@ def compare_run_data(
     if baseline_sha != experiment_sha:
         raise ValueError("Cannot compare runs with different pinned_sha values")
     combined_passes = {
-        pass_name: baseline_passes.get(pass_name, [])
-        + experiment_passes.get(pass_name, [])
+        pass_name: baseline_passes.get(pass_name, []) + experiment_passes.get(pass_name, [])
         for pass_name in set(baseline_passes) | set(experiment_passes)
     }
     sources = _prepare_sources(
@@ -617,8 +562,7 @@ def compare_run_data(
         name: _summary(records, sources) for name, records in baseline_passes.items()
     }
     experiment_metrics = {
-        name: _summary(records, sources)
-        for name, records in experiment_passes.items()
+        name: _summary(records, sources) for name, records in experiment_passes.items()
     }
     first_pass = "pass-1" if "pass-1" in baseline_passes else next(iter(baseline_passes))
     paired = _paired_questions(
@@ -668,8 +612,7 @@ def compare_runs(
     entry = repository_entry(manifest, repo_id)
     golden = load_golden_set(ROOT / entry["questions"]["path"])
     selected_ids = {
-        question["id"]
-        for question in questions_for_split(entry, golden["questions"], split)
+        question["id"] for question in questions_for_split(entry, golden["questions"], split)
     }
     baseline_passes = {
         name: [record for record in records if record.get("id") in selected_ids]
@@ -759,8 +702,7 @@ def format_report(report: dict[str, Any]) -> str:
     lines.append("Questions with changed outcome_v2:")
     for change in report["outcome_v2_changes"]:
         lines.append(
-            f"  {change['pass']} {change['id']}: "
-            f"{change['baseline']} -> {change['experiment']}"
+            f"  {change['pass']} {change['id']}: {change['baseline']} -> {change['experiment']}"
         )
     if not report["outcome_v2_changes"]:
         lines.append("  none")

@@ -45,9 +45,7 @@ def test_gate_fails_hit_at_5_drop_of_one_question() -> None:
     assert not result["passed"]
     assert [check for check in result["checks"] if check["metric"] == "hit_at_5_successes"]
     assert all(
-        not check["passed"]
-        for check in result["checks"]
-        if check["metric"] == "hit_at_5_successes"
+        not check["passed"] for check in result["checks"] if check["metric"] == "hit_at_5_successes"
     )
 
 
@@ -56,9 +54,7 @@ def test_gate_fails_mrr_drop_beyond_tolerance() -> None:
     result = evaluate_gate(report(mrr=baseline - 0.020001), gate_config())
 
     assert not result["passed"]
-    assert all(
-        not check["passed"] for check in result["checks"] if check["metric"] == "mrr"
-    )
+    assert all(not check["passed"] for check in result["checks"] if check["metric"] == "mrr")
 
 
 def test_gate_passes_improvements() -> None:

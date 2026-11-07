@@ -171,8 +171,7 @@ def test_chunk_ranges_cover_boundaries_overlap_and_final_line(
         assert lines[ranges[-1][1] - 1] == f"line-{line_count}"
         assert all(end - start <= chunk_size for start, end in ranges)
         assert all(
-            next_start == end - overlap
-            for (_, end), (next_start, _) in zip(ranges, ranges[1:])
+            next_start == end - overlap for (_, end), (next_start, _) in zip(ranges, ranges[1:])
         )
 
 
@@ -182,9 +181,7 @@ def test_evaluation_repository_allowlist_and_inventory_guard() -> None:
         "incidentweave-eval-w100_20",
     }
     assert resolve_evaluation_repository() == "incidentweave-eval"
-    assert resolve_evaluation_repository(strategy="w100_o20") == (
-        "incidentweave-eval-w100_20"
-    )
+    assert resolve_evaluation_repository(strategy="w100_o20") == ("incidentweave-eval-w100_20")
     with pytest.raises(ValueError, match="not allowed"):
         resolve_evaluation_repository("incidentweave")
     with pytest.raises(ValueError, match="not allowed"):
@@ -203,9 +200,7 @@ def test_evaluation_repository_allowlist_and_inventory_guard() -> None:
         )
 
         other_eval_repository = (
-            "incidentweave-eval-w100_20"
-            if strategy == "baseline"
-            else "incidentweave-eval"
+            "incidentweave-eval-w100_20" if strategy == "baseline" else "incidentweave-eval"
         )
         with pytest.raises(RuntimeError, match=other_eval_repository):
             ensure_non_eval_inventory_unchanged(
@@ -265,9 +260,7 @@ def test_setup_eval_corpus_inserts_strategy_chunks_without_global_mutation(
         fake_embed_repository_chunks,
     )
 
-    files, chunks = asyncio.run(
-        runner.setup_eval_corpus(tmp_path, strategy=strategy)
-    )
+    files, chunks = asyncio.run(runner.setup_eval_corpus(tmp_path, strategy=strategy))
     expected_ranges = list(expected_chunk_ranges(source_lines, strategy))
 
     assert (files, chunks) == (1, len(expected_ranges))
@@ -278,9 +271,7 @@ def test_setup_eval_corpus_inserts_strategy_chunks_without_global_mutation(
     assert [chunk.line_start for chunk in session.added_chunks] == [
         start + 1 for start, _ in expected_ranges
     ]
-    assert [chunk.line_end for chunk in session.added_chunks] == [
-        end for _, end in expected_ranges
-    ]
+    assert [chunk.line_end for chunk in session.added_chunks] == [end for _, end in expected_ranges]
     assert session.added_chunks[-1].content.endswith("line 181")
 
 
@@ -330,9 +321,10 @@ def test_setup_eval_corpus_reuses_exact_chunks_and_only_retries_missing_embeddin
             lambda *_args: pytest.fail("matching embedded chunks must be reused"),
         )
 
-    assert asyncio.run(
-        runner.setup_eval_corpus(tmp_path, strategy=strategy)
-    ) == (1, len(expected_ranges))
+    assert asyncio.run(runner.setup_eval_corpus(tmp_path, strategy=strategy)) == (
+        1,
+        len(expected_ranges),
+    )
     assert session.added == []
     assert session.added_chunks == []
     assert session.commit_count == 0
@@ -362,9 +354,7 @@ def test_setup_eval_corpus_checks_for_null_embeddings_after_embedding(
     )
 
     with pytest.raises(RuntimeError, match="still has 1 chunks without embeddings"):
-        asyncio.run(
-            runner.setup_eval_corpus(tmp_path, strategy="w100_o20")
-        )
+        asyncio.run(runner.setup_eval_corpus(tmp_path, strategy="w100_o20"))
 
 
 def test_setup_eval_corpus_refuses_stale_chunks_without_deleting_or_replacing(
@@ -420,9 +410,7 @@ def test_setup_eval_corpus_skips_empty_and_whitespace_only_chunks(
         fake_embed_repository_chunks,
     )
 
-    assert asyncio.run(
-        runner.setup_eval_corpus(tmp_path, strategy=strategy)
-    ) == (2, 0)
+    assert asyncio.run(runner.setup_eval_corpus(tmp_path, strategy=strategy)) == (2, 0)
     assert session.added_chunks == []
 
 
@@ -492,13 +480,9 @@ def test_run_evaluation_threads_strategy_and_repository_without_live_services(
     evaluation_root = tmp_path / "evaluation" / "repos" / "incidentweave"
     evaluation_root.mkdir(parents=True)
     (evaluation_root / "questions.json").write_text(
-        (
-            source_root
-            / "evaluation"
-            / "repos"
-            / "incidentweave"
-            / "questions.json"
-        ).read_text(encoding="utf-8"),
+        (source_root / "evaluation" / "repos" / "incidentweave" / "questions.json").read_text(
+            encoding="utf-8"
+        ),
         encoding="utf-8",
     )
     results_root = tmp_path / "results"
@@ -634,9 +618,7 @@ def test_pinned_snapshot_exports_and_validates_with_expected_counts(
     tmp_path: Path,
 ) -> None:
     root = Path(__file__).resolve().parents[2]
-    data = load_golden_set(
-        root / "evaluation" / "repos" / "incidentweave" / "questions.json"
-    )
+    data = load_golden_set(root / "evaluation" / "repos" / "incidentweave" / "questions.json")
     sha = resolve_corpus_sha(data)
     snapshot_parent = tmp_path / "snapshot"
     try:
@@ -670,10 +652,12 @@ def test_pinned_snapshot_exports_and_validates_with_expected_counts(
 
 def test_extract_generation_trace_handles_payload_and_missing_usage() -> None:
     payload = {
-        "candidates": [{
-            "finishReason": "STOP",
-            "content": {"parts": [{"text": "diagnosis: INSUFFICIENT_EVIDENCE"}]},
-        }],
+        "candidates": [
+            {
+                "finishReason": "STOP",
+                "content": {"parts": [{"text": "diagnosis: INSUFFICIENT_EVIDENCE"}]},
+            }
+        ],
         "usageMetadata": {"totalTokenCount": 42, "promptTokenCount": 10, "candidateTokenCount": 32},
     }
     trace = extract_generation_trace("sample prompt", payload)
@@ -685,9 +669,7 @@ def test_extract_generation_trace_handles_payload_and_missing_usage() -> None:
     assert trace["total_tokens"] == 42
 
     empty_usage = {
-        "candidates": [
-            {"content": {"parts": [{"text": "diagnosis: insufficient evidence"}]}}
-        ]
+        "candidates": [{"content": {"parts": [{"text": "diagnosis: insufficient evidence"}]}}]
     }
     trace2 = extract_generation_trace("sample prompt", empty_usage)
     assert trace2 is not None
@@ -698,10 +680,7 @@ def test_extract_generation_trace_handles_payload_and_missing_usage() -> None:
 
 
 def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
-    assert (
-        abstention_kind("INSUFFICIENT_EVIDENCE", True, "INSUFFICIENT_EVIDENCE")
-        == "explicit"
-    )
+    assert abstention_kind("INSUFFICIENT_EVIDENCE", True, "INSUFFICIENT_EVIDENCE") == "explicit"
     assert (
         abstention_kind(
             "INSUFFICIENT_EVIDENCE",
@@ -733,14 +712,17 @@ def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
         screen_pass,
         expected,
     ) in cases:
-        assert classify_outcome_v2(
-            category,
-            error,
-            guard_refused,
-            abstained,
-            labeled_in_context,
-            screen_pass,
-        ) == expected
+        assert (
+            classify_outcome_v2(
+                category,
+                error,
+                guard_refused,
+                abstained,
+                labeled_in_context,
+                screen_pass,
+            )
+            == expected
+        )
 
     assert value_distribution([3, 5, 1, None, 9]) == {
         "min": 1,
@@ -760,6 +742,7 @@ def test_abstention_kind_and_outcome_v2_and_value_distribution() -> None:
         "max": None,
         "count": 0,
     }
+
 
 def test_exact_abstention_does_not_pass_answer_screen(monkeypatch, tmp_path: Path) -> None:
     from evaluation import runner
@@ -781,15 +764,11 @@ def test_exact_abstention_does_not_pass_answer_screen(monkeypatch, tmp_path: Pat
             "cited_chunk_ids": [],
         }
 
-    monkeypatch.setattr(
-        runner.investigate, "investigate_repository", fake_investigate_repository
-    )
+    monkeypatch.setattr(runner.investigate, "investigate_repository", fake_investigate_repository)
     monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
 
     records, _ = asyncio.run(
-        run_pipeline_once(
-            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
-        )
+        run_pipeline_once([question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0})
     )
     record = records[0]
     classify_outcomes(records, [question])
@@ -807,9 +786,9 @@ def test_baseline_answer_mentioning_marker_is_screened_as_answer(
     from evaluation import runner
 
     root = Path(__file__).resolve().parents[2]
-    baseline = json.loads((root / "evaluation" / "results" / "baseline.json").read_text(
-        encoding="utf-8"
-    ))
+    baseline = json.loads(
+        (root / "evaluation" / "results" / "baseline.json").read_text(encoding="utf-8")
+    )
     question = next(item for item in baseline if item["id"] == "paraphrased-05")
     diagnosis = question["diagnosis"]
 
@@ -822,15 +801,11 @@ def test_baseline_answer_mentioning_marker_is_screened_as_answer(
             "cited_chunk_ids": [],
         }
 
-    monkeypatch.setattr(
-        runner.investigate, "investigate_repository", fake_investigate_repository
-    )
+    monkeypatch.setattr(runner.investigate, "investigate_repository", fake_investigate_repository)
     monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
 
     records, _ = asyncio.run(
-        run_pipeline_once(
-            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
-        )
+        run_pipeline_once([question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0})
     )
     record = records[0]
     classify_outcomes(records, [question])
@@ -850,12 +825,10 @@ def test_unanswerable_answer_mentioning_marker_is_answered(
     from evaluation import runner
 
     root = Path(__file__).resolve().parents[2]
-    baseline = json.loads((root / "evaluation" / "results" / "baseline.json").read_text(
-        encoding="utf-8"
-    ))
-    diagnosis = next(
-        item["diagnosis"] for item in baseline if item["id"] == "paraphrased-05"
+    baseline = json.loads(
+        (root / "evaluation" / "results" / "baseline.json").read_text(encoding="utf-8")
     )
+    diagnosis = next(item["diagnosis"] for item in baseline if item["id"] == "paraphrased-05")
     question = {
         "id": "unanswerable-marker-answer",
         "category": "unanswerable_near",
@@ -873,15 +846,11 @@ def test_unanswerable_answer_mentioning_marker_is_answered(
             "cited_chunk_ids": [],
         }
 
-    monkeypatch.setattr(
-        runner.investigate, "investigate_repository", fake_investigate_repository
-    )
+    monkeypatch.setattr(runner.investigate, "investigate_repository", fake_investigate_repository)
     monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
 
     records, _ = asyncio.run(
-        run_pipeline_once(
-            [question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0}
-        )
+        run_pipeline_once([question], tmp_path, "test", {"http_calls": 0, "http_429_responses": 0})
     )
     record = records[0]
     classify_outcomes(records, [question])
@@ -903,44 +872,70 @@ def test_legacy_and_v2_outcome_count_invariants() -> None:
     ]
     records = [
         {
-            "id": "labeled", "category": "direct", "diagnosis": "answer", "error": None,
-            "refused": False, "abstention_kind": None, "labeled_chunk_in_context": True,
+            "id": "labeled",
+            "category": "direct",
+            "diagnosis": "answer",
+            "error": None,
+            "refused": False,
+            "abstention_kind": None,
+            "labeled_chunk_in_context": True,
             "screen_pass": True,
         },
         {
-            "id": "unlabeled", "category": "paraphrased", "diagnosis": "answer",
-            "error": None, "refused": False, "abstention_kind": None,
-            "labeled_chunk_in_context": False, "screen_pass": True,
+            "id": "unlabeled",
+            "category": "paraphrased",
+            "diagnosis": "answer",
+            "error": None,
+            "refused": False,
+            "abstention_kind": None,
+            "labeled_chunk_in_context": False,
+            "screen_pass": True,
         },
         {
-            "id": "false-refusal", "category": "direct",
-            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": True,
-            "abstention_kind": None, "labeled_chunk_in_context": False,
+            "id": "false-refusal",
+            "category": "direct",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "error": None,
+            "refused": True,
+            "abstention_kind": None,
+            "labeled_chunk_in_context": False,
             "screen_pass": None,
         },
         {
-            "id": "true-refusal", "category": "unanswerable_far",
-            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": True,
-            "abstention_kind": None, "labeled_chunk_in_context": None, "screen_pass": None,
-        },
-        {
-            "id": "model-abstention", "category": "unanswerable_near",
-            "diagnosis": "INSUFFICIENT_EVIDENCE", "error": None, "refused": False,
-            "abstention_kind": "explicit", "labeled_chunk_in_context": None,
+            "id": "true-refusal",
+            "category": "unanswerable_far",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "error": None,
+            "refused": True,
+            "abstention_kind": None,
+            "labeled_chunk_in_context": None,
             "screen_pass": None,
         },
         {
-            "id": "answered-unanswerable", "category": "unanswerable_near",
-            "diagnosis": "an answer", "error": None, "refused": False,
-            "abstention_kind": None, "labeled_chunk_in_context": None, "screen_pass": None,
+            "id": "model-abstention",
+            "category": "unanswerable_near",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "error": None,
+            "refused": False,
+            "abstention_kind": "explicit",
+            "labeled_chunk_in_context": None,
+            "screen_pass": None,
+        },
+        {
+            "id": "answered-unanswerable",
+            "category": "unanswerable_near",
+            "diagnosis": "an answer",
+            "error": None,
+            "refused": False,
+            "abstention_kind": None,
+            "labeled_chunk_in_context": None,
+            "screen_pass": None,
         },
     ]
 
     classify_outcomes(records, questions)
     classify_outcome_v2_for_records(records)
-    answerable = [
-        record for record in records if not record["category"].startswith("unanswerable")
-    ]
+    answerable = [record for record in records if not record["category"].startswith("unanswerable")]
 
     assert sum(record["outcome"] == "correct" for record in answerable) == sum(
         record["outcome_v2"] in {"correct_labeled_context", "correct_unlabeled_context"}
@@ -950,8 +945,7 @@ def test_legacy_and_v2_outcome_count_invariants() -> None:
         record["outcome_v2"] == "guard_true_refusal" for record in records
     )
     assert sum(record["outcome"] == "falsely answered" for record in records) == sum(
-        record["outcome_v2"] in {"model_abstained", "answered_unanswerable"}
-        for record in records
+        record["outcome_v2"] in {"model_abstained", "answered_unanswerable"} for record in records
     )
 
 
@@ -992,41 +986,43 @@ def test_guard_diagnostics_and_citation_summary_arithmetic() -> None:
         "other_rejections": 1,
     }
     assert "can_reject" not in diagnostics
-    assert (
-        guard_diagnostics(checks, 0.02)[
-            "rrf_gate_can_reject_nonempty_vector_results"
-        ]
-        is True
-    )
-    assert best_score_distribution(
-        [{"score": 0.3}, {"score": 0.4}], "score"
-    ) == {"min": 0.3, "median": 0.35, "max": 0.4}
+    assert guard_diagnostics(checks, 0.02)["rrf_gate_can_reject_nonempty_vector_results"] is True
+    assert best_score_distribution([{"score": 0.3}, {"score": 0.4}], "score") == {
+        "min": 0.3,
+        "median": 0.35,
+        "max": 0.4,
+    }
 
-    records = [{
-        "category": "direct",
-        "diagnosis": "answer",
-        "cited_chunk_ids": ["a", "b"],
-        "cited_chunk_relevance": [{"relevant": True}, {"relevant": False}],
-        "submitted_citation_count": 2,
-        "valid_citation_count": 2,
-    }, {
-        "category": "direct",
-        "diagnosis": "answer",
-        "cited_chunk_ids": ["c"],
-        "cited_chunk_relevance": [{"relevant": False}],
-        "submitted_citation_count": 3,
-        "valid_citation_count": 1,
-    }, {
-        "category": "unanswerable_far",
-        "diagnosis": "INSUFFICIENT_EVIDENCE",
-        "cited_chunk_ids": [],
-        "cited_chunk_relevance": [],
-    }, {
-        "category": "direct",
-        "diagnosis": "INSUFFICIENT_EVIDENCE",
-        "cited_chunk_ids": [],
-        "cited_chunk_relevance": [],
-    }]
+    records = [
+        {
+            "category": "direct",
+            "diagnosis": "answer",
+            "cited_chunk_ids": ["a", "b"],
+            "cited_chunk_relevance": [{"relevant": True}, {"relevant": False}],
+            "submitted_citation_count": 2,
+            "valid_citation_count": 2,
+        },
+        {
+            "category": "direct",
+            "diagnosis": "answer",
+            "cited_chunk_ids": ["c"],
+            "cited_chunk_relevance": [{"relevant": False}],
+            "submitted_citation_count": 3,
+            "valid_citation_count": 1,
+        },
+        {
+            "category": "unanswerable_far",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "cited_chunk_ids": [],
+            "cited_chunk_relevance": [],
+        },
+        {
+            "category": "direct",
+            "diagnosis": "INSUFFICIENT_EVIDENCE",
+            "cited_chunk_ids": [],
+            "cited_chunk_relevance": [],
+        },
+    ]
     summary = citation_summary(records)
     assert summary == {
         "cited_total": 3,
@@ -1077,9 +1073,12 @@ def test_run_summary_reports_answered_citation_validity_rate() -> None:
     ]
 
     assert summarize_run(records)["citation_validity_rate"] == 0.75
-    assert summarize_run(
-        [{**records[0], "submitted_citation_count": 0, "valid_citation_count": 0}]
-    )["citation_validity_rate"] is None
+    assert (
+        summarize_run([{**records[0], "submitted_citation_count": 0, "valid_citation_count": 0}])[
+            "citation_validity_rate"
+        ]
+        is None
+    )
 
 
 @pytest.mark.anyio
@@ -1278,9 +1277,7 @@ def _valid_golden_data(snapshot_root: Path) -> dict[str, object]:
     for index, category in enumerate(["direct"] * 8 + ["paraphrased"] * 8):
         relative_path = f"area{index}.py"
         content = f"label phrase {index}"
-        (snapshot_root / relative_path).write_text(
-            f"value = {content!r}\n", encoding="utf-8"
-        )
+        (snapshot_root / relative_path).write_text(f"value = {content!r}\n", encoding="utf-8")
         questions.append(
             {
                 "id": f"{category}-{index}",
@@ -1288,9 +1285,7 @@ def _valid_golden_data(snapshot_root: Path) -> dict[str, object]:
                 "question": "How does this behavior work?",
                 "seen_before": False,
                 "relevant": [{"file_path": relative_path, "substring": content}],
-                "relevant_spans": [
-                    {"file_path": relative_path, "line_start": 1, "line_end": 1}
-                ],
+                "relevant_spans": [{"file_path": relative_path, "line_start": 1, "line_end": 1}],
                 "must_mention": [["label"]],
             }
         )
@@ -1333,12 +1328,15 @@ def test_golden_validation_uses_repository_review_status(tmp_path: Path) -> None
         "review_status must be" in error
         for error in validate_golden_set(data, tmp_path, "snapshot-sha")
     )
-    assert validate_golden_set(
-        data,
-        tmp_path,
-        "snapshot-sha",
-        required_review_status="reviewed by an independent AI reviewer",
-    ) == []
+    assert (
+        validate_golden_set(
+            data,
+            tmp_path,
+            "snapshot-sha",
+            required_review_status="reviewed by an independent AI reviewer",
+        )
+        == []
+    )
 
 
 def test_golden_file_cap_counts_distinct_questions_not_label_entries(
@@ -1348,9 +1346,7 @@ def test_golden_file_cap_counts_distinct_questions_not_label_entries(
     shared_path = "shared.py"
     labels = data["questions"][0]["relevant"]
     labels.append(dict(labels[0]))
-    data["questions"][0]["relevant_spans"].append(
-        dict(data["questions"][0]["relevant_spans"][0])
-    )
+    data["questions"][0]["relevant_spans"].append(dict(data["questions"][0]["relevant_spans"][0]))
     assigned = [0, 1, 2]
     for index in assigned:
         question = data["questions"][index]
@@ -1359,9 +1355,7 @@ def test_golden_file_cap_counts_distinct_questions_not_label_entries(
         for span in question["relevant_spans"]:
             span["file_path"] = shared_path
     content = " ".join(
-        label["substring"]
-        for index in assigned
-        for label in data["questions"][index]["relevant"]
+        label["substring"] for index in assigned for label in data["questions"][index]["relevant"]
     )
     (tmp_path / shared_path).write_text(content, encoding="utf-8")
 
@@ -1395,9 +1389,7 @@ def test_golden_file_cap_can_be_increased_for_repository(tmp_path: Path) -> None
         for span in question["relevant_spans"]:
             span["file_path"] = shared_path
     content = " ".join(
-        label["substring"]
-        for index in assigned
-        for label in data["questions"][index]["relevant"]
+        label["substring"] for index in assigned for label in data["questions"][index]["relevant"]
     )
     (tmp_path / shared_path).write_text(content, encoding="utf-8")
 
@@ -1496,9 +1488,7 @@ def test_index_validation_requires_a_reachable_chunk() -> None:
         }
     ]
 
-    assert validate_index_labels(
-        questions, [result("source.py", "contains target phrase")]
-    ) == []
+    assert validate_index_labels(questions, [result("source.py", "contains target phrase")]) == []
     assert validate_index_labels(questions, [result("source.py", "no target")]) == [
         "direct-1: no indexed chunk matches a relevance label"
     ]
@@ -1558,9 +1548,7 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
     assert experimental_metadata["strategy"] == "w100_o20"
     assert experimental_metadata["chunk_size"] == 100
     assert experimental_metadata["overlap"] == 20
-    assert experimental_metadata["evaluation_repository"] == (
-        "incidentweave-eval-w100_20"
-    )
+    assert experimental_metadata["evaluation_repository"] == ("incidentweave-eval-w100_20")
     assert experimental_metadata["run_id"].endswith("-w100_o20")
     assert experimental_metadata["run_id"] != a["run_id"]
     assert experimental_metadata["config_sha256"] != a["config_sha256"]
@@ -1602,13 +1590,16 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
                 },
             },
         ],
-        "records": [[
-            {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
-            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
-        ], [
-            {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
-            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
-        ]],
+        "records": [
+            [
+                {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
+                {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+            ],
+            [
+                {"id": "q1", "outcome_v2": "correct_labeled_context", "labeled_rank": 1},
+                {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+            ],
+        ],
     }
     report_b = {
         "pinned_sha": "deadbeef",
@@ -1635,13 +1626,16 @@ def test_build_run_metadata_stable_hash_and_compare_reports_detect_changes(
                 },
             },
         ],
-        "records": [[
-            {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
-            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
-        ], [
-            {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
-            {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
-        ]],
+        "records": [
+            [
+                {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
+                {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+            ],
+            [
+                {"id": "q1", "outcome_v2": "incomplete_or_wrong", "labeled_rank": 3},
+                {"id": "q2", "outcome_v2": "model_abstained", "labeled_rank": None},
+            ],
+        ],
     }
 
     diff = compare_reports(report_a, report_b)

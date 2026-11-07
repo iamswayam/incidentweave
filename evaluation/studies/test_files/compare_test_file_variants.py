@@ -45,8 +45,7 @@ def _validate_reconciled_control(repositories: list[dict[str, Any]]) -> None:
         data = repository["_comparison_data"]
         questions = data["questions"]
         answerable_count = sum(
-            question.get("category") in {"direct", "paraphrased"}
-            for question in questions
+            question.get("category") in {"direct", "paraphrased"} for question in questions
         )
         reconciliation = repository["control_reconciliation"]
         if (
@@ -111,8 +110,7 @@ def render_results(
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|",
     ]
     scopes: list[tuple[str, dict[str, dict[str, Any]]]] = [
-        (name, metrics)
-        for name, metrics in comparison["per_repository"].items()
+        (name, metrics) for name, metrics in comparison["per_repository"].items()
     ]
     scopes.append(("Pooled", comparison["pooled"]))
     for scope, methods in scopes:
@@ -191,18 +189,14 @@ def render_results(
     for repository in repositories:
         name = repository["repository"]
         data = repository["_comparison_data"]
-        control_counts = summarize_control_guard(
-            data["questions"], data["control_rankings"]
-        )
-        control_text = (
-            f"{control_counts['sufficient']} / {control_counts['insufficient']}"
-        )
+        control_counts = summarize_control_guard(data["questions"], data["control_rankings"])
+        control_text = f"{control_counts['sufficient']} / {control_counts['insufficient']}"
         for variant in ("V1", "V2"):
             guard = comparison["guard_comparisons"][variant][name]
-            changed = ", ".join(
-                str(ordinal)
-                for ordinal in guard["changed_development_ordinals"]
-            ) or "none"
+            changed = (
+                ", ".join(str(ordinal) for ordinal in guard["changed_development_ordinals"])
+                or "none"
+            )
             lines.append(
                 f"| {name} | {control_text} | {variant} | "
                 f"{guard['unanswerable_questions']} | {guard['unchanged']} | "
@@ -268,9 +262,7 @@ async def run_comparison(output_path: Path, json_path: Path) -> None:
         "pooled_test_source_recall_denominator": (
             comparison["pooled_test_source_recall_denominator"]
         ),
-        "pooled_test_source_recall_hits": (
-            comparison["pooled_test_source_recall_hits"]
-        ),
+        "pooled_test_source_recall_hits": (comparison["pooled_test_source_recall_hits"]),
         "rules": comparison["rules"],
         "decision": comparison["decision"],
     }

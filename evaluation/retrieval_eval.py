@@ -38,9 +38,7 @@ from evaluation.stats import paired_comparison, wilson_interval
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
 DEFAULT_REPOSITORY_ID = "incidentweave"
-STOP_WORDS_SQL = text(
-    "SELECT lexemes FROM ts_debug('english', :term)"
-)
+STOP_WORDS_SQL = text("SELECT lexemes FROM ts_debug('english', :term)")
 
 
 async def build_protocol_query(
@@ -51,9 +49,7 @@ async def build_protocol_query(
 
     stop_words: set[str] = set()
     for token in extract_query_tokens(question):
-        rows = (
-            await session.execute(STOP_WORDS_SQL, {"term": token})
-        ).scalars().all()
+        rows = (await session.execute(STOP_WORDS_SQL, {"term": token})).scalars().all()
         if not any(row for row in rows):
             stop_words.add(token)
     return build_c1_query(question, stop_words)
@@ -67,18 +63,13 @@ def _explicit_development_questions(
     """Accept only rows explicitly selected for the development split."""
 
     if split != "development":
-        raise ValueError(
-            "Explicit question records are supported only for development"
-        )
+        raise ValueError("Explicit question records are supported only for development")
     allowed_ids = set(entry["splits"]["development"])
     raw_ids = [question.get("id") for question in question_records]
     if any(not isinstance(question_id, str) or not question_id for question_id in raw_ids):
         raise ValueError("Explicit development records need non-empty question ids")
     selected_ids = [str(question_id) for question_id in raw_ids]
-    if (
-        len(selected_ids) != len(set(selected_ids))
-        or not set(selected_ids) <= allowed_ids
-    ):
+    if len(selected_ids) != len(set(selected_ids)) or not set(selected_ids) <= allowed_ids:
         raise ValueError("Explicit question records must be unique development rows")
     return [dict(question) for question in question_records]
 
@@ -87,8 +78,7 @@ def fixture_repository_name(repo_id: str) -> str:
     """Return the isolated temporary DB repository name for one manifest ID."""
 
     safe_id = "".join(
-        character if character.isalnum() or character in "-_" else "-"
-        for character in repo_id
+        character if character.isalnum() or character in "-_" else "-" for character in repo_id
     )
     return f"incidentweave-fixture-{safe_id}"
 
@@ -174,9 +164,7 @@ async def export_development_rankings(
                     "guard_refused": production_best is None or production_best > 0.5,
                 }
             )
-        exported_repositories.append(
-            {"id": entry["id"], "questions": questions}
-        )
+        exported_repositories.append({"id": entry["id"], "questions": questions})
 
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -221,8 +209,7 @@ def _summary(records: list[dict[str, Any]], rank_key: str) -> dict[str, Any]:
     summary: dict[str, Any] = {"count": len(records)}
     for k in (1, 3, 5):
         successes = sum(
-            record[rank_key] is not None and record[rank_key] <= k
-            for record in records
+            record[rank_key] is not None and record[rank_key] <= k for record in records
         )
         low, high = wilson_interval(successes, len(records))
         summary[f"hit_at_{k}"] = {
@@ -231,10 +218,7 @@ def _summary(records: list[dict[str, Any]], rank_key: str) -> dict[str, Any]:
             "wilson_95": [low, high],
         }
     summary["mrr"] = (
-        sum(
-            1 / record[rank_key] if record[rank_key] is not None else 0.0
-            for record in records
-        )
+        sum(1 / record[rank_key] if record[rank_key] is not None else 0.0 for record in records)
         / len(records)
         if records
         else 0.0
@@ -304,9 +288,7 @@ async def run_offline_retrieval(
                         line_start=chunk["line_start"],
                         line_end=chunk["line_end"],
                         content=chunk["content"],
-                        content_hash=hashlib.sha256(
-                            chunk["content"].encode("utf-8")
-                        ).hexdigest(),
+                        content_hash=hashlib.sha256(chunk["content"].encode("utf-8")).hexdigest(),
                         embedding=chunk["embedding"],
                         file_type="python",
                         document_type="code",
@@ -320,9 +302,7 @@ async def run_offline_retrieval(
             for question in questions:
                 question_id = str(question["id"])
                 if question_id not in fixture_queries:
-                    raise ValueError(
-                        f"Fixture lacks cached query embedding for {question_id}"
-                    )
+                    raise ValueError(f"Fixture lacks cached query embedding for {question_id}")
                 fulltext_query_text: str | None = None
                 searchable_text_version: str | None = None
                 query_metadata: dict[str, Any] | None = None
@@ -376,9 +356,7 @@ async def run_offline_retrieval(
                     else None
                 )
                 span_rank = (
-                    first_relevant_span_rank(
-                        results, question.get("relevant_spans", [])
-                    )
+                    first_relevant_span_rank(results, question.get("relevant_spans", []))
                     if answerable
                     else None
                 )
@@ -388,12 +366,10 @@ async def run_offline_retrieval(
                     "label_rank": label_rank,
                     "span_rank": span_rank,
                     "label_hits": {
-                        str(k): label_rank is not None and label_rank <= k
-                        for k in (1, 3, 5)
+                        str(k): label_rank is not None and label_rank <= k for k in (1, 3, 5)
                     },
                     "span_hits": {
-                        str(k): span_rank is not None and span_rank <= k
-                        for k in (1, 3, 5)
+                        str(k): span_rank is not None and span_rank <= k for k in (1, 3, 5)
                     },
                 }
                 if record_details:
@@ -428,16 +404,12 @@ async def run_offline_retrieval(
         await _delete_fixture_repository(fixture_repository)
 
     answerable_records = [
-        record
-        for record in question_records
-        if record["category"] in {"direct", "paraphrased"}
+        record for record in question_records if record["category"] in {"direct", "paraphrased"}
     ]
     breakdown = {}
     for category in ("direct", "paraphrased"):
         category_records = [
-            record
-            for record in answerable_records
-            if record["category"] == category
+            record for record in answerable_records if record["category"] == category
         ]
         breakdown[category] = {
             "substring_labels": _summary(category_records, "label_rank"),

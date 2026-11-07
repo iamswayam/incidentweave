@@ -416,8 +416,7 @@ def test_importing_usage_module_does_not_import_database_session() -> None:
         [
             sys.executable,
             "-c",
-            "import sys, app.providers.usage; "
-            "assert 'app.db.session' not in sys.modules",
+            "import sys, app.providers.usage; assert 'app.db.session' not in sys.modules",
         ],
         capture_output=True,
         text=True,

@@ -60,9 +60,7 @@ def embedding_cache_key(text: str, task_type: EmbeddingTaskType) -> str:
 
 def collect_embedding_inputs(
     fixtures_by_repository: Mapping[str, Mapping[str, Any]],
-    development_questions_by_repository: Mapping[
-        str, Sequence[Mapping[str, Any]]
-    ],
+    development_questions_by_repository: Mapping[str, Sequence[Mapping[str, Any]]],
 ) -> EmbeddingInputs:
     """Collect distinct source text and only the questions selected for development."""
 
@@ -82,20 +80,14 @@ def collect_embedding_inputs(
         for question in development_questions_by_repository[repository]:
             text = question.get("question")
             if not isinstance(text, str) or not text.strip():
-                raise ValueError(
-                    f"{repository}: every selected development question needs text"
-                )
+                raise ValueError(f"{repository}: every selected development question needs text")
             query_texts.add(text)
     return EmbeddingInputs(
         document_texts=tuple(
-            sorted(document_texts, key=lambda text: embedding_cache_key(
-                text, DOCUMENT_TASK_TYPE
-            ))
+            sorted(document_texts, key=lambda text: embedding_cache_key(text, DOCUMENT_TASK_TYPE))
         ),
         query_texts=tuple(
-            sorted(query_texts, key=lambda text: embedding_cache_key(
-                text, QUERY_TASK_TYPE
-            ))
+            sorted(query_texts, key=lambda text: embedding_cache_key(text, QUERY_TASK_TYPE))
         ),
     )
 
@@ -111,9 +103,7 @@ def read_cached_vector(path: Path) -> list[float]:
         not isinstance(value, list)
         or len(value) != EMBEDDING_DIMENSION
         or any(
-            isinstance(item, bool)
-            or not isinstance(item, (int, float))
-            or not math.isfinite(item)
+            isinstance(item, bool) or not isinstance(item, (int, float)) or not math.isfinite(item)
             for item in value
         )
     ):
@@ -122,9 +112,7 @@ def read_cached_vector(path: Path) -> list[float]:
 
 
 def summarize_method(
-    question_results: Sequence[
-        tuple[Mapping[str, Any], Sequence[Mapping[str, Any]]]
-    ],
+    question_results: Sequence[tuple[Mapping[str, Any], Sequence[Mapping[str, Any]]]],
 ) -> dict[str, Any]:
     """Summarize development retrieval quality and the test-source safeguard."""
 
@@ -141,9 +129,7 @@ def summarize_method(
     for question, ranking in question_results:
         results = ranking[:TOP_K]
         tagged_results = [
-            result
-            for result in results
-            if is_test_path(str(result.get("file_path") or ""))
+            result for result in results if is_test_path(str(result.get("file_path") or ""))
         ]
         top5_test_chunks += len(tagged_results)
         top5_results += len(results)
@@ -171,45 +157,27 @@ def summarize_method(
             if first_relevant_span_rank(results, test_spans) is not None:
                 test_source_hits += 1
         test_chunks += len(tagged_results)
-        test_span_overlaps += sum(
-            is_relevant_span(result, test_spans) for result in tagged_results
-        )
+        test_span_overlaps += sum(is_relevant_span(result, test_spans) for result in tagged_results)
 
     count = len(answerable_ranks)
-    reciprocal_ranks = [
-        1 / rank if rank is not None else 0.0 for rank in answerable_ranks
-    ]
-    span_reciprocal_ranks = [
-        1 / rank if rank is not None else 0.0 for rank in span_ranks
-    ]
+    reciprocal_ranks = [1 / rank if rank is not None else 0.0 for rank in answerable_ranks]
+    span_reciprocal_ranks = [1 / rank if rank is not None else 0.0 for rank in span_ranks]
     return {
         "answerable_questions": count,
-        "hit_at_1_successes": sum(
-            rank is not None and rank <= 1 for rank in answerable_ranks
-        ),
-        "hit_at_3_successes": sum(
-            rank is not None and rank <= 3 for rank in answerable_ranks
-        ),
-        "hit_at_5_successes": sum(
-            rank is not None and rank <= 5 for rank in answerable_ranks
-        ),
+        "hit_at_1_successes": sum(rank is not None and rank <= 1 for rank in answerable_ranks),
+        "hit_at_3_successes": sum(rank is not None and rank <= 3 for rank in answerable_ranks),
+        "hit_at_5_successes": sum(rank is not None and rank <= 5 for rank in answerable_ranks),
         "mrr": sum(reciprocal_ranks) / count if count else 0.0,
         "span_mrr": (
-            sum(span_reciprocal_ranks) / count
-            if span_labels_available and count
-            else None
+            sum(span_reciprocal_ranks) / count if span_labels_available and count else None
         ),
         "test_top5_chunks": top5_test_chunks,
         "top5_chunks": top5_results,
-        "test_top5_share": (
-            top5_test_chunks / top5_results if top5_results else 0.0
-        ),
+        "test_top5_share": (top5_test_chunks / top5_results if top5_results else 0.0),
         "test_source_recall_denominator": (
             test_source_denominator if span_labels_available else None
         ),
-        "test_source_recall_hits": (
-            test_source_hits if span_labels_available else None
-        ),
+        "test_source_recall_hits": (test_source_hits if span_labels_available else None),
         "test_source_recall": (
             test_source_hits / test_source_denominator
             if span_labels_available and test_source_denominator
@@ -217,9 +185,7 @@ def summarize_method(
         ),
         "test_precision_overlaps": test_span_overlaps,
         "answerable_test_top5_chunks": test_chunks,
-        "test_precision": (
-            test_span_overlaps / test_chunks if test_chunks else None
-        ),
+        "test_precision": (test_span_overlaps / test_chunks if test_chunks else None),
         "reciprocal_ranks": reciprocal_ranks,
     }
 
@@ -242,9 +208,7 @@ def paired_mrr_statistics(
 
     differences = [
         candidate - control
-        for control, candidate in zip(
-            control_reciprocal_ranks, candidate_reciprocal_ranks
-        )
+        for control, candidate in zip(control_reciprocal_ranks, candidate_reciprocal_ranks)
     ]
     observed = sum(differences) / len(differences)
     rng = random.Random(seed)
@@ -299,12 +263,12 @@ def compare_guard_decisions(
             or question_id not in candidate_rankings
         ):
             raise ValueError("Every development question needs both rankings")
-        control = evaluate_evidence_sufficiency(
-            control_rankings[question_id][:TOP_K]
-        )["is_sufficient"]
-        candidate = evaluate_evidence_sufficiency(
-            candidate_rankings[question_id][:TOP_K]
-        )["is_sufficient"]
+        control = evaluate_evidence_sufficiency(control_rankings[question_id][:TOP_K])[
+            "is_sufficient"
+        ]
+        candidate = evaluate_evidence_sufficiency(candidate_rankings[question_id][:TOP_K])[
+            "is_sufficient"
+        ]
         if not isinstance(control, bool) or not isinstance(candidate, bool):
             raise ValueError("Production guard must return boolean decisions")
         unanswerable_count += 1
@@ -352,10 +316,7 @@ def evaluate_task_type_rules(
         ),
         "R4": (
             "pass"
-            if all(
-                int(guard["regressed"]) == 0
-                for guard in guard_by_repository.values()
-            )
+            if all(int(guard["regressed"]) == 0 for guard in guard_by_repository.values())
             else "fail"
         ),
     }
@@ -391,10 +352,7 @@ def render_results(report: Mapping[str, Any]) -> str:
         "Test top-five share | Test-source recall | Test precision |",
         "|---|---|---:|---:|---:|---:|---:|---:|---|---|---|",
     ]
-    scopes = [
-        (name, methods)
-        for name, methods in report["per_repository"].items()
-    ]
+    scopes = [(name, methods) for name, methods in report["per_repository"].items()]
     scopes.append(("Pooled", report["pooled"]))
     for scope, methods in scopes:
         for method in ("control", "candidate"):
@@ -418,9 +376,7 @@ def render_results(report: Mapping[str, Any]) -> str:
                 f"{precision_denominator} ({metrics['test_precision']:.6f})"
             )
             span_mrr = (
-                "not available"
-                if metrics["span_mrr"] is None
-                else f"{metrics['span_mrr']:.6f}"
+                "not available" if metrics["span_mrr"] is None else f"{metrics['span_mrr']:.6f}"
             )
             lines.append(
                 f"| {scope} | {method} | {metrics['answerable_questions']} | "

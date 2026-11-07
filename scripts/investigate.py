@@ -61,9 +61,7 @@ def main() -> None:
     print(f"Tool attempts: {len(result['tool_calls'])}")
     generation_trace = result.get("generation_trace")
     if isinstance(generation_trace, dict):
-        safe_trace = {
-            key: value for key, value in generation_trace.items() if key != "raw_text"
-        }
+        safe_trace = {key: value for key, value in generation_trace.items() if key != "raw_text"}
     else:
         safe_trace = generation_trace
     print(f"Generation trace: {json.dumps(safe_trace, sort_keys=True)}")

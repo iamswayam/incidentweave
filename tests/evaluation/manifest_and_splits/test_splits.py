@@ -16,8 +16,7 @@ def synthetic_questions() -> list[dict[str, str]]:
         ("unanswerable_near", 4),
     ):
         questions.extend(
-            {"id": f"{category}-{index:02}", "category": category}
-            for index in range(1, count + 1)
+            {"id": f"{category}-{index:02}", "category": category} for index in range(1, count + 1)
         )
     return questions
 
@@ -39,8 +38,7 @@ def test_split_regeneration_is_deterministic_and_stratified() -> None:
     assert set(first["smoke"]) <= set(first["development"])
     by_id = {question["id"]: question["category"] for question in questions}
     counts = Counter(
-        by_id[question_id].startswith("unanswerable")
-        for question_id in first["development"]
+        by_id[question_id].startswith("unanswerable") for question_id in first["development"]
     )
     assert counts == {False: 11, True: 5}
 

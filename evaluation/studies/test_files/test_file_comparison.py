@@ -59,9 +59,7 @@ def summarize_method(
     for question in questions:
         results = _selected_results(question, rankings)
         test_results = [
-            result
-            for result in results
-            if is_test_path(str(result.get("file_path") or ""))
+            result for result in results if is_test_path(str(result.get("file_path") or ""))
         ]
         top5_test_count += len(test_results)
         top5_result_count += len(results)
@@ -102,10 +100,7 @@ def summarize_method(
         else 0.0
     )
     spans_mrr = (
-        sum(
-            1 / rank if rank is not None else 0.0 for rank in span_ranks
-        )
-        / question_count
+        sum(1 / rank if rank is not None else 0.0 for rank in span_ranks) / question_count
         if span_labels_available and question_count
         else None
     )
@@ -116,35 +111,25 @@ def summarize_method(
         "hit_at_5_successes": sum(rank is not None and rank <= 5 for rank in ranks),
         "mrr": mrr,
         "spans_mrr": spans_mrr,
-        "spans_mrr_status": (
-            "available" if spans_mrr is not None else "not available"
-        ),
+        "spans_mrr_status": ("available" if spans_mrr is not None else "not available"),
         "test_top5_chunks": top5_test_count,
         "top5_chunks": top5_result_count,
-        "test_top5_share": (
-            top5_test_count / top5_result_count if top5_result_count else 0.0
-        ),
+        "test_top5_share": (top5_test_count / top5_result_count if top5_result_count else 0.0),
         "answerable_test_top5_chunks": test_chunk_count,
         "test_precision": (
-            test_chunk_overlap_count / test_chunk_count
-            if test_chunk_count
-            else None
+            test_chunk_overlap_count / test_chunk_count if test_chunk_count else None
         ),
         "test_precision_overlaps": test_chunk_overlap_count,
         "test_source_recall_denominator": (
             test_source_denominator if span_labels_available else None
         ),
-        "test_source_recall_hits": (
-            test_source_hits if span_labels_available else None
-        ),
+        "test_source_recall_hits": (test_source_hits if span_labels_available else None),
         "test_source_recall": (
             test_source_hits / test_source_denominator
             if span_labels_available and test_source_denominator
             else None
         ),
-        "mrr_reciprocal_values": [
-            1 / rank if rank is not None else 0.0 for rank in ranks
-        ],
+        "mrr_reciprocal_values": [1 / rank if rank is not None else 0.0 for rank in ranks],
     }
 
 
@@ -166,9 +151,7 @@ def paired_mrr_statistics(
 
     differences = [
         variant - control
-        for control, variant in zip(
-            control_reciprocal_ranks, variant_reciprocal_ranks
-        )
+        for control, variant in zip(control_reciprocal_ranks, variant_reciprocal_ranks)
     ]
     observed = sum(differences) / len(differences)
     rng = random.Random(seed)
@@ -182,10 +165,7 @@ def paired_mrr_statistics(
         lower = int(position)
         upper = min(lower + 1, len(bootstrap_means) - 1)
         fraction = position - lower
-        return (
-            bootstrap_means[lower] * (1 - fraction)
-            + bootstrap_means[upper] * fraction
-        )
+        return bootstrap_means[lower] * (1 - fraction) + bootstrap_means[upper] * fraction
 
     wins = sum(difference > 0 for difference in differences)
     losses = sum(difference < 0 for difference in differences)
@@ -224,12 +204,12 @@ def compare_guard_decisions(
         if _answerable(question):
             continue
         unanswerable_ordinal += 1
-        control = evaluate_evidence_sufficiency(
-            _selected_results(question, control_rankings)
-        )["is_sufficient"]
-        variant = evaluate_evidence_sufficiency(
-            _selected_results(question, variant_rankings)
-        )["is_sufficient"]
+        control = evaluate_evidence_sufficiency(_selected_results(question, control_rankings))[
+            "is_sufficient"
+        ]
+        variant = evaluate_evidence_sufficiency(_selected_results(question, variant_rankings))[
+            "is_sufficient"
+        ]
         if not isinstance(control, bool) or not isinstance(variant, bool):
             raise ValueError("Production guard must return a boolean decision")
         if control == variant:
@@ -260,9 +240,9 @@ def summarize_control_guard(
     for question in questions:
         if _answerable(question):
             continue
-        decision = evaluate_evidence_sufficiency(
-            _selected_results(question, control_rankings)
-        )["is_sufficient"]
+        decision = evaluate_evidence_sufficiency(_selected_results(question, control_rankings))[
+            "is_sufficient"
+        ]
         if not isinstance(decision, bool):
             raise ValueError("Production guard must return a boolean decision")
         sufficient += decision
@@ -392,8 +372,7 @@ def compare_development_variants(
         questions = data["questions"]
         full_rankings = data["control_rankings"]
         control = {
-            question_id: control_top_five(ranking)
-            for question_id, ranking in full_rankings.items()
+            question_id: control_top_five(ranking) for question_id, ranking in full_rankings.items()
         }
         v1 = {
             question_id: downweight_test_chunks(ranking)
@@ -426,21 +405,14 @@ def compare_development_variants(
                 pooled_recall_hits[method] = int(pooled_recall_hits[method]) + hits
 
         for variant, rankings in (("V1", v1), ("V2", v2)):
-            guard_comparisons[variant][name] = compare_guard_decisions(
-                questions, control, rankings
-            )
+            guard_comparisons[variant][name] = compare_guard_decisions(questions, control, rankings)
 
     pooled: dict[str, dict[str, Any]] = {}
     for method, reciprocal_ranks in pooled_reciprocal_ranks.items():
         question_count = len(reciprocal_ranks)
         exposure = pooled_test_exposure[method]
-        span_metrics = [
-            metrics[method]
-            for metrics in per_repository.values()
-        ]
-        spans_available = all(
-            summary["spans_mrr"] is not None for summary in span_metrics
-        )
+        span_metrics = [metrics[method] for metrics in per_repository.values()]
+        spans_available = all(summary["spans_mrr"] is not None for summary in span_metrics)
         spans_mrr = (
             sum(
                 float(summary["spans_mrr"]) * int(summary["answerable_questions"])
@@ -452,9 +424,7 @@ def compare_development_variants(
         )
         pooled[method] = {
             "answerable_questions": question_count,
-            "mrr": (
-                sum(reciprocal_ranks) / question_count if question_count else 0.0
-            ),
+            "mrr": (sum(reciprocal_ranks) / question_count if question_count else 0.0),
             "hit_at_1_successes": sum(value == 1 for value in reciprocal_ranks),
             "hit_at_3_successes": sum(value >= 1 / 3 for value in reciprocal_ranks),
             "hit_at_5_successes": sum(value >= 1 / 5 for value in reciprocal_ranks),
@@ -470,8 +440,7 @@ def compare_development_variants(
             "answerable_test_top5_chunks": exposure["answerable_test_top5_chunks"],
             "test_precision_overlaps": exposure["test_precision_overlaps"],
             "test_precision": (
-                exposure["test_precision_overlaps"]
-                / exposure["answerable_test_top5_chunks"]
+                exposure["test_precision_overlaps"] / exposure["answerable_test_top5_chunks"]
                 if exposure["answerable_test_top5_chunks"]
                 else None
             ),
@@ -479,8 +448,7 @@ def compare_development_variants(
             "test_source_recall_hits": pooled_recall_hits[method],
             "test_source_recall": (
                 pooled_recall_hits[method] / pooled_test_source_denominator
-                if pooled_test_source_denominator
-                and pooled_recall_hits[method] is not None
+                if pooled_test_source_denominator and pooled_recall_hits[method] is not None
                 else None
             ),
             "mrr_reciprocal_values": reciprocal_ranks,
@@ -500,14 +468,8 @@ def compare_development_variants(
             variant,
             pooled["control"],
             pooled[variant],
-            {
-                repository: metrics["control"]
-                for repository, metrics in per_repository.items()
-            },
-            {
-                repository: metrics[variant]
-                for repository, metrics in per_repository.items()
-            },
+            {repository: metrics["control"] for repository, metrics in per_repository.items()},
+            {repository: metrics[variant] for repository, metrics in per_repository.items()},
             guard_comparisons[variant],
             bootstrap_results[variant],
             test_source_recall_denominator=pooled_test_source_denominator,

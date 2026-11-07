@@ -58,9 +58,7 @@ class InvestigationState(TypedDict):
     generation_trace: NotRequired[dict[str, object]]
 
 
-ConfidenceCalibrator = Callable[
-    [str, float | None, float | None], tuple[str, str]
-]
+ConfidenceCalibrator = Callable[[str, float | None, float | None], tuple[str, str]]
 
 
 def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
@@ -155,9 +153,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
                         "kept": len(kept_results),
                         "dropped": dropped_count,
                         "truncated": was_truncated,
-                        "dropped_chunk_ids": [
-                            result.get("id") for result in dropped_results
-                        ],
+                        "dropped_chunk_ids": [result.get("id") for result in dropped_results],
                     },
                 }
             )
@@ -167,7 +163,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
             "tool_calls": tool_calls,
             "prompt": build_grounded_prompt(
                 state["query"], kept_results, max_evidence_chars=MAX_EVIDENCE_CHARS
-            )
+            ),
         }
 
     async def generate(state: InvestigationState) -> dict[str, object]:
@@ -186,9 +182,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
                 "confidence": "not_applicable",
                 "cited_chunk_ids": [],
                 "claims": [],
-                "uncertainty_note": (
-                    "Generation unavailable after configured provider retries."
-                ),
+                "uncertainty_note": ("Generation unavailable after configured provider retries."),
                 "model": "",
                 "latency_ms": None,
                 "outcome": "generation_unavailable",
@@ -210,9 +204,7 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
         return "degraded" if state.get("outcome") == "generation_unavailable" else "parse"
 
     def parse(state: InvestigationState) -> dict[str, object]:
-        parsed = parse_investigation_response(
-            state["response_payload"], state["retrieval_results"]
-        )
+        parsed = parse_investigation_response(state["response_payload"], state["retrieval_results"])
         return {
             "diagnosis": str(parsed["diagnosis"]),
             "confidence": str(parsed["confidence"]),

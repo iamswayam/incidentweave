@@ -189,14 +189,10 @@ async def test_ingest_upserts_chunks_and_links_audit_to_latest_run(
                 .limit(1)
             )
             assert latest_run is not None
-            audit = await session.scalar(
-                select(Audit).where(Audit.repository_id == repo_id)
-            )
+            audit = await session.scalar(select(Audit).where(Audit.repository_id == repo_id))
             assert audit is not None
             assert audit.ingest_run_id == latest_run.id
     finally:
         async with AsyncSessionLocal() as session:
-            await session.execute(
-                delete(Repository).where(Repository.name == repository_name)
-            )
+            await session.execute(delete(Repository).where(Repository.name == repository_name))
             await session.commit()

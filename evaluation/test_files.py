@@ -19,12 +19,8 @@ def is_test_path(path: str) -> bool:
 
     filename = parts[-1] if parts else ""
     java_test_class = (
-        original_filename.endswith("Test.java")
-        and len(original_filename) > len("Test.java")
-    ) or (
-        original_filename.endswith("Tests.java")
-        and len(original_filename) > len("Tests.java")
-    )
+        original_filename.endswith("Test.java") and len(original_filename) > len("Test.java")
+    ) or (original_filename.endswith("Tests.java") and len(original_filename) > len("Tests.java"))
     return (
         (filename.startswith("test_") and filename.endswith(".py"))
         or (filename.endswith("_test.py"))

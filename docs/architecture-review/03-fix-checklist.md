@@ -57,11 +57,11 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35b | In review | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
 | 35c | In review | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
-| 36 | In progress | #127, #129, #133 | Tooling: uv, hygiene, security done; repository formatting left. |
+| 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 36 (repository formatting), then item 33.
+Next: item 33.
 
 Deferred (no dependency): Docker image from the lock (multi-stage, non-root), static analysis.
 
@@ -610,7 +610,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - [x] uv and lock file.
 - [x] Repository hygiene (line endings, pre-commit, CI, Dependabot).
 - [x] Security basics (secret scanning, dependency audit, policy).
-- [ ] Format the whole repository with `ruff format` and enforce it in pre-commit and CI.
+- [x] Format the whole repository with `ruff format` and enforce it in pre-commit and CI.
 - **Done when:** Hooks and CI enforce them.
 - **Deferred:**
   - Docker image from the lock (multi-stage, non-root).

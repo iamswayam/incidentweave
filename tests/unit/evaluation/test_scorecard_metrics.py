@@ -35,15 +35,16 @@ def test_ndcg_is_one_for_perfect_ranking_and_matches_hand_calculation() -> None:
 
     assert ndcg_at_k([relevant_first, relevant_second], spans, corpus, 2) == 1.0
     expected = (1 / math.log2(3)) / (1 + 1 / math.log2(3))
-    assert ndcg_at_k([irrelevant, relevant_first], spans, corpus, 2) == pytest.approx(
-        expected
+    assert ndcg_at_k([irrelevant, relevant_first], spans, corpus, 2) == pytest.approx(expected)
+    assert (
+        ndcg_at_k(
+            [relevant_first],
+            spans,
+            [relevant_first, relevant_first],
+            2,
+        )
+        == 1.0
     )
-    assert ndcg_at_k(
-        [relevant_first],
-        spans,
-        [relevant_first, relevant_first],
-        2,
-    ) == 1.0
 
 
 def test_recall_and_context_precision_use_span_overlap() -> None:
@@ -114,9 +115,7 @@ def test_scorecard_assigns_metrics_to_registered_views(
     repositories = []
     for entry in sorted(manifest["repositories"], key=lambda item: item["id"]):
         question_data = load_golden_set(root / entry["questions"]["path"])
-        questions = questions_for_split(
-            entry, question_data["questions"], "development"
-        )
+        questions = questions_for_split(entry, question_data["questions"], "development")
         rows = []
         for question in questions:
             relevant = question.get("relevant_spans", [])
@@ -194,9 +193,7 @@ def test_scorecard_assigns_metrics_to_registered_views(
 
     monkeypatch.setattr(scorecard_module, "_wilson", wilson)
     monkeypatch.setattr(scorecard_module, "_bootstrap_mean", bootstrap)
-    monkeypatch.setattr(
-        scorecard_module, "_auroc_metric", lambda *args, view: {"view": view}
-    )
+    monkeypatch.setattr(scorecard_module, "_auroc_metric", lambda *args, view: {"view": view})
     monkeypatch.setattr(scorecard_module, "_threshold_sweep", lambda rows: [])
     scorecard = build_scorecard(export, manifest_path=manifest_path, root=root)
     production = scorecard["pooled"]["retrieval"]["production"]

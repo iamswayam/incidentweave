@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.db.models.audit import Audit
     from app.db.models.repository import Repository
 
+
 class Investigation(Base):
     """Persisted investigation record foundation."""
 

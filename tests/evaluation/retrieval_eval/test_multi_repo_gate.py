@@ -16,8 +16,7 @@ def _gate_config() -> dict[str, Any]:
     return {
         "baseline_report": "baseline.json",
         "baselines": {
-            label: {"hit_at_5_successes": 3, "mrr": 0.34}
-            for label in ("substring_labels", "spans")
+            label: {"hit_at_5_successes": 3, "mrr": 0.34} for label in ("substring_labels", "spans")
         },
         "tolerance": {
             "hit_at_5_successes_max_drop": 0,

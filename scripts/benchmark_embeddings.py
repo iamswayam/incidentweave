@@ -52,9 +52,7 @@ async def benchmark(repo_name: str, count: int, single_sample: int) -> None:
         raise ValueError("--count and --single-sample must be greater than zero")
 
     async with AsyncSessionLocal() as session:
-        repository = await session.scalar(
-            select(Repository).where(Repository.name == repo_name)
-        )
+        repository = await session.scalar(select(Repository).where(Repository.name == repo_name))
         if repository is None:
             raise ValueError(f"Repository not found: {repo_name}")
         query_count = max(count, single_sample)
@@ -88,8 +86,7 @@ async def benchmark(repo_name: str, count: int, single_sample: int) -> None:
         batch_start = time.perf_counter()
         semaphore = asyncio.Semaphore(EMBED_CONCURRENCY)
         batches = [
-            rows[index : index + EMBED_BATCH_SIZE]
-            for index in range(0, count, EMBED_BATCH_SIZE)
+            rows[index : index + EMBED_BATCH_SIZE] for index in range(0, count, EMBED_BATCH_SIZE)
         ]
 
         async def embed_batch(batch: list[str]) -> None:

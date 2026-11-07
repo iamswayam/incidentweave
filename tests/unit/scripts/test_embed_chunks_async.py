@@ -138,10 +138,7 @@ async def test_embed_repository_chunks_batches_and_limits_concurrency(
             return httpx.Response(
                 200,
                 json={
-                    "embeddings": [
-                        {"values": [float(index)] * 768}
-                        for index in range(batch_size)
-                    ]
+                    "embeddings": [{"values": [float(index)] * 768} for index in range(batch_size)]
                 },
             )
         finally:

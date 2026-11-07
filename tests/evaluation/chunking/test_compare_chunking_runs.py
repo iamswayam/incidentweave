@@ -30,9 +30,7 @@ def _record(
     token_count: int = 100,
     file_path: str = "src/sample.py",
 ) -> dict[str, Any]:
-    labels = (
-        [{"file_path": file_path, "substring": label}] if label else []
-    )
+    labels = [{"file_path": file_path, "substring": label}] if label else []
     results = []
     if rank is not None:
         for index in range(1, rank + 1):
@@ -41,11 +39,7 @@ def _record(
                 {
                     "file_path": file_path if is_labeled else "src/other.py",
                     "line_start": 1 if label == "MODULE_LABEL = 1" else 3,
-                    "line_end": (
-                        1
-                        if label == "MODULE_LABEL = 1"
-                        else (6 if index == rank else 3)
-                    ),
+                    "line_end": (1 if label == "MODULE_LABEL = 1" else (6 if index == rank else 3)),
                     "content": label if is_labeled and label else "context",
                 }
             )
@@ -140,10 +134,7 @@ def test_compare_synthetic_runs_reports_net_plus_one_as_inconclusive(
         "applicable_questions": 1,
         "not_applicable_module_level": 2,
     }
-    assert {
-        (item["pass"], item["id"])
-        for item in report["outcome_v2_changes"]
-    } == {
+    assert {(item["pass"], item["id"]) for item in report["outcome_v2_changes"]} == {
         ("pass-1", "paraphrased-01"),
         ("pass-1", "unanswerable_far-01"),
         ("pass-2", "direct-02"),

@@ -23,9 +23,7 @@ async def hybrid_search(
 
     vector_results = await search_vector(session, repository_id, query_embedding, limit=limit)
     if fulltext_query_text is None and searchable_text_version is None:
-        fts_results = await search_fulltext(
-            session, repository_id, query_text, limit=limit
-        )
+        fts_results = await search_fulltext(session, repository_id, query_text, limit=limit)
     else:
         fts_results = await search_fulltext(
             session,
@@ -44,9 +42,7 @@ async def hybrid_search(
 
     candidate_ids = list(vector_rank_by_id)
     candidate_ids.extend(
-        chunk_id
-        for chunk_id in fts_rank_by_id
-        if chunk_id not in vector_rank_by_id
+        chunk_id for chunk_id in fts_rank_by_id if chunk_id not in vector_rank_by_id
     )
     fused: list[dict[str, object]] = []
 
@@ -92,16 +88,8 @@ async def hybrid_search(
             vector_rank_by_id.get(item["id"], float("inf")),
             fts_rank_by_id.get(item["id"], float("inf")),
             str(item.get("file_path") or ""),
-            (
-                int(item["line_start"])
-                if isinstance(item.get("line_start"), int)
-                else float("inf")
-            ),
-            (
-                int(item["line_end"])
-                if isinstance(item.get("line_end"), int)
-                else float("inf")
-            ),
+            (int(item["line_start"]) if isinstance(item.get("line_start"), int) else float("inf")),
+            (int(item["line_end"]) if isinstance(item.get("line_end"), int) else float("inf")),
         )
     )
     return fused[:limit]

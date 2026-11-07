@@ -127,6 +127,7 @@ def test_post_and_get_guard_refusal_return_persisted_id_and_reason(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     refusal_reason = "No vector similarity score was retrieved."
+
     async def fake_investigate(*args: Any, **kwargs: Any) -> dict[str, object]:
         return {
             "investigation_id": 77,
@@ -389,9 +390,7 @@ def test_post_investigation_success_response_shape(
     assert body["degraded"] is False
     assert body["degraded_reason"] is None
     assert body["evidence"] == []
-    assert calls == [
-        ("incidentweave-eval", "What chunk size is configured?", 5, True)
-    ]
+    assert calls == [("incidentweave-eval", "What chunk size is configured?", 5, True)]
 
 
 def test_post_response_omits_legacy_confidence_fields(
@@ -581,9 +580,7 @@ def test_post_maximum_limit_and_query_length_pass_validation(
 def test_health_is_open_and_missing_secret_is_rejected(api_client: TestClient) -> None:
     health = api_client.get("/health")
     missing_secret = api_client.get("/repositories")
-    wrong_secret = api_client.get(
-        "/repositories", headers={"X-API-Secret": "wrong-test-secret"}
-    )
+    wrong_secret = api_client.get("/repositories", headers={"X-API-Secret": "wrong-test-secret"})
 
     assert health.status_code == 200
     assert health.json() == {"status": "ok"}

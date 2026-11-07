@@ -43,8 +43,7 @@ class BM25Index:
             raise ValueError("BM25 parameters require k1 > 0 and b in [0, 1]")
         rows = tuple(documents)
         frequencies = tuple(
-            Counter(tokenize(str(document.get("content") or "")))
-            for document in rows
+            Counter(tokenize(str(document.get("content") or ""))) for document in rows
         )
         document_frequencies: Counter[str] = Counter()
         for frequency in frequencies:
@@ -84,9 +83,7 @@ class BM25Index:
                 denominator = term_frequency + self.k1 * (
                     1 - self.b + self.b * self.lengths[index] / self.average_length
                 )
-                score += inverse_frequency * (
-                    term_frequency * (self.k1 + 1) / denominator
-                )
+                score += inverse_frequency * (term_frequency * (self.k1 + 1) / denominator)
             if score > 0:
                 scores.append((index, score))
 

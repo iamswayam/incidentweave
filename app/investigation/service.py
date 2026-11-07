@@ -107,11 +107,7 @@ def _query_embedding_failure_trace(
         if isinstance(error, ProviderError)
         and error.error_class == "rate_limited"
         and error.status_code is None
-        else (
-            MAX_EMBEDDING_ATTEMPTS
-            if isinstance(error, ProviderError) and error.retryable
-            else 1
-        )
+        else (MAX_EMBEDDING_ATTEMPTS if isinstance(error, ProviderError) and error.retryable else 1)
     )
     return {
         "failed_stage": "query_embedding",
@@ -230,9 +226,7 @@ async def _investigate_repository(
     investigation_id: int | None = None
 
     async with AsyncSessionLocal() as session:
-        repository = await session.scalar(
-            select(Repository).where(Repository.name == repo_name)
-        )
+        repository = await session.scalar(select(Repository).where(Repository.name == repo_name))
         if repository is None:
             raise ValueError(f"Repository not found: {repo_name}")
         repository_id = repository.id
@@ -267,10 +261,7 @@ async def _investigate_repository(
                 try:
                     query_embedding = await embed_text(query_text)
                 except ProviderError as exc:
-                    if (
-                        cache_checked
-                        and exc.error_class in GENERATION_UNAVAILABLE_ERROR_CLASSES
-                    ):
+                    if cache_checked and exc.error_class in GENERATION_UNAVAILABLE_ERROR_CLASSES:
                         embedding_failure = exc
                         stage = "lexical_retrieval"
                         async with AsyncSessionLocal() as session:
@@ -372,9 +363,7 @@ async def _investigate_repository(
                 result_count=0,
             )
             error_trace["cache"] = cache_trace
-        elif stage == "investigation" and isinstance(
-            exc, (ProviderError, TimeoutError)
-        ):
+        elif stage == "investigation" and isinstance(exc, (ProviderError, TimeoutError)):
             error_trace = generation_failure_trace(exc, elapsed_ms=elapsed_ms)
             error_trace["cache"] = cache_trace
         elif isinstance(exc, ModelOutputError):
@@ -423,8 +412,7 @@ async def _investigate_repository(
                     )
             except Exception as persistence_error:
                 print(
-                    "Failed to persist investigation error "
-                    f"({type(persistence_error).__name__})",
+                    f"Failed to persist investigation error ({type(persistence_error).__name__})",
                     file=sys.stderr,
                 )
         raise
@@ -494,9 +482,7 @@ async def _investigate_repository(
             result["retrieval_results"],
         )
         kept_chunk_ids = [
-            item.get("id")
-            for item in result["retrieval_results"]
-            if item.get("id") is not None
+            item.get("id") for item in result["retrieval_results"] if item.get("id") is not None
         ]
         evidence = _content_free_evidence(retrieval_results)
         generation_trace = {
@@ -636,11 +622,7 @@ async def _investigate_repository(
         embedding_model=GEMINI_MODEL,
         chunk_records=build_chunk_records(
             result.get("retrieved_before_budget", result["retrieval_results"]),
-            [
-                item.get("id")
-                for item in result["retrieval_results"]
-                if item.get("id") is not None
-            ],
+            [item.get("id") for item in result["retrieval_results"] if item.get("id") is not None],
         ),
         trace={
             "correlation_id": correlation_id,

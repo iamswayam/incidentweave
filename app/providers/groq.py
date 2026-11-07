@@ -144,11 +144,7 @@ class GroqProviderAdapter:
         self.usage_logger = (
             usage_logger
             if usage_logger is not None
-            else (
-                DbUsageLogger()
-                if settings.provider_usage_log_enabled
-                else NullUsageLogger()
-            )
+            else (DbUsageLogger() if settings.provider_usage_log_enabled else NullUsageLogger())
         )
 
     async def _record_usage(
@@ -162,9 +158,7 @@ class GroqProviderAdapter:
     ) -> None:
         usage = result.get("usage") if result is not None else None
         input_tokens = usage.get("prompt_tokens") if isinstance(usage, Mapping) else None
-        output_tokens = (
-            usage.get("completion_tokens") if isinstance(usage, Mapping) else None
-        )
+        output_tokens = usage.get("completion_tokens") if isinstance(usage, Mapping) else None
         try:
             await asyncio.wait_for(
                 self.usage_logger.record(
@@ -176,12 +170,8 @@ class GroqProviderAdapter:
                         error_class=error_class,
                         attempt_count=attempt_count,
                         latency_ms=latency_ms,
-                        input_tokens=(
-                            input_tokens if type(input_tokens) is int else None
-                        ),
-                        output_tokens=(
-                            output_tokens if type(output_tokens) is int else None
-                        ),
+                        input_tokens=(input_tokens if type(input_tokens) is int else None),
+                        output_tokens=(output_tokens if type(output_tokens) is int else None),
                         correlation_id=correlation_id_var.get() or uuid4().hex,
                     )
                 ),
@@ -212,9 +202,7 @@ class GroqProviderAdapter:
         if not api_key or not model:
             raise ProviderAuthError("Groq fallback is not fully configured")
         if payload.get("model") != model:
-            raise ProviderBadRequestError(
-                "Groq request model does not match the configured model"
-            )
+            raise ProviderBadRequestError("Groq request model does not match the configured model")
         stats: dict[str, int] = {}
         if not self.cooldown.allow_request():
             await self._record_usage(
@@ -317,8 +305,7 @@ class GroqProviderAdapter:
                                     status_code=429,
                                 )
                             raise ProviderServerError(
-                                f"Groq server error after retries "
-                                f"(HTTP {response.status_code})",
+                                f"Groq server error after retries (HTTP {response.status_code})",
                                 status_code=response.status_code,
                             )
                         retry_after = _parse_retry_after(
@@ -442,9 +429,7 @@ async def generate_with_groq(
 
     usage = raw_response.get("usage")
     input_tokens = usage.get("prompt_tokens") if isinstance(usage, Mapping) else None
-    output_tokens = (
-        usage.get("completion_tokens") if isinstance(usage, Mapping) else None
-    )
+    output_tokens = usage.get("completion_tokens") if isinstance(usage, Mapping) else None
     normalized_usage: dict[str, int] = {}
     if type(input_tokens) is int:
         normalized_usage["promptTokenCount"] = input_tokens
@@ -453,9 +438,7 @@ async def generate_with_groq(
     if type(input_tokens) is int and type(output_tokens) is int:
         normalized_usage["totalTokenCount"] = input_tokens + output_tokens
     return {
-        "candidates": [
-            {"content": {"parts": [{"text": content}]}}
-        ],
+        "candidates": [{"content": {"parts": [{"text": content}]}}],
         "usageMetadata": normalized_usage,
         "_provider": "groq",
         "_model": model,

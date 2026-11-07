@@ -30,8 +30,6 @@ async def test_offline_retrieval_fixture_runs_and_cleans_up_repository() -> None
 
     async with AsyncSessionLocal() as session:
         leftover = await session.scalar(
-            select(Repository).where(
-                Repository.name == fixture_repository_name("incidentweave")
-            )
+            select(Repository).where(Repository.name == fixture_repository_name("incidentweave"))
         )
     assert leftover is None
