@@ -70,6 +70,8 @@ Review Dependabot pull requests like other dependency changes: inspect the updat
 and merge only after the relevant checks pass.
 To ignore the repository-wide formatting commit in blame, contributors can run
 `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+Python code is formatted with Ruff; pre-commit and CI enforce it. Run
+`.\.venv\Scripts\ruff.exe format .` to format it manually.
 
 ## Security checks
 
