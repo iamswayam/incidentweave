@@ -1,6 +1,6 @@
 # Provider Usage Log
 
-**As of 2026-11-01.**
+**As of 2026-11-07.**
 
 ## Purpose and privacy
 
@@ -60,10 +60,52 @@ Markdown output:
 .\.venv\Scripts\python.exe -m scripts.usage_report --since-hours 24 --format markdown
 ```
 
-Aggregates are grouped by provider, model, operation tag, status, and error class.
-They include row count, total attempts, average and nearest-rank p95 latency, and
-summed input/output tokens. Missing token values contribute zero to sums; missing
-latencies are excluded from latency statistics.
+The command reports operation-level metrics, list-price estimates, investigation
+outcomes, and query-embedding cache statistics as described below. It is read-only
+and does not call provider APIs.
+
+## Operational metrics report
+
+The operational report summarizes provider usage rows by operation. Counts are
+logged provider calls; errors are rows with `status=failure`; attempts are summed
+`attempt_count`; token totals sum the available logged input and output tokens.
+Latency p50/p95/p99 use the nearest-rank method: sort non-null latencies and select
+the value at one-based rank `ceil(p*n)`. Missing latency values are excluded.
+
+Degraded counts and rates come from persisted investigation outcomes
+`generation_unavailable` and `embedding_unavailable`; each investigation is counted
+once, and the rate denominator is all unique investigations in the selected time
+window. Query-embedding cache hits, misses, and failed lookups use the trace from the
+latest audit row for each investigation. Only successful lookups are included in the
+hit-rate denominator; when there are no successful lookups, the rate is reported as
+`-`.
+
+Estimated list-price cost per operation and correlation ID (query) multiplies the
+logged token counts by the published rates in the
+[pricing table](../../app/providers/pricing.py). It is an estimate, not a billing
+record. Rows missing a token count required by that model's price are excluded and
+counted. Models without a published price are shown as “no official price.”
+“Observed (free tier)” is shown separately as USD 0.00 if usage is covered by the
+free tier; provider billing actuals are not ingested or verified. The estimate
+and observed figure are never added.
+
+The pricing table records provider, model, currency, input/output price per million
+tokens, source URL, retrieval date, and a text-only free-tier note. As of
+2026-11-07, the configured Gemini model price rows could not be read from the
+[official Google AI Studio pricing page](https://aistudio.google.com/docs/pricing),
+so both remain unpriced. The page's general Free-tier text says “Limited access to
+certain models” and “Free input & output tokens”; model-specific eligibility could
+not be read. To update a price, change the entry, its official source URL,
+`retrieved_on`, and model-specific free-tier note together.
+
+Generate a Markdown report with:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.usage_report --since-hours 24 --format markdown --output usage-report.md
+```
+
+The report is deterministic for the same rows and does not include a generation
+timestamp unless one is explicitly supplied to the formatter.
 
 ## What is logged
 
