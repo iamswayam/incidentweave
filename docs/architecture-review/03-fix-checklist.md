@@ -58,7 +58,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35c | Done | #125 | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
-| 33 | In review | pending | Configured Gemini models remain unpriced because neither is listed on the current official pricing page; CI integration test pending. |
+| 33 | In review | pending | Configured Gemini models remain unpriced because neither is listed on the current official pricing page; outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
 Next: item 34.

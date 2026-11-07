@@ -152,6 +152,19 @@ async def test_operational_metrics_load_persisted_usage_outcomes_and_cache_trace
                     trace={
                         "correlation_id": answered_correlation,
                         "query_embedding_cache": {
+                            "hit": False,
+                            "miss": True,
+                            "lookup_succeeded": True,
+                        },
+                    },
+                ),
+                Audit(
+                    investigation_id=answered.id,
+                    repository_id=repository.id,
+                    query=answered.query,
+                    trace={
+                        "correlation_id": answered_correlation,
+                        "query_embedding_cache": {
                             "hit": True,
                             "miss": False,
                             "lookup_succeeded": True,
@@ -218,6 +231,11 @@ async def test_operational_metrics_load_persisted_usage_outcomes_and_cache_trace
     assert operation["count"] == 2
     assert operation["errors"] == 1
     assert operation["attempts"] == 3
+    assert summary["investigation_count"] == 2
+    assert {row["outcome"]: row["count"] for row in summary["outcomes"]} == {
+        "answered": 1,
+        "generation_unavailable": 1,
+    }
     assert summary["degraded_count"] == 1
     assert summary["cache"]["hits"] == 1
     assert summary["cache"]["misses"] == 1

@@ -73,11 +73,19 @@ async def _load_rows(since_hours: int) -> list[dict[str, Any]]:
 async def _load_operational_rows(
     since_hours: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Load usage and investigation/audit telemetry for one shared time window."""
+    """Load usage and investigation/audit telemetry for one shared time window.
+
+    The aggregation deduplicates investigations and uses the latest Audit.id trace.
+    """
 
     cutoff = datetime.now(UTC) - timedelta(hours=since_hours)
     investigation_statement = (
-        select(Investigation.outcome, Audit.trace)
+        select(
+            Investigation.id.label("investigation_id"),
+            Investigation.outcome,
+            Audit.id.label("audit_id"),
+            Audit.trace,
+        )
         .outerjoin(Audit, Audit.investigation_id == Investigation.id)
         .where(Investigation.created_at >= cutoff)
         .order_by(Investigation.created_at, Investigation.id, Audit.id)

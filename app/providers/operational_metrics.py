@@ -91,6 +91,22 @@ def _cache_metrics(investigations: Sequence[MetricRow]) -> dict[str, Any]:
     }
 
 
+def _latest_investigation_rows(investigations: Sequence[MetricRow]) -> list[MetricRow]:
+    latest_by_id: dict[int, tuple[int, MetricRow]] = {}
+    unkeyed_rows: list[MetricRow] = []
+    for row in investigations:
+        investigation_id = row.get("investigation_id")
+        if not isinstance(investigation_id, int):
+            unkeyed_rows.append(row)
+            continue
+        audit_id = row.get("audit_id")
+        rank = audit_id if isinstance(audit_id, int) else -1
+        current = latest_by_id.get(investigation_id)
+        if current is None or rank >= current[0]:
+            latest_by_id[investigation_id] = (rank, row)
+    return [*unkeyed_rows, *(entry[1] for entry in latest_by_id.values())]
+
+
 def summarize_operational_metrics(
     usage_rows: Sequence[MetricRow],
     investigation_rows: Sequence[MetricRow],
@@ -161,11 +177,12 @@ def summarize_operational_metrics(
         for correlation_id, rows in sorted(query_groups.items())
     ]
 
+    unique_investigations = _latest_investigation_rows(investigation_rows)
     outcomes: dict[str, int] = {}
-    for row in investigation_rows:
+    for row in unique_investigations:
         outcome = str(row["outcome"])
         outcomes[outcome] = outcomes.get(outcome, 0) + 1
-    total_investigations = len(investigation_rows)
+    total_investigations = len(unique_investigations)
     degraded = outcomes.get("generation_unavailable", 0) + outcomes.get("embedding_unavailable", 0)
     outcome_rows = [
         {
@@ -188,7 +205,7 @@ def summarize_operational_metrics(
         "degraded_rate": (
             Decimal(degraded) / Decimal(total_investigations) if total_investigations else None
         ),
-        "cache": _cache_metrics(investigation_rows),
+        "cache": _cache_metrics(unique_investigations),
         "missing_token_rows": sum(
             row.get("input_tokens") is None or row.get("output_tokens") is None
             for row in usage_rows

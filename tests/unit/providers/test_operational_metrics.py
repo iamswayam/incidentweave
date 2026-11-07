@@ -142,6 +142,53 @@ def test_cache_hit_rate_and_degraded_outcome_rates() -> None:
     }
 
 
+def test_duplicate_investigation_uses_latest_audit_trace_once() -> None:
+    summary = summarize_operational_metrics(
+        [],
+        [
+            {
+                **_investigation(
+                    outcome="generation_unavailable",
+                    trace={
+                        "cache": {
+                            "hit": False,
+                            "miss": True,
+                            "lookup_succeeded": True,
+                        }
+                    },
+                ),
+                "investigation_id": 41,
+                "audit_id": 100,
+            },
+            {
+                **_investigation(
+                    outcome="generation_unavailable",
+                    trace={
+                        "cache": {
+                            "hit": True,
+                            "miss": False,
+                            "lookup_succeeded": True,
+                        }
+                    },
+                ),
+                "investigation_id": 41,
+                "audit_id": 101,
+            },
+        ],
+        since_hours=24,
+    )
+
+    assert summary["investigation_count"] == 1
+    assert summary["degraded_count"] == 1
+    assert summary["cache"] == {
+        "hits": 1,
+        "misses": 0,
+        "successful_lookups": 1,
+        "failed_lookups": 0,
+        "hit_rate": Decimal("1"),
+    }
+
+
 def test_markdown_is_byte_identical_for_repeated_inputs() -> None:
     rows = [
         _usage_row(

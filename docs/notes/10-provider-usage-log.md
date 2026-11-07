@@ -73,11 +73,12 @@ Latency p50/p95/p99 use the nearest-rank method: sort non-null latencies and sel
 the value at one-based rank `ceil(p*n)`. Missing latency values are excluded.
 
 Degraded counts and rates come from persisted investigation outcomes
-`generation_unavailable` and `embedding_unavailable`; the rate denominator is all
-investigations in the selected time window. Query-embedding cache hits, misses, and
-failed lookups come from the persisted audit trace. Only successful lookups are
-included in the hit-rate denominator; when there are no successful lookups, the
-rate is reported as `-`.
+`generation_unavailable` and `embedding_unavailable`; each investigation is counted
+once, and the rate denominator is all unique investigations in the selected time
+window. Query-embedding cache hits, misses, and failed lookups use the trace from the
+latest audit row for each investigation. Only successful lookups are included in the
+hit-rate denominator; when there are no successful lookups, the rate is reported as
+`-`.
 
 Estimated list-price cost per operation and correlation ID (query) multiplies the
 logged token counts by the published rates in the
