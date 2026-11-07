@@ -10,6 +10,7 @@
 3. After any change that affects retrieval or the guard, re-run the evaluation and record the result.
 4. Effort: **S** = under half a day, **M** = 1–3 days, **L** = a week or more.
 5. Item 1 is implemented and merged. The other entries were reviewed by Codex and the accepted changes are folded in below. Test counts and metrics are quoted only from a command that was actually run.
+6. Sub-items (a, b, c) exist only for items that were already split. New work gets a new item number or a bullet inside an existing item; do not add new letters.
 
 **Evidence tags** (same as in my audit): **[SRC]** read from code, **[EXEC]** I ran it, **[ART]** author-reported in repo docs/artifacts, **[INF]** my inference.
 
@@ -33,40 +34,16 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 8 | Done | #33 | Replayable audit record. |
 | 11 | Done | #34 | Structured output and citation validation. |
 | 10 | Done | #36 | Async, batched provider client; first benchmark recorded in docs/notes/03-embedding-benchmark.md. |
-| 13a | Done | #38 | Span labels, statistics, offline retrieval evaluation. |
-| 13b | Done | #40 | CI gate and generation settings. |
-| 13c | Done | #55 | retrieval inspection report |
-| 13d | Done | #54 | deterministic retrieval ordering |
-| 14c-1 | Done | #57 | full-text diagnostic and preregistered ablation protocol |
-| 14c-2 | Done | #61 | c1/c2 failed the registered rule; c3 equivalence confirmed; no variant adopted |
-| 14c-3 | Closed, no change | n/a | registered rule retained current behavior; reopen only after a separately registered comparison |
-| 14b-1 | Done | #82 | Test-file classifier, diagnostic and retrieval protocol |
-| 14b-2 | Done | #84 | Keep control; V1 was descriptively better but did not satisfy all registered retention conditions |
+| 13 | Done | #38, #40, #54, #55 | Evaluation foundation, CI gate, inspection, deterministic ordering. |
+| 14 | Done | #57, #61, #82, #84, #88, #90, #94 | Completed comparisons; registered controls retained. |
 | 14b-3 | Not started | pending | Maintainer decision on V1; off by default and to be tested in 3b |
-| 14a-1 | Done | #88 | Registered embedding task-type protocol |
-| 14a-2 | Done | #90 | Keep control; task-type candidate did not satisfy all registered retention conditions |
-| 14d | Done | #94 | Keep control; BM25 B1 failed R1 and R2 |
-| 18 | Superseded | n/a | Superseded; 18a, 18c done; 18b-2 open |
-| 18a-1 | Done | #66 | Provider layer design |
-| 18a-2 | Done | #75 | Provider interfaces, Gemini adapter, rate limiter and cooldown |
-| 18a-3 | Done | #78, #79 | Usage log table and report |
-| 18b-1 | Done | #86 | Groq generation fallback adapter; off by default; terms verification remains before enabling |
+| 15 | Done | #48, #50 | Chunking comparison completed; control retained. |
+| 16 | Done | #42, #44, #46 | Multi-repository harness and datasets. |
+| 18 | Superseded | #66, #75, #78, #79, #86, #96, #98, #100, #102 | Provider layer, fallbacks, degradation, and cache delivered. |
 | 18b-2 | Not started | pending | Cerebras route, per-model validation and private-code terms checks before enabling |
-| 18c | Done | #102 | Keep control; both local candidates failed R1-R3 |
-| 18d-1 | Done | #96 | Degraded-response design approved 2026-10-31 |
-| 18d-2 | Done | #98 | HTTP 200 degraded outcome `generation_unavailable`, with persisted trace |
-| 18d-3 | Done | #100 | HTTP 200 degraded outcome `embedding_unavailable`, lexical-only; no vector guard or generation |
-| 18d-4 | Done | #100 | Query-embedding cache, keyed by model/task/dimensions/query hash; 30-day retention, 10,000-row cap |
-| 16a | Done | #42 | multi-repo harness |
-| 16b | Done | #44 | batch-processing-service data |
-| 16c | Done | #46 | lifeos data |
 | Plan 06 added | Done | n/a | docs commit |
 | Plan 07 added | Done | n/a | docs commit |
-| 15a-1 | Done | #48 | chunking comparison foundation |
-| 15a-2 | Done | #50 | chunking comparison experiment: S0 retained |
-| 15b | Closed | n/a | no change, S0 retained |
-| 27a | Done | #73 | Evaluation README indexes and documentation map |
-| 27b | Done | #108 | Evaluation layout normalized: IncidentWeave data now at evaluation/repos/incidentweave/; chunk_experiments.py renamed to chunk_strategies.py; only the two gate files' baseline_report path and their manifest pins changed |
+| 27 | Done | #73, #108 | Evaluation docs indexed and layout normalized. |
 | 28 | Done | #92 | Test tiers; 294 passed in 24.81 seconds locally on 2026-11-01 |
 | 29 | Done | #112 | Evaluation dataset v2 protocol |
 | 30 | Done | #114 | Dataset repositories and ingestion |
@@ -80,12 +57,13 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35b | In review | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
 | 35c | In review | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
-| 36c | In review | pending | Repository hygiene: line-ending/editor settings, pre-commit, CI and Dependabot. |
-| 36e | In review | pending | Security policy, full-history secret scanning, dependency audit, and owner-side GitHub settings. |
+| 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
 | 33 | Not started | pending | Operational metrics report |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 33 (operational metrics report).
+Next: item 33.
+
+Deferred (no dependency): Docker image from the lock (multi-stage, non-root), static analysis.
 
 ## 1. Fix-order checklist (summary)
 
@@ -628,36 +606,21 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Done when:** Existing question-review behavior and tests are preserved without a large monolithic module.
 - **Status:** Not started.
 
-**36a. Adopt uv and a committed lock file (In review).**
-- **Fix:** Move development tools into a PEP 735 dependency group, commit `uv.lock`, and configure CI to install from it.
-- **Done when:** CI installs from `uv.lock`, unit counts are identical, and CI is green on the PR (integration and evaluation tiers run in CI).
-
-**36b. Docker image from the lock (Not started).**
-- **Fix:** Build a multi-stage image from `uv.lock`, run as a non-root user, and add a health check if a health route exists.
-- **Done when:** The image builds and starts via Docker Compose.
-
-**36c. Repository hygiene (In review).**
-- **Fix:** Add `.gitattributes`, `.editorconfig`, pre-commit checks for Ruff, whitespace, end-of-file, and large files; CI triggers/concurrency/permissions and pre-commit enforcement; and Dependabot for uv, Actions, and Docker.
+**36. Tooling, hygiene, and security (In progress).**
+- [x] uv and lock file.
+- [x] Repository hygiene (line endings, pre-commit, CI, Dependabot).
+- [x] Security basics (secret scanning, dependency audit, policy).
+- [x] Format the whole repository with `ruff format` and enforce it in pre-commit and CI.
 - **Done when:** Hooks and CI enforce them.
-- **Progress:** Added repository text/binary handling and editor defaults, pinned pre-commit checks, tightened CI triggers and permissions, and configured weekly Dependabot updates.
-- **Status:** In review.
-
-**36d. Static analysis (Not started).**
-- **Fix:** Extend Ruff rule sets one at a time, add basic-mode type checking for `app/`, and add coverage measurement.
-- **Done when:** Each is enforced in CI without a large baseline of ignores.
-
-**36e. Security basics (In review).**
-- **Fix:** Add `SECURITY.md`, secret scanning, push protection and branch protection (owner settings), secret scanning of the full git history (gitleaks) in CI, in addition to GitHub secret scanning and push protection, and dependency audit in CI.
-- **Done when:** Security basics are documented and enforced.
-- **Progress:** Added the security policy, full-history Gitleaks scanning, and locked-dependency auditing in CI. The owner must enable GitHub secret scanning, push protection, private vulnerability reporting, Dependabot alerts, and branch protection; these settings are not enabled or verified by this change.
-- **Status:** In review.
-
-**36f. Apply Ruff formatting repository-wide (In review).**
-- **Fix:** Apply ruff format to the whole repository (119 files would change at the time of 36c) and add the ruff-format hook.
-- **Done when:** The repository passes the ruff-format hook and CI checks formatting.
-- **Progress:** Formatted 112 Python files in commit `0d44c7ade19bccdc6a5a3591a134dc2d40a0ac22`.
-
-The v0 harness archive and moves of `manifest.py`, `metrics.py`, `retrieval_eval.py`, and `scorecard.py` are deferred: item 33/34 designs may reuse the v0 runner, and these modules have high fan-out.
+- **Deferred:**
+  - Docker image from the lock (multi-stage, non-root).
+  - Static analysis.
+- **Owner-side GitHub settings (not claimed enabled):**
+  - Secret scanning.
+  - Push protection.
+  - Private vulnerability reporting.
+  - Dependabot alerts.
+  - Branch protection requiring the secrets, audit, and evaluation checks.
 
 **33. Operational metrics report.**
 - **Why:** Quality results need latency, usage, cost, failure, degradation, and cache context.
