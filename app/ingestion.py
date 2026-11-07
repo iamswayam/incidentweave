@@ -106,9 +106,7 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
         raise FileNotFoundError(f"Repository path not found or not a directory: {repo_path}")
 
     async with AsyncSessionLocal() as session:
-        repository = await session.scalar(
-            select(Repository).where(Repository.name == repo_name)
-        )
+        repository = await session.scalar(select(Repository).where(Repository.name == repo_name))
 
         if repository is None:
             repository = Repository(name=repo_name)
@@ -128,15 +126,9 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
         await session.flush()
 
         existing_chunks = list(
-            (
-                await session.scalars(
-                    select(Chunk).where(Chunk.repository_id == repository.id)
-                )
-            ).all()
+            (await session.scalars(select(Chunk).where(Chunk.repository_id == repository.id))).all()
         )
-        existing_by_identity = {
-            _chunk_identity(chunk): chunk for chunk in existing_chunks
-        }
+        existing_by_identity = {_chunk_identity(chunk): chunk for chunk in existing_chunks}
 
         files_processed = 0
         chunks_to_create: list[Chunk] = []
@@ -162,14 +154,10 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
                 line_end = end_index
                 secret_pattern = find_secret(chunk_content)
                 if secret_pattern is not None:
-                    skipped_chunks.append(
-                        (secret_pattern, relative_path, line_start, line_end)
-                    )
+                    skipped_chunks.append((secret_pattern, relative_path, line_start, line_end))
                     continue
 
-                content_hash = hashlib.sha256(
-                    chunk_content.encode("utf-8")
-                ).hexdigest()
+                content_hash = hashlib.sha256(chunk_content.encode("utf-8")).hexdigest()
                 identity = (relative_path, line_start, line_end, content_hash)
                 current_identities.add(identity)
                 if identity in existing_by_identity:
@@ -211,8 +199,5 @@ async def ingest_repository(repo_path: str, repo_name: str) -> tuple[int, int]:
             )
 
         added_chunks = len(chunks_to_create)
-        print(
-            "Chunks kept/added/removed: "
-            f"{kept_chunks}/{added_chunks}/{len(removed_chunk_ids)}"
-        )
+        print(f"Chunks kept/added/removed: {kept_chunks}/{added_chunks}/{len(removed_chunk_ids)}")
         return files_processed, kept_chunks + added_chunks

@@ -35,17 +35,11 @@ def _validate_embedding_options(
 
 
 def _single_embedding_url() -> str:
-    return (
-        f"https://generativelanguage.googleapis.com/v1beta/"
-        f"{GEMINI_MODEL}:embedContent"
-    )
+    return f"https://generativelanguage.googleapis.com/v1beta/{GEMINI_MODEL}:embedContent"
 
 
 def _batch_embedding_url() -> str:
-    return (
-        f"https://generativelanguage.googleapis.com/v1beta/"
-        f"{GEMINI_MODEL}:batchEmbedContents"
-    )
+    return f"https://generativelanguage.googleapis.com/v1beta/{GEMINI_MODEL}:batchEmbedContents"
 
 
 async def embed_text(
@@ -80,8 +74,7 @@ async def embed_text(
         raise ProviderSchemaInvalidError("Unexpected Gemini embedding response format")
     if len(values) != EMBEDDING_DIMENSION:
         raise ProviderSchemaInvalidError(
-            f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}, "
-            f"got {len(values)}"
+            f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}, got {len(values)}"
         )
     try:
         return [float(value) for value in values]
@@ -128,9 +121,7 @@ async def embed_texts(
     for embedding in embeddings:
         values = embedding.get("values") if isinstance(embedding, dict) else None
         if not isinstance(values, list) or len(values) != EMBEDDING_DIMENSION:
-            raise ValueError(
-                f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}"
-            )
+            raise ValueError(f"Unexpected embedding dimension: expected {EMBEDDING_DIMENSION}")
         vectors.append([float(value) for value in values])
     return vectors
 
@@ -139,17 +130,15 @@ async def embed_repository_chunks(repo_name: str) -> tuple[int, int, int]:
     """Embed all unembedded chunks for the given repository name."""
 
     async with AsyncSessionLocal() as session:
-        repository = await session.scalar(
-            select(Repository).where(Repository.name == repo_name)
-        )
+        repository = await session.scalar(select(Repository).where(Repository.name == repo_name))
         if repository is None:
             raise ValueError(f"Repository not found: {repo_name}")
 
         all_chunks = (
-            await session.execute(
-                select(Chunk).where(Chunk.repository_id == repository.id)
-            )
-        ).scalars().all()
+            (await session.execute(select(Chunk).where(Chunk.repository_id == repository.id)))
+            .scalars()
+            .all()
+        )
 
         chunks_to_embed = [chunk for chunk in all_chunks if chunk.embedding is None]
         skipped = len(all_chunks) - len(chunks_to_embed)
@@ -177,8 +166,7 @@ async def embed_repository_chunks(repo_name: str) -> tuple[int, int, int]:
         for batch, (vectors, error) in zip(batches, results):
             if error is not None:
                 print(
-                    f"Failed to embed batch ({len(batch)} chunks): "
-                    f"{type(error).__name__}",
+                    f"Failed to embed batch ({len(batch)} chunks): {type(error).__name__}",
                     file=sys.stderr,
                 )
                 failed += len(batch)

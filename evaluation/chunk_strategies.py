@@ -54,12 +54,8 @@ class CandidateStrategy:
 
 
 CANDIDATE_STRATEGIES = {
-    "s0_lines_60_10": CandidateStrategy(
-        "s0_lines_60_10", "lines", 60, 10, "raw"
-    ),
-    "s1_lines_100_20": CandidateStrategy(
-        "s1_lines_100_20", "lines", 100, 20, "raw"
-    ),
+    "s0_lines_60_10": CandidateStrategy("s0_lines_60_10", "lines", 60, 10, "raw"),
+    "s1_lines_100_20": CandidateStrategy("s1_lines_100_20", "lines", 100, 20, "raw"),
     "s2_ast_v1": CandidateStrategy("s2_ast_v1", "ast", None, None, "raw"),
     "s3_ast_v1_embed_text": CandidateStrategy(
         "s3_ast_v1_embed_text",
@@ -119,11 +115,7 @@ def resolve_evaluation_repository(
     """Return the one allowlisted evaluation repository for a strategy."""
 
     selected = get_strategy(strategy)
-    repository = (
-        selected.evaluation_repository
-        if repository_name is None
-        else repository_name
-    )
+    repository = selected.evaluation_repository if repository_name is None else repository_name
     if not isinstance(repository, str) or repository not in EVALUATION_REPOSITORIES:
         choices = ", ".join(sorted(EVALUATION_REPOSITORIES))
         raise ValueError(

@@ -40,11 +40,7 @@ def legacy_category(question: dict[str, Any]) -> str:
 
     if question["answerable"]:
         return "direct" if question["type"] == "direct" else "paraphrased"
-    return (
-        "unanswerable_far"
-        if question["kind"] == "far"
-        else "unanswerable_near"
-    )
+    return "unanswerable_far" if question["kind"] == "far" else "unanswerable_near"
 
 
 def derive_relevant_labels(
@@ -254,14 +250,11 @@ def validate_question_set(
 
             if source == "mined":
                 source_ref = question.get("source_ref")
-                if (
-                    not isinstance(source_ref, dict)
-                    or any(
-                        not isinstance(source_ref.get(field), int)
-                        or isinstance(source_ref.get(field), bool)
-                        or source_ref[field] < 1
-                        for field in ("issue", "pr")
-                    )
+                if not isinstance(source_ref, dict) or any(
+                    not isinstance(source_ref.get(field), int)
+                    or isinstance(source_ref.get(field), bool)
+                    or source_ref[field] < 1
+                    for field in ("issue", "pr")
                 ):
                     errors.append(f"{question_id}: mined question needs issue and pr source_ref")
             elif "source_ref" in question:
@@ -324,9 +317,7 @@ def validate_question_set(
                                 f"{question_id}: missing or unsafe span file {relative_path}"
                             )
                         else:
-                            errors.append(
-                                f"{question_id}: span exceeds {relative_path} line count"
-                            )
+                            errors.append(f"{question_id}: span exceeds {relative_path} line count")
                     else:
                         secret = find_secret(span_text)
                         if secret:
@@ -355,8 +346,10 @@ def validate_question_set(
                 errors.append(f"{question_id}: absence_check must be an object")
             else:
                 terms = absence_check.get("terms")
-                if not isinstance(terms, list) or not terms or any(
-                    not isinstance(term, str) or not term.strip() for term in terms
+                if (
+                    not isinstance(terms, list)
+                    or not terms
+                    or any(not isinstance(term, str) or not term.strip() for term in terms)
                 ):
                     errors.append(f"{question_id}: absence_check terms must be non-empty")
                 hits = absence_check.get("hits")
@@ -384,14 +377,11 @@ def validate_question_set(
     for question_type, count in type_counts.items():
         if count > max_type_count:
             errors.append(
-                f"answerable type {question_type!r} exceeds 40% "
-                f"({count} > {max_type_count})"
+                f"answerable type {question_type!r} exceeds 40% ({count} > {max_type_count})"
             )
     minimum_source = int(target["minimum_source"])
     if source_counts["mined"] < minimum_source:
-        errors.append(
-            f"at least {minimum_source} mined answerable questions are required"
-        )
+        errors.append(f"at least {minimum_source} mined answerable questions are required")
     if source_counts["drafted"] + source_counts["human"] < minimum_source:
         errors.append(
             f"at least {minimum_source} drafted-or-human answerable questions are required"

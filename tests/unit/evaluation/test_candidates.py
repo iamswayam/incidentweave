@@ -98,9 +98,10 @@ def test_copyright_holder_skips_generic_legal_definitions() -> None:
         "Copyright (c) 2017 Example Foundation."
     )
     assert copyright_holder_line(text) == "Copyright (c) 2017 Example Foundation."
-    assert copyright_holder_line(
-        "Copyright notice that is included in or attached to the work."
-    ) is None
+    assert (
+        copyright_holder_line("Copyright notice that is included in or attached to the work.")
+        is None
+    )
 
 
 @pytest.mark.parametrize(
@@ -178,9 +179,7 @@ def test_python_tree_reads_only_pinned_archive_members(
         tmp_path / "snapshot",
     )
 
-    assert requests == [
-        f"https://codeload.github.com/owner/project/zip/{'a' * 40}"
-    ]
+    assert requests == [f"https://codeload.github.com/owner/project/zip/{'a' * 40}"]
     assert result == [("blob", "pkg/module.py")]
     assert (tmp_path / "snapshot" / "pkg" / "module.py").read_text() == "value = 1\n"
 
@@ -216,16 +215,12 @@ def test_github_issue_count_filters_merged_date_and_source_files(
         calls.append(command)
         if command[1:3] == ["auth", "status"]:
             return subprocess.CompletedProcess(command, 0, "", "")
-        return subprocess.CompletedProcess(
-            command, 0, json.dumps(pull_requests), ""
-        )
+        return subprocess.CompletedProcess(command, 0, json.dumps(pull_requests), "")
 
     monkeypatch.setattr(candidates.shutil, "which", lambda _name: "gh")
     monkeypatch.setattr(candidates.subprocess, "run", fake_run)
 
-    assert candidates._gh_qualifying_issue_numbers(
-        "owner/repo", date(2026, 11, 1)
-    ) == {12, 15}
+    assert candidates._gh_qualifying_issue_numbers("owner/repo", date(2026, 11, 1)) == {12, 15}
     pr_command = calls[1]
     assert pr_command[pr_command.index("--limit") + 1] == "1000"
     assert "closingIssuesReferences,files,mergedAt" in pr_command
@@ -434,9 +429,7 @@ def test_issue_mining_uses_synthetic_gh_json_and_pinned_ast_spans(
     assert issue_calls == [12, 34]
     assert [item["issue_number"] for item in result] == [12, 34]
     assert len(result[0]["issue_body"]) == 2000
-    assert result[0]["files"][0]["proposed_spans"] == [
-        {"start": 1, "end": 2, "symbol": "chosen"}
-    ]
+    assert result[0]["files"][0]["proposed_spans"] == [{"start": 1, "end": 2, "symbol": "chosen"}]
 
 
 def test_issue_json_query_retries_once(
@@ -453,7 +446,5 @@ def test_issue_json_query_retries_once(
 
     monkeypatch.setattr(candidates.subprocess, "run", fake_run)
 
-    assert candidates._gh_json(["gh", "issue"], "issue query") == {
-        "title": "Synthetic"
-    }
+    assert candidates._gh_json(["gh", "issue"], "issue query") == {"title": "Synthetic"}
     assert calls == 2

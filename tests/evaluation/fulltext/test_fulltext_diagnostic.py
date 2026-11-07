@@ -41,7 +41,5 @@ def test_classify_query_terms_reports_stops_stems_and_missing_terms() -> None:
 
 
 def test_build_or_query_quotes_sanitized_terms() -> None:
-    assert build_or_query(["OR", "claim_pending_items"]) == (
-        '"OR" OR "claim_pending_items"'
-    )
+    assert build_or_query(["OR", "claim_pending_items"]) == ('"OR" OR "claim_pending_items"')
     assert build_or_query([]) == ""

@@ -68,9 +68,7 @@ def _format_pooled_table(pooled: dict[str, Any]) -> str:
         for cutoff in (1, 3, 5):
             metric = summary[f"hit_at_{cutoff}"]
             low, high = metric["wilson_95"]
-            hits.append(
-                f"{metric['successes']}/{summary['count']} [{low:.2f}, {high:.2f}]"
-            )
+            hits.append(f"{metric['successes']}/{summary['count']} [{low:.2f}, {high:.2f}]")
         lines.append(
             f"{label_type:<20} {summary['count']:>5} {hits[0]:<27} "
             f"{hits[1]:<27} {hits[2]:<27} {summary['mrr']:>8.3f}"
@@ -121,9 +119,7 @@ async def _run(args: argparse.Namespace) -> int:
             baseline_report = None
             if args.split in {"development", "held_out"}:
                 baseline_report = json.loads(
-                    _resource_path(asset_root, entry, "full_baseline").read_text(
-                        encoding="utf-8"
-                    )
+                    _resource_path(asset_root, entry, "full_baseline").read_text(encoding="utf-8")
                 )
             gate_result = evaluate_split_gate(
                 report,

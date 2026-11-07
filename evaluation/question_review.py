@@ -117,12 +117,9 @@ def render_pack(
         if source == "mined":
             if not isinstance(mined, dict):
                 raise ValueError(f"{item.get('candidate_id')}: mined record is missing")
-            source_label = (
-                f"mined (issue #{mined['issue_number']}, PR #{mined['pr_number']})"
-            )
+            source_label = f"mined (issue #{mined['issue_number']}, PR #{mined['pr_number']})"
         lines.append(
-            f"## {block_id} | {'answerable' if answerable else 'unanswerable'} | "
-            f"{source_label}"
+            f"## {block_id} | {'answerable' if answerable else 'unanswerable'} | {source_label}"
         )
         if isinstance(mined, dict):
             lines.extend(
@@ -220,9 +217,7 @@ def parse_pack(text: str, *, require_decisions: bool = False) -> list[dict[str, 
     for block_index, (start_line, match) in enumerate(headings):
         assert match is not None
         end_line = (
-            headings[block_index + 1][0] - 1
-            if block_index + 1 < len(headings)
-            else len(lines)
+            headings[block_index + 1][0] - 1 if block_index + 1 < len(headings) else len(lines)
         )
         block_id, status, source, issue, pr = match.groups()
         if block_id in seen_ids:
@@ -244,8 +239,7 @@ def parse_pack(text: str, *, require_decisions: bool = False) -> list[dict[str, 
                 span_match = GOLD_LINE.fullmatch(line)
                 if span_match is None:
                     errors.append(
-                        f"line {line_number}: malformed gold span; "
-                        "expected '- path : start-end'"
+                        f"line {line_number}: malformed gold span; expected '- path : start-end'"
                     )
                     continue
                 path, span_start, span_end = span_match.groups()
@@ -270,9 +264,7 @@ def parse_pack(text: str, *, require_decisions: bool = False) -> list[dict[str, 
             current_field = name
         for field, (_, field_line) in fields.items():
             if field not in expected[status]:
-                errors.append(
-                    f"line {field_line}: {field} field is invalid for {status} questions"
-                )
+                errors.append(f"line {field_line}: {field} field is invalid for {status} questions")
         for field in expected[status]:
             if field not in fields:
                 errors.append(f"line {start_line}: missing {field} field in {block_id}")
@@ -368,9 +360,7 @@ def create_review_pack(
         for item in mined_data
         if isinstance(item, dict) and isinstance(item.get("candidate_id"), str)
     }
-    repository_parts = PurePosixPath(
-        candidate["url"].removeprefix("https://github.com/")
-    ).parts
+    repository_parts = PurePosixPath(candidate["url"].removeprefix("https://github.com/")).parts
     if len(repository_parts) != 2:
         raise ValueError("candidate URL must identify owner/repository")
     drafts_by_id: dict[str, dict[str, Any]] = {}
@@ -436,9 +426,7 @@ def _pre_review_leakage(drafts: list[dict[str, Any]]) -> int:
             for span in draft.get("gold", []):
                 path = str(span.get("path") or "")
                 basename = PurePosixPath(path).name
-                if path and (
-                    path.casefold() in lowered or basename.casefold() in lowered
-                ):
+                if path and (path.casefold() in lowered or basename.casefold() in lowered):
                     violations += 1
                     break
     return violations
@@ -631,10 +619,7 @@ def _largest_remainder_allocation(
     if sample_size < 0 or sample_size > population:
         raise ValueError("sample size must be within the population")
     exact = {key: sample_size * len(items) / population for key, items in strata.items()}
-    allocation = {
-        key: min(len(strata[key]), math.floor(count))
-        for key, count in exact.items()
-    }
+    allocation = {key: min(len(strata[key]), math.floor(count)) for key, count in exact.items()}
     remaining = sample_size - sum(allocation.values())
     order = sorted(
         strata,
@@ -677,11 +662,7 @@ def stratified_sample(
         strata[(row["repo_id"], answerable)].append(row)
     allocation = _largest_remainder_allocation(strata, size)
     rng = random.Random(seed)
-    selected = [
-        row
-        for key in sorted(strata)
-        for row in rng.sample(strata[key], allocation[key])
-    ]
+    selected = [row for key in sorted(strata) for row in rng.sample(strata[key], allocation[key])]
     rng.shuffle(selected)
     return selected
 
@@ -738,10 +719,7 @@ def create_second_pass(
                 "question_id": row["question"]["id"],
                 "answerable": row["question"]["answerable"],
                 "gold_files": sorted(
-                    {
-                        span["file_path"]
-                        for span in row["question"].get("relevant_spans", [])
-                    }
+                    {span["file_path"] for span in row["question"].get("relevant_spans", [])}
                 ),
             }
             for row in sampled
@@ -851,9 +829,7 @@ def calculate_agreement(
     if len(sample_metadata) != len(second_pass):
         raise ValueError("second-pass answers do not match sampled item count")
     answer_matches = gold_matches = exact_matches = answerable_total = 0
-    for index, (original, reviewed) in enumerate(
-        zip(sample_metadata, second_pass), start=1
-    ):
+    for index, (original, reviewed) in enumerate(zip(sample_metadata, second_pass), start=1):
         if reviewed["item"] != index:
             raise ValueError("second-pass item numbering does not match metadata")
         answerable = bool(original["answerable"])
@@ -893,9 +869,7 @@ def run_agreement(
     current_date = today or date.today()
     second_pass_dir = question_cache_root / "second-pass"
     metadata = json.loads((second_pass_dir / "metadata.json").read_text(encoding="utf-8"))
-    answers = parse_second_pass(
-        (second_pass_dir / "second-pass.md").read_text(encoding="utf-8")
-    )
+    answers = parse_second_pass((second_pass_dir / "second-pass.md").read_text(encoding="utf-8"))
     sample = metadata.get("sample")
     if not isinstance(sample, list) or len(sample) != len(answers):
         raise ValueError("second-pass metadata is missing or does not match review items")
@@ -907,9 +881,7 @@ def run_agreement(
         question_set = json.loads(question_path.read_text(encoding="utf-8"))
         reviewed_on = date.fromisoformat(question_set["reviewed_on"])
         if (current_date - reviewed_on).days < 7:
-            raise ValueError(
-                f"{repo_id}: second pass requires at least 7 days after {reviewed_on}"
-            )
+            raise ValueError(f"{repo_id}: second pass requires at least 7 days after {reviewed_on}")
         report_path = question_cache_root / repo_id / "ingest-report.json"
         report = json.loads(report_path.read_text(encoding="utf-8"))
         first_pass_minutes.extend(report.get("minutes_by_item", {}).values())

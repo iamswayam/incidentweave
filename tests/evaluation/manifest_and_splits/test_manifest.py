@@ -175,13 +175,9 @@ def test_manifest_validates_synthetic_assets_and_hashes(tmp_path: Path) -> None:
     assert manifest["repositories"][0]["id"] == "synthetic"
     assert manifest["repositories"][0]["splits"] == assign_splits(
         json.loads(
-            (
-                tmp_path
-                / "evaluation"
-                / "repos"
-                / "incidentweave"
-                / "questions.json"
-            ).read_text(encoding="utf-8")
+            (tmp_path / "evaluation" / "repos" / "incidentweave" / "questions.json").read_text(
+                encoding="utf-8"
+            )
         )["questions"],
         manifest["split_seed"],
         development_answerable=2,

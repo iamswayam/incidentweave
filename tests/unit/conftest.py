@@ -31,12 +31,8 @@ def isolate_provider_configuration() -> None:
     """Apply provider defaults once, before tests construct adapters."""
     for name, value in _PROVIDER_DEFAULTS.items():
         setattr(settings, name, value)
-    gemini.DEFAULT_ADAPTER = gemini.GeminiProviderAdapter(
-        usage_logger=NullUsageLogger()
-    )
-    groq.DEFAULT_ADAPTER = groq.GroqProviderAdapter(
-        usage_logger=NullUsageLogger()
-    )
+    gemini.DEFAULT_ADAPTER = gemini.GeminiProviderAdapter(usage_logger=NullUsageLogger())
+    groq.DEFAULT_ADAPTER = groq.GroqProviderAdapter(usage_logger=NullUsageLogger())
 
 
 @pytest.fixture(autouse=True)

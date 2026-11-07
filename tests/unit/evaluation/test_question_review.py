@@ -35,11 +35,7 @@ def _drafts() -> list[dict[str, Any]]:
     for index in range(20):
         source = "mined" if index < 6 else "human"
         item: dict[str, Any] = {
-            "candidate_id": (
-                f"M-{index + 1:03d}"
-                if source == "mined"
-                else f"D-{index + 1:03d}"
-            ),
+            "candidate_id": (f"M-{index + 1:03d}" if source == "mined" else f"D-{index + 1:03d}"),
             "source": source,
             "question": f"What does operation {index} return?",
             "type": answer_types[index % len(answer_types)],
@@ -142,9 +138,7 @@ def test_pack_render_and_parse_round_trip_includes_both_question_kinds() -> None
     assert skipped == 0
     assert metadata["items"]["Q-001"]["candidate_id"] == "M-001"
     assert len(blocks) == 2
-    assert blocks[0]["gold"] == [
-        {"path": "src/module.py", "start": 3, "end": 5}
-    ]
+    assert blocks[0]["gold"] == [{"path": "src/module.py", "start": 3, "end": 5}]
     assert blocks[0]["issue_number"] == 12
     assert blocks[1]["kind"] == "far"
     assert blocks[1]["absence_terms"] == ["invented feature"]
@@ -299,14 +293,9 @@ def test_second_pass_sample_is_repeatable_stratified_and_sized(tmp_path: Path) -
 
     sampled = stratified_sample(repository_questions)
     repeated = stratified_sample(repository_questions)
-    sample_cells = {
-        (row["repo_id"], row["question"]["answerable"])
-        for row in sampled
-    }
+    sample_cells = {(row["repo_id"], row["question"]["answerable"]) for row in sampled}
 
-    assert [row["question"]["id"] for row in sampled] == [
-        row["question"]["id"] for row in repeated
-    ]
+    assert [row["question"]["id"] for row in sampled] == [row["question"]["id"] for row in repeated]
     assert len(sampled) == 16
     assert sample_cells == {
         ("alpha", True),

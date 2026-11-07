@@ -23,9 +23,7 @@ GENERATION_DEADLINE_SECONDS = 90
 MAX_GENERATION_ATTEMPTS = 3
 _logger = logging.getLogger(__name__)
 _GROQ_FALLBACK_ERROR_CLASSES = {"rate_limited", "server_error", "timeout"}
-GENERATION_UNAVAILABLE_ERROR_CLASSES = frozenset(
-    {"rate_limited", "server_error", "timeout"}
-)
+GENERATION_UNAVAILABLE_ERROR_CLASSES = frozenset({"rate_limited", "server_error", "timeout"})
 RESPONSE_SCHEMA: dict[str, object] = {
     "type": "OBJECT",
     "properties": {
@@ -103,13 +101,8 @@ def generation_failure_trace(
         provider = "groq" if index > 0 else "gemini"
         attempt_count = (
             0
-            if provider_error.error_class == "rate_limited"
-            and provider_error.status_code is None
-            else (
-                MAX_GENERATION_ATTEMPTS
-                if provider_error.retryable
-                else 1
-            )
+            if provider_error.error_class == "rate_limited" and provider_error.status_code is None
+            else (MAX_GENERATION_ATTEMPTS if provider_error.retryable else 1)
         )
         attempts.append(
             {
@@ -157,9 +150,7 @@ async def generate_investigation(
     fallback_error: ProviderError | None = None
     fallback_reason: str | None = None
     fallback_configured = bool(
-        settings.groq_fallback_enabled
-        and settings.groq_api_key
-        and settings.groq_model
+        settings.groq_fallback_enabled and settings.groq_api_key and settings.groq_model
     )
     try:
         async with make_client() as client:
@@ -177,10 +168,7 @@ async def generate_investigation(
         retryable_reason = gemini_error.error_class
         if gemini_error.status_code == 429:
             retryable_reason = "rate_limited"
-        if (
-            not fallback_configured
-            or retryable_reason not in _GROQ_FALLBACK_ERROR_CLASSES
-        ):
+        if not fallback_configured or retryable_reason not in _GROQ_FALLBACK_ERROR_CLASSES:
             raise
         fallback_error = gemini_error
         fallback_reason = retryable_reason

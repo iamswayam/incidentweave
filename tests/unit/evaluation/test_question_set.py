@@ -79,10 +79,13 @@ def _valid_set(root: Path, targets: str = "full") -> dict[str, Any]:
     for index in range(answerable_count):
         source = "mined" if index < answerable_count // 2 else "drafted"
         question_type = (
-            ("direct", "paraphrase", "multi-file", "config-env", "error-message", "how-it-works")[
-                index % 6
-            ]
-        )
+            "direct",
+            "paraphrase",
+            "multi-file",
+            "config-env",
+            "error-message",
+            "how-it-works",
+        )[index % 6]
         question = _record(index, source=source, question_type=question_type)
         path = root / question["relevant_spans"][0]["file_path"]
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -90,9 +93,7 @@ def _valid_set(root: Path, targets: str = "full") -> dict[str, Any]:
         questions.append(question)
     for offset, kind in enumerate(unanswerable_kinds, answerable_count):
         source = "human"
-        questions.append(
-            _record(offset, source=source, answerable=False, kind=kind)
-        )
+        questions.append(_record(offset, source=source, answerable=False, kind=kind))
     return build_question_set(
         "candidate",
         PINNED_SHA,
@@ -143,9 +144,7 @@ def test_legacy_relevance_labels_are_derived_from_reviewed_span(tmp_path: Path) 
         ("reviewed_on", "not-a-date", "reviewed_on must be"),
     ],
 )
-def test_header_validation(
-    tmp_path: Path, field: str, value: object, message: str
-) -> None:
+def test_header_validation(tmp_path: Path, field: str, value: object, message: str) -> None:
     data = _valid_set(tmp_path)
     data[field] = value
     assert any(message in error for error in _errors(data))
@@ -197,9 +196,7 @@ def test_rejects_more_than_three_questions_per_gold_file(tmp_path: Path) -> None
     shared = "src/shared.py"
     for question in data["questions"][:4]:
         question["relevant"] = [{"file_path": shared, "substring": "return value"}]
-        question["relevant_spans"] = [
-            {"file_path": shared, "line_start": 1, "line_end": 2}
-        ]
+        question["relevant_spans"] = [{"file_path": shared, "line_start": 1, "line_end": 2}]
     assert any("more than 3 questions use gold file" in error for error in _errors(data))
 
 

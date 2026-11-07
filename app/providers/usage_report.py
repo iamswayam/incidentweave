@@ -16,9 +16,7 @@ Summary = dict[str, list[Group]]
 def summarize(rows: Sequence[dict[str, Any]]) -> Summary:
     """Aggregate provider usage rows by provider, model, operation and outcome."""
 
-    grouped: dict[tuple[str, str, str, str, str | None], list[dict[str, Any]]] = (
-        defaultdict(list)
-    )
+    grouped: dict[tuple[str, str, str, str, str | None], list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         key = (
             str(row["provider"]),
@@ -36,15 +34,9 @@ def summarize(rows: Sequence[dict[str, Any]]) -> Summary:
     ):
         grouped_rows = grouped[key]
         latencies = sorted(
-            row["latency_ms"]
-            for row in grouped_rows
-            if row["latency_ms"] is not None
+            row["latency_ms"] for row in grouped_rows if row["latency_ms"] is not None
         )
-        p95_latency = (
-            latencies[math.ceil(0.95 * len(latencies)) - 1]
-            if latencies
-            else None
-        )
+        p95_latency = latencies[math.ceil(0.95 * len(latencies)) - 1] if latencies else None
         groups.append(
             {
                 "provider": key[0],
@@ -53,19 +45,11 @@ def summarize(rows: Sequence[dict[str, Any]]) -> Summary:
                 "status": key[3],
                 "error_class": key[4],
                 "count": len(grouped_rows),
-                "total_attempts": sum(
-                    row["attempt_count"] for row in grouped_rows
-                ),
-                "average_latency_ms": (
-                    sum(latencies) / len(latencies) if latencies else None
-                ),
+                "total_attempts": sum(row["attempt_count"] for row in grouped_rows),
+                "average_latency_ms": (sum(latencies) / len(latencies) if latencies else None),
                 "p95_latency_ms": p95_latency,
-                "input_tokens": sum(
-                    row["input_tokens"] or 0 for row in grouped_rows
-                ),
-                "output_tokens": sum(
-                    row["output_tokens"] or 0 for row in grouped_rows
-                ),
+                "input_tokens": sum(row["input_tokens"] or 0 for row in grouped_rows),
+                "output_tokens": sum(row["output_tokens"] or 0 for row in grouped_rows),
             }
         )
     return {"groups": groups}

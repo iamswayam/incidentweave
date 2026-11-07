@@ -16,9 +16,7 @@ from evaluation.studies.chunking.chunking_experiment import paired_statistics
 
 ROOT = Path(__file__).resolve().parents[3]
 EXPERIMENT_ROOT = ROOT / "evaluation" / "experiments" / "fulltext"
-PROTOCOL_REFERENCE = (
-    "docs/architecture-review/08-retrieval-ablation-protocol.md"
-)
+PROTOCOL_REFERENCE = "docs/architecture-review/08-retrieval-ablation-protocol.md"
 ANSWERABLE_CATEGORIES = {"direct", "paraphrased"}
 TESTS_PREFIX = "tests/"
 BOOTSTRAP_PROTOCOL = {
@@ -82,39 +80,24 @@ def summarize_variant(
 ) -> dict[str, Any]:
     """Summarize span quality, text-branch coverage, test share, and raw cost."""
 
-    answerable = [
-        row
-        for row in questions
-        if row["category"] in ANSWERABLE_CATEGORIES
-    ]
+    answerable = [row for row in questions if row["category"] in ANSWERABLE_CATEGORIES]
     count = len(answerable)
     if not count:
         raise ValueError("Cannot summarize an empty answerable question set")
 
     hit_counts = {
-        str(k): sum(
-            row["span_rank"] is not None and row["span_rank"] <= k
-            for row in answerable
-        )
+        str(k): sum(row["span_rank"] is not None and row["span_rank"] <= k for row in answerable)
         for k in (1, 3, 5)
     }
-    reciprocal_ranks = [
-        reciprocal_rank(row["span_rank"]) for row in answerable
-    ]
+    reciprocal_ranks = [reciprocal_rank(row["span_rank"]) for row in answerable]
     costs = [
         int(row["raw_source_characters"])
         if "raw_source_characters" in row
         else unique_source_characters(row.get("retrieved", []), source_lines)
         for row in answerable
     ]
-    retrieved = [
-        result
-        for row in answerable
-        for result in row.get("retrieved", [])[:5]
-    ]
-    test_count = sum(
-        str(result["file_path"]).startswith(TESTS_PREFIX) for result in retrieved
-    )
+    retrieved = [result for row in answerable for result in row.get("retrieved", [])[:5]]
+    test_count = sum(str(result["file_path"]).startswith(TESTS_PREFIX) for result in retrieved)
     text_nonempty = sum(bool(row.get("text_branch_nonempty")) for row in answerable)
     return {
         "question_count": count,
@@ -186,8 +169,7 @@ def decide_variant(
             for repo in repo_ids
         ),
         "pooled_span_mrr_delta_at_least_0_02": (
-            candidate["pooled"]["summary"]["span_mrr"]
-            - control["pooled"]["summary"]["span_mrr"]
+            candidate["pooled"]["summary"]["span_mrr"] - control["pooled"]["summary"]["span_mrr"]
             >= DECISION_THRESHOLDS["minimum_pooled_span_mrr_delta"]
         ),
         "nonempty_text_branch_share_larger": (
@@ -199,9 +181,7 @@ def decide_variant(
         "qualifies": all(conditions.values()),
         "conditions": conditions,
         "decision": (
-            "advance to item 14c-3"
-            if all(conditions.values())
-            else "retain current behavior"
+            "advance to item 14c-3" if all(conditions.values()) else "retain current behavior"
         ),
         "thresholds": DECISION_THRESHOLDS,
         "rule_source": PROTOCOL_REFERENCE,
@@ -309,21 +289,11 @@ async def run_c3_equivalence(
         for question in questions:
             parameters = {"query_text": str(question["question"])}
             query_time_ids = list(
-                (
-                    await session.execute(query_time_sql, parameters)
-                ).scalars().all()
+                (await session.execute(query_time_sql, parameters)).scalars().all()
             )
-            generated_ids = list(
-                (
-                    await session.execute(generated_sql, parameters)
-                ).scalars().all()
-            )
-            query_explain = (
-                await session.execute(explain_query_time, parameters)
-            ).scalar_one()
-            generated_explain = (
-                await session.execute(explain_generated, parameters)
-            ).scalar_one()
+            generated_ids = list((await session.execute(generated_sql, parameters)).scalars().all())
+            query_explain = (await session.execute(explain_query_time, parameters)).scalar_one()
+            generated_explain = (await session.execute(explain_generated, parameters)).scalar_one()
             question_results.append(
                 {
                     "question_id": str(question["id"]),
@@ -337,23 +307,15 @@ async def run_c3_equivalence(
             )
         if any(not result["equivalent"] for result in question_results):
             raise RuntimeError("c3 generated-vector results differ from query-time FTS")
-        query_times = [
-            row["query_time_execution_ms"] for row in question_results
-        ]
-        generated_times = [
-            row["generated_vector_execution_ms"] for row in question_results
-        ]
+        query_times = [row["query_time_execution_ms"] for row in question_results]
+        generated_times = [row["generated_vector_execution_ms"] for row in question_results]
         return {
             "chunk_count": len(chunks),
             "question_count": len(question_results),
             "all_questions_equivalent": True,
             "query_time_execution_ms_median": statistics.median(query_times),
-            "query_time_execution_ms_p95_nearest_rank": _nearest_rank_float(
-                query_times, 0.95
-            ),
-            "generated_vector_execution_ms_median": statistics.median(
-                generated_times
-            ),
+            "query_time_execution_ms_p95_nearest_rank": _nearest_rank_float(query_times, 0.95),
+            "generated_vector_execution_ms_median": statistics.median(generated_times),
             "generated_vector_execution_ms_p95_nearest_rank": _nearest_rank_float(
                 generated_times, 0.95
             ),

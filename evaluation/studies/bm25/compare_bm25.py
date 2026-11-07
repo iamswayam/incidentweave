@@ -107,9 +107,7 @@ def _fuse(
     lexical_results: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     vector = {int(row["id"]): (rank, row) for rank, row in enumerate(vector_results, 1)}
-    lexical = {
-        int(row["id"]): (rank, row) for rank, row in enumerate(lexical_results, 1)
-    }
+    lexical = {int(row["id"]): (rank, row) for rank, row in enumerate(lexical_results, 1)}
     fused = []
     for chunk_id in vector.keys() | lexical.keys():
         vector_pair = vector.get(chunk_id)
@@ -121,9 +119,7 @@ def _fuse(
             {
                 **row,
                 "id": chunk_id,
-                "vector_score": (
-                    vector_pair[1].get("vector_score") if vector_pair else None
-                ),
+                "vector_score": (vector_pair[1].get("vector_score") if vector_pair else None),
                 "fts_score": lexical_pair[1].get("score") if lexical_pair else None,
                 "vector_rank": vector_rank,
                 "fulltext_rank": lexical_rank,
@@ -137,11 +133,7 @@ def _fuse(
         key=lambda row: (
             -float(row["rrf_score"]),
             int(row["vector_rank"]) if row["vector_rank"] is not None else float("inf"),
-            (
-                int(row["fulltext_rank"])
-                if row["fulltext_rank"] is not None
-                else float("inf")
-            ),
+            (int(row["fulltext_rank"]) if row["fulltext_rank"] is not None else float("inf")),
             str(row["file_path"]),
             int(row["line_start"]),
             int(row["line_end"]),
@@ -159,9 +151,7 @@ def _baseline_rows(
         question_id = str(question["id"])
         results = rankings[question_id][:TOP_K]
         label_rank = first_relevant_rank(results, question.get("relevant", []))
-        span_rank = first_relevant_span_rank(
-            results, question.get("relevant_spans", [])
-        )
+        span_rank = first_relevant_span_rank(results, question.get("relevant_spans", []))
         rows.append(
             {
                 "id": question_id,
@@ -169,13 +159,9 @@ def _baseline_rows(
                 "label_rank": label_rank,
                 "span_rank": span_rank,
                 "label_hits": {
-                    str(k): label_rank is not None and label_rank <= k
-                    for k in (1, 3, 5)
+                    str(k): label_rank is not None and label_rank <= k for k in (1, 3, 5)
                 },
-                "span_hits": {
-                    str(k): span_rank is not None and span_rank <= k
-                    for k in (1, 3, 5)
-                },
+                "span_hits": {str(k): span_rank is not None and span_rank <= k for k in (1, 3, 5)},
             }
         )
     return rows
@@ -205,19 +191,21 @@ async def _c1_rankings(
             built = await build_protocol_query(session, str(question["question"]))
             started = time.perf_counter()
             rows = (
-                await session.execute(
-                    LEXICAL_SQL,
-                    {
-                        "fixture_chunks": fixture_chunks,
-                        "query_text": built.query_text,
-                        "limit": TOP_K,
-                    },
+                (
+                    await session.execute(
+                        LEXICAL_SQL,
+                        {
+                            "fixture_chunks": fixture_chunks,
+                            "query_text": built.query_text,
+                            "limit": TOP_K,
+                        },
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
             query_times.append((time.perf_counter() - started) * 1000)
-            rankings[str(question["id"])] = [
-                dict(row) for row in rows
-            ]
+            rankings[str(question["id"])] = [dict(row) for row in rows]
     return rankings, query_times
 
 
@@ -225,11 +213,7 @@ def _lexical_summary(
     questions: list[dict[str, Any]],
     rankings: dict[str, list[dict[str, Any]]],
 ) -> dict[str, int | float]:
-    answerable = [
-        row
-        for row in questions
-        if row.get("category") in {"direct", "paraphrased"}
-    ]
+    answerable = [row for row in questions if row.get("category") in {"direct", "paraphrased"}]
     ranks = [
         first_relevant_rank(
             rankings[str(question["id"])][:TOP_K],
@@ -256,12 +240,8 @@ def _guard_comparison(
             continue
         ordinal += 1
         question_id = str(question["id"])
-        control_answer = evaluate_evidence_sufficiency(
-            control[question_id]
-        )["is_sufficient"]
-        candidate_answer = evaluate_evidence_sufficiency(
-            candidate[question_id]
-        )["is_sufficient"]
+        control_answer = evaluate_evidence_sufficiency(control[question_id])["is_sufficient"]
+        candidate_answer = evaluate_evidence_sufficiency(candidate[question_id])["is_sufficient"]
         if not isinstance(control_answer, bool) or not isinstance(candidate_answer, bool):
             raise ValueError("Evidence guard must return boolean decisions")
         if control_answer == candidate_answer:
@@ -407,9 +387,7 @@ def _render_note(results: dict[str, Any]) -> str:
         ]
     )
     descriptions = {
-        "R1_pooled_mrr_improves_by_at_least_0_030": (
-            "Pooled MRR improves by at least 0.030."
-        ),
+        "R1_pooled_mrr_improves_by_at_least_0_030": ("Pooled MRR improves by at least 0.030."),
         "R2_bootstrap_lower_bound_above_zero": (
             "Paired bootstrap 95% interval lower bound is above zero."
         ),
@@ -472,8 +450,7 @@ async def run_comparison() -> dict[str, Any]:
         ):
             raise RuntimeError("Control did not match committed development baseline 33/33")
         controls[repo_id] = {
-            question_id: control_top_five(rows)
-            for question_id, rows in full_rankings.items()
+            question_id: control_top_five(rows) for question_id, rows in full_rankings.items()
         }
         questions_by_repo[repo_id] = questions
         _assert_control_matches_baseline(
@@ -515,9 +492,7 @@ async def run_comparison() -> dict[str, Any]:
         for question in questions:
             question_id = str(question["id"])
             vector_rows = [
-                row
-                for row in control_full[question_id]
-                if row.get("vector_rank") is not None
+                row for row in control_full[question_id] if row.get("vector_rank") is not None
             ]
             vector_rows.sort(key=lambda row: int(row["vector_rank"]))
             vector_results = _attach_ids(vector_rows[:TOP_K], chunk_ids)
@@ -538,16 +513,13 @@ async def run_comparison() -> dict[str, Any]:
 
         c1_lexical, sql_query_times = await _c1_rankings(chunks, questions)
         c1_lexical = {
-            question_id: _attach_ids(rows, chunk_ids)
-            for question_id, rows in c1_lexical.items()
+            question_id: _attach_ids(rows, chunk_ids) for question_id, rows in c1_lexical.items()
         }
         c1_rankings = {}
         for question in questions:
             question_id = str(question["id"])
             vector_rows = [
-                row
-                for row in control_full[question_id]
-                if row.get("vector_rank") is not None
+                row for row in control_full[question_id] if row.get("vector_rank") is not None
             ]
             vector_rows.sort(key=lambda row: int(row["vector_rank"]))
             vector_results = _attach_ids(vector_rows[:TOP_K], chunk_ids)
@@ -590,14 +562,10 @@ async def run_comparison() -> dict[str, Any]:
             "cost": {
                 "bm25_index_build_ms": build_ms,
                 "bm25_query_mean_ms": (
-                    sum(bm25_query_times) / len(bm25_query_times)
-                    if bm25_query_times
-                    else 0.0
+                    sum(bm25_query_times) / len(bm25_query_times) if bm25_query_times else 0.0
                 ),
                 "sql_c1_query_mean_ms": (
-                    sum(sql_query_times) / len(sql_query_times)
-                    if sql_query_times
-                    else 0.0
+                    sum(sql_query_times) / len(sql_query_times) if sql_query_times else 0.0
                 ),
             },
         }
@@ -609,9 +577,7 @@ async def run_comparison() -> dict[str, Any]:
             all_control[f"{repo_id}:{question_id}"] = controls[repo_id][question_id]
             all_b1[f"{repo_id}:{question_id}"] = b1_rankings[question_id]
             all_c1[f"{repo_id}:{question_id}"] = c1_rankings[question_id]
-            pooled_control_lexical[f"{repo_id}:{question_id}"] = control_lexical[
-                question_id
-            ]
+            pooled_control_lexical[f"{repo_id}:{question_id}"] = control_lexical[question_id]
             pooled_b1_lexical[f"{repo_id}:{question_id}"] = b1_lexical[question_id]
             pooled_c1_lexical[f"{repo_id}:{question_id}"] = c1_lexical[question_id]
 
@@ -632,20 +598,15 @@ async def run_comparison() -> dict[str, Any]:
         resamples=10_000,
     )
     guards_unchanged = all(
-        not result["guard"]["changed_development_ordinals"]
-        for result in per_repository.values()
+        not result["guard"]["changed_development_ordinals"] for result in per_repository.values()
     )
     decision = decide_b1(
         {
-            repo: {
-                "hit_at_5_successes": row["methods"]["control"]["hit_at_5_successes"]
-            }
+            repo: {"hit_at_5_successes": row["methods"]["control"]["hit_at_5_successes"]}
             for repo, row in per_repository.items()
         },
         {
-            repo: {
-                "hit_at_5_successes": row["methods"]["B1"]["hit_at_5_successes"]
-            }
+            repo: {"hit_at_5_successes": row["methods"]["B1"]["hit_at_5_successes"]}
             for repo, row in per_repository.items()
         },
         float(statistics["mrr_difference"]),
@@ -669,10 +630,7 @@ async def run_comparison() -> dict[str, Any]:
         },
         "per_repository": per_repository,
         "pooled": {
-            "methods": {
-                arm: _public_summary(row)
-                for arm, row in pooled_methods_raw.items()
-            },
+            "methods": {arm: _public_summary(row) for arm, row in pooled_methods_raw.items()},
             "lexical_branch": pooled_lexical,
             "statistics": statistics,
         },

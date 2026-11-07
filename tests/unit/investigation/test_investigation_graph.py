@@ -75,15 +75,11 @@ def response_payload() -> dict[str, object]:
                             "text": json.dumps(
                                 {
                                     "outcome": "answered",
-                                    "diagnosis": (
-                                        "AsyncSessionLocal uses async_sessionmaker."
-                                    ),
+                                    "diagnosis": ("AsyncSessionLocal uses async_sessionmaker."),
                                     "self_rating": "high",
                                     "claims": [
                                         {
-                                            "text": (
-                                                "AsyncSessionLocal uses async_sessionmaker."
-                                            ),
+                                            "text": ("AsyncSessionLocal uses async_sessionmaker."),
                                             "evidence": [
                                                 {
                                                     "chunk_id": "136",

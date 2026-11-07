@@ -41,13 +41,9 @@ def _compact_table(report: dict[str, Any]) -> str:
         for k in (1, 3, 5):
             metric = summary[f"hit_at_{k}"]
             low, high = metric["wilson_95"]
-            cells.append(
-                f"{metric['successes']}/{summary['count']} "
-                f"[{low:.2f}, {high:.2f}]"
-            )
+            cells.append(f"{metric['successes']}/{summary['count']} [{low:.2f}, {high:.2f}]")
         lines.append(
-            f"{label:<20} {cells[0]:<27} {cells[1]:<27} "
-            f"{cells[2]:<27} {summary['mrr']:.3f}"
+            f"{label:<20} {cells[0]:<27} {cells[1]:<27} {cells[2]:<27} {summary['mrr']:.3f}"
         )
     return "\n".join(lines)
 

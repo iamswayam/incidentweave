@@ -47,9 +47,7 @@ def test_summarize_question_results_counts_tagged_top_five_and_test_evidence_hit
         {
             "id": "dev-b",
             "category": "paraphrased",
-            "relevant_spans": [
-                {"file_path": "app/service.py", "line_start": 3, "line_end": 5}
-            ],
+            "relevant_spans": [{"file_path": "app/service.py", "line_start": 3, "line_end": 5}],
         },
         {
             "id": "dev-c",
@@ -134,9 +132,7 @@ def test_reconcile_control_compares_answerable_ranks_and_aggregates() -> None:
     assert reconciliation == {
         "questions_compared": 2,
         "identical_rank_count": 1,
-        "differing_ranks": [
-            {"ordinal": 1, "baseline_rank": 2, "diagnostic_rank": 1}
-        ],
+        "differing_ranks": [{"ordinal": 1, "baseline_rank": 2, "diagnostic_rank": 1}],
         "baseline_label_rank_count": 1,
         "baseline_metrics": {"hit_at_5_successes": 1, "mrr": 0.25},
         "diagnostic_metrics": {"hit_at_5_successes": 1, "mrr": 0.5},

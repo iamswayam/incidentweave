@@ -19,15 +19,12 @@ def calibrate_confidence(
 
     weak_rrf = best_rrf_score is not None and best_rrf_score < MIN_CLEAR_RRF_SCORE
     borderline_distance = (
-        best_vector_score is not None
-        and best_vector_score > MAX_CLEAR_VECTOR_DISTANCE
+        best_vector_score is not None and best_vector_score > MAX_CLEAR_VECTOR_DISTANCE
     )
     if weak_rrf or borderline_distance:
         reasons: list[str] = []
         if weak_rrf:
-            reasons.append(
-                f"best RRF {best_rrf_score:.6f} is below {MIN_CLEAR_RRF_SCORE:.3f}"
-            )
+            reasons.append(f"best RRF {best_rrf_score:.6f} is below {MIN_CLEAR_RRF_SCORE:.3f}")
         if borderline_distance:
             reasons.append(
                 "best vector distance "

@@ -36,15 +36,9 @@ from evaluation.studies.fulltext.fulltext_diagnostic import (  # noqa: E402
 )
 
 DEFAULT_OUTPUT = ROOT / "docs" / "notes" / "08-fulltext-diagnostic.md"
-TEXT_SEARCH_CONFIG_SQL = text(
-    "SELECT current_setting('default_text_search_config')"
-)
-LEXEMES_SQL = text(
-    "SELECT lexemes FROM ts_debug(CAST(:config AS regconfig), :term)"
-)
-TSQUERY_SQL = text(
-    "SELECT websearch_to_tsquery(:query_text)::text AS tsquery"
-)
+TEXT_SEARCH_CONFIG_SQL = text("SELECT current_setting('default_text_search_config')")
+LEXEMES_SQL = text("SELECT lexemes FROM ts_debug(CAST(:config AS regconfig), :term)")
+TSQUERY_SQL = text("SELECT websearch_to_tsquery(:query_text)::text AS tsquery")
 MATCHING_CHUNKS_SQL = text(
     """
     SELECT c.file_path, c.line_start, c.line_end, c.content
@@ -64,18 +58,13 @@ def _answerable(question: dict[str, Any]) -> bool:
 def _corpus_terms(chunks: list[dict[str, Any]]) -> set[str]:
     terms: set[str] = set()
     for chunk in chunks:
-        terms.update(
-            term.casefold()
-            for term in extract_query_terms(str(chunk.get("content", "")))
-        )
+        terms.update(term.casefold() for term in extract_query_terms(str(chunk.get("content", ""))))
     return terms
 
 
 async def _delete_repository(name: str) -> None:
     async with AsyncSessionLocal() as session:
-        repository = await session.scalar(
-            select(Repository).where(Repository.name == name)
-        )
+        repository = await session.scalar(select(Repository).where(Repository.name == name))
         if repository is not None:
             await session.delete(repository)
             await session.commit()
@@ -99,9 +88,7 @@ async def _insert_fixture_repository(
                     line_start=chunk["line_start"],
                     line_end=chunk["line_end"],
                     content=str(chunk["content"]),
-                    content_hash=hashlib.sha256(
-                        str(chunk["content"]).encode("utf-8")
-                    ).hexdigest(),
+                    content_hash=hashlib.sha256(str(chunk["content"]).encode("utf-8")).hexdigest(),
                 )
                 for chunk in chunks
             ]
@@ -118,15 +105,17 @@ async def _query_term_lexemes(
     async with AsyncSessionLocal() as session:
         for term in terms:
             rows = (
-                await session.execute(
-                    LEXEMES_SQL,
-                    {"config": text_search_config, "term": term},
+                (
+                    await session.execute(
+                        LEXEMES_SQL,
+                        {"config": text_search_config, "term": term},
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
             lexemes_by_term[term] = [
-                str(lexeme)
-                for row in rows
-                for lexeme in (row["lexemes"] or [])
+                str(lexeme) for row in rows for lexeme in (row["lexemes"] or [])
             ]
     return lexemes_by_term
 
@@ -141,30 +130,32 @@ async def _diagnose_question(
     query = str(question["question"])
     terms = extract_query_terms(query)
     missing_lexemes = [term for term in terms if term not in lexeme_cache]
-    lexeme_cache.update(
-        await _query_term_lexemes(missing_lexemes, text_search_config)
-    )
+    lexeme_cache.update(await _query_term_lexemes(missing_lexemes, text_search_config))
     term_analysis = classify_query_terms(terms, lexeme_cache, corpus_terms)
     or_query = build_or_query(terms)
 
     async with AsyncSessionLocal() as session:
-        tsquery = str(
-            (
-                await session.execute(TSQUERY_SQL, {"query_text": query})
-            ).scalar_one()
-        )
+        tsquery = str((await session.execute(TSQUERY_SQL, {"query_text": query})).scalar_one())
         and_matches = (
-            await session.execute(
-                MATCHING_CHUNKS_SQL,
-                {"repository_id": repository_id, "query_text": query},
+            (
+                await session.execute(
+                    MATCHING_CHUNKS_SQL,
+                    {"repository_id": repository_id, "query_text": query},
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         or_matches = (
-            await session.execute(
-                MATCHING_CHUNKS_SQL,
-                {"repository_id": repository_id, "query_text": or_query},
+            (
+                await session.execute(
+                    MATCHING_CHUNKS_SQL,
+                    {"repository_id": repository_id, "query_text": or_query},
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
 
     spans = question.get("relevant_spans", [])
     return {
@@ -175,9 +166,7 @@ async def _diagnose_question(
         "and_match_count": len(and_matches),
         "or_query": or_query,
         "or_match_count": len(or_matches),
-        "or_evidence_match": any(
-            is_relevant_span(match, spans) for match in or_matches
-        ),
+        "or_evidence_match": any(is_relevant_span(match, spans) for match in or_matches),
         **term_analysis,
     }
 
@@ -187,9 +176,7 @@ async def collect_diagnostics() -> list[dict[str, Any]]:
 
     manifest = load_manifest()
     async with AsyncSessionLocal() as session:
-        text_search_config = str(
-            (await session.execute(TEXT_SEARCH_CONFIG_SQL)).scalar_one()
-        )
+        text_search_config = str((await session.execute(TEXT_SEARCH_CONFIG_SQL)).scalar_one())
     output: list[dict[str, Any]] = []
     for entry in manifest["repositories"]:
         repo_id = str(entry["id"])
@@ -199,16 +186,12 @@ async def collect_diagnostics() -> list[dict[str, Any]]:
         golden = load_golden_set(question_path)
         questions = [
             question
-            for question in questions_for_split(
-                entry, golden["questions"], "development"
-            )
+            for question in questions_for_split(entry, golden["questions"], "development")
             if _answerable(question)
         ]
         chunks = fixture["chunks"]
         corpus_terms = _corpus_terms(chunks)
-        repository_name, repository_id = await _insert_fixture_repository(
-            repo_id, chunks
-        )
+        repository_name, repository_id = await _insert_fixture_repository(repo_id, chunks)
         lexeme_cache: dict[str, list[str]] = {}
         try:
             question_rows = [
@@ -247,14 +230,10 @@ def render_diagnostic(results: list[dict[str, Any]]) -> str:
 
     total_questions = sum(repo["answerable_questions"] for repo in results)
     total_and_empty = sum(
-        row["and_match_count"] == 0
-        for repo in results
-        for row in repo["questions"]
+        row["and_match_count"] == 0 for repo in results for row in repo["questions"]
     )
     total_or_nonempty = sum(
-        row["or_match_count"] > 0
-        for repo in results
-        for row in repo["questions"]
+        row["or_match_count"] > 0 for repo in results for row in repo["questions"]
     )
     lines = [
         "# Full-text diagnostic (item 14c-1)",

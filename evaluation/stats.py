@@ -9,6 +9,7 @@ from typing import TypeVar
 
 T = TypeVar("T")
 
+
 def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """Return the Wilson score interval for a binomial proportion."""
 
@@ -20,11 +21,7 @@ def wilson_interval(successes: int, n: int, z: float = 1.96) -> tuple[float, flo
     z_squared = z * z
     denominator = 1 + z_squared / n
     center = (proportion + z_squared / (2 * n)) / denominator
-    margin = (
-        z
-        * sqrt(proportion * (1 - proportion) / n + z_squared / (4 * n * n))
-        / denominator
-    )
+    margin = z * sqrt(proportion * (1 - proportion) / n + z_squared / (4 * n * n)) / denominator
     return center - margin, center + margin
 
 
@@ -48,9 +45,7 @@ def stratified_bootstrap_interval(
     estimates = []
     for _ in range(resamples):
         sample = [
-            generator.choice(values)
-            for values in strata.values()
-            for _ in range(len(values))
+            generator.choice(values) for values in strata.values() for _ in range(len(values))
         ]
         estimates.append(float(statistic(sample)))
     estimates.sort()

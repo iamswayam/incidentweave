@@ -43,9 +43,7 @@ async def search_repository(
     """Run hybrid search against the named repository."""
 
     async with AsyncSessionLocal() as session:
-        repository = await session.scalar(
-            select(Repository).where(Repository.name == repo_name)
-        )
+        repository = await session.scalar(select(Repository).where(Repository.name == repo_name))
         if repository is None:
             raise ValueError(f"Repository not found: {repo_name}")
 

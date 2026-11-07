@@ -37,9 +37,7 @@ async def test_usage_table_has_exact_columns_after_migrations() -> None:
         columns = await connection.run_sync(
             lambda sync_connection: {
                 column["name"]
-                for column in inspect(sync_connection).get_columns(
-                    ProviderUsageLog.__tablename__
-                )
+                for column in inspect(sync_connection).get_columns(ProviderUsageLog.__tablename__)
             }
         )
 

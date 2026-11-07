@@ -67,8 +67,10 @@ def require_api_access(
     """Validate the shared secret, then enforce the per-IP request limit."""
 
     configured_secret = settings.api_protection_secret
-    if not configured_secret or not x_api_secret or not secrets.compare_digest(
-        configured_secret, x_api_secret
+    if (
+        not configured_secret
+        or not x_api_secret
+        or not secrets.compare_digest(configured_secret, x_api_secret)
     ):
         raise HTTPException(
             status_code=401,

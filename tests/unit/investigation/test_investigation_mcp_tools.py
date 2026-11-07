@@ -10,14 +10,10 @@ def test_grep_search_finds_literal_case_insensitively_and_uses_ingest_exclusions
 ) -> None:
     source_dir = tmp_path / "src"
     source_dir.mkdir()
-    (source_dir / "fixture.py").write_text(
-        "# marker: QuasarLatchOmega\n", encoding="utf-8"
-    )
+    (source_dir / "fixture.py").write_text("# marker: QuasarLatchOmega\n", encoding="utf-8")
     ignored_dir = tmp_path / ".venv"
     ignored_dir.mkdir()
-    (ignored_dir / "ignored.py").write_text(
-        "# marker: quasarLatchOmega\n", encoding="utf-8"
-    )
+    (ignored_dir / "ignored.py").write_text("# marker: quasarLatchOmega\n", encoding="utf-8")
 
     matches = grep_search(tmp_path, "quasarlatchomega", repository_id=4, limit=10)
 

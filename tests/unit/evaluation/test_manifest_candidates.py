@@ -105,13 +105,16 @@ def test_manifest_rejects_candidate_id_also_used_by_repository() -> None:
 
 
 def test_v1_manifest_without_candidate_fields_remains_valid() -> None:
-    assert validate_manifest(
-        {
-            "schema_version": 1,
-            "split_seed": 1,
-            "repositories": [],
-        }
-    ) == []
+    assert (
+        validate_manifest(
+            {
+                "schema_version": 1,
+                "split_seed": 1,
+                "repositories": [],
+            }
+        )
+        == []
+    )
 
 
 def test_repository_selection_ignores_candidates() -> None:
@@ -145,9 +148,7 @@ def _full_v2_questions() -> dict[str, Any]:
             "evidence": "operation return",
             "type": question_types[index % len(question_types)],
             "category": "direct" if index % len(question_types) == 0 else "paraphrased",
-            "relevant": [
-                {"file_path": f"src/file_{index}.py", "substring": "return value"}
-            ],
+            "relevant": [{"file_path": f"src/file_{index}.py", "substring": "return value"}],
             "relevant_spans": [
                 {
                     "file_path": f"src/file_{index}.py",
@@ -206,9 +207,10 @@ def test_candidate_questions_require_file_hash_and_valid_v2_schema(tmp_path: Pat
     assert validate_manifest(_manifest(candidate), root=tmp_path) == []
 
     candidate["questions"]["sha256"] = "0" * 64
-    assert any("questions SHA-256 mismatch" in error for error in validate_manifest(
-        _manifest(candidate), root=tmp_path
-    ))
+    assert any(
+        "questions SHA-256 mismatch" in error
+        for error in validate_manifest(_manifest(candidate), root=tmp_path)
+    )
 
 
 def test_candidate_questions_fail_v2_schema_validation(tmp_path: Path) -> None:
@@ -222,6 +224,7 @@ def test_candidate_questions_fail_v2_schema_validation(tmp_path: Path) -> None:
         "sha256": sha256_file(question_path),
     }
 
-    assert any("reviewed must be true" in error for error in validate_manifest(
-        _manifest(candidate), root=tmp_path
-    ))
+    assert any(
+        "reviewed must be true" in error
+        for error in validate_manifest(_manifest(candidate), root=tmp_path)
+    )

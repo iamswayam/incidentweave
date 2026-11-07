@@ -99,9 +99,7 @@ async def test_search_orders_ties_identically_across_chunk_id_offsets() -> None:
     finally:
         async with session_factory() as session:
             for name in repository_names:
-                repository = await session.scalar(
-                    select(Repository).where(Repository.name == name)
-                )
+                repository = await session.scalar(select(Repository).where(Repository.name == name))
                 if repository is not None:
                     await session.delete(repository)
             await session.commit()
@@ -125,9 +123,7 @@ async def test_default_fulltext_path_is_raw_and_c2_splits_chunk_text_only() -> N
                 line_start=1,
                 line_end=1,
                 content=raw_match_content,
-                content_hash=hashlib.sha256(
-                    raw_match_content.encode("utf-8")
-                ).hexdigest(),
+                content_hash=hashlib.sha256(raw_match_content.encode("utf-8")).hexdigest(),
                 embedding=[1.0] + [0.0] * 767,
             )
             split_match = Chunk(
@@ -136,9 +132,7 @@ async def test_default_fulltext_path_is_raw_and_c2_splits_chunk_text_only() -> N
                 line_start=2,
                 line_end=2,
                 content=split_match_content,
-                content_hash=hashlib.sha256(
-                    split_match_content.encode("utf-8")
-                ).hexdigest(),
+                content_hash=hashlib.sha256(split_match_content.encode("utf-8")).hexdigest(),
                 embedding=[0.0, 1.0] + [0.0] * 766,
             )
             path_only_chunk = Chunk(
@@ -147,9 +141,7 @@ async def test_default_fulltext_path_is_raw_and_c2_splits_chunk_text_only() -> N
                 line_start=3,
                 line_end=3,
                 content="plain identifier",
-                content_hash=hashlib.sha256(
-                    b"plain identifier"
-                ).hexdigest(),
+                content_hash=hashlib.sha256(b"plain identifier").hexdigest(),
                 embedding=[0.0, 1.0] + [0.0] * 766,
             )
             session.add_all([raw_match, split_match, path_only_chunk])
@@ -181,15 +173,19 @@ async def test_default_fulltext_path_is_raw_and_c2_splits_chunk_text_only() -> N
                 """
             )
             previous_rows = (
-                await session.execute(
-                    previous_default_query,
-                    {
-                        "query_text": "local",
-                        "repository_id": repository_id,
-                        "limit": 5,
-                    },
+                (
+                    await session.execute(
+                        previous_default_query,
+                        {
+                            "query_text": "local",
+                            "repository_id": repository_id,
+                            "limit": 5,
+                        },
+                    )
                 )
-            ).mappings().all()
+                .mappings()
+                .all()
+            )
             previous_output = [
                 {
                     "id": row["id"],

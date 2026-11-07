@@ -64,8 +64,7 @@ def discover_sources(
     for file_path in sorted(iter_python_files(root)):
         relative_path = file_path.relative_to(root).as_posix()
         if any(
-            relative_path == prefix or relative_path.startswith(prefix + "/")
-            for prefix in excluded
+            relative_path == prefix or relative_path.startswith(prefix + "/") for prefix in excluded
         ):
             continue
         sources[relative_path] = file_path.read_text(
@@ -151,13 +150,11 @@ def check_s0_reproduces_baseline(
         *(("not in baseline", item) for item in extra),
     ]
     lines = [
-        f"{difference}: {file_path}:{line_start}-{line_end} "
-        f"content={content[:100]!r}"
+        f"{difference}: {file_path}:{line_start}-{line_end} content={content[:100]!r}"
         for difference, (file_path, line_start, line_end, content) in differences[:5]
     ]
     raise RuntimeError(
-        "S0 does not reproduce the committed baseline; first differences:\n"
-        + "\n".join(lines)
+        "S0 does not reproduce the committed baseline; first differences:\n" + "\n".join(lines)
     )
 
 
@@ -170,10 +167,7 @@ def _fixture_values(value: Any) -> list[Mapping[str, Any]]:
             fixtures.extend(_fixture_values(nested))
         return fixtures
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
-        if all(
-            isinstance(item, Mapping) and "embedding_text" in item
-            for item in value
-        ):
+        if all(isinstance(item, Mapping) and "embedding_text" in item for item in value):
             return [{"chunks": value}]
         fixtures = []
         for nested in value:
@@ -185,9 +179,7 @@ def _fixture_values(value: Any) -> list[Mapping[str, Any]]:
 def _read_cache_vector(path: Path) -> list[float]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, list) or any(
-        isinstance(item, bool)
-        or not isinstance(item, (int, float))
-        or not math.isfinite(item)
+        isinstance(item, bool) or not isinstance(item, (int, float)) or not math.isfinite(item)
         for item in value
     ):
         raise ValueError(f"Invalid embedding cache vector: {path}")
@@ -264,15 +256,13 @@ async def embed_missing(
 
     cache_dir.mkdir(parents=True, exist_ok=True)
     batches = [
-        list(texts[offset : offset + batch_size])
-        for offset in range(0, len(texts), batch_size)
+        list(texts[offset : offset + batch_size]) for offset in range(0, len(texts), batch_size)
     ]
     for batch_index, batch in enumerate(batches):
         vectors = await embed_fn(batch)
         if len(vectors) != len(batch):
             raise ValueError(
-                f"Embedding function returned {len(vectors)} vectors "
-                f"for {len(batch)} texts"
+                f"Embedding function returned {len(vectors)} vectors for {len(batch)} texts"
             )
         for text, vector in zip(batch, vectors):
             if any(
@@ -302,8 +292,7 @@ def write_protocol(
     manifest = load_manifest(manifest_path, root=asset_root)
     repositories = manifest["repositories"]
     baseline_artifacts = {
-        entry["id"]: sha256_file(asset_root / entry["fixture"]["path"])
-        for entry in repositories
+        entry["id"]: sha256_file(asset_root / entry["fixture"]["path"]) for entry in repositories
     }
     protocol = {
         "schema_version": 1,
@@ -384,18 +373,14 @@ def build_candidate_fixture(
     ):
         digest = _text_hash(str(chunk["embedding_text"]))
         if digest not in vectors:
-            raise ValueError(
-                f"Missing embedding vector for text hash {digest}"
-            )
+            raise ValueError(f"Missing embedding vector for text hash {digest}")
         fixture_chunks.append(
             {
                 "file_path": str(chunk["file_path"]),
                 "line_start": int(chunk["line_start"]),
                 "line_end": int(chunk["line_end"]),
                 "content": str(chunk["content"]),
-                "embedding": [
-                    round(float(value), 6) for value in vectors[digest]
-                ],
+                "embedding": [round(float(value), 6) for value in vectors[digest]],
             }
         )
 
@@ -405,9 +390,7 @@ def build_candidate_fixture(
             "strategy": strategy,
             "chunker": _line_chunker_description(strategy),
             "embedding_text_version": (
-                candidate.embedding_text
-                if candidate.embedding_text != "raw"
-                else "raw"
+                candidate.embedding_text if candidate.embedding_text != "raw" else "raw"
             ),
             "pinned_sha": baseline_fixture["meta"]["pinned_sha"],
             "embedding_model": protocol["embedding"]["model"],
@@ -501,9 +484,9 @@ def _cosine_distance(first: Sequence[float], second: Sequence[float]) -> float:
     second_norm = math.sqrt(sum(float(value) ** 2 for value in second))
     if first_norm == 0 or second_norm == 0:
         raise ValueError("Cosine distance is undefined for a zero embedding")
-    similarity = sum(
-        float(left) * float(right) for left, right in zip(first, second)
-    ) / (first_norm * second_norm)
+    similarity = sum(float(left) * float(right) for left, right in zip(first, second)) / (
+        first_norm * second_norm
+    )
     return 1.0 - max(-1.0, min(1.0, similarity))
 
 
@@ -520,18 +503,12 @@ def _distance_summary(values: Sequence[float]) -> dict[str, float | None]:
 def _summarize_question_metrics(
     records: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
-    answerable = [
-        record
-        for record in records
-        if record["category"] in ANSWERABLE_CATEGORIES
-    ]
+    answerable = [record for record in records if record["category"] in ANSWERABLE_CATEGORIES]
     count = len(answerable)
     retrieval: dict[str, Any] = {
         "count": count,
         "mrr": (
-            sum(float(record["reciprocal_rank"]) for record in answerable) / count
-            if count
-            else 0.0
+            sum(float(record["reciprocal_rank"]) for record in answerable) / count if count else 0.0
         ),
     }
     for cutoff in (1, 3, 5):
@@ -543,9 +520,7 @@ def _summarize_question_metrics(
 
     by_category = {}
     for category in ("direct", "paraphrased"):
-        category_records = [
-            record for record in answerable if record["category"] == category
-        ]
+        category_records = [record for record in answerable if record["category"] == category]
         category_count = len(category_records)
         category_retrieval: dict[str, Any] = {
             "count": category_count,
@@ -557,9 +532,7 @@ def _summarize_question_metrics(
             ),
         }
         for cutoff in (1, 3, 5):
-            successes = sum(
-                bool(record[f"hit_at_{cutoff}"]) for record in category_records
-            )
+            successes = sum(bool(record[f"hit_at_{cutoff}"]) for record in category_records)
             category_retrieval[f"hit_at_{cutoff}"] = {
                 "successes": successes,
                 "rate": successes / category_count if category_count else 0.0,
@@ -570,9 +543,7 @@ def _summarize_question_metrics(
     label_lines = sum(int(record["label_line_count"]) for record in answerable)
     covered_lines = sum(int(record["covered_label_line_count"]) for record in answerable)
     retrieved_lines = sum(int(record["retrieved_line_count"]) for record in answerable)
-    top1_retrieved_lines = sum(
-        int(record["top1_retrieved_line_count"]) for record in answerable
-    )
+    top1_retrieved_lines = sum(int(record["top1_retrieved_line_count"]) for record in answerable)
     test_results = sum(int(record["test_result_count"]) for record in answerable)
     total_results = sum(int(record["result_count"]) for record in answerable)
     nearest_answerable = [
@@ -583,8 +554,7 @@ def _summarize_question_metrics(
     nearest_unanswerable = [
         float(record["nearest_distance"])
         for record in records
-        if record["category"].startswith("unanswerable")
-        and record["nearest_distance"] is not None
+        if record["category"].startswith("unanswerable") and record["nearest_distance"] is not None
     ]
     return {
         "retrieval": retrieval,
@@ -606,15 +576,11 @@ def _summarize_question_metrics(
         },
         "top1_density": {
             "covered_label_lines": sum(
-                int(record["top1_covered_label_line_count"])
-                for record in answerable
+                int(record["top1_covered_label_line_count"]) for record in answerable
             ),
             "retrieved_lines": top1_retrieved_lines,
             "rate": (
-                sum(
-                    int(record["top1_covered_label_line_count"])
-                    for record in answerable
-                )
+                sum(int(record["top1_covered_label_line_count"]) for record in answerable)
                 / top1_retrieved_lines
                 if top1_retrieved_lines
                 else 0.0
@@ -643,13 +609,9 @@ def compute_metrics(
 
     question_by_id = {str(question["id"]): question for question in questions}
     fixture_chunks = fixture["chunks"]
-    chunk_embeddings = [
-        chunk["embedding"]
-        for chunk in fixture_chunks
-    ]
+    chunk_embeddings = [chunk["embedding"] for chunk in fixture_chunks]
     line_lengths = [
-        int(chunk["line_end"]) - int(chunk["line_start"]) + 1
-        for chunk in fixture_chunks
+        int(chunk["line_end"]) - int(chunk["line_start"]) + 1 for chunk in fixture_chunks
     ]
     question_metrics: list[dict[str, Any]] = []
     for record in report["questions"]:
@@ -659,9 +621,7 @@ def compute_metrics(
         question = question_by_id[question_id]
         retrieved = record.get("retrieved")
         if not isinstance(retrieved, list):
-            raise ValueError(
-                f"Retrieval report lacks retrieved results for {question_id}"
-            )
+            raise ValueError(f"Retrieval report lacks retrieved results for {question_id}")
         retrieved_top5 = retrieved[:5]
         top1 = retrieved_top5[:1]
         label_lines = _span_lines(question.get("relevant_spans", []))
@@ -673,8 +633,7 @@ def compute_metrics(
         nearest_distance = None
         if query_vector is not None and chunk_embeddings:
             nearest_distance = min(
-                _cosine_distance(query_vector, embedding)
-                for embedding in chunk_embeddings
+                _cosine_distance(query_vector, embedding) for embedding in chunk_embeddings
             )
         covered_lines = label_lines & retrieved_line_set
         top1_covered_lines = label_lines & top1_line_set
@@ -684,9 +643,7 @@ def compute_metrics(
                 "id": question_id,
                 "category": str(question["category"]),
                 "reciprocal_rank": (
-                    1 / int(record["span_rank"])
-                    if record.get("span_rank") is not None
-                    else 0.0
+                    1 / int(record["span_rank"]) if record.get("span_rank") is not None else 0.0
                 ),
                 "hit_at_1": bool(record.get("span_hits", {}).get("1", False)),
                 "hit_at_3": bool(record.get("span_hits", {}).get("3", False)),
@@ -698,8 +655,7 @@ def compute_metrics(
                 "top1_covered_label_line_count": len(top1_covered_lines),
                 "top1_retrieved_line_count": len(top1_line_set),
                 "test_result_count": sum(
-                    _is_test_path(str(result["file_path"]))
-                    for result in retrieved_top5
+                    _is_test_path(str(result["file_path"])) for result in retrieved_top5
                 ),
                 "result_count": len(retrieved_top5),
                 "nearest_distance": nearest_distance,
@@ -730,9 +686,7 @@ def _pooled_metrics(
     repository_metrics: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, Any]:
     records = [
-        record
-        for metrics in repository_metrics.values()
-        for record in metrics["question_metrics"]
+        record for metrics in repository_metrics.values() for record in metrics["question_metrics"]
     ]
     pooled = _summarize_question_metrics(records)
     chunk_lengths = [
@@ -742,8 +696,7 @@ def _pooled_metrics(
     ]
     pooled["chunk_statistics"] = {
         "count": sum(
-            int(metrics["chunk_statistics"]["count"])
-            for metrics in repository_metrics.values()
+            int(metrics["chunk_statistics"]["count"]) for metrics in repository_metrics.values()
         ),
         "line_length": {
             "min": min(chunk_lengths) if chunk_lengths else None,
@@ -772,8 +725,7 @@ def paired_statistics(
     if len(candidate_rr) != len(s0_rr):
         raise ValueError("paired reciprocal-rank inputs must have equal lengths")
     deltas = [
-        float(candidate) - float(baseline)
-        for candidate, baseline in zip(candidate_rr, s0_rr)
+        float(candidate) - float(baseline) for candidate, baseline in zip(candidate_rr, s0_rr)
     ]
     if any(not math.isfinite(value) for value in deltas):
         raise ValueError("reciprocal ranks must be finite")
@@ -801,9 +753,7 @@ def paired_statistics(
         upper = math.ceil(position)
         if lower == upper:
             return ordered[lower]
-        return ordered[lower] + (ordered[upper] - ordered[lower]) * (
-            position - lower
-        )
+        return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
 
     confidence_interval = (
         [percentile(bootstrap_means, tail), percentile(bootstrap_means, 1 - tail)]
@@ -862,11 +812,9 @@ def select_winner(
             - float(rule["max_repo_mrr_loss"])
             for repo_id in expected_repositories
         )
-        pooled_mrr_pass = (
-            float(candidate["pooled"]["retrieval"]["mrr"])
-            - float(s0["pooled"]["retrieval"]["mrr"])
-            >= float(rule["min_pooled_delta_mrr"])
-        )
+        pooled_mrr_pass = float(candidate["pooled"]["retrieval"]["mrr"]) - float(
+            s0["pooled"]["retrieval"]["mrr"]
+        ) >= float(rule["min_pooled_delta_mrr"])
 
         def cost_pass(candidate_value: float, baseline_value: float, ratio: float) -> bool:
             if baseline_value == 0:
@@ -911,13 +859,11 @@ def select_winner(
         tied = [
             strategy
             for strategy in qualifiers
-            if best_mrr
-            - float(per_strategy_results[strategy]["pooled"]["retrieval"]["mrr"])
+            if best_mrr - float(per_strategy_results[strategy]["pooled"]["retrieval"]["mrr"])
             <= float(rule["tie_epsilon"])
         ]
         simplicity_rank = {
-            strategy: index
-            for index, strategy in enumerate(protocol["simplicity_order"])
+            strategy: index for index, strategy in enumerate(protocol["simplicity_order"])
         }
         winner = min(tied, key=lambda strategy: simplicity_rank[strategy])
         status = "candidate selected"

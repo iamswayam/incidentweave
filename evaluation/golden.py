@@ -102,9 +102,7 @@ def validate_golden_set(
             if not isinstance(spans, list):
                 errors.append(f"{question_id}: relevant_spans must be a list")
             elif not isinstance(labels, list) or len(spans) != len(labels):
-                errors.append(
-                    f"{question_id}: relevant_spans must match relevant labels"
-                )
+                errors.append(f"{question_id}: relevant_spans must match relevant labels")
             else:
                 for label, span in zip(labels, spans):
                     if not isinstance(label, dict) or not isinstance(span, dict):
@@ -123,9 +121,7 @@ def validate_golden_set(
                         or isinstance(line_end, bool)
                         or not 1 <= line_start <= line_end
                     ):
-                        errors.append(
-                            f"{question_id}: relevant span line range is invalid"
-                        )
+                        errors.append(f"{question_id}: relevant span line range is invalid")
         if not isinstance(question_text, str) or not question_text.strip():
             errors.append(f"{question_id}: missing question")
             question_text = ""
@@ -200,9 +196,7 @@ def validate_golden_set(
                 continue
             for term in absent_terms:
                 for source in snapshot_root.rglob("*.py"):
-                    source_text = source.read_text(
-                        encoding="utf-8", errors="replace"
-                    ).casefold()
+                    source_text = source.read_text(encoding="utf-8", errors="replace").casefold()
                     if term.casefold() in source_text:
                         errors.append(f"{question_id}: absent term appears in {source}")
                         break
@@ -216,8 +210,7 @@ def validate_golden_set(
     for relative_path, question_ids in questions_per_file.items():
         if not invalid_file_cap and len(question_ids) > max_questions_per_file:
             errors.append(
-                f"more than {max_questions_per_file} answerable questions label "
-                f"{relative_path}"
+                f"more than {max_questions_per_file} answerable questions label {relative_path}"
             )
 
     return errors
@@ -238,7 +231,5 @@ def validate_index_labels(
         labels = question.get("relevant", [])
         if not any(is_relevant(chunk, labels) for chunk in chunks):
             question_id = question.get("id", "<missing>")
-            errors.append(
-                f"{question_id}: no indexed chunk matches a relevance label"
-            )
+            errors.append(f"{question_id}: no indexed chunk matches a relevance label")
     return errors

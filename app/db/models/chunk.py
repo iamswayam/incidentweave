@@ -14,6 +14,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.db.models.repository import Repository
 
+
 class Chunk(Base):
     """Persisted source/evidence chunk and structural metadata."""
 

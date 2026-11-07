@@ -78,8 +78,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
                                 {
                                     "outcome": "answered",
                                     "diagnosis": (
-                                        "Async sessions are configured using "
-                                        "async_sessionmaker."
+                                        "Async sessions are configured using async_sessionmaker."
                                     ),
                                     "self_rating": "high",
                                     "claims": [
@@ -145,19 +144,12 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
                 json.dumps(
                     {
                         "outcome": "answered",
-                        "diagnosis": (
-                            "Async sessions are configured using async_sessionmaker."
-                        ),
+                        "diagnosis": ("Async sessions are configured using async_sessionmaker."),
                         "self_rating": "high",
                         "claims": [
                             {
-                                "text": (
-                                    "Async sessions are configured using "
-                                    "async_sessionmaker."
-                                ),
-                                "evidence": [
-                                    {"chunk_id": "105", "quote": "async_sessionmaker"}
-                                ],
+                                "text": ("Async sessions are configured using async_sessionmaker."),
+                                "evidence": [{"chunk_id": "105", "quote": "async_sessionmaker"}],
                             }
                         ],
                         "uncertainty_note": "",
@@ -209,11 +201,7 @@ async def test_persist_investigation_creates_investigation_and_audit_rows() -> N
     assert audit.raw_self_rating == "high"
     assert audit.chunk_records[0]["kept_in_prompt"] is True
     reparsed = parse_investigation_response(
-        {
-            "candidates": [
-                {"content": {"parts": [{"text": audit.raw_response}]}}
-            ]
-        },
+        {"candidates": [{"content": {"parts": [{"text": audit.raw_response}]}}]},
         retrieval_results,
     )
     assert reparsed["diagnosis"] == investigation.response

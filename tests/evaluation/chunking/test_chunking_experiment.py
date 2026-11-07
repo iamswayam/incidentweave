@@ -113,9 +113,9 @@ def test_plan_embeddings_reuses_cache_and_baseline_in_hash_order(
 
     planned = experiment.plan_embeddings(chunks, baseline, cache_dir)
 
-    assert planned == sorted(["zebra", "alpha"], key=lambda text: hashlib.sha256(
-        text.encode("utf-8")
-    ).hexdigest())
+    assert planned == sorted(
+        ["zebra", "alpha"], key=lambda text: hashlib.sha256(text.encode("utf-8")).hexdigest()
+    )
 
 
 @pytest.mark.parametrize(
@@ -186,9 +186,7 @@ def test_embed_missing_batches_by_fifty_and_keeps_completed_cache(
         return [[float(len(text))] for text in batch]
 
     with pytest.raises(RuntimeError, match="interrupted"):
-        asyncio.run(
-            experiment.embed_missing(texts, tmp_path, interrupted_embed)
-        )
+        asyncio.run(experiment.embed_missing(texts, tmp_path, interrupted_embed))
     assert [len(batch) for batch in calls] == [50, 50]
     assert len(list(tmp_path.glob("*.json"))) == 50
 
@@ -461,9 +459,7 @@ def test_compute_metrics_cost_coverage_density_test_share_and_distance() -> None
         {
             "id": "q1",
             "category": "direct",
-            "relevant_spans": [
-                {"file_path": "src/a.py", "line_start": 2, "line_end": 3}
-            ],
+            "relevant_spans": [{"file_path": "src/a.py", "line_start": 2, "line_end": 3}],
         },
         {
             "id": "q2",
@@ -680,9 +676,7 @@ def test_run_offline_retrieval_only_records_results_when_requested(
         "category": "direct",
         "question": "find the function",
         "relevant": [{"file_path": "src/a.py", "substring": "value"}],
-        "relevant_spans": [
-            {"file_path": "src/a.py", "line_start": 1, "line_end": 1}
-        ],
+        "relevant_spans": [{"file_path": "src/a.py", "line_start": 1, "line_end": 1}],
     }
 
     class FakeSession:

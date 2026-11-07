@@ -151,16 +151,15 @@ def test_mechanical_decision_covers_both_only_v1_and_no_change_paths() -> None:
     assert mechanical_decision(v1_pass, v2_pass) == (
         "If both variants pass, retain V1 as the milder change."
     )
-    assert mechanical_decision(v1_pass, v2_fail) == (
-        "If only V1 passes, retain V1."
-    )
+    assert mechanical_decision(v1_pass, v2_fail) == ("If only V1 passes, retain V1.")
     assert mechanical_decision(v1_not_evaluable, v2_fail) == (
         "If V1 fails, keep the control and close the item as no change; "
         "V2 never overrides this without R6."
     )
-    assert mechanical_decision(
-        _rule_result("V1", difference=0.02), v2_pass
-    ) == "V1 fails; V2 is retained under R6."
+    assert (
+        mechanical_decision(_rule_result("V1", difference=0.02), v2_pass)
+        == "V1 fails; V2 is retained under R6."
+    )
 
 
 def test_generated_note_uses_aggregates_and_never_renders_question_ids() -> None:
@@ -171,9 +170,7 @@ def test_generated_note_uses_aggregates_and_never_renders_question_ids() -> None
             "question": "synthetic question text",
             "category": "direct",
             "relevant": [{"file_path": "src/a.py", "substring": "needle"}],
-            "relevant_spans": [
-                {"file_path": "src/a.py", "line_start": 1, "line_end": 2}
-            ],
+            "relevant_spans": [{"file_path": "src/a.py", "line_start": 1, "line_end": 2}],
         },
         {
             "id": "synthetic-unanswerable-marker",

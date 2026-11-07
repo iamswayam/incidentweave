@@ -40,11 +40,14 @@ def test_classify_http_error_table(
 def test_parse_retry_after_handles_seconds_and_http_date() -> None:
     assert gemini._parse_retry_after("5", now=0.0, remaining_deadline=30.0) == 5.0
 
-    assert gemini._parse_retry_after(
-        "Wed, 21 Oct 2015 07:28:00 GMT",
-        now=0.0,
-        remaining_deadline=30.0,
-    ) == 30.0
+    assert (
+        gemini._parse_retry_after(
+            "Wed, 21 Oct 2015 07:28:00 GMT",
+            now=0.0,
+            remaining_deadline=30.0,
+        )
+        == 30.0
+    )
 
 
 @pytest.mark.anyio
@@ -97,8 +100,7 @@ async def test_rate_limiter_uses_rpm_window_and_concurrency() -> None:
     assert len(admitted_at) == 5
     for window_start in admitted_at:
         requests_in_window = sum(
-            window_start <= timestamp < window_start + 60
-            for timestamp in admitted_at
+            window_start <= timestamp < window_start + 60 for timestamp in admitted_at
         )
         assert requests_in_window <= 2
 
@@ -180,10 +182,10 @@ async def test_guarded_post_json_uses_default_adapter_and_blocks_open_cooldown(
 ) -> None:
     calls: list[tuple[str, str, str]] = []
     transport = httpx.MockTransport(
-        lambda request: calls.append(
-            (request.method, request.url.raw_path.decode(), request.content.decode())
+        lambda request: (
+            calls.append((request.method, request.url.raw_path.decode(), request.content.decode()))
+            or httpx.Response(200, json={"ok": True})
         )
-        or httpx.Response(200, json={"ok": True})
     )
 
     cooldown = gemini.CooldownStateMachine(
@@ -266,8 +268,7 @@ async def test_adapter_uses_legacy_request_shape_for_generation_and_embedding(
     assert [str(request.url) for request in requests] == [
         "https://generativelanguage.googleapis.com/v1beta/models/"
         "gemini-3.5-flash-lite:generateContent",
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        "gemini-embedding-001:embedContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
         "https://generativelanguage.googleapis.com/v1beta/models/"
         "gemini-embedding-001:batchEmbedContents",
     ]
@@ -350,6 +351,7 @@ def test_cooldown_only_counts_retryable_failures() -> None:
 @pytest.mark.anyio
 async def test_estimated_tokens_are_passed_to_limiter_and_tpm_is_enforced() -> None:
     seen: dict[str, float] = {}
+
     async def fake_sleep(delay: float) -> None:
         return None
 

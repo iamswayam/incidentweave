@@ -29,10 +29,7 @@ async def test_pgvector_extension_and_vector_column() -> None:
 
     async with engine.connect() as connection:
         extension_result = await connection.execute(
-            text(
-                "SELECT 1 FROM pg_extension "
-                "WHERE extname = 'vector'"
-            )
+            text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
         )
         assert extension_result.scalar_one_or_none() == 1
 
@@ -68,9 +65,7 @@ async def test_repository_and_chunk_persistence() -> None:
         chunk = Chunk(
             repository_id=repository.id,
             content="Phase 2 persistence test",
-            content_hash=hashlib.sha256(
-                "Phase 2 persistence test".encode("utf-8")
-            ).hexdigest(),
+            content_hash=hashlib.sha256("Phase 2 persistence test".encode("utf-8")).hexdigest(),
             file_path="tests/example.py",
             file_type="python",
             line_start=1,

@@ -65,15 +65,9 @@ def _assert_control_matches_baseline(
     golden_path = root / entry["questions"]["path"]
     golden = load_golden_set(golden_path)
     development_ids = _dev_answerable_ids(entry, golden["questions"])
-    expected = {
-        row["id"]: row
-        for row in baseline["questions"]
-        if row["id"] in development_ids
-    }
+    expected = {row["id"]: row for row in baseline["questions"] if row["id"] in development_ids}
     actual = {
-        row["id"]: row
-        for row in report["questions"]
-        if row["category"] in ANSWERABLE_CATEGORIES
+        row["id"]: row for row in report["questions"] if row["category"] in ANSWERABLE_CATEGORIES
     }
     fields = ("label_rank", "span_rank", "label_hits", "span_hits")
     differences = [
@@ -178,11 +172,7 @@ def _answerable_report_rows(
 ) -> list[dict[str, Any]]:
     golden = load_golden_set(root / entry["questions"]["path"])
     ids = _dev_answerable_ids(entry, golden["questions"])
-    return [
-        row
-        for row in report["questions"]
-        if row["id"] in ids
-    ]
+    return [row for row in report["questions"] if row["id"] in ids]
 
 
 def _render_report(results: dict[str, Any]) -> str:
@@ -223,9 +213,9 @@ def _render_report(results: dict[str, Any]) -> str:
                 else variant_results["repositories"][repo_id]["summary"]
             )
             hit_cells = [
-                f'{summary[f"hit_at_{k}"]["successes"]}/'
-                f'{summary["question_count"]} '
-                f'({summary[f"hit_at_{k}"]["rate"]:.3f})'
+                f"{summary[f'hit_at_{k}']['successes']}/"
+                f"{summary['question_count']} "
+                f"({summary[f'hit_at_{k}']['rate']:.3f})"
                 for k in (1, 3, 5)
             ]
             lines.append(
@@ -263,10 +253,7 @@ def _render_report(results: dict[str, Any]) -> str:
         variant_repositories = results["variants"][variant]["repositories"]
         for repo_id in repository_order:
             repo_result = variant_repositories[repo_id]
-            lines.append(
-                f"| {variant} | {repo_id} | "
-                f"{repo_result['query_truncation_count']}/16 |"
-            )
+            lines.append(f"| {variant} | {repo_id} | {repo_result['query_truncation_count']}/16 |")
     lines.extend(
         [
             "",
@@ -371,12 +358,9 @@ async def run_fulltext_experiment(
     manifest = load_manifest(root / "evaluation" / "manifest.json", root=root)
     entries = manifest["repositories"]
     source_lines_by_repo = {
-        str(entry["id"]): _source_line_map(str(entry["id"]))
-        for entry in entries
+        str(entry["id"]): _source_line_map(str(entry["id"])) for entry in entries
     }
-    raw_reports: dict[str, dict[str, dict[str, Any]]] = {
-        variant: {} for variant in VARIANTS
-    }
+    raw_reports: dict[str, dict[str, dict[str, Any]]] = {variant: {} for variant in VARIANTS}
 
     for entry in entries:
         repo_id = str(entry["id"])
@@ -404,8 +388,7 @@ async def run_fulltext_experiment(
             )
 
     summaries = {
-        variant: _variant_report(raw_reports[variant], source_lines_by_repo)
-        for variant in VARIANTS
+        variant: _variant_report(raw_reports[variant], source_lines_by_repo) for variant in VARIANTS
     }
     for variant in VARIANTS:
         for repo_id, report in raw_reports[variant].items():
@@ -415,26 +398,19 @@ async def run_fulltext_experiment(
                 root,
             )
             summaries[variant]["repositories"][repo_id]["questions"] = [
-                question
-                for question in summaries[variant]["repositories"][repo_id]["questions"]
+                question for question in summaries[variant]["repositories"][repo_id]["questions"]
             ]
-            truncation_rows = [
-                row for row in report["questions"] if row.get("query_truncated")
+            truncation_rows = [row for row in report["questions"] if row.get("query_truncated")]
+            summaries[variant]["repositories"][repo_id]["query_truncation_count"] = len(
+                truncation_rows
+            )
+            summaries[variant]["repositories"][repo_id]["query_truncated_question_ids"] = [
+                row["id"] for row in truncation_rows
             ]
-            summaries[variant]["repositories"][repo_id][
-                "query_truncation_count"
-            ] = len(truncation_rows)
-            summaries[variant]["repositories"][repo_id][
-                "query_truncated_question_ids"
-            ] = [row["id"] for row in truncation_rows]
             if variant == "control":
                 continue
-            if not all(
-                "text_branch_nonempty" in row for row in answerable_rows
-            ):
-                raise RuntimeError(
-                    f"Text branch results were not recorded for {variant}/{repo_id}"
-                )
+            if not all("text_branch_nonempty" in row for row in answerable_rows):
+                raise RuntimeError(f"Text branch results were not recorded for {variant}/{repo_id}")
 
     comparisons = {
         "c1_vs_control": _comparison(summaries["c1"], summaries["control"]),
@@ -451,9 +427,7 @@ async def run_fulltext_experiment(
         repo_id = str(entry["id"])
         fixture = load_fixture(root / entry["fixture"]["path"])
         golden = load_golden_set(root / entry["questions"]["path"])
-        dev_questions = questions_for_split(
-            entry, golden["questions"], "development"
-        )
+        dev_questions = questions_for_split(entry, golden["questions"], "development")
         async with SessionFactory() as session:
             c3_results[repo_id] = await run_c3_equivalence(
                 session,
@@ -489,8 +463,7 @@ async def run_fulltext_experiment(
     }
     if pooled_control["question_count"] != 33:
         raise RuntimeError(
-            f"Expected 33 development answerable questions, got "
-            f"{pooled_control['question_count']}"
+            f"Expected 33 development answerable questions, got {pooled_control['question_count']}"
         )
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "results.json").write_text(

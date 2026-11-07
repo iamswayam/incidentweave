@@ -56,8 +56,7 @@ def upgrade() -> None:
         sa.Column("content_hash", sa.String(length=64), nullable=True),
     )
     op.execute(
-        "UPDATE chunks "
-        "SET content_hash = encode(sha256(convert_to(content, 'UTF8')), 'hex')"
+        "UPDATE chunks SET content_hash = encode(sha256(convert_to(content, 'UTF8')), 'hex')"
     )
     op.alter_column("chunks", "content_hash", nullable=False)
     op.create_index(

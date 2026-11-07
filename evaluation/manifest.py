@@ -97,9 +97,7 @@ def _resolve_file(
 
 def _answerable(question: dict[str, Any]) -> bool:
     category = question.get("category")
-    return not (
-        isinstance(category, str) and category.startswith("unanswerable")
-    )
+    return not (isinstance(category, str) and category.startswith("unanswerable"))
 
 
 def _validate_splits(
@@ -143,11 +141,7 @@ def _validate_splits(
 
     question_by_id = {str(question.get("id")): question for question in questions}
     for split in ("development", "held_out", "smoke"):
-        selected = [
-            question_by_id[item]
-            for item in split_ids[split]
-            if item in question_by_id
-        ]
+        selected = [question_by_id[item] for item in split_ids[split] if item in question_by_id]
         expected_total = expected[split]
         if len(split_ids[split]) != expected_total:
             errors.append(
@@ -234,18 +228,13 @@ def _validate_candidates(
         if not isinstance(pinned_sha, str) or SHA1_PATTERN.fullmatch(pinned_sha) is None:
             errors.append(f"{candidate_id or '<unknown>'}: pinned_sha must be 40 hex characters")
         license_id = candidate.get("license")
-        if (
-            not isinstance(license_id, str)
-            or license_id not in SUPPORTED_CANDIDATE_LICENSES
-        ):
+        if not isinstance(license_id, str) or license_id not in SUPPORTED_CANDIDATE_LICENSES:
             errors.append(
                 f"{candidate_id or '<unknown>'}: license must be an allowed SPDX identifier"
             )
         role = candidate.get("role")
         if not isinstance(role, str) or role not in {"development", "held_out"}:
-            errors.append(
-                f"{candidate_id or '<unknown>'}: role must be development or held_out"
-            )
+            errors.append(f"{candidate_id or '<unknown>'}: role must be development or held_out")
         for field in integer_fields:
             value = candidate.get(field)
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
@@ -260,11 +249,7 @@ def _validate_candidates(
                 f"{candidate_id or '<unknown>'}: source_python_lines must be 5,000-30,000"
             )
         issue_count = candidate.get("qualifying_issue_count")
-        if (
-            isinstance(issue_count, int)
-            and not isinstance(issue_count, bool)
-            and issue_count < 40
-        ):
+        if isinstance(issue_count, int) and not isinstance(issue_count, bool) and issue_count < 40:
             errors.append(
                 f"{candidate_id or '<unknown>'}: qualifying_issue_count must be at least 40"
             )
@@ -273,14 +258,10 @@ def _validate_candidates(
             "git-closing-keywords",
             "gh",
         }:
-            errors.append(
-                f"{candidate_id or '<unknown>'}: qualifying_method is invalid"
-            )
+            errors.append(f"{candidate_id or '<unknown>'}: qualifying_method is invalid")
         location = candidate.get("fixture_location")
         if not isinstance(location, str) or location not in {"committed", "release"}:
-            errors.append(
-                f"{candidate_id or '<unknown>'}: fixture_location is invalid"
-            )
+            errors.append(f"{candidate_id or '<unknown>'}: fixture_location is invalid")
         estimated_bytes = candidate.get("estimated_fixture_bytes")
         if (
             isinstance(estimated_bytes, int)
@@ -290,9 +271,7 @@ def _validate_candidates(
             and location in {"committed", "release"}
         ):
             expected_location = (
-                "committed"
-                if estimated_bytes <= FIXTURE_COMMIT_LIMIT_BYTES
-                else "release"
+                "committed" if estimated_bytes <= FIXTURE_COMMIT_LIMIT_BYTES else "release"
             )
             if location != expected_location:
                 errors.append(
@@ -432,9 +411,7 @@ def validate_manifest(
             if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
                 errors.append(f"{repo_id or '<unknown>'}: fixture.max_bytes must be positive")
             elif "fixture" in resolved and resolved["fixture"].stat().st_size > max_bytes:
-                errors.append(
-                    f"{repo_id or '<unknown>'}: fixture exceeds max_bytes ({max_bytes})"
-                )
+                errors.append(f"{repo_id or '<unknown>'}: fixture exceeds max_bytes ({max_bytes})")
 
         if "questions" in resolved:
             try:
@@ -443,9 +420,7 @@ def validate_manifest(
                 errors.append(f"{repo_id or '<unknown>'}: invalid questions JSON: {exc}")
             else:
                 questions = (
-                    question_data.get("questions")
-                    if isinstance(question_data, dict)
-                    else None
+                    question_data.get("questions") if isinstance(question_data, dict) else None
                 )
                 if not isinstance(questions, list) or any(
                     not isinstance(question, dict) for question in questions
@@ -464,9 +439,7 @@ def validate_manifest(
                             f"expected {counts['questions']}"
                         )
                     question_ids = [question.get("id") for question in questions]
-                    valid_ids = all(
-                        isinstance(item, str) and bool(item) for item in question_ids
-                    )
+                    valid_ids = all(isinstance(item, str) and bool(item) for item in question_ids)
                     if not valid_ids:
                         errors.append(f"{repo_id or '<unknown>'}: every question needs an id")
                     elif len(question_ids) != len(set(question_ids)):
@@ -487,16 +460,12 @@ def validate_manifest(
                             json.JSONDecodeError,
                             zlib.error,
                         ) as exc:
-                            errors.append(
-                                f"{repo_id or '<unknown>'}: invalid fixture data: {exc}"
-                            )
+                            errors.append(f"{repo_id or '<unknown>'}: invalid fixture data: {exc}")
                         else:
                             if not isinstance(fixture_data, dict) or not isinstance(
                                 fixture_data.get("meta"), dict
                             ):
-                                errors.append(
-                                    f"{repo_id or '<unknown>'}: fixture needs metadata"
-                                )
+                                errors.append(f"{repo_id or '<unknown>'}: fixture needs metadata")
                             else:
                                 if fixture_data["meta"].get("pinned_sha") != entry.get(
                                     "pinned_sha"
@@ -530,10 +499,9 @@ def validate_manifest(
                     errors.append(f"{repo_id or '<unknown>'}: {exc}")
                 else:
                     baseline_resource = entry.get(baseline_field)
-                    if (
-                        isinstance(baseline_resource, dict)
-                        and gate["baseline_report"] != baseline_resource.get("path")
-                    ):
+                    if isinstance(baseline_resource, dict) and gate[
+                        "baseline_report"
+                    ] != baseline_resource.get("path"):
                         errors.append(
                             f"{repo_id or '<unknown>'}: {gate_field} baseline_report "
                             f"does not match {baseline_field}.path"
@@ -541,13 +509,10 @@ def validate_manifest(
                     baseline_path = resolved.get(baseline_field)
                     if baseline_path is not None:
                         try:
-                            baseline_report = json.loads(
-                                baseline_path.read_text(encoding="utf-8")
-                            )
+                            baseline_report = json.loads(baseline_path.read_text(encoding="utf-8"))
                         except (OSError, json.JSONDecodeError) as exc:
                             errors.append(
-                                f"{repo_id or '<unknown>'}: invalid "
-                                f"{baseline_field} JSON: {exc}"
+                                f"{repo_id or '<unknown>'}: invalid {baseline_field} JSON: {exc}"
                             )
                         else:
                             if not isinstance(baseline_report, dict):
@@ -575,9 +540,7 @@ def validate_manifest(
                                         else None
                                     )
                                     hit_at_5 = (
-                                        values.get("hit_at_5")
-                                        if isinstance(values, dict)
-                                        else None
+                                        values.get("hit_at_5") if isinstance(values, dict) else None
                                     )
                                     successes = (
                                         hit_at_5.get("successes")
@@ -601,8 +564,7 @@ def validate_manifest(
                                         continue
                                     expected_baseline = gate["baselines"][label_type]
                                     if (
-                                        successes
-                                        != expected_baseline["hit_at_5_successes"]
+                                        successes != expected_baseline["hit_at_5_successes"]
                                         or mrr != expected_baseline["mrr"]
                                     ):
                                         errors.append(

@@ -55,12 +55,9 @@ def derive_spans(
             span = find_span(read_file(pinned_sha, path), str(label["substring"]))
             if span is None:
                 raise ValueError(
-                    f"{question_id}: substring not found in {path}: "
-                    f"{label['substring']!r}"
+                    f"{question_id}: substring not found in {path}: {label['substring']!r}"
                 )
-            spans.append(
-                {"file_path": path, "line_start": span[0], "line_end": span[1]}
-            )
+            spans.append({"file_path": path, "line_start": span[0], "line_end": span[1]})
         spans_by_question[question_id] = spans
     return spans_by_question
 

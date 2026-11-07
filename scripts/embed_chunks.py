@@ -20,9 +20,7 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        embedded, failed, skipped = asyncio.run(
-            embed_repository_chunks(args.repo_name)
-        )
+        embedded, failed, skipped = asyncio.run(embed_repository_chunks(args.repo_name))
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(2)

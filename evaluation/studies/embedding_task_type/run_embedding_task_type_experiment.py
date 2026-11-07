@@ -80,9 +80,7 @@ def _load_development_inputs(
 ]:
     asset_root = manifest_root(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if not isinstance(manifest, dict) or not isinstance(
-        manifest.get("repositories"), list
-    ):
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("repositories"), list):
         raise ValueError("Evaluation manifest must list repositories")
     fixtures: dict[str, dict[str, Any]] = {}
     development_questions: dict[str, list[dict[str, Any]]] = {}
@@ -95,34 +93,24 @@ def _load_development_inputs(
         if not isinstance(development_ids, list) or any(
             not isinstance(question_id, str) for question_id in development_ids
         ):
-            raise ValueError(
-                f"{repository}: development split must contain question ids"
-            )
+            raise ValueError(f"{repository}: development split must contain question ids")
         selected = _development_question_records(
             asset_root / entry["questions"]["path"],
             set(development_ids),
         )
         selected_ids = {str(question["id"]) for question in selected}
         fixture_queries = fixture.get("queries")
-        if not isinstance(fixture_queries, dict) or not selected_ids <= set(
-            fixture_queries
-        ):
-            raise ValueError(
-                f"{repository}: fixture is missing a development query embedding"
-            )
+        if not isinstance(fixture_queries, dict) or not selected_ids <= set(fixture_queries):
+            raise ValueError(f"{repository}: fixture is missing a development query embedding")
         fixture["queries"] = {
-            question_id: fixture_queries[question_id]
-            for question_id in selected_ids
+            question_id: fixture_queries[question_id] for question_id in selected_ids
         }
         fixtures[repository] = fixture
         answerable = sum(
-            question.get("category") in {"direct", "paraphrased"}
-            for question in selected
+            question.get("category") in {"direct", "paraphrased"} for question in selected
         )
         if len(selected) != 16 or answerable != 11:
-            raise ValueError(
-                f"{repository}: unexpected development split dimensions"
-            )
+            raise ValueError(f"{repository}: unexpected development split dimensions")
         development_questions[repository] = selected
         total_questions += len(selected)
         total_answerable += answerable
@@ -191,23 +179,15 @@ def _request_plan(
 
 def _check_request_caps(plan: dict[str, int]) -> None:
     if plan["document_texts"] > MAX_DOCUMENT_TEXTS:
-        raise ValueError(
-            f"Document embedding plan exceeds {MAX_DOCUMENT_TEXTS} unique texts"
-        )
+        raise ValueError(f"Document embedding plan exceeds {MAX_DOCUMENT_TEXTS} unique texts")
     if plan["query_texts"] > MAX_QUERY_TEXTS:
-        raise ValueError(
-            f"Query embedding plan exceeds {MAX_QUERY_TEXTS} development questions"
-        )
+        raise ValueError(f"Query embedding plan exceeds {MAX_QUERY_TEXTS} development questions")
     if plan["document_requests"] > MAX_DOCUMENT_BATCHES:
-        raise ValueError(
-            f"Document embedding plan exceeds {MAX_DOCUMENT_BATCHES} batch requests"
-        )
+        raise ValueError(f"Document embedding plan exceeds {MAX_DOCUMENT_BATCHES} batch requests")
 
 
 def _plan(manifest_path: Path) -> int:
-    manifest, _, fixtures, questions = _load_development_inputs(
-        manifest_path
-    )
+    manifest, _, fixtures, questions = _load_development_inputs(manifest_path)
     inputs = collect_embedding_inputs(fixtures, questions)
     missing_documents = _missing_texts(inputs.document_texts, DOCUMENT_TASK_TYPE)
     missing_queries = _missing_texts(inputs.query_texts, QUERY_TASK_TYPE)
@@ -264,9 +244,7 @@ def _write_vector(text: str, task_type: str, vector: list[float]) -> None:
 async def _embed(manifest_path: Path, document_delay: float, query_delay: float) -> int:
     if not (settings.gemini_api_key or "").strip():
         raise ValueError("GEMINI_API_KEY is missing.")
-    _, _, fixtures, questions = _load_development_inputs(
-        manifest_path
-    )
+    _, _, fixtures, questions = _load_development_inputs(manifest_path)
     inputs = collect_embedding_inputs(fixtures, questions)
     documents = _missing_texts(inputs.document_texts, DOCUMENT_TASK_TYPE)
     queries = _missing_texts(inputs.query_texts, QUERY_TASK_TYPE)
@@ -335,9 +313,7 @@ def _candidate_fixture(
         "queries": {},
     }
     for chunk in fixture["chunks"]:
-        vector = read_cached_vector(
-            _cache_path(str(chunk["content"]), DOCUMENT_TASK_TYPE)
-        )
+        vector = read_cached_vector(_cache_path(str(chunk["content"]), DOCUMENT_TASK_TYPE))
         candidate["chunks"].append({**chunk, "embedding": vector})
     for question in questions:
         question_id = str(question["id"])
@@ -349,26 +325,17 @@ def _candidate_fixture(
 
 
 def _rankings(report: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
-    return {
-        str(row["id"]): list(row["retrieved"])
-        for row in report["questions"]
-    }
+    return {str(row["id"]): list(row["retrieved"]) for row in report["questions"]}
 
 
 def _public_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: value
-        for key, value in metrics.items()
-        if key != "reciprocal_ranks"
-    }
+    return {key: value for key, value in metrics.items() if key != "reciprocal_ranks"}
 
 
 async def _evaluate(manifest_path: Path) -> int:
     from evaluation.retrieval_eval import run_offline_retrieval
 
-    manifest, asset_root, fixtures, questions = _load_development_inputs(
-        manifest_path
-    )
+    manifest, asset_root, fixtures, questions = _load_development_inputs(manifest_path)
     inputs = collect_embedding_inputs(fixtures, questions)
     _require_cached_vectors(inputs)
     CACHE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -420,15 +387,10 @@ async def _evaluate(manifest_path: Path) -> int:
         )
         control_rankings = _rankings(control_report)
         candidate_rankings = _rankings(candidate_report)
-        control_rows = {
-            str(row["id"]): row for row in control_report["questions"]
-        }
-        candidate_rows = {
-            str(row["id"]): row for row in candidate_report["questions"]
-        }
+        control_rows = {str(row["id"]): row for row in control_report["questions"]}
+        candidate_rows = {str(row["id"]): row for row in candidate_report["questions"]}
         control_pairs = [
-            (question, control_rankings[str(question["id"])])
-            for question in questions[repository]
+            (question, control_rankings[str(question["id"])]) for question in questions[repository]
         ]
         candidate_pairs = [
             (question, candidate_rankings[str(question["id"])])
@@ -464,14 +426,8 @@ async def _evaluate(manifest_path: Path) -> int:
     decision = evaluate_task_type_rules(
         pooled_metrics["control"],
         pooled_metrics["candidate"],
-        {
-            name: values["control"]
-            for name, values in per_repository.items()
-        },
-        {
-            name: values["candidate"]
-            for name, values in per_repository.items()
-        },
+        {name: values["control"] for name, values in per_repository.items()},
+        {name: values["candidate"] for name, values in per_repository.items()},
         guard_by_repository,
         bootstrap,
     )

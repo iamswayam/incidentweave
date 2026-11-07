@@ -82,11 +82,7 @@ def _validate_export(
     raw_repositories = export.get("repositories")
     if not isinstance(raw_repositories, list):
         raise ValueError("Rankings export repositories must be a list")
-    exported = {
-        row.get("id"): row
-        for row in raw_repositories
-        if isinstance(row, Mapping)
-    }
+    exported = {row.get("id"): row for row in raw_repositories if isinstance(row, Mapping)}
     if set(exported) != set(V1_REPOSITORIES) or len(exported) != len(raw_repositories):
         raise ValueError("Rankings export repository rows do not match the v1 repositories")
 
@@ -105,24 +101,19 @@ def _validate_export(
             if isinstance(row, Mapping) and isinstance(row.get("id"), str)
         }
         if len(by_id) != len(rows) or set(by_id) != set(expected_by_id):
-            raise ValueError(
-                f"{repo_id}: export must contain exactly the development questions"
-            )
+            raise ValueError(f"{repo_id}: export must contain exactly the development questions")
         selected = []
         for question_id, question in expected_by_id.items():
             row = by_id[question_id]
             if row.get("repository") != repo_id or row.get("category") != question["category"]:
                 raise ValueError(f"{repo_id}:{question_id}: exported labels do not match")
             ranked_by_view = {
-                view: ranked_chunks_for_view(row, view)
-                for view in ("production", "deep")
+                view: ranked_chunks_for_view(row, view) for view in ("production", "deep")
             }
             for view, ranked in ranked_by_view.items():
                 maximum = 5 if view == "production" else 20
                 if not isinstance(ranked, list) or len(ranked) > maximum:
-                    raise ValueError(
-                        f"{repo_id}:{question_id}: invalid {view} ranked chunks"
-                    )
+                    raise ValueError(f"{repo_id}:{question_id}: invalid {view} ranked chunks")
                 for chunk in ranked:
                     if (
                         not isinstance(chunk, Mapping)
@@ -135,9 +126,7 @@ def _validate_export(
                             and not isinstance(chunk.get("vector_distance"), (int, float))
                         )
                     ):
-                        raise ValueError(
-                            f"{repo_id}:{question_id}: malformed {view} ranked chunk"
-                        )
+                        raise ValueError(f"{repo_id}:{question_id}: malformed {view} ranked chunk")
             best_distance = row.get("best_vector_distance")
             if best_distance is not None and not isinstance(best_distance, (int, float)):
                 raise ValueError(f"{repo_id}:{question_id}: invalid best vector distance")
@@ -230,6 +219,7 @@ def _auroc_metric(
             "reason": "one or more questions have no vector distance",
             "view": view,
         }
+
     def positive(row: dict[str, Any]) -> bool:
         return str(row["category"]).startswith("unanswerable")
 
@@ -260,32 +250,24 @@ def _auroc_metric(
 
 
 def _threshold_sweep(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
-    answerable = [
-        row for row in rows if not str(row["category"]).startswith("unanswerable")
-    ]
+    answerable = [row for row in rows if not str(row["category"]).startswith("unanswerable")]
     unanswerable = [row for row in rows if row not in answerable]
     output = []
     for index in range(17):
         threshold = round(0.3 + index * 0.025, 3)
         false_accepts = sum(
-            row["best_vector_distance"] is not None
-            and row["best_vector_distance"] <= threshold
+            row["best_vector_distance"] is not None and row["best_vector_distance"] <= threshold
             for row in unanswerable
         )
         false_refusals = sum(
-            row["best_vector_distance"] is None
-            or row["best_vector_distance"] > threshold
+            row["best_vector_distance"] is None or row["best_vector_distance"] > threshold
             for row in answerable
         )
         output.append(
             {
                 "threshold": threshold,
-                "false_accept_rate": _wilson(
-                    false_accepts, len(unanswerable), view="production"
-                ),
-                "false_refusal_rate": _wilson(
-                    false_refusals, len(answerable), view="production"
-                ),
+                "false_accept_rate": _wilson(false_accepts, len(unanswerable), view="production"),
+                "false_refusal_rate": _wilson(false_refusals, len(answerable), view="production"),
                 "view": "production",
             }
         )
@@ -331,15 +313,11 @@ def _score_scope(
     production_hits = {}
     for k in (1, 3, 5):
         successes = sum(row[f"hit_at_{k}_production"] for row in answerable)
-        production_hits[f"hit_at_{k}"] = _wilson(
-            successes, len(answerable), view="production"
-        )
+        production_hits[f"hit_at_{k}"] = _wilson(successes, len(answerable), view="production")
     deep_hits = {}
     for k in (10, 20):
         successes = sum(row[f"hit_at_{k}_deep"] for row in answerable)
-        deep_hits[f"hit_at_{k}"] = _wilson(
-            successes, len(answerable), view="deep"
-        )
+        deep_hits[f"hit_at_{k}"] = _wilson(successes, len(answerable), view="deep")
     production_retrieval = dict(production_hits)
     for field in ("mrr_at_5", "ndcg_at_5", "context_precision_at_5"):
         production_retrieval[field] = _bootstrap_mean(
@@ -432,9 +410,7 @@ def build_scorecard(
             production = ranked_chunks_for_view(row, "production")
             deep = ranked_chunks_for_view(row, "deep")
             for k in (1, 3, 5):
-                row[f"hit_at_{k}_production"] = int(
-                    span_hit_at_k([production], [spans], k)
-                )
+                row[f"hit_at_{k}_production"] = int(span_hit_at_k([production], [spans], k))
             for k in (10, 20):
                 row[f"hit_at_{k}_deep"] = int(span_hit_at_k([deep], [spans], k))
             row["mrr_at_5"] = (
@@ -443,9 +419,7 @@ def build_scorecard(
                 else 0.0
             )
             row["ndcg_at_5"] = ndcg_at_k(production, spans, fixture_chunks, 5)
-            row["context_precision_at_5"] = context_precision_at_k(
-                production, spans, 5
-            )
+            row["context_precision_at_5"] = context_precision_at_k(production, spans, 5)
             row["ndcg_at_10"] = ndcg_at_k(deep, spans, fixture_chunks, 10)
             row["recall_at_20"] = recall_at_k(deep, spans, 20)
             scored.append(row)
@@ -506,12 +480,10 @@ def verify_registered_crosscheck(
     computed_guard = scorecard["pooled"]["guard"]["confusion"]
     expected_guard = {
         "correct_refusals": sum(
-            row["guard"]["control"]["insufficient"]
-            for row in artifact["per_repository"].values()
+            row["guard"]["control"]["insufficient"] for row in artifact["per_repository"].values()
         ),
         "false_accepts": sum(
-            row["guard"]["control"]["sufficient"]
-            for row in artifact["per_repository"].values()
+            row["guard"]["control"]["sufficient"] for row in artifact["per_repository"].values()
         ),
     }
     comparisons = [
@@ -535,10 +507,16 @@ def verify_registered_crosscheck(
             f"{control['mrr']:.6f}",
             f"{computed_retrieval['mrr_at_5']['value']:.6f}",
         ),
-        ("Correct refusals", f"{expected_guard['correct_refusals']}/15",
-         f"{computed_guard['true_refusal']}/15"),
-        ("False accepts", f"{expected_guard['false_accepts']}/15",
-         f"{computed_guard['false_accept']}/15"),
+        (
+            "Correct refusals",
+            f"{expected_guard['correct_refusals']}/15",
+            f"{computed_guard['true_refusal']}/15",
+        ),
+        (
+            "False accepts",
+            f"{expected_guard['false_accepts']}/15",
+            f"{computed_guard['false_accept']}/15",
+        ),
     ]
     for label, expected, computed in comparisons:
         print(f"{label}: expected {expected}; computed {computed}")
@@ -557,8 +535,7 @@ def verify_registered_crosscheck(
         or control["hit_at_3_successes"] != 26
         or control["hit_at_5_successes"] != 28
         or abs(float(control["mrr"]) - 0.6737373737373737) > 1e-12
-        or abs(float(computed_retrieval["mrr_at_5"]["value"]) - float(control["mrr"]))
-        > 1e-12
+        or abs(float(computed_retrieval["mrr_at_5"]["value"]) - float(control["mrr"])) > 1e-12
         or expected_guard != {"correct_refusals": 9, "false_accepts": 6}
     ):
         raise ValueError("Registered BM25 cross-check values differ from protocol 16")

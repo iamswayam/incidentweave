@@ -25,24 +25,18 @@ def test_build_c1_query_drops_stop_words_quotes_and_ors_tokens() -> None:
         {"how"},
     )
 
-    assert query.query_text == (
-        '"OR" OR "configured" OR "AsyncSessionLocal"'
-    )
+    assert query.query_text == ('"OR" OR "configured" OR "AsyncSessionLocal"')
     assert query.tokens == ("OR", "configured", "AsyncSessionLocal")
     assert query.truncated is False
 
 
 def test_build_c1_query_truncates_after_stop_word_removal() -> None:
-    question = " ".join(
-        ["the", *(f"term{index}" for index in range(MAX_QUERY_TOKENS + 2))]
-    )
+    question = " ".join(["the", *(f"term{index}" for index in range(MAX_QUERY_TOKENS + 2))])
     query = build_c1_query(question, {"the"})
 
     assert len(query.tokens) == MAX_QUERY_TOKENS
     assert query.truncated is True
-    assert query.query_text.split(" OR ") == [
-        f'"term{index}"' for index in range(MAX_QUERY_TOKENS)
-    ]
+    assert query.query_text.split(" OR ") == [f'"term{index}"' for index in range(MAX_QUERY_TOKENS)]
 
 
 def test_build_c1_query_requires_positive_token_cap() -> None:

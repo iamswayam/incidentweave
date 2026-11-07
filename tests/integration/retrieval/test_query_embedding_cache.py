@@ -74,9 +74,7 @@ async def test_query_embedding_cache_hit_miss_and_key_variation() -> None:
             assert (
                 await get_query_embedding(
                     session,
-                    build_query_embedding_key(
-                        "test-model", "CODE_RETRIEVAL_QUERY", 3, "question"
-                    ),
+                    build_query_embedding_key("test-model", "CODE_RETRIEVAL_QUERY", 3, "question"),
                 )
                 is None
             )
@@ -161,22 +159,22 @@ async def test_query_embedding_cache_enforces_cap_with_oldest_first_eviction() -
             )
             await session.flush()
 
-            newest_key = build_query_embedding_key(
-                "cap-test", "default", 1, "new entry"
-            )
+            newest_key = build_query_embedding_key("cap-test", "default", 1, "new entry")
             await put_query_embedding(session, newest_key, [0.9])
 
-            count = await session.scalar(
-                select(text("count(*)")).select_from(QueryEmbeddingCache)
-            )
+            count = await session.scalar(select(text("count(*)")).select_from(QueryEmbeddingCache))
             oldest_hashes = (
-                await session.execute(
-                    select(QueryEmbeddingCache.query_hash)
-                    .where(QueryEmbeddingCache.embedding_model == "cap-test")
-                    .order_by(QueryEmbeddingCache.created_at, QueryEmbeddingCache.id)
-                    .limit(2)
+                (
+                    await session.execute(
+                        select(QueryEmbeddingCache.query_hash)
+                        .where(QueryEmbeddingCache.embedding_model == "cap-test")
+                        .order_by(QueryEmbeddingCache.created_at, QueryEmbeddingCache.id)
+                        .limit(2)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             stored_hashes = set(
                 (
                     await session.execute(
@@ -216,25 +214,20 @@ async def test_query_embedding_cache_migration_upgrades_and_downgrades() -> None
     spec.loader.exec_module(migration)
 
     async with _isolated_schema() as connection:
-        schema_name = str(
-            (await connection.execute(text("SELECT current_schema()"))).scalar_one()
-        )
+        schema_name = str((await connection.execute(text("SELECT current_schema()"))).scalar_one())
 
         def verify_upgrade(sync_connection) -> None:
             migration_context = MigrationContext.configure(sync_connection)
             with Operations.context(migration_context):
                 migration.upgrade()
             inspector = inspect(sync_connection)
-            assert "query_embedding_cache" in inspector.get_table_names(
-                schema=schema_name
-            )
+            assert "query_embedding_cache" in inspector.get_table_names(schema=schema_name)
             indexes = inspector.get_indexes(
                 "query_embedding_cache",
                 schema=schema_name,
             )
             assert any(
-                index["name"] == "uq_query_embedding_cache_identity"
-                and index["unique"]
+                index["name"] == "uq_query_embedding_cache_identity" and index["unique"]
                 for index in indexes
             )
 
@@ -244,8 +237,8 @@ async def test_query_embedding_cache_migration_upgrades_and_downgrades() -> None
             migration_context = MigrationContext.configure(sync_connection)
             with Operations.context(migration_context):
                 migration.downgrade()
-            assert "query_embedding_cache" not in inspect(
-                sync_connection
-            ).get_table_names(schema=schema_name)
+            assert "query_embedding_cache" not in inspect(sync_connection).get_table_names(
+                schema=schema_name
+            )
 
         await connection.run_sync(verify_downgrade)

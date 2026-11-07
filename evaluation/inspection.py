@@ -100,13 +100,10 @@ def _retrieved_table(
 def _guard_line(retrieved: Sequence[Mapping[str, Any]]) -> str:
     decision = evaluate_evidence_sufficiency(retrieved)
     best_distance = decision["best_vector_score"]
-    distance_text = (
-        f"{float(best_distance):.3f}" if best_distance is not None else "not available"
-    )
+    distance_text = f"{float(best_distance):.3f}" if best_distance is not None else "not available"
     behavior = "would answer" if decision["is_sufficient"] else "would refuse"
     return (
-        f"**Guard (provisional threshold 0.5):** {behavior}; "
-        f"best vector distance: {distance_text}."
+        f"**Guard (provisional threshold 0.5):** {behavior}; best vector distance: {distance_text}."
     )
 
 
@@ -181,18 +178,12 @@ def render_strategy_report(
 
     records = {str(record["id"]): record for record in report["questions"]}
     answerable_questions = [question for question in questions if _answerable(question)]
-    ranks = [
-        _first_hit_rank(records[str(question["id"])])
-        for question in answerable_questions
-    ]
+    ranks = [_first_hit_rank(records[str(question["id"])]) for question in answerable_questions]
     hit_counts = {
-        cutoff: sum(rank is not None and rank <= cutoff for rank in ranks)
-        for cutoff in (1, 3, 5)
+        cutoff: sum(rank is not None and rank <= cutoff for rank in ranks) for cutoff in (1, 3, 5)
     }
     mrr = (
-        sum(1 / rank if rank is not None else 0.0 for rank in ranks) / len(ranks)
-        if ranks
-        else 0.0
+        sum(1 / rank if rank is not None else 0.0 for rank in ranks) / len(ranks) if ranks else 0.0
     )
     metadata = report["metadata"]
     lines = [
@@ -226,9 +217,7 @@ def render_strategy_report(
         ]
     )
     missed = [
-        str(question["id"])
-        for question, rank in zip(answerable_questions, ranks)
-        if rank is None
+        str(question["id"]) for question, rank in zip(answerable_questions, ranks) if rank is None
     ]
     lines.append(f"Missed questions: {', '.join(missed) if missed else 'none'}")
     lines.extend(["", "---", ""])
@@ -253,21 +242,15 @@ def render_repository_summary(
     """Render per-question ranks and totals across the requested strategies."""
 
     records_by_strategy = {
-        strategy: {
-            str(record["id"]): record for record in report["questions"]
-        }
+        strategy: {str(record["id"]): record for record in report["questions"]}
         for strategy, report in reports_by_strategy.items()
     }
     strategies = list(reports_by_strategy)
     lines = [
         f"# Retrieval inspection summary: {repo_id} / {split}",
         "",
-        "| Question | Category | "
-        + " | ".join(strategies)
-        + " |",
-        "|---|---|"
-        + "|".join("---:" for _strategy in strategies)
-        + "|",
+        "| Question | Category | " + " | ".join(strategies) + " |",
+        "|---|---|" + "|".join("---:" for _strategy in strategies) + "|",
     ]
     missed_everywhere: list[str] = []
     for question in questions:
@@ -277,9 +260,7 @@ def render_repository_summary(
         for strategy in strategies:
             record = records_by_strategy[strategy].get(question_id)
             if record is None:
-                raise ValueError(
-                    f"{strategy} retrieval report lacks question {question_id}"
-                )
+                raise ValueError(f"{strategy} retrieval report lacks question {question_id}")
             rank = _first_hit_rank(record) if _answerable(question) else None
             if rank is not None:
                 all_missed = False
@@ -288,11 +269,7 @@ def render_repository_summary(
             )
         if all_missed:
             missed_everywhere.append(question_id)
-        lines.append(
-            f"| {question_id} | {question['category']} | "
-            + " | ".join(cells)
-            + " |"
-        )
+        lines.append(f"| {question_id} | {question['category']} | " + " | ".join(cells) + " |")
 
     total_cells = []
     for strategy in strategies:
@@ -303,8 +280,7 @@ def render_repository_summary(
             for record in [records_by_strategy[strategy][str(question["id"])]]
         ]
         successes = sum(
-            _first_hit_rank(record) is not None
-            and _first_hit_rank(record) <= 5
+            _first_hit_rank(record) is not None and _first_hit_rank(record) <= 5
             for record in answerable_records
         )
         mrr = (
@@ -319,9 +295,7 @@ def render_repository_summary(
         total_cells.append(f"Hit@5 {successes}; MRR {mrr:.3f}")
     lines.extend(
         [
-            "| **Totals** | **Answerable** | "
-            + " | ".join(total_cells)
-            + " |",
+            "| **Totals** | **Answerable** | " + " | ".join(total_cells) + " |",
             "",
             "Missed under every strategy: "
             + (", ".join(missed_everywhere) if missed_everywhere else "none"),

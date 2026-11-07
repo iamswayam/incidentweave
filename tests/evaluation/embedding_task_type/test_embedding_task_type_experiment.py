@@ -132,9 +132,7 @@ def test_summarize_method_reports_span_ranks_and_test_source_denominator() -> No
         {
             "category": "direct",
             "relevant": [{"file_path": "src/module.py", "substring": "target"}],
-            "relevant_spans": [
-                {"file_path": "src/module.py", "line_start": 4, "line_end": 4}
-            ],
+            "relevant_spans": [{"file_path": "src/module.py", "line_start": 4, "line_end": 4}],
         }
     ]
     results = [
@@ -213,9 +211,7 @@ def test_registered_decision_requires_all_four_rules() -> None:
         decision = _decision(**parameters)
         assert decision["rules"][failed_rule] == "fail"
         assert all(
-            result == "pass"
-            for rule, result in decision["rules"].items()
-            if rule != failed_rule
+            result == "pass" for rule, result in decision["rules"].items() if rule != failed_rule
         )
         assert decision["qualifies_for_retention"] is False
         assert set(decision["rules"]) == {"R1", "R2", "R3", "R4"}
@@ -267,9 +263,7 @@ def test_embed_cli_shows_safe_error_message_and_redacts_key(
 
     monkeypatch.setattr(experiment, "_embed", fail_without_provider_call)
 
-    assert experiment.main(
-        ["embed", "--confirm-provider-calls"]
-    ) == 2
+    assert experiment.main(["embed", "--confirm-provider-calls"]) == 2
     error_output = capsys.readouterr().err
     assert "simulated safe failure containing [REDACTED]" in error_output
     assert fake_key not in error_output
@@ -318,9 +312,7 @@ def test_rendered_results_note_is_aggregate_only_and_writable(tmp_path: Path) ->
         "test_precision": None,
     }
     report = {
-        "per_repository": {
-            "repo": {"control": method, "candidate": method}
-        },
+        "per_repository": {"repo": {"control": method, "candidate": method}},
         "pooled": {"control": method, "candidate": method},
         "bootstrap": {
             "mrr_difference": 0.0,

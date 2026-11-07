@@ -110,9 +110,7 @@ async def test_generation_falls_back_once_for_retryable_gemini_errors(
     async def use_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
         calls.append("groq")
         return {
-            "candidates": [
-                {"content": {"parts": [{"text": json.dumps(VALID_RESPONSE)}]}}
-            ],
+            "candidates": [{"content": {"parts": [{"text": json.dumps(VALID_RESPONSE)}]}}],
             "_provider": "groq",
             "_model": "qwen/qwen3.8-27b",
         }
@@ -205,9 +203,7 @@ async def test_missing_or_disabled_groq_configuration_does_not_fallback(
     async def fail_gemini(*_args: object, **_kwargs: object) -> dict[str, Any]:
         raise gemini_error
 
-    async def must_not_call_groq(
-        *_args: object, **_kwargs: object
-    ) -> dict[str, Any]:
+    async def must_not_call_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
         raise AssertionError("Groq must remain disabled")
 
     monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
@@ -236,9 +232,7 @@ async def test_generation_never_falls_back_for_non_retryable_errors(
     async def fail_gemini(*_args: object, **_kwargs: object) -> dict[str, Any]:
         raise error
 
-    async def must_not_call_groq(
-        *_args: object, **_kwargs: object
-    ) -> dict[str, Any]:
+    async def must_not_call_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
         raise AssertionError("Groq must not bypass a non-retryable Gemini error")
 
     monkeypatch.setattr(generation, "make_client", lambda: make_test_client())
@@ -431,17 +425,17 @@ async def test_groq_json_schema_selection_and_same_response_contract(
     )
     groq_payload = await groq.generate_with_groq("question")
     gemini_payload = {
-        "candidates": [
-            {"content": {"parts": [{"text": json.dumps(VALID_RESPONSE)}]}}
-        ]
+        "candidates": [{"content": {"parts": [{"text": json.dumps(VALID_RESPONSE)}]}}]
     }
 
     assert captured[0]["response_format"]["type"] == "json_schema"
-    assert groq_payload["candidates"][0]["content"]["parts"][0]["text"] == (
-        gemini_payload["candidates"][0]["content"]["parts"][0]["text"]
+    assert (
+        groq_payload["candidates"][0]["content"]["parts"][0]["text"]
+        == (gemini_payload["candidates"][0]["content"]["parts"][0]["text"])
     )
-    assert parsing.parse_investigation_response(groq_payload, [])["diagnosis"] == (
-        parsing.parse_investigation_response(gemini_payload, [])["diagnosis"]
+    assert (
+        parsing.parse_investigation_response(groq_payload, [])["diagnosis"]
+        == (parsing.parse_investigation_response(gemini_payload, [])["diagnosis"])
     )
 
 
@@ -533,9 +527,9 @@ async def test_graph_reports_the_model_that_generated_the_answer(
         "temperature": None,
     }
 
-    result = await graph_module.create_investigation_graph(
-        calibrate_confidence
-    ).ainvoke(initial_state)
+    result = await graph_module.create_investigation_graph(calibrate_confidence).ainvoke(
+        initial_state
+    )
     assert result["model"] == "qwen/qwen3.8-27b"
 
 
@@ -785,9 +779,7 @@ async def test_open_gemini_cooldown_falls_back_without_gemini_http_call(
     monkeypatch.setattr(
         generation,
         "make_client",
-        lambda: make_test_client(
-            transport=httpx.MockTransport(record_gemini)
-        ),
+        lambda: make_test_client(transport=httpx.MockTransport(record_gemini)),
     )
 
     async def use_groq(*_args: object, **_kwargs: object) -> dict[str, Any]:
@@ -812,19 +804,11 @@ async def test_open_gemini_cooldown_falls_back_without_gemini_http_call(
         ({"choices": []}, gemini.ProviderSchemaInvalidError),
         ({"choices": [{}]}, gemini.ProviderSchemaInvalidError),
         (
-            {
-                "choices": [
-                    {"message": {"content": ""}, "finish_reason": "stop"}
-                ]
-            },
+            {"choices": [{"message": {"content": ""}, "finish_reason": "stop"}]},
             gemini.ProviderSchemaInvalidError,
         ),
         (
-            {
-                "choices": [
-                    {"message": {"content": "not JSON"}, "finish_reason": "stop"}
-                ]
-            },
+            {"choices": [{"message": {"content": "not JSON"}, "finish_reason": "stop"}]},
             gemini.ProviderSchemaInvalidError,
         ),
         (

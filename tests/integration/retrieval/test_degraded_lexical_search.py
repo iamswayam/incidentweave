@@ -49,9 +49,7 @@ async def test_degraded_lexical_search_orders_ties_by_location_not_chunk_id() ->
                 Chunk(
                     repository_id=repository_id,
                     content=optional_content,
-                    content_hash=hashlib.sha256(
-                        optional_content.encode("utf-8")
-                    ).hexdigest(),
+                    content_hash=hashlib.sha256(optional_content.encode("utf-8")).hexdigest(),
                     file_path="src/m.py",
                     line_start=15,
                     line_end=19,
@@ -68,10 +66,7 @@ async def test_degraded_lexical_search_orders_ties_by_location_not_chunk_id() ->
                 limit=4,
             )
 
-        assert [
-            (item["file_path"], item["line_start"], item["line_end"])
-            for item in results
-        ] == [
+        assert [(item["file_path"], item["line_start"], item["line_end"]) for item in results] == [
             ("src/a.py", 2, 6),
             ("src/a.py", 10, 14),
             ("src/m.py", 15, 19),

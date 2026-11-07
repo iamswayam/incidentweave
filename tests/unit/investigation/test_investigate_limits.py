@@ -169,9 +169,7 @@ async def test_investigate_repository_persists_guard_refusal_when_requested(
         investigate_module, "create_investigation_graph", lambda calibrator: InsufficientGraph()
     )
     monkeypatch.setattr(investigate_module, "persist_refusal", fake_persist_refusal)
-    monkeypatch.setattr(
-        investigate_module, "latest_ingest_run_id", fake_latest_ingest_run_id
-    )
+    monkeypatch.setattr(investigate_module, "latest_ingest_run_id", fake_latest_ingest_run_id)
 
     result = await investigate_module.investigate_repository(
         "test-repo",
@@ -222,15 +220,11 @@ async def test_investigation_deadline_persists_timeout_error(
     monkeypatch.setattr(
         investigate_module, "create_investigation_graph", lambda calibrator: SlowGraph()
     )
-    monkeypatch.setattr(
-        investigate_module, "persist_error", fake_persist_error
-    )
+    monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
     monkeypatch.setattr(investigate_module, "INVESTIGATION_DEADLINE_SECONDS", 0.01)
 
     with pytest.raises(TimeoutError):
-        await investigate_module.investigate_repository(
-            "test-repo", "question", persist=True
-        )
+        await investigate_module.investigate_repository("test-repo", "question", persist=True)
 
     assert persisted_errors == ["TimeoutError"]
 
@@ -362,9 +356,7 @@ async def test_generation_unavailable_result_persists_only_evidence_metadata(
                 "confidence": "not_applicable",
                 "cited_chunk_ids": [],
                 "claims": [],
-                "uncertainty_note": (
-                    "Generation unavailable after configured provider retries."
-                ),
+                "uncertainty_note": ("Generation unavailable after configured provider retries."),
                 "retrieval_results": retrieval_results,
                 "retrieved_before_budget": retrieval_results,
                 "evidence_check": {
@@ -408,9 +400,7 @@ async def test_generation_unavailable_result_persists_only_evidence_metadata(
         fake_persist_generation_unavailable,
     )
 
-    result = await investigate_module.investigate_repository(
-        "test-repo", "question", persist=True
-    )
+    result = await investigate_module.investigate_repository("test-repo", "question", persist=True)
 
     assert result["outcome"] == "generation_unavailable"
     assert result["investigation_id"] == 91
@@ -430,10 +420,7 @@ async def test_generation_unavailable_result_persists_only_evidence_metadata(
     assert "content" not in repr(result["evidence"])
     assert persisted[0]["evidence"] == result["evidence"]
     assert persisted[0]["generation_trace"]["failed_stage"] == "generation"
-    assert (
-        persisted[0]["generation_trace"]["attempt_count_basis"]
-        == "inferred_from_error_class"
-    )
+    assert persisted[0]["generation_trace"]["attempt_count_basis"] == "inferred_from_error_class"
 
 
 def test_cli_prints_generation_trace_and_degraded_state_without_raw_text(
@@ -530,9 +517,7 @@ async def test_cached_query_vector_skips_embedding_and_uses_normal_graph(
         lambda _calibrator: fake_graph,
     )
 
-    result = await investigate_module.investigate_repository(
-        "test-repo", "question", persist=False
-    )
+    result = await investigate_module.investigate_repository("test-repo", "question", persist=False)
 
     assert result["outcome"] == "answered"
     assert fake_graph.state is not None
@@ -717,9 +702,7 @@ async def test_nonavailability_embedding_errors_remain_explicit(
     monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
 
     with pytest.raises(type(error)):
-        await investigate_module.investigate_repository(
-            "test-repo", "question", persist=True
-        )
+        await investigate_module.investigate_repository("test-repo", "question", persist=True)
 
     assert persisted_errors == [type(error).__name__]
 
@@ -759,6 +742,4 @@ async def test_embedding_availability_failure_does_not_degrade_when_cache_lookup
     monkeypatch.setattr(investigate_module, "persist_error", fake_persist_error)
 
     with pytest.raises(ProviderServerError):
-        await investigate_module.investigate_repository(
-            "test-repo", "question", persist=True
-        )
+        await investigate_module.investigate_repository("test-repo", "question", persist=True)

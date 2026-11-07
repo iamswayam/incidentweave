@@ -218,8 +218,7 @@ async def persist_refusal(
             "claims": [],
             "uncertainty_note": (
                 str(tool_call_trace[-1].get("outcome", {}).get("reason") or "")
-                if tool_call_trace
-                and isinstance(tool_call_trace[-1].get("outcome"), Mapping)
+                if tool_call_trace and isinstance(tool_call_trace[-1].get("outcome"), Mapping)
                 else ""
             ),
             "citation_validation": {"submitted": 0, "valid": 0, "rate": None},

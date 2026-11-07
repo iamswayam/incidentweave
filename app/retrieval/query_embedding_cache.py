@@ -62,9 +62,7 @@ def validate_cached_vector(vector: object, dimensions: int) -> list[float] | Non
     if not isinstance(vector, list) or len(vector) != dimensions:
         return None
     if any(
-        isinstance(value, bool)
-        or not isinstance(value, Real)
-        or not math.isfinite(float(value))
+        isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(float(value))
         for value in vector
     ):
         return None
@@ -87,10 +85,10 @@ async def get_query_embedding(
     await _expire_rows(session)
     row = await session.scalar(
         select(QueryEmbeddingCache).where(
-                QueryEmbeddingCache.embedding_model == key.embedding_model,
-                QueryEmbeddingCache.task_type == key.task_type,
-                QueryEmbeddingCache.dimensions == key.dimensions,
-                QueryEmbeddingCache.query_hash == key.query_hash,
+            QueryEmbeddingCache.embedding_model == key.embedding_model,
+            QueryEmbeddingCache.task_type == key.task_type,
+            QueryEmbeddingCache.dimensions == key.dimensions,
+            QueryEmbeddingCache.query_hash == key.query_hash,
         )
     )
     if row is None:
@@ -128,9 +126,7 @@ async def put_query_embedding(
         )
         .on_conflict_do_nothing(index_elements=list(_CACHE_KEY_COLUMNS))
     )
-    row_count = int(
-        await session.scalar(select(func.count()).select_from(QueryEmbeddingCache))
-    )
+    row_count = int(await session.scalar(select(func.count()).select_from(QueryEmbeddingCache)))
     excess = row_count - CACHE_MAX_ROWS
     if excess > 0:
         oldest_ids = (

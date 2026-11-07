@@ -26,14 +26,9 @@ def test_bm25_uses_fixed_score_and_or_matching() -> None:
 
     assert [row[0] for row in ranked] == [0, 1]
     expected_idf = math.log(1 + (3 - 2 + 0.5) / (2 + 0.5))
-    expected_first = expected_idf * (
-        2 * (1.2 + 1)
-        / (2 + 1.2 * (1 - 0.75 + 0.75 * 3 / (7 / 3)))
-    )
+    expected_first = expected_idf * (2 * (1.2 + 1) / (2 + 1.2 * (1 - 0.75 + 0.75 * 3 / (7 / 3))))
     assert ranked[0][1] == pytest.approx(expected_first)
-    expected_second = expected_idf * (
-        1.2 + 1
-    ) / (1 + 1.2 * (1 - 0.75 + 0.75 * 2 / (7 / 3)))
+    expected_second = expected_idf * (1.2 + 1) / (1 + 1.2 * (1 - 0.75 + 0.75 * 2 / (7 / 3)))
     assert ranked[1][1] == pytest.approx(expected_second)
     assert [row[0] for row in index.rank("alpha epsilon")] == [2, 0, 1]
 

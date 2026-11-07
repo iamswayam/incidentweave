@@ -120,9 +120,7 @@ async def _run(args: argparse.Namespace) -> list[Path]:
                 split=split,
                 fixture_sha256=fixture_sha,
             )
-            strategy_path = (
-                output_dir / repo_id / f"{strategy}-{split}.md"
-            )
+            strategy_path = output_dir / repo_id / f"{strategy}-{split}.md"
             strategy_path.parent.mkdir(parents=True, exist_ok=True)
             with strategy_path.open("w", encoding="utf-8", newline="\n") as output:
                 output.write(rendered)
