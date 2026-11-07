@@ -27,6 +27,7 @@ operational and evaluation commands.
 | [architecture/02-high-level-design.md](architecture/02-high-level-design.md) | IncidentWeave High-Level Design | living reference | Living | — | 2026-11-01 |
 | [architecture/03-low-level-design.md](architecture/03-low-level-design.md) | IncidentWeave Low-Level Design | living reference | Living | — | 2026-11-01 |
 | [architecture/04-threat-model.md](architecture/04-threat-model.md) | Threat Model | living reference | Living | — | 2026-11-01 |
+| [architecture/05-vision-and-roadmap.md](architecture/05-vision-and-roadmap.md) | IncidentWeave: vision and roadmap | living reference | Living | — | — |
 | [architecture-review/README.md](architecture-review/README.md) | Architecture review | living reference | Living | — | 2026-11-02 |
 | [architecture-review/01-audit-claude.md](architecture-review/01-audit-claude.md) | Independent Engineering Audit & AI Market Assessment: IncidentWeave | audit or review | Frozen | — | — |
 | [architecture-review/02-audit-codex.md](architecture-review/02-audit-codex.md) | IncidentWeave: Independent Engineering Audit and October 2026 Market Assessment | audit or review | Frozen | — | — |

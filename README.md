@@ -200,6 +200,7 @@ incidentweave/
 | Document | Contents |
 |---|---|
 | [Architecture](docs/architecture/README.md) | Architecture overview and design documents. |
+| [Vision and roadmap](docs/architecture/05-vision-and-roadmap.md) | Project vision, principles, roadmap horizons and scope fence. |
 | [Live fix checklist](docs/architecture-review/03-fix-checklist.md) | Current project status and approved work. |
 | [Evaluation](evaluation/README.md) | Evaluation commands, data, and artifact lifecycle. |
 | [Repository data](evaluation/repos/README.md) | Dataset composition, attribution, and labelling guidance. |
