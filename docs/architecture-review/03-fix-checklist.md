@@ -51,17 +51,17 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 31a | In review | pending | Dataset question tooling and labelling guidelines |
 | 31b | Not started | pending | Pilot questions for rq and kopf, second pass and pilot gate |
 | 31c | Not started | pending | Scale to remaining repositories, development fixtures, freeze v2.0 |
-| 32a | In review | pending | Provisional v1 development scorecard and registered production/deep views; results in docs/reference/metrics.md. |
+| 32a | Done | #119 | Provisional v1 development scorecard and registered production/deep views; results in docs/reference/metrics.md. |
 | 32b | Not started | pending | Final v2 development baseline after item 31c; frozen before item 3b. |
-| 35a | In review | pending | Move ingestion, embedding, and investigation logic under app/; retain the documented script commands. |
-| 35b | In review | pending | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
-| 35c | In review | pending | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
+| 35a | Done | #121 | Move ingestion, embedding, and investigation logic under app/; retain the documented script commands. |
+| 35b | Done | #123 | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
+| 35c | Done | #125 | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Not started | pending | Split question_review.py into focused modules. |
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
-| 33 | Not started | pending | Operational metrics report |
+| 33 | In review | pending | Operational metrics report and tests; CI integration test pending. |
 | 34 | Not started | pending | Citation validity and end-to-end checks |
 
-Next: item 33.
+Next: item 34.
 
 Deferred (no dependency): Docker image from the lock (multi-stage, non-root), static analysis.
 
@@ -622,11 +622,12 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
   - Dependabot alerts.
   - Branch protection requiring the secrets, audit, and evaluation checks.
 
-**33. Operational metrics report.**
+**33. Operational metrics report (In review).**
 - **Why:** Quality results need latency, usage, cost, failure, degradation, and cache context.
 - **Fix:** Extend the usage report with per-operation p50/p95/p99 latency, tokens, estimated per-query list-price cost with dated official pricing sources, separately reported free-tier actual cost, errors, degraded outcomes, and cache-hit rates.
 - **Done when:** The report is reproducible and separates estimates from observed free-tier cost.
-- **Status:** Not started.
+- **Progress:** Added deterministic provider, outcome, cache, and cost aggregation with synthetic unit coverage; the database integration test is marked for CI and was not run locally. The configured Gemini models have no published prices on the official pricing page retrieved 2026-11-07.
+- **Status:** In review.
 
 **34. Citation validity and end-to-end checks.**
 - **Why:** Retrieval scores alone do not measure citation validity or answer/refusal stability.
