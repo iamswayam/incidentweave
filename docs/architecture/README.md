@@ -8,5 +8,6 @@
 | 02 | [02-high-level-design.md](02-high-level-design.md) | System context, architectural goals, primary data flows, boundaries and scope |
 | 03 | [03-low-level-design.md](03-low-level-design.md) | Modules, workflow state, API/CLI boundaries, entities and sequence diagrams |
 | 04 | [04-threat-model.md](04-threat-model.md) | Current trust boundaries, threats, mitigations and residual risks |
+| 05 | [05-vision-and-roadmap.md](05-vision-and-roadmap.md) | Project vision, principles, roadmap horizons and scope fence |
 
 Back to the [documentation status index](../README.md).
