@@ -12,7 +12,12 @@ jobs:
   repoaccord:
     runs-on: ubuntu-latest
     steps:
+      - id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.REPOACCORD_CLIENT_ID }}
+          private-key: ${{ secrets.REPOACCORD_APP_PRIVATE_KEY }}
       - uses: sensiwolf/repoaccord@469ecfb1512b25bab29ddf5b50f6eaf4a5e5c062 # v0.1.0
         with:
-          token: ${{ secrets.REPOACCORD_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           dry-run: ${{ vars.REPOACCORD_DRY_RUN || 'true' }}
