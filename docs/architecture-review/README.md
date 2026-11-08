@@ -23,6 +23,7 @@ Independent engineering audits of IncidentWeave and the prioritized fix checklis
 | 15 | [15-evaluation-dataset-protocol.md](15-evaluation-dataset-protocol.md) | Maintainer | Registered evaluation dataset v2 protocol for item 29 | Registered |
 | 16 | [16-scorecard-protocol.md](16-scorecard-protocol.md) | Maintainer | Registered retrieval and guard scorecard protocol for item 32 | Registered |
 | 17 | [17-end-to-end-protocol.md](17-end-to-end-protocol.md) | Maintainer | Registered citation and end-to-end checks protocol for item 34 | Registered |
+| 18 | [18-reranker-protocol.md](18-reranker-protocol.md) | Maintainer | Registered development-only reranker experiment protocol for item 21 | Registered |
 
 ## Conventions
 - Files are named `NN-kebab-case.md` in reading order. A new document takes the next number.
