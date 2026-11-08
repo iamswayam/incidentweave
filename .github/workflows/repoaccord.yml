@@ -1,0 +1,18 @@
+name: RepoAccord
+on:
+  push:
+    branches:
+      - "bot/**"
+permissions:
+  contents: read
+concurrency:
+  group: repoaccord-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  repoaccord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: sensiwolf/repoaccord@469ecfb1512b25bab29ddf5b50f6eaf4a5e5c062 # v0.1.0
+        with:
+          token: ${{ secrets.REPOACCORD_TOKEN }}
+          dry-run: ${{ vars.REPOACCORD_DRY_RUN || 'true' }}

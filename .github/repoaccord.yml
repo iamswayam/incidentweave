@@ -1,0 +1,10 @@
+version: 1
+branches:
+  prefixes:
+    - bot/
+trailers:
+  forbid:
+    - Co-authored-by
+    - Generated with
+auto_merge:
+  enabled: false
