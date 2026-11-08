@@ -2,6 +2,14 @@ version: 1
 branches:
   prefixes:
     - bot/
+issues:
+  assignees:
+    - iamswayam
+pull_request:
+  reviewers:
+    - iamswayam
+  assignees:
+    - iamswayam
 trailers:
   forbid:
     - Co-authored-by
