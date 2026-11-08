@@ -112,6 +112,7 @@ operational and evaluation commands.
 | BM25 14d | [12-bm25-comparison-protocol.md](architecture-review/12-bm25-comparison-protocol.md) | [17-bm25-comparison-results.md](notes/17-bm25-comparison-results.md) | `evaluation/experiments/bm25/results.json` | `scripts/compare_bm25.py` | Keep control; B1 failed R1 and R2 |
 | Local embeddings 18c | [14-local-embedding-protocol.md](architecture-review/14-local-embedding-protocol.md) | [18-local-embedding-results.md](notes/18-local-embedding-results.md) | `evaluation/cache/local_embedding_v1/results-development.json` (ignored) | `scripts/run_local_embedding_experiment.py` | Keep control; both candidates failed R1–R3 |
 | Scorecard 32a | [16-scorecard-protocol.md](architecture-review/16-scorecard-protocol.md) | [metrics.md](reference/metrics.md) | `evaluation/experiments/scorecard/v1-development.json` | `scripts/run_scorecard.py` | Provisional v1 development baseline; production control cross-check passed |
+| Reranker 21 | [18-reranker-protocol.md](architecture-review/18-reranker-protocol.md) | Not run | `evaluation/experiments/reranker/` | `scripts/run_reranker_experiment.py` | Offline harness ready; experiment not run |
 
 Experiment implementations and the offline chunking run-comparison CLI are indexed in the
 [evaluation studies guide](../evaluation/studies/README.md); documented script commands

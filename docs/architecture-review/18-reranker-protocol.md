@@ -50,12 +50,25 @@ The scorecard does not designate a primary metric; this protocol designates MRR@
 Secondary retrieval metrics are Hit@1, Hit@3, Hit@5, Hit@10, Hit@20, nDCG@5, nDCG@10,
 Recall@20, and context precision@5, using the scorecard definitions and cutoffs.
 
-Also report the scorecard's guard metrics and the item 34 citation and refusal checks:
-citation quote validity, retrieval-grounded citation rate, false-answer and
-false-refusal rates, overall correctness, and the `answered`, `refused_guard`, and
-`abstained_model` outcomes. The item 32 scorecard defines no citation or abstention
-metrics and no non-inferiority margins; use item 34's definitions for those checks and
-the proposed margins below.
+The current item 32 scorecard computes `guard.false_accept_rate`,
+`guard.correct_refusal_rate`, `guard.false_refusal_rate`, `guard.refusal_precision`,
+and `guard.refusal_recall`. The current item 34 end-to-end runner computes
+`citation_quote_validity`, `retrieval_grounded_citation_rate`,
+`answered_with_citations`, `false_answer_rate`, `false_refusal_rate`,
+`overall_correctness`, `outcome_counts`, `stable_outcome_questions`,
+`mean_cited_chunk_jaccard`, and `flip_questions`; `outcome_counts` includes the
+`answered`, `refused_guard`, and `abstained_model` outcomes.
+
+This experiment reranks retrieval results only; it does not run the application with
+the treatment ordering. Therefore `citation_quote_validity`,
+`retrieval_grounded_citation_rate`, `answered_with_citations`, `false_answer_rate`,
+`false_refusal_rate`, `overall_correctness`, `outcome_counts`,
+`stable_outcome_questions`, `mean_cited_chunk_jaccard`, and `flip_questions` are
+**not measured in this experiment; not a gate**. There is no computed
+`abstention_rate`: the end-to-end runner reports `outcome_counts` rather than an
+abstention rate, so an abstention-rate gate is **not measured in this experiment; not a
+gate**. The unchanged retrieval guard can be measured by the existing scorecard;
+report its exact metrics and apply only the gates specified in section 5.
 Use the item 14b `evaluation/test_files.py` classifier to report test-file share as a
 noise diagnostic, not as a decision gate.
 
@@ -73,18 +86,19 @@ cost per 1,000 queries. Record token counts, errors, and the estimated list-pric
 per operation/query; report any observed free-tier amount separately, never as the
 estimated cost.
 
-## 5. Proposed decision rule
+## 5. Confirmed decision rule
 
-Every numeric gate below is **proposed and must be confirmed by the maintainer before the
-run**. Keep the candidate only if all conditions hold:
+The numeric gates below were confirmed by the maintainer before the run. Keep the
+candidate only if all conditions hold:
 
 1. The lower bound of the paired 95% interval for MRR@5 improvement is above zero, and
    the pooled point improvement is at least **0.02 absolute**.
-2. No secondary safety metric is worse than baseline beyond its margin: **zero absolute**
-   for citation validity and retrieval-grounded citation rates; **zero absolute** for
-   guard false-accept rate; and **0.02 absolute** for refusal and abstention rates and
-   refusal correctness rate. The scorecard defines no such margins; the zero false-accept
-   margin is an additional conservative proposal.
+2. No measured safety metric is worse than baseline beyond its margin:
+   **zero absolute** for `guard.false_accept_rate`; and **0.02 absolute** for
+   `guard.false_refusal_rate` and `guard.correct_refusal_rate`. Citation validity,
+   retrieval-grounded citation rate, and abstention rate are **not measured in this
+   experiment; not a gate** (section 4). Do not substitute other metrics or derive
+   unregistered rates.
 3. Added median latency per query is at most **500 ms**, and added p95 latency is at most
    **1,500 ms**.
 4. Cost per 1,000 queries is recorded and reported. There is no cost cap; the maintainer
@@ -94,11 +108,36 @@ Otherwise reject the candidate and record the result. There are no second chance
 the rule cannot change after results are seen. Record any deviation in the results
 document without adding a date.
 
+**Pre-run amendment:** The numeric gates are confirmed before any run. Sections 4 and 5
+name the guard and end-to-end metrics present in the current scorecard and runner, and
+exclude citation and abstention gates because this retrieval-only experiment cannot
+measure treatment answer behavior. The protocol previously described item 34 as not
+built; the current code contains its checks, but they are not wired to the reranked
+ordering.
+
 ## 6. Run procedure and records
 
 Before any run, pin the model identifier, API version, run settings, and data hashes.
-Require the Docker database to be available for the retrieval and operational path. Keep
-`VOYAGE_API_KEY` only in the local git-ignored `.env`; never commit or print it. No key
+The harness has three separate commands:
+
+1. `python -m scripts.run_reranker_experiment export` requires the Docker evaluation
+   database and no provider key. It uses the scorecard's development-only validation,
+   freezes the top-20 candidate text and baseline order, and records the dataset, fixture,
+   and per-question candidate-set hashes.
+2. `python -m scripts.run_reranker_experiment rerank` requires the evaluation database for
+   the existing metadata-only provider usage log, plus `VOYAGE_API_KEY` in the local
+   git-ignored `.env`. The key is never accepted as an argument or written to experiment
+   data, logs, or reports. It refuses to run without `pin.json`.
+3. `python -m scripts.run_reranker_experiment analyze` reads only saved development data
+   and manifest-selected fixtures. It needs no database, key, or network access.
+
+Create `evaluation/experiments/reranker/pin.json` locally before reranking. It records
+`model_identifier`, `api_version` (`v1`), `model_settings` (an empty object; the registered
+rerank endpoint has no additional model-specific settings), `request_limits`
+(`max_candidates` and `top_k` both 20, `truncation`, positive `timeout_seconds`, and
+`max_attempts` from 1 through 5), `retry_policy` (exponential strategy, positive initial
+and maximum delays, and whether to respect the provider's `Retry-After` header), and
+`pricing` (`usd_per_million_tokens` and `source_url`). Do not include credentials. No key
 or live request is used to register this protocol.
 
 Run in this order:
@@ -109,12 +148,18 @@ Run in this order:
 4. Compute paired per-question metrics, intervals, latency deltas, and cost.
 5. Write the aggregate report and apply the registered decision rule without changing it.
 
-Later-run files, not created by this registration:
+Harness files:
+
+- `app/providers/reranker.py`
+- `evaluation/studies/reranker/reranker_experiment.py`
+- `scripts/run_reranker_experiment.py`
+
+Run-time files:
 
 - `evaluation/experiments/reranker/development-rankings.json`
 - `evaluation/experiments/reranker/development-report.json`
 - `evaluation/experiments/reranker/report-development.md`
-- `scripts/run_reranker_experiment.py`
+- `evaluation/experiments/reranker/pin.json` (local run-time settings; not a credential file)
 
 Store dataset and fixture hashes, baseline and treatment rankings, per-question metric
 values and differences, guard/citation/refusal outcomes, model and API settings, latencies,
