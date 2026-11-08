@@ -17,7 +17,7 @@ jobs:
         with:
           client-id: ${{ vars.REPOACCORD_CLIENT_ID }}
           private-key: ${{ secrets.REPOACCORD_APP_PRIVATE_KEY }}
-      - uses: sensiwolf/repoaccord@469ecfb1512b25bab29ddf5b50f6eaf4a5e5c062 # v0.1.0
+      - uses: sensiwolf/repoaccord@cbc889849b352f55e774bd29d22c33f84aa4f54d # v0.2.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           dry-run: ${{ vars.REPOACCORD_DRY_RUN || 'true' }}
