@@ -240,7 +240,7 @@ class VoyageRerankAdapter:
                                 "Content-Type": "application/json",
                             },
                         )
-                    except (httpx.TimeoutException, httpx.NetworkError):
+                    except httpx.TransportError:
                         attempt_records.append(
                             {
                                 "attempt": attempts,
