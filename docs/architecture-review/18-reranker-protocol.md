@@ -124,7 +124,8 @@ The harness has three separate commands:
    database and no provider key. It uses the scorecard's development-only validation,
    freezes the top-20 candidate text and baseline order, and records the dataset, fixture,
    and per-question candidate-set hashes.
-2. `python -m scripts.run_reranker_experiment rerank` requires the evaluation database for
+2. `python -m scripts.run_reranker_experiment rerank [--min-interval-seconds N]` accepts an
+   optional minimum spacing between request start times (default `0`). It requires the evaluation database for
    the existing metadata-only provider usage log, plus `VOYAGE_API_KEY` in the local
    git-ignored `.env`. The key is never accepted as an argument or written to experiment
    data, logs, or reports. It refuses to run without `pin.json`.

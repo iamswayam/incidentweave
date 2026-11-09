@@ -18,6 +18,18 @@ from evaluation.studies.reranker.reranker_experiment import (
 )
 
 
+def _non_negative_seconds(value: str) -> float:
+    import math
+
+    try:
+        seconds = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a non-negative number") from exc
+    if not math.isfinite(seconds) or seconds < 0:
+        raise argparse.ArgumentTypeError("must be a finite non-negative number")
+    return seconds
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -30,6 +42,12 @@ def main() -> None:
     rerank.add_argument("--input", type=Path, default=RANKINGS_PATH)
     rerank.add_argument("--out", type=Path)
     rerank.add_argument("--pin", type=Path, default=PIN_PATH)
+    rerank.add_argument(
+        "--min-interval-seconds",
+        type=_non_negative_seconds,
+        default=0.0,
+        help="minimum time between rerank request start times",
+    )
     rerank.add_argument("--manifest", type=Path, default=MANIFEST_PATH)
 
     analyze = commands.add_parser("analyze", help="analyse frozen baseline and treatment offline")
@@ -52,6 +70,7 @@ def main() -> None:
                 args.input,
                 pin_path=args.pin,
                 output_path=args.out,
+                min_interval_seconds=args.min_interval_seconds,
                 manifest_path=args.manifest,
                 root=root,
             )

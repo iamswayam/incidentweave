@@ -7,7 +7,7 @@ import hashlib
 import json
 import math
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from pathlib import Path
 from statistics import mean
 from typing import Any
@@ -393,6 +393,13 @@ def load_pin(path: Path) -> dict[str, Any]:
     return pin
 
 
+def _validate_min_interval_seconds(value: float) -> None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise ValueError("min_interval_seconds must be a finite non-negative number")
+    if value < 0:
+        raise ValueError("min_interval_seconds must be a finite non-negative number")
+
+
 def _validate_pin(pin: Mapping[str, Any]) -> None:
     forbidden = {"api_key", "voyage_api_key", "authorization", "secret", "token"}
 
@@ -474,10 +481,14 @@ async def rerank_candidates(
     pin: Mapping[str, Any],
     provider: RerankProvider,
     *,
+    min_interval_seconds: float = 0,
+    sleep: Callable[[float], Awaitable[None]] | None = None,
+    clock: Callable[[], float] | None = None,
     verify_source_split: bool = False,
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
 ) -> dict[str, Any]:
+    _validate_min_interval_seconds(min_interval_seconds)
     _validate_pin(pin)
     metadata = data.get("metadata")
     if not isinstance(metadata, Mapping):
@@ -492,6 +503,10 @@ async def rerank_candidates(
     result = json.loads(json.dumps(data))
     result_metadata = result["metadata"]
     result_metadata["reranker_pin"] = dict(pin)
+    result_metadata["min_interval_seconds"] = min_interval_seconds
+    sleep_fn = asyncio.sleep if sleep is None else sleep
+    clock_fn = asyncio.get_running_loop().time if clock is None else clock
+    last_request_started: float | None = None
     failures = 0
     for repository in result.get("repositories", []):
         for question in repository.get("questions", []):
@@ -513,7 +528,12 @@ async def rerank_candidates(
                 }
                 continue
             documents = [candidate["text"] for candidate in baseline]
-            started = asyncio.get_running_loop().time()
+            if last_request_started is not None and min_interval_seconds > 0:
+                wait_seconds = min_interval_seconds - (clock_fn() - last_request_started)
+                if wait_seconds > 0:
+                    await sleep_fn(wait_seconds)
+            started = clock_fn()
+            last_request_started = started
             try:
                 response = await provider.rerank(
                     question["question"],
@@ -552,7 +572,7 @@ async def rerank_candidates(
                 latency_ms = (
                     exc.latency_ms
                     if isinstance(exc, VoyageRerankFailure)
-                    else round((asyncio.get_running_loop().time() - started) * 1000)
+                    else round((clock_fn() - started) * 1000)
                 )
                 question["treatment_candidates"] = [dict(candidate) for candidate in baseline]
                 question["rerank"] = {
@@ -1071,9 +1091,11 @@ async def run_rerank_stage(
     *,
     pin_path: Path = PIN_PATH,
     output_path: Path | None = None,
+    min_interval_seconds: float = 0,
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
 ) -> dict[str, Any]:
+    _validate_min_interval_seconds(min_interval_seconds)
     import httpx
 
     from app.providers.reranker import VoyageRerankAdapter
@@ -1101,6 +1123,7 @@ async def run_rerank_stage(
             data,
             pin,
             provider,
+            min_interval_seconds=min_interval_seconds,
             verify_source_split=False,
             manifest_path=manifest_path,
             root=root,

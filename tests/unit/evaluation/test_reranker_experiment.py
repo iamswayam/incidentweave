@@ -118,6 +118,35 @@ class FailingProvider:
         )
 
 
+class TimedProvider:
+    def __init__(self, clock: Any) -> None:
+        self.clock = clock
+        self.starts: list[float] = []
+
+    async def rerank(self, *_args: Any, **_kwargs: Any) -> RerankResponse:
+        del _args, _kwargs
+        self.starts.append(self.clock.now)
+        self.clock.now += 0.125
+        return RerankResponse(
+            indices=(0, 1, 2, 3, 4),
+            response={"data": []},
+            token_count=100,
+            latency_ms=125,
+            attempt_count=1,
+        )
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def time(self) -> float:
+        return self.now
+
+    async def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
 class ReplacingProvider:
     async def rerank(self, *_args: Any, **_kwargs: Any) -> RerankResponse:
         del _args, _kwargs
@@ -222,6 +251,66 @@ def test_analysis_reports_hand_calculated_mrr_and_paired_differences() -> None:
         "ties": 3,
         "p_value": 1.0,
     }
+
+
+def test_rerank_interval_defaults_to_zero_without_sleep() -> None:
+    data, _ = _candidate_data()
+    clock = FakeClock()
+    provider = TimedProvider(clock)
+    sleeps: list[float] = []
+
+    async def record_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        await clock.sleep(seconds)
+
+    result = asyncio.run(
+        rerank_candidates(data, PIN, provider, sleep=record_sleep, clock=clock.time)
+    )
+
+    assert sleeps == []
+    assert result["metadata"]["min_interval_seconds"] == 0
+    assert len(provider.starts) == 3
+
+
+def test_positive_rerank_interval_sleeps_between_requests_outside_latency() -> None:
+    data, _ = _candidate_data()
+    clock = FakeClock()
+    provider = TimedProvider(clock)
+    sleeps: list[float] = []
+
+    async def record_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        await clock.sleep(seconds)
+
+    result = asyncio.run(
+        rerank_candidates(
+            data,
+            PIN,
+            provider,
+            min_interval_seconds=45,
+            sleep=record_sleep,
+            clock=clock.time,
+        )
+    )
+
+    assert len(sleeps) == 2
+    assert sleeps == pytest.approx([44.875, 44.875])
+    assert provider.starts[0] == 0
+    assert all(
+        later - earlier >= 45 for earlier, later in zip(provider.starts, provider.starts[1:])
+    )
+    assert result["metadata"]["min_interval_seconds"] == 45
+    assert all(
+        question["rerank"]["latency_ms"] == 125
+        for repository in result["repositories"]
+        for question in repository["questions"]
+    )
+
+
+def test_negative_rerank_interval_is_rejected() -> None:
+    data, _ = _candidate_data()
+    with pytest.raises(ValueError, match="finite non-negative"):
+        asyncio.run(rerank_candidates(data, PIN, FailingProvider(), min_interval_seconds=-1))
 
 
 def test_rerank_failure_uses_baseline_order_and_is_counted() -> None:
