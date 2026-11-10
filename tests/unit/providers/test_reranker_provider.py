@@ -170,3 +170,122 @@ def test_voyage_reranker_failure_does_not_expose_provider_body_or_credentials() 
     assert logger.entries[0].error_class == "auth"
     assert secret not in repr(logger.entries)
     assert text not in repr(logger.entries)
+
+
+def test_voyage_reranker_retries_remote_protocol_error_and_succeeds() -> None:
+    calls = 0
+    cooldown = FakeCooldown()
+    logger = RecordingUsageLogger()
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+        return httpx.Response(
+            200,
+            json={
+                "model": "rerank-test-model",
+                "data": [{"index": 0, "relevance_score": 0.9}],
+                "usage": {"total_tokens": 12},
+            },
+        )
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = VoyageRerankAdapter(
+                api_key="local-test-key",
+                model="rerank-test-model",
+                api_version="v1",
+                client=client,
+                rate_limiter=FakeRateLimiter(),
+                cooldown=cooldown,
+                usage_logger=logger,
+                sleep=no_sleep,
+            )
+            result = await provider.rerank(
+                "question",
+                ["document"],
+                top_k=1,
+                truncation=True,
+                timeout_seconds=2,
+                max_attempts=2,
+                retry_policy={
+                    "strategy": "exponential",
+                    "initial_delay_seconds": 1,
+                    "max_delay_seconds": 8,
+                    "respect_retry_after": True,
+                },
+            )
+        assert result.indices == (0,)
+        assert result.attempt_count == 2
+        assert [row["error_class"] for row in result.attempt_records] == [
+            "network_error",
+            None,
+        ]
+
+    asyncio.run(run())
+    assert calls == 2
+    assert cooldown.successes == 1
+    assert logger.entries[0].status == "success"
+
+
+def test_voyage_reranker_remote_protocol_errors_end_as_timeout_failure() -> None:
+    calls = 0
+    cooldown = FakeCooldown()
+    logger = RecordingUsageLogger()
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    async def run() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            provider = VoyageRerankAdapter(
+                api_key="local-test-key",
+                model="rerank-test-model",
+                api_version="v1",
+                client=client,
+                rate_limiter=FakeRateLimiter(),
+                cooldown=cooldown,
+                usage_logger=logger,
+                sleep=no_sleep,
+            )
+            try:
+                await provider.rerank(
+                    "question",
+                    ["document"],
+                    top_k=1,
+                    truncation=True,
+                    timeout_seconds=2,
+                    max_attempts=2,
+                    retry_policy={
+                        "strategy": "exponential",
+                        "initial_delay_seconds": 1,
+                        "max_delay_seconds": 8,
+                        "respect_retry_after": True,
+                    },
+                )
+            except VoyageRerankFailure as exc:
+                assert exc.error_class == "timeout"
+                assert exc.status_code is None
+                assert exc.attempts == 2
+                assert [row["error_class"] for row in exc.attempt_records] == [
+                    "network_error",
+                    "network_error",
+                ]
+            else:
+                raise AssertionError("expected a documented timeout failure")
+
+    asyncio.run(run())
+    assert calls == 2
+    assert cooldown.failures == 1
+    assert logger.entries[0].status == "failure"
+    assert logger.entries[0].error_class == "timeout"
