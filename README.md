@@ -7,7 +7,6 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
 
-# IncidentWeave
 
 *Evidence-grounded incident investigation for code repositories. Retrieve the relevant source, verify the facts, and investigate with citations instead of guesswork.*
 
