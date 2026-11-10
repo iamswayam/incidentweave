@@ -335,6 +335,7 @@ flowchart LR
 |---|---|---|
 | `GET /health` | None | Returns `{"status": "ok"}`. |
 | `POST /investigations` | Shared `X-API-Secret`, then rate limit | Validates `repository_name`, non-empty query, positive `limit`; runs/persists synchronously; returns diagnosis, `model_self_rating`, a `rating_note`, citations, evidence check, tool trace, model and latency, plus additive `unavailable_answer`, `degraded`, `degraded_reason`, and `evidence` fields. |
+| `GET /investigations` | Same | Returns newest-first, paginated content-free summaries; supports repository filtering and an ID cursor. |
 | `GET /investigations/{id}` | Same | Reads one investigation and exactly one audit record; reconstructs returned evidence/tool fields. |
 | `GET /repositories` | Same | Returns every repository’s total chunk count and non-null embedding count. |
 

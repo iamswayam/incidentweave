@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -83,11 +84,81 @@ class RepositorySummary(BaseModel):
     embedded_chunk_count: int
 
 
+class InvestigationSummary(BaseModel):
+    """Content-free summary for browsing persisted investigations."""
+
+    id: int
+    repository_name: str
+    query: str
+    outcome: str
+    model_self_rating: str | None
+    latency_ms: int | None
+    created_at: str
+
+
+def _utc_isoformat(value: datetime) -> str:
+    """Format database timestamps as unambiguous UTC ISO 8601 strings."""
+
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
+
+
 def _http_error(status_code: int, code: str, message: str) -> HTTPException:
     return HTTPException(
         status_code=status_code,
         detail={"code": code, "message": message},
     )
+
+
+@router.get(
+    "/investigations",
+    response_model=list[InvestigationSummary],
+    dependencies=[Depends(require_api_access)],
+)
+async def list_investigations(
+    repository_name: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    before_id: int | None = None,
+) -> list[InvestigationSummary]:
+    """List light investigation summaries in newest-first order."""
+
+    statement = (
+        select(
+            Investigation.id,
+            Repository.name,
+            Investigation.query,
+            Investigation.outcome,
+            Investigation.confidence,
+            Investigation.latency_ms,
+            Investigation.created_at,
+        )
+        .join(Repository, Repository.id == Investigation.repository_id)
+        .order_by(Investigation.id.desc())
+        .limit(limit)
+    )
+    if repository_name is not None:
+        statement = statement.where(Repository.name == repository_name)
+    if before_id is not None:
+        statement = statement.where(Investigation.id < before_id)
+
+    async with AsyncSessionLocal() as session:
+        rows = (await session.execute(statement)).all()
+
+    return [
+        InvestigationSummary(
+            id=identifier,
+            repository_name=name,
+            query=query[:300],
+            outcome=outcome,
+            model_self_rating=confidence,
+            latency_ms=latency_ms,
+            created_at=_utc_isoformat(created_at),
+        )
+        for identifier, name, query, outcome, confidence, latency_ms, created_at in rows
+    ]
 
 
 @router.post(

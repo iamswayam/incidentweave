@@ -140,6 +140,7 @@ python -m scripts.serve
 |---|---|---|
 | `GET /health` | None | Returns `{"status": "ok"}`. |
 | `POST /investigations` | `X-API-Secret` | Runs an investigation and persists its outcome. |
+| `GET /investigations` | `X-API-Secret` | Lists paginated, content-free investigation summaries. |
 | `GET /investigations/{id}` | `X-API-Secret` | Returns the investigation and reconstructed audit details. |
 | `GET /repositories` | `X-API-Secret` | Lists repositories with total and embedded chunk counts. |
 

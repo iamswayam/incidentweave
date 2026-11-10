@@ -150,7 +150,7 @@ Vector retrieval scopes by repository ID and orders by cosine distance. Full-tex
 | Gemini | API key is read from `GEMINI_API_KEY` and sent in `x-goog-api-key`; asynchronous embedding and generation use REST over HTTPS with retry and deadline limits. |
 | Groq | Optional generation-only fallback, disabled unless `GROQ_FALLBACK_ENABLED`, `GROQ_API_KEY`, and `GROQ_MODEL` are configured. It never handles embeddings. |
 | PostgreSQL | The application converts a `postgresql://` URL to Psycopg’s async SQLAlchemy dialect, registers pgvector per connection, and uses async sessions. |
-| HTTP | `/health` is open. `/investigations`, `/investigations/{id}`, and `/repositories` require `X-API-Secret`. |
+| HTTP | `/health` is open. `POST /investigations`, `GET /investigations`, `/investigations/{id}`, and `/repositories` require `X-API-Secret`. |
 | MCP | Local stdio subprocess only; there is no remote MCP deployment or model-directed tool selection. |
 | Evaluation | Evaluation is a separate CLI process using a pinned source snapshot and a golden set; it protects its evaluation repository inventory and does not persist investigation rows. |
 

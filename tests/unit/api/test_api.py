@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any
 
@@ -37,6 +38,7 @@ class FakeSession:
     ) -> None:
         self.entities = entities or {}
         self.rows = rows or []
+        self.statements: list[object] = []
 
     async def __aenter__(self) -> FakeSession:
         return self
@@ -48,6 +50,7 @@ class FakeSession:
         return self.entities.get((model, identifier))
 
     async def execute(self, statement: object) -> FakeResult:
+        self.statements.append(statement)
         return FakeResult(self.rows)
 
 
@@ -887,3 +890,125 @@ def test_list_repositories_returns_chunk_and_embedding_counts(
         {"name": "incidentweave-eval", "chunk_count": 70, "embedded_chunk_count": 70},
         {"name": "incidentweave-local", "chunk_count": 72, "embedded_chunk_count": 70},
     ]
+
+
+def test_list_investigations_returns_empty_list_without_database(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = FakeSession()
+    monkeypatch.setattr(api_module, "AsyncSessionLocal", lambda: session)
+
+    response = api_client.get("/investigations", headers=HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == []
+    assert len(session.statements) == 1
+
+
+def test_list_investigations_filters_repository_and_returns_content_free_summaries(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created_at = datetime.now(timezone(timedelta(hours=5, minutes=30))).replace(microsecond=0)
+    session = FakeSession(rows=[(9, "wanted", "query", "answered", "high", 1200, created_at)])
+    monkeypatch.setattr(api_module, "AsyncSessionLocal", lambda: session)
+
+    response = api_client.get(
+        "/investigations?repository_name=wanted",
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": 9,
+            "repository_name": "wanted",
+            "query": "query",
+            "outcome": "answered",
+            "model_self_rating": "high",
+            "latency_ms": 1200,
+            "created_at": created_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+    ]
+    statement = session.statements[0]
+    assert statement.compile().params["name_1"] == "wanted"
+    assert "response" not in response.json()[0]
+    assert "claims" not in response.json()[0]
+    assert "evidence" not in response.json()[0]
+
+
+def test_list_investigations_paginates_and_orders_newest_first(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+    session = FakeSession(
+        rows=[
+            (19, "repo", "newer", "answered", "medium", 100, timestamp),
+            (17, "repo", "older", "refused_guard", "low", None, timestamp),
+        ]
+    )
+    monkeypatch.setattr(api_module, "AsyncSessionLocal", lambda: session)
+
+    response = api_client.get(
+        "/investigations?before_id=20&limit=2",
+        headers=HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [19, 17]
+    statement = session.statements[0]
+    assert "investigations.id DESC" in str(statement)
+    assert 20 in statement.compile().params.values()
+
+
+@pytest.mark.parametrize("limit", [0, 101])
+def test_list_investigations_rejects_out_of_range_limit(
+    api_client: TestClient,
+    limit: int,
+) -> None:
+    response = api_client.get(f"/investigations?limit={limit}", headers=HEADERS)
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "error": {"code": "validation_error", "message": "Request validation failed."}
+    }
+
+
+def test_list_investigations_truncates_long_query(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+    session = FakeSession(rows=[(22, "repo", "q" * 400, "answered", "high", 250, timestamp)])
+    monkeypatch.setattr(api_module, "AsyncSessionLocal", lambda: session)
+
+    response = api_client.get("/investigations", headers=HEADERS)
+
+    assert response.status_code == 200
+    assert len(response.json()[0]["query"]) == 300
+
+
+def test_list_investigations_uses_shared_api_secret_and_rate_limit(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(api_module, "AsyncSessionLocal", lambda: FakeSession())
+
+    unauthorized = api_client.get("/investigations")
+    accepted = [api_client.get("/repositories", headers=HEADERS) for _ in range(9)]
+    tenth = api_client.get("/investigations", headers=HEADERS)
+    eleventh = api_client.get("/investigations", headers=HEADERS)
+
+    assert unauthorized.status_code == 401
+    assert [response.status_code for response in accepted] == [200] * 9
+    assert tenth.status_code == 200
+    assert eleventh.status_code == 429
+
+
+def test_ui_is_static_and_does_not_require_api_secret(api_client: TestClient) -> None:
+    response = api_client.get("/ui/")
+
+    assert response.status_code == 200
+    assert "<!doctype html" in response.text.lower()
