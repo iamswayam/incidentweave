@@ -2,7 +2,7 @@
 
 ## 1. Registration and scope
 
-Register this protocol before any reranker run. No experiment has been run.
+Register this protocol before any reranker run. No valid experiment has been analyzed.
 
 Question: does reranking the current top 20 candidates into a top 5 improve retrieval on
 the development split at acceptable latency and cost, without making guard, citation, or
@@ -23,25 +23,19 @@ development repositories as a separate cohort; report versions separately and ne
 pool them.
 
 Freeze the selected scorecard dataset version, manifest, fixtures, retrieval commit, and
-per-question candidate-set hashes before the run. For each question, retrieve the current
-production ordering's top 20 candidates using the scorecard's deep view. The baseline is
-that unchanged ordering truncated to five. The treatment reranks the identical 20
-candidates and truncates to five. The reranker may only reorder candidates; it cannot add,
-remove, or modify candidate text. Keep chunking, retrieval, labels, and guard settings
-fixed.
+per-question candidate-set hashes before the run. For each question, use the scorecard's
+development deep view to freeze its top 20 candidates. The baseline is that same deep-view
+ordering truncated to five. The treatment reranks the identical 20 candidates and truncates
+to five. The reranker may only reorder candidates; it cannot add, remove, or modify
+candidate text. Keep chunking, retrieval, labels, and guard settings fixed.
 
 ## 3. Candidate
 
-Test exactly one candidate: a hosted reranking model served through the existing Voyage
-provider.
-
-- Model identifier: to be pinned and recorded before the run.
-- API version: to be pinned and recorded before the run.
-- Run settings: to be pinned and recorded before the run.
-
-Record the request limits, truncation behavior, timeout, retry policy, and model settings.
-No other candidate is tested under this protocol. A second candidate requires its own
-protocol.
+The original registered candidate was a hosted reranking model served through the existing
+Voyage provider. That path is retained below for auditability but was discarded after the
+free account returned HTTP 429 on three runs; none was analyzed and no metric was computed.
+The amendment below replaces it, before any valid result exists, with exactly one open-weight
+candidate. No second candidate is tested under this protocol.
 
 ## 4. Metrics and paired analysis
 
@@ -115,45 +109,74 @@ measure treatment answer behavior. The protocol previously described item 34 as 
 built; the current code contains its checks, but they are not wired to the reranked
 ordering.
 
+## Amendment: open-weight candidate on a free GPU notebook
+
+The registered hosted candidate could not be run on a free account: three Voyage runs were
+rejected by HTTP 429 (36/48, 23/48, and 20/48 questions fell back to baseline). None was
+analyzed and no metric was computed. Before any valid result exists, the single candidate is
+replaced with Qwen/Qwen3-Reranker-0.6B (Apache-2.0). The number of candidates remains one.
+No gate or decision rule changes.
+
+The task is unchanged: rerank the same frozen top-20 development candidates. The baseline
+is the current top-20 order truncated to five; treatment reranks the identical 20 candidates
+and truncates to five. Primary metric remains MRR@5. Use the same paired bootstrap (seed
+20261031, 10,000 resamples, 95% percentile interval), the same MRR@5 gain gate (at least
+0.02 with interval lower bound above zero), the same guard gates, and the same added latency
+gates (median at most 500 ms and p95 at most 1,500 ms per query). Latency is measured on the
+stated GPU with a warm model and 20 query-document pairs scored in one batch.
+
+Local inference is fixed in advance: use the exact instruction in
+`scripts/kaggle_rerank_qwen3.py`, the model card prompt format, max_length 8192, float16,
+and batch size 20. Do not tune the instruction, prompt, or settings after seeing results.
+Record the model revision from the run, GPU hardware, and torch and transformers versions.
+
+There is no per-token fee. The pin price is zero, the experiment reports zero API cost, and
+compute uses a free notebook GPU. GPU latency does not establish production CPU latency;
+measure latency separately on the target CPU before any adoption. That CPU measurement is
+not a gate for this experiment. Candidate Recall@20 is 33/33; the pool is not the limit.
+The perfect-order ceiling is an upper bound, not a forecast. Guard metrics are unchanged by
+construction because the guard uses vector distance before reranking. End-to-end citation
+metrics are not measured here.
+
+The request file contains development repository code chunks. Upload it only as a private
+notebook dataset. It is not committed; it lives under `evaluation/cache/`, which is
+git-ignored.
+
 ## 6. Run procedure and records
 
-Before any run, pin the model identifier, API version, run settings, and data hashes.
-The harness has three separate commands:
+For the open-weight candidate, pin the model identifier, local inference settings, and data
+hashes before scoring. The workflow is:
 
 1. `python -m scripts.run_reranker_experiment export` requires the Docker evaluation
-   database and no provider key. It uses the scorecard's development-only validation,
-   freezes the top-20 candidate text and baseline order, and records the dataset, fixture,
-   and per-question candidate-set hashes.
-2. `python -m scripts.run_reranker_experiment rerank [--min-interval-seconds N]` accepts an
-   optional minimum spacing between request start times (default `0`). It requires the evaluation database for
-   the existing metadata-only provider usage log, plus `VOYAGE_API_KEY` in the local
-   git-ignored `.env`. The key is never accepted as an argument or written to experiment
-   data, logs, or reports. It refuses to run without `pin.json`.
-3. `python -m scripts.run_reranker_experiment analyze` reads only saved development data
-   and manifest-selected fixtures. It needs no database, key, or network access.
+database and no provider key. It uses scorecard development-only validation, freezes the
+top-20 candidate text and baseline order, and records the dataset, fixture, and per-question
+candidate-set hashes.
+2. `python -m scripts.run_reranker_experiment export-requests` validates the frozen
+rankings against the development source split and writes
+`evaluation/cache/reranker_requests_v1/reranker_requests.json`. The ignored request file
+contains the query and candidate code text in baseline order.
+3. Run `scripts/kaggle_rerank_qwen3.py` in Kaggle or Colab with a GPU, using the request file
+as a private notebook dataset. The script records scores, per-question latency and token
+count, model revision, GPU, and library versions in `reranker_results.json`. No provider
+API is called.
+4. `python -m scripts.run_reranker_experiment import-results --requests
+<reranker_requests.json> --results <reranker_results.json>` validates the request-set hash,
+model settings, complete question keys, score arrays, latency, and token counts. It imports
+scores into the frozen rankings file and applies stable descending score order (ties retain
+baseline order).
+5. `python -m scripts.run_reranker_experiment analyze` reads saved development data and
+manifest-selected fixtures only. It needs no database, key, or network access.
 
-Create `evaluation/experiments/reranker/pin.json` locally before reranking. It records
-`model_identifier`, `api_version` (`v1`), `model_settings` (an empty object; the registered
-rerank endpoint has no additional model-specific settings), `request_limits`
-(`max_candidates` and `top_k` both 20, `truncation`, positive `timeout_seconds`, and
-`max_attempts` from 1 through 5), `retry_policy` (exponential strategy, positive initial
-and maximum delays, and whether to respect the provider's `Retry-After` header), and
-`pricing` (`usd_per_million_tokens` and `source_url`). Do not include credentials. No key
-or live request is used to register this protocol.
+The discarded hosted path remains documented for the record:
+`python -m scripts.run_reranker_experiment rerank [--min-interval-seconds N]` used the
+existing metadata-only provider usage log and `VOYAGE_API_KEY` from local git-ignored
+`.env`. The three failed runs returned HTTP 429 as described in the amendment. Do not use
+that path for this candidate or treat those attempts as results.
 
-Run in this order:
-
-1. Validate the selected development split and freeze each question's top 20 candidates.
-2. Save the baseline ordering and the pinned model/API/settings record.
-3. Rerank those same candidates; record every response and failure.
-4. Compute paired per-question metrics, intervals, latency deltas, and cost.
-5. Write the aggregate report and apply the registered decision rule without changing it.
-
-Harness files:
-
-- `app/providers/reranker.py`
-- `evaluation/studies/reranker/reranker_experiment.py`
-- `scripts/run_reranker_experiment.py`
+The local pin records `model_identifier`, `api_version` (`v1`), empty `model_settings`,
+request limits, retry policy, zero pricing, and `local_inference` fields: model identifier,
+fixed instruction, max_length, and dtype. The imported results record the model revision,
+hardware, batch size, and torch and transformers versions. No credentials are included.
 
 Run-time files:
 
@@ -161,19 +184,22 @@ Run-time files:
 - `evaluation/experiments/reranker/development-report.json`
 - `evaluation/experiments/reranker/report-development.md`
 - `evaluation/experiments/reranker/pin.json` (local run-time settings; not a credential file)
+- `evaluation/cache/reranker_requests_v1/reranker_requests.json` (ignored; contains development code)
+- `reranker_results.json` (not committed; notebook output)
 
 Store dataset and fixture hashes, baseline and treatment rankings, per-question metric
-values and differences, guard/citation/refusal outcomes, model and API settings, latencies,
-token counts, cost estimates, errors, fallback counts, and the decision. A rerank API
-failure uses the baseline ordering for that question and is reported; never silently drop
-the question or failure.
+values and differences, guard/citation/refusal outcomes, model settings and revision,
+hardware and library versions, latencies, token counts, cost estimates, errors, fallback
+counts, and the decision. Notebook output import rejects incomplete or mismatched results;
+no question is silently dropped.
 
 ## 7. Risks and exclusions
 
 The development sample is small, so paired intervals may be wide and results may not
 generalize. Test-file noise can affect rankings; the registered classifier diagnostic
 does not establish test-file evidence quality. Keep development and held-out data
-separate to prevent leakage. The hosted calls incur run cost, which must be recorded.
+separate to prevent leakage. Free notebook GPU availability is not guaranteed.
 
-Held-out evaluation is out of scope and remains in item 3b. Local cross-encoders,
-chunking changes, and guard-threshold changes are out of scope.
+Held-out evaluation is out of scope and remains in item 3b. Changing chunking or the
+guard threshold is out of scope. GPU notebook results do not establish production CPU
+latency; measure the target CPU separately before adoption.

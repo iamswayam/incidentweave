@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -14,9 +15,12 @@ from evaluation.studies.reranker.reranker_experiment import (
     apply_reranked_ids,
     canonical_sha256,
     decide_reranker,
+    export_reranker_requests,
+    import_reranker_results,
     load_pin,
     require_development,
     rerank_candidates,
+    validate_candidate_data,
     write_json_atomic,
     write_text_atomic,
 )
@@ -368,3 +372,268 @@ def test_json_output_is_idempotent(tmp_path: Path) -> None:
     write_text_atomic(markdown, "# Report\n")
     assert markdown.read_bytes() == first_markdown
     assert first_markdown == b"# Report\n"
+
+
+LOCAL_INFERENCE = {
+    "model_identifier": "Qwen/Qwen3-Reranker-0.6B",
+    "instruction": (
+        "Given a question about a software repository, retrieve "
+        "code chunks that answer the question"
+    ),
+    "max_length": 8192,
+    "dtype": "float16",
+}
+
+
+def _local_pin(price: float = 0.0) -> dict[str, Any]:
+    pin = {
+        **PIN,
+        "model_identifier": LOCAL_INFERENCE["model_identifier"],
+        "pricing": {**PIN["pricing"], "usd_per_million_tokens": price},
+        "local_inference": LOCAL_INFERENCE.copy(),
+    }
+    return pin
+
+
+def _local_result(requests: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "format": "reranker_results_v1",
+        "model_identifier": LOCAL_INFERENCE["model_identifier"],
+        "model_revision": "revision-sha",
+        "instruction": LOCAL_INFERENCE["instruction"],
+        "max_length": LOCAL_INFERENCE["max_length"],
+        "dtype": LOCAL_INFERENCE["dtype"],
+        "batch_size": 20,
+        "hardware": "test GPU",
+        "torch_version": "test torch",
+        "transformers_version": "test transformers",
+        "requests_candidate_sets_sha256": requests["candidate_sets_sha256"],
+        "items": [
+            {
+                "key": item["key"],
+                "scores": [0.0, 1.0, 10.0, 2.0, 3.0],
+                "latency_ms": 12.5,
+                "token_count": 100,
+            }
+            for item in requests["items"]
+        ],
+    }
+
+
+def _write_import_inputs(
+    tmp_path: Path,
+    *,
+    request_mutation: Any = None,
+    result_mutation: Any = None,
+) -> tuple[Path, Path, Path, Path]:
+    data, _ = _candidate_data()
+    rankings_path = tmp_path / "rankings.json"
+    requests_path = tmp_path / "requests.json"
+    results_path = tmp_path / "results.json"
+    pin_path = tmp_path / "pin.json"
+    write_json_atomic(rankings_path, data)
+    requests = export_reranker_requests(
+        rankings_path,
+        requests_path,
+        verify_source_split=False,
+    )
+    results = _local_result(requests)
+    if request_mutation is not None:
+        request_mutation(requests)
+        requests_path.write_text(json.dumps(requests), encoding="utf-8")
+    if result_mutation is not None:
+        result_mutation(results)
+    requests_path.write_text(json.dumps(requests), encoding="utf-8")
+    results_path.write_text(json.dumps(results), encoding="utf-8")
+    write_json_atomic(pin_path, _local_pin())
+    return rankings_path, requests_path, results_path, pin_path
+
+
+def test_export_requests_writes_frozen_order_and_candidate_hashes(tmp_path: Path) -> None:
+    data, _ = _candidate_data()
+    input_path = tmp_path / "rankings.json"
+    output_path = tmp_path / "requests.json"
+    write_json_atomic(input_path, data)
+
+    requests = export_reranker_requests(
+        input_path,
+        output_path,
+        verify_source_split=False,
+    )
+
+    assert requests["format"] == "reranker_requests_v1"
+    assert requests["candidate_sets_sha256"] == canonical_sha256(
+        data["metadata"]["candidate_set_sha256"]
+    )
+    assert [item["key"] for item in requests["items"]] == [
+        f"{repository['id']}:{repository['questions'][0]['id']}"
+        for repository in data["repositories"]
+    ]
+    first = requests["items"][0]
+    first_question = data["repositories"][0]["questions"][0]
+    assert first["query"] == first_question["question"]
+    assert first["candidate_set_sha256"] == first_question["candidate_set_sha256"]
+    assert first["candidate_ids"] == [
+        row["chunk_id"] for row in first_question["baseline_candidates"]
+    ]
+    assert first["documents"] == [row["text"] for row in first_question["baseline_candidates"]]
+    assert json.loads(output_path.read_text(encoding="utf-8")) == requests
+
+
+def test_import_results_orders_scores_records_cost_and_analyzes(tmp_path: Path) -> None:
+    rankings_path, requests_path, results_path, pin_path = _write_import_inputs(tmp_path)
+    output_path = tmp_path / "imported.json"
+
+    imported = import_reranker_results(
+        rankings_path,
+        requests_path,
+        results_path,
+        pin_path=pin_path,
+        output_path=output_path,
+        verify_source_split=False,
+    )
+
+    first_question = imported["repositories"][0]["questions"][0]
+    baseline = first_question["baseline_candidates"]
+    assert [row["chunk_id"] for row in first_question["treatment_candidates"]] == [
+        baseline[index]["chunk_id"] for index in (2, 4, 3, 1, 0)
+    ]
+    assert first_question["rerank"] == {
+        "response": {"scores": [0.0, 1.0, 10.0, 2.0, 3.0], "order": [2, 4, 3, 1, 0]},
+        "attempts": [],
+        "latency_ms": 12.5,
+        "attempt_count": 1,
+        "token_count": 100,
+        "estimated_cost_usd": 0.0,
+        "fallback_used": False,
+        "error": None,
+    }
+    assert imported["metadata"]["reranker_pin"]["recorded_run"] == {
+        "model_revision": "revision-sha",
+        "hardware": "test GPU",
+        "torch_version": "test torch",
+        "transformers_version": "test transformers",
+        "batch_size": 20,
+    }
+    assert imported["metadata"]["rerank_failure_count"] == 0
+    assert (
+        json.loads(output_path.read_text(encoding="utf-8"))["metadata"]["rerank_failure_count"] == 0
+    )
+    validate_candidate_data(imported)
+    _, corpora = _candidate_data()
+    report = analyze_experiment(imported, corpora)
+    assert report["pooled"]["mrr_at_5"]["baseline"] == pytest.approx(1 / 3)
+
+
+def test_import_results_ties_keep_original_candidate_order(tmp_path: Path) -> None:
+    def set_ties(results: dict[str, Any]) -> None:
+        for item in results["items"]:
+            item["scores"] = [1.0, 2.0, 2.0, 0.0, 2.0]
+
+    rankings_path, requests_path, results_path, pin_path = _write_import_inputs(
+        tmp_path,
+        result_mutation=set_ties,
+    )
+    imported = import_reranker_results(
+        rankings_path,
+        requests_path,
+        results_path,
+        pin_path=pin_path,
+        verify_source_split=False,
+    )
+    first = imported["repositories"][0]["questions"][0]
+    assert first["rerank"]["response"]["order"] == [1, 2, 4, 0, 3]
+    assert [row["chunk_id"] for row in first["treatment_candidates"]] == [
+        first["baseline_candidates"][index]["chunk_id"] for index in (1, 2, 4, 0, 3)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("request_mutation", "result_mutation", "message"),
+    [
+        (
+            None,
+            lambda results: results["items"][0].update(key="unexpected:key"),
+            "keys do not match",
+        ),
+        (
+            lambda requests: requests.update(candidate_sets_sha256="wrong"),
+            None,
+            "candidate-set hash",
+        ),
+        (
+            None,
+            lambda results: results["items"][0].update(scores=[1.0]),
+            "score count",
+        ),
+        (
+            None,
+            lambda results: results["items"][0].update(scores=[float("nan"), 1.0, 2.0, 3.0, 4.0]),
+            "finite numbers",
+        ),
+        (
+            None,
+            lambda results: results.update(instruction="different instruction"),
+            "instruction does not match pin",
+        ),
+        (
+            None,
+            lambda results: results.update(model_identifier="different/model"),
+            "model_identifier does not match pin",
+        ),
+    ],
+)
+def test_import_results_rejects_mismatches_without_writing(
+    tmp_path: Path,
+    request_mutation: Any,
+    result_mutation: Any,
+    message: str,
+) -> None:
+    rankings_path, requests_path, results_path, pin_path = _write_import_inputs(
+        tmp_path,
+        request_mutation=request_mutation,
+        result_mutation=result_mutation,
+    )
+    output_path = tmp_path / "should-not-exist.json"
+
+    with pytest.raises(ValueError, match=message):
+        import_reranker_results(
+            rankings_path,
+            requests_path,
+            results_path,
+            pin_path=pin_path,
+            output_path=output_path,
+            verify_source_split=False,
+        )
+
+    assert not output_path.exists()
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        None,
+        [],
+        {"model_identifier": "model", "instruction": "instruction", "dtype": "fp16"},
+        {
+            "model_identifier": "model",
+            "instruction": "instruction",
+            "dtype": "fp16",
+            "max_length": True,
+        },
+    ],
+)
+def test_load_pin_validates_optional_local_inference(
+    tmp_path: Path,
+    replacement: Any,
+) -> None:
+    pin = _local_pin()
+    pin["local_inference"] = LOCAL_INFERENCE.copy() if replacement is None else replacement
+    path = tmp_path / "pin.json"
+    write_json_atomic(path, pin)
+
+    if replacement is None:
+        assert load_pin(path)["local_inference"] == LOCAL_INFERENCE
+    else:
+        with pytest.raises(ValueError, match="local_inference"):
+            load_pin(path)

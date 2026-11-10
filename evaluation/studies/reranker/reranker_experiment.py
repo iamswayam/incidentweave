@@ -1,4 +1,7 @@
-"""Development-only reranker export, execution, and deterministic analysis."""
+"""Development-only reranker export, execution, and deterministic analysis.
+
+Usage: export, export-requests, import-results, rerank, then analyze.
+"""
 
 from __future__ import annotations
 
@@ -31,6 +34,7 @@ RANKINGS_PATH = EXPERIMENT_DIR / "development-rankings.json"
 REPORT_JSON_PATH = EXPERIMENT_DIR / "development-report.json"
 REPORT_MARKDOWN_PATH = EXPERIMENT_DIR / "report-development.md"
 PIN_PATH = EXPERIMENT_DIR / "pin.json"
+RERANKER_REQUESTS_PATH = Path("evaluation/cache/reranker_requests_v1/reranker_requests.json")
 BOOTSTRAP_SEED = 20261031
 BOOTSTRAP_RESAMPLES = 10_000
 V1_REPOSITORIES = ("batch-processing-service", "incidentweave", "lifeos")
@@ -474,6 +478,15 @@ def _validate_pin(pin: Mapping[str, Any]) -> None:
         raise ValueError("pin pricing must include a non-negative USD per million tokens")
     if not isinstance(pricing.get("source_url"), str) or not pricing["source_url"].strip():
         raise ValueError("pin pricing must include source_url")
+    if "local_inference" in pin:
+        local_inference = pin["local_inference"]
+        if not isinstance(local_inference, Mapping):
+            raise ValueError("pin local_inference must be an object")
+        for field in ("model_identifier", "instruction", "dtype"):
+            if not isinstance(local_inference.get(field), str):
+                raise ValueError(f"pin local_inference {field} must be a string")
+        if type(local_inference.get("max_length")) is not int or local_inference["max_length"] <= 0:
+            raise ValueError("pin local_inference max_length must be a positive integer")
 
 
 async def rerank_candidates(
@@ -1128,6 +1141,194 @@ async def run_rerank_stage(
             manifest_path=manifest_path,
             root=root,
         )
+    write_json_atomic(Path(output_path or input_path), result)
+    return result
+
+
+def _request_items(data: Mapping[str, Any]) -> dict[str, Any]:
+    metadata = data["metadata"]
+    candidate_hashes = metadata["candidate_set_sha256"]
+    items = []
+    for repository in data["repositories"]:
+        repo_id = str(repository["id"])
+        for question in repository["questions"]:
+            key = f"{repo_id}:{question['id']}"
+            candidates = question["baseline_candidates"]
+            items.append(
+                {
+                    "key": key,
+                    "query": question["question"],
+                    "candidate_set_sha256": candidate_hashes[key],
+                    "candidate_ids": [candidate["chunk_id"] for candidate in candidates],
+                    "documents": [candidate["text"] for candidate in candidates],
+                }
+            )
+    return {
+        "format": "reranker_requests_v1",
+        "candidate_sets_sha256": canonical_sha256(candidate_hashes),
+        "items": items,
+    }
+
+
+def export_reranker_requests(
+    input_path: Path = RANKINGS_PATH,
+    output_path: Path = RERANKER_REQUESTS_PATH,
+    *,
+    verify_source_split: bool = True,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    data = load_candidate_data(input_path)
+    validate_candidate_data(
+        data,
+        verify_source_split=verify_source_split,
+        manifest_path=manifest_path,
+        root=root,
+    )
+    ensure_baseline_only(data)
+    requests = _request_items(data)
+    write_json_atomic(output_path, requests)
+    return requests
+
+
+def import_reranker_results(
+    input_path: Path,
+    requests_path: Path,
+    results_path: Path,
+    *,
+    pin_path: Path = PIN_PATH,
+    output_path: Path | None = None,
+    verify_source_split: bool = True,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    data = load_candidate_data(input_path)
+    validate_candidate_data(
+        data,
+        verify_source_split=verify_source_split,
+        manifest_path=manifest_path,
+        root=root,
+    )
+    ensure_baseline_only(data)
+    expected_requests = _request_items(data)
+    try:
+        requests = json.loads(Path(requests_path).read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot load reranker requests: {exc}") from exc
+    if not isinstance(requests, Mapping):
+        raise ValueError("reranker requests must be a JSON object")
+    if requests.get("format") != "reranker_requests_v1":
+        raise ValueError("unexpected reranker requests format")
+    if requests.get("candidate_sets_sha256") != expected_requests["candidate_sets_sha256"]:
+        raise ValueError("reranker requests candidate-set hash does not match rankings")
+    if requests.get("items") != expected_requests["items"]:
+        raise ValueError("reranker requests do not match frozen ranking candidates")
+
+    pin = load_pin(pin_path)
+    local_inference = pin.get("local_inference")
+    if not isinstance(local_inference, Mapping):
+        raise ValueError("pin must include local_inference for imported results")
+    try:
+        results = json.loads(Path(results_path).read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot load reranker results: {exc}") from exc
+    if not isinstance(results, Mapping):
+        raise ValueError("reranker results must be a JSON object")
+    if results.get("format") != "reranker_results_v1":
+        raise ValueError("unexpected reranker results format")
+    for field in ("model_identifier", "instruction", "max_length", "dtype"):
+        if results.get(field) != local_inference[field]:
+            raise ValueError(f"reranker results {field} does not match pin")
+    if pin["model_identifier"] != results.get("model_identifier"):
+        raise ValueError("pin model_identifier does not match reranker results")
+    if results.get("requests_candidate_sets_sha256") != requests["candidate_sets_sha256"]:
+        raise ValueError("reranker results candidate-set hash does not match requests")
+
+    request_items = requests["items"]
+    result_items = results.get("items")
+    if not isinstance(result_items, list):
+        raise ValueError("reranker results items must be a list")
+    request_keys = [item["key"] for item in request_items]
+    result_by_key: dict[str, Mapping[str, Any]] = {}
+    for item in result_items:
+        if not isinstance(item, Mapping) or not isinstance(item.get("key"), str):
+            raise ValueError("reranker result item has an invalid key")
+        key = item["key"]
+        if key in result_by_key:
+            raise ValueError("reranker results contain duplicate item keys")
+        result_by_key[key] = item
+    if set(result_by_key) != set(request_keys) or len(result_by_key) != len(request_keys):
+        raise ValueError("reranker result keys do not match requests")
+
+    recorded_run_fields = (
+        "model_revision",
+        "hardware",
+        "torch_version",
+        "transformers_version",
+        "batch_size",
+    )
+    recorded_run: dict[str, Any] = {}
+    for field in recorded_run_fields:
+        value = results.get(field)
+        if field == "batch_size":
+            if type(value) is not int or value <= 0:
+                raise ValueError("reranker results batch_size must be a positive integer")
+        elif not isinstance(value, str) or not value.strip():
+            raise ValueError(f"reranker results {field} must be a non-empty string")
+        recorded_run[field] = value
+
+    validated: dict[str, tuple[list[float], float, int, list[int]]] = {}
+    for request in request_items:
+        key = request["key"]
+        item = result_by_key[key]
+        scores = item.get("scores")
+        if not isinstance(scores, list) or len(scores) != len(request["candidate_ids"]):
+            raise ValueError(f"{key}: score count does not match candidates")
+        if any(
+            not isinstance(score, (int, float))
+            or isinstance(score, bool)
+            or not math.isfinite(score)
+            for score in scores
+        ):
+            raise ValueError(f"{key}: scores must be finite numbers")
+        latency_ms = item.get("latency_ms")
+        if (
+            not isinstance(latency_ms, (int, float))
+            or isinstance(latency_ms, bool)
+            or not math.isfinite(latency_ms)
+            or latency_ms < 0
+        ):
+            raise ValueError(f"{key}: latency_ms must be finite and non-negative")
+        token_count = item.get("token_count")
+        if type(token_count) is not int or token_count < 0:
+            raise ValueError(f"{key}: token_count must be a non-negative integer")
+        scores = [float(score) for score in scores]
+        order = sorted(range(len(scores)), key=lambda index: (-scores[index], index))
+        validated[key] = (scores, float(latency_ms), token_count, order)
+
+    result = json.loads(json.dumps(data))
+    result_metadata = result["metadata"]
+    result_metadata["reranker_pin"] = {**pin, "recorded_run": recorded_run}
+    result_metadata["rerank_failure_count"] = 0
+    price = float(pin["pricing"]["usd_per_million_tokens"])
+    for repository in result["repositories"]:
+        repo_id = str(repository["id"])
+        for question in repository["questions"]:
+            key = f"{repo_id}:{question['id']}"
+            scores, latency_ms, token_count, order = validated[key]
+            baseline = question["baseline_candidates"]
+            ordered_ids = [baseline[index]["chunk_id"] for index in order]
+            question["treatment_candidates"] = apply_reranked_ids(baseline, ordered_ids)
+            question["rerank"] = {
+                "response": {"scores": scores, "order": order},
+                "attempts": [],
+                "latency_ms": latency_ms,
+                "attempt_count": 1,
+                "token_count": token_count,
+                "estimated_cost_usd": token_count * price / 1_000_000,
+                "fallback_used": False,
+                "error": None,
+            }
     write_json_atomic(Path(output_path or input_path), result)
     return result
 
