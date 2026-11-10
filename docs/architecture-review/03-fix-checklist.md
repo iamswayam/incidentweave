@@ -147,6 +147,7 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 36f | ☐ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
+| 37 | ☐ | Maintainer evaluation web UI | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -635,6 +636,12 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Done when:** Checks and reporting are registered before evaluation and run reproducibly on the approved data.
 - **Progress:** Protocol registered; pure checks and a fake-tested runner/report are implemented. No live development run has been done.
 - **Status:** In review.
+
+**37. Maintainer evaluation web UI.**
+- *Why:* the backend is reviewed through raw HTTP calls and SQL; a small web UI lets the maintainer ask questions, browse history, and run quick batches of questions without reading code or writing requests by hand.
+- *Fix:* a static page served at `/ui` by the existing FastAPI app (no new service, no external dependency), reading the existing repository and investigation endpoints and one new read-only investigation-list endpoint. The UI never triggers ingestion or any write path other than creating an investigation via the existing POST route. Client-side pacing respects the existing 10-requests-per-60-seconds limit.
+- *Done when:* the page is reachable at `/ui` on the running app; it lists repositories with a live embedding-progress indicator, lets the maintainer pick an active repository and ask a question with the full answer (diagnosis, claims, evidence locations, confidence, outcome) rendered clearly; a batch mode runs a list of questions without exceeding the rate limit; and the new list endpoint's tests pass without a database.
+- **Status:** In progress; branch `bot/37-maintainer-eval-ui`; changed `README.md`, `app/api.py`, `app/main.py`, `app/web/index.html`, `app/web/app.css`, `app/web/app.js`, `tests/unit/api/test_api.py`, `docs/architecture-review/03-fix-checklist.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/phases/09-production-api.md`, and `docs/reference/openapi.json`; `ruff check .`: All checks passed!; `ruff format --check .`: 201 files already formatted; `pytest tests/unit -q`: 456 passed in 49.53s.
 
 ---
 

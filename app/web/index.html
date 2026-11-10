@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>IncidentWeave | Maintainer evaluation</title>
+  <script>
+    let savedTheme = null;
+    try { savedTheme = localStorage.getItem("iw.theme"); } catch { savedTheme = null; }
+    document.documentElement.dataset.theme = savedTheme ||
+      (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  </script>
+  <link rel="stylesheet" href="/ui/app.css">
+  <script src="/ui/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Repositories and investigation history">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">IW</div>
+        <div class="brand-copy"><strong>IncidentWeave</strong><span>Maintainer workspace</span></div>
+        <button class="icon-button" id="settings-open" type="button" aria-label="Open settings" title="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0-5.4 1.1 1.8 2.2.5 1.8-1.1 1.7 1.7-1.1 1.8.5 2.2L20 11v2l-1.8 1.1-.5 2.2 1.1 1.8-1.7 1.7-1.8-1.1-2.2.5L12 21l-2-1.1-2.2-.5L6 20.5l-1.7-1.7 1.1-1.8-.5-2.2L3 13v-2l1.9-1.1.5-2.2-1.1-1.8L6 4.2l1.8 1.1 2.2-.5L12 3Z"/></svg>
+        </button>
+      </div>
+      <section class="sidebar-section repo-section" aria-labelledby="repo-heading">
+        <div class="section-heading"><h2 id="repo-heading">Repositories</h2><button class="text-button" id="refresh-repositories" type="button">Refresh repositories</button></div>
+        <p class="section-hint">Select one repository to investigate.</p>
+        <div id="repository-list" class="repository-list"></div>
+        <p id="repository-empty" class="empty-state">No repositories loaded. Refresh to check the API.</p>
+      </section>
+      <section class="sidebar-section history-section" aria-labelledby="history-heading">
+        <div class="section-heading"><h2 id="history-heading">History</h2><span id="history-count" class="count-label">0</span></div>
+        <div id="history-list" class="history-list"></div>
+        <p id="history-empty" class="empty-state">Completed investigations will appear here.</p>
+        <button class="secondary-button load-more-button" id="load-more" type="button">Load more from server</button>
+      </section>
+      <div class="sidebar-bottom">
+        <button id="theme-toggle" class="theme-button" type="button" aria-label="Switch color theme"><span class="theme-icon" aria-hidden="true">T</span><span id="theme-label">Light theme</span></button>
+        <p class="privacy-note">Investigation history and settings stay in this browser.</p>
+      </div>
+    </aside>
+    <main class="main-panel">
+      <header class="workspace-header">
+        <div class="workspace-title"><p class="eyebrow">Evaluation</p><h1 id="active-repository-title">Choose a repository</h1></div>
+        <div class="header-actions">
+          <span class="connection-label"><span class="connection-dot" aria-hidden="true"></span>Local API</span>
+          <button class="icon-button mobile-settings" id="settings-open-mobile" type="button" aria-label="Open settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Zm0-5.4 1.1 1.8 2.2.5 1.8-1.1 1.7 1.7-1.1 1.8.5 2.2L20 11v2l-1.8 1.1-.5 2.2 1.1 1.8-1.7 1.7-1.8-1.1-2.2.5L12 21l-2-1.1-2.2-.5L6 20.5l-1.7-1.7 1.1-1.8-.5-2.2L3 13v-2l1.9-1.1.5-2.2-1.1-1.8L6 4.2l1.8 1.1 2.2-.5L12 3Z"/></svg>
+          </button>
+        </div>
+      </header>
+      <nav class="tabs" role="tablist" aria-label="Evaluation mode">
+        <button class="tab-button is-active" id="tab-chat" type="button" role="tab" aria-selected="true" aria-controls="panel-chat">Chat</button>
+        <button class="tab-button" id="tab-batch" type="button" role="tab" aria-selected="false" aria-controls="panel-batch">Batch</button>
+      </nav>
+      <div id="global-message" class="message-banner" role="status" aria-live="polite" hidden></div>
+      <section id="panel-chat" class="tab-panel" role="tabpanel" aria-labelledby="tab-chat">
+        <div class="panel-intro"><div><p class="eyebrow">Grounded investigation</p><h2>Ask a question</h2></div><p class="intro-copy">Answers are based on retrieved repository evidence. Review the citations before drawing conclusions.</p></div>
+        <form id="ask-form" class="question-card">
+          <label for="question-input">Question</label>
+          <textarea id="question-input" rows="4" placeholder="How does the application enforce API access?" aria-describedby="query-meta ask-reason"></textarea>
+          <div class="query-meta" id="query-meta"><span>Enter to ask | Shift+Enter for a new line</span><span id="character-count">0 / 2,000</span></div>
+          <div class="question-controls">
+            <label class="limit-control" for="answer-limit">Evidence limit<input id="answer-limit" type="number" min="1" max="20" value="5" inputmode="numeric"></label>
+            <div class="ask-actions"><span id="ask-reason" class="control-hint"></span><button class="primary-button" id="ask-button" type="submit" disabled title="Choose a repository, set an API secret, and enter a question">Ask</button></div>
+          </div>
+        </form>
+        <div id="loading-indicator" class="loading-card" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><div><strong>Investigating repository evidence</strong><p>This can take up to two minutes. <span id="elapsed-time">0s elapsed</span></p></div></div>
+        <div id="answer-region" class="answer-region" aria-live="polite" aria-atomic="false"></div>
+      </section>
+      <section id="panel-batch" class="tab-panel" role="tabpanel" aria-labelledby="tab-batch" hidden>
+        <div class="panel-intro"><div><p class="eyebrow">Sequential evaluation</p><h2>Run a question batch</h2></div><p class="intro-copy">One question per line. Requests run one at a time with a minimum 6.5-second gap between starts.</p></div>
+        <div class="question-card batch-card">
+          <label for="batch-input">Questions</label>
+          <textarea id="batch-input" rows="7" placeholder="How are API requests authenticated?&#10;Where are query limits defined?"></textarea>
+          <div class="query-meta"><span>Blank lines are ignored.</span><span id="batch-question-count">0 questions</span></div>
+          <div class="question-controls"><span class="batch-limit-note">Uses the active repository and evidence limit above.</span><div class="ask-actions"><button class="secondary-button" id="cancel-batch" type="button" hidden>Cancel after current</button><button class="primary-button" id="run-batch" type="button" disabled>Run batch</button></div></div>
+          <p id="batch-status" class="batch-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="results-card">
+          <div class="results-heading"><div><p class="eyebrow">Run results</p><h3>Completed questions</h3></div><button id="export-csv" class="secondary-button" type="button" disabled>Export CSV</button></div>
+          <div id="batch-empty" class="empty-state">Batch results will appear here.</div>
+          <table id="batch-table" class="results-table" hidden><thead><tr><th scope="col">Question</th><th scope="col">Outcome</th><th scope="col">Confidence</th><th scope="col">Latency</th><th scope="col">View</th></tr></thead><tbody id="batch-results"></tbody></table>
+        </div>
+      </section>
+      <footer class="workspace-footer"><span>Content-free evidence locations by design.</span><span>API access is shared-secret protected.</span></footer>
+    </main>
+  </div>
+  <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form" method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">Browser only</p><h2 id="settings-title">API settings</h2></div><button class="icon-button" id="settings-close" type="button" aria-label="Close settings">x</button></div>
+      <p class="dialog-copy">Your secret is stored only in this browser and sent only as the X-API-Secret header to this page's origin.</p>
+      <label for="api-base">API base URL <span class="field-note">Leave empty to use this app.</span></label>
+      <input id="api-base" type="url" placeholder="Same origin" autocomplete="url">
+      <label for="api-secret">X-API-Secret</label>
+      <div class="secret-input-row"><input id="api-secret" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the configured API secret"><button class="secondary-button" id="secret-toggle" type="button" aria-pressed="false">Show</button></div>
+      <p class="field-note">Requests to a different origin are blocked so the secret cannot be sent elsewhere.</p>
+      <div class="dialog-actions"><button class="secondary-button" id="settings-cancel" type="button">Cancel</button><button class="primary-button" type="submit">Save settings</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

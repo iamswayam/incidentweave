@@ -263,6 +263,64 @@
         "title": "InvestigationResponse",
         "type": "object"
       },
+      "InvestigationSummary": {
+        "description": "Content-free summary for browsing persisted investigations.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "model_self_rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Self Rating"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "repository_name": {
+            "title": "Repository Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repository_name",
+          "query",
+          "outcome",
+          "model_self_rating",
+          "latency_ms",
+          "created_at"
+        ],
+        "title": "InvestigationSummary",
+        "type": "object"
+      },
       "RepositorySummary": {
         "description": "Read-only repository chunk and embedding counts.",
         "properties": {
@@ -359,6 +417,99 @@
       }
     },
     "/investigations": {
+      "get": {
+        "description": "List light investigation summaries in newest-first order.",
+        "operationId": "list_investigations_investigations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "repository_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Repository Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-API-Secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Secret"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InvestigationSummary"
+                  },
+                  "title": "Response List Investigations Investigations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Investigations"
+      },
       "post": {
         "description": "Run and persist one investigation synchronously.",
         "operationId": "create_investigation_investigations_post",

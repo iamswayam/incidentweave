@@ -43,6 +43,11 @@ soften or omit this.
   in the code's own docstring/comment and in the README, that this is NOT
   production-grade authentication (no user accounts, no key rotation, no
   per-user quotas) and that real auth remains deferred. Do not oversell it.
+
+**Current route addition:** checklist item 37 adds a read-only `GET /investigations`
+summary listing. It uses the existing shared-secret protection and rate limiter; the
+full response remains available through `GET /investigations/{id}`.
+
 - No new dependencies. FastAPI and Starlette are already pinned; build the
   rate limiter with the standard library.
 - Do not modify guard.py, prompt.py, generation.py, parsing.py, or

@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from pathlib import Path
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -9,11 +10,13 @@ if sys.platform == "win32":
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.staticfiles import StaticFiles
 
 from app.api import router as api_router
 
 app = FastAPI(title="IncidentWeave")
 app.include_router(api_router)
+app.mount("/ui", StaticFiles(directory=Path(__file__).parent / "web", html=True), name="ui")
 
 
 @app.exception_handler(HTTPException)
