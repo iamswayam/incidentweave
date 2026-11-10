@@ -7,22 +7,31 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
 
-*Retrieves repository evidence before asking an LLM to explain an incident. Every claim is cited and every outcome is audited.*
+# IncidentWeave
 
-[Why](#why) · [Architecture](#architecture) · [Quick start](#quick-start) · [API](#api) · [Evaluation](#evaluation) · [Documentation](#documentation)
+*Evidence-grounded incident investigation for code repositories. Retrieve the relevant source, verify the facts, and investigate with citations instead of guesswork.*
+
+[Overview](#overview) · [Architecture](#architecture) · [Quick start](#quick-start) · [API](#api) · [Evaluation](#evaluation) · [Documentation](#documentation)
 </div>
 
-## Why
+## Overview
 
-IncidentWeave indexes a local Python repository, retrieves source evidence with vector and
-full-text search, checks whether that evidence is sufficient, and asks an LLM for a grounded
-response only when the evidence passes the guard.
+IncidentWeave helps developers and engineers investigate repository incidents with grounded evidence.
+It indexes a local Python repository, retrieves evidence using hybrid search, checks whether the
+evidence is sufficient, and only then asks an LLM to explain the incident.
 
-- Results carry source paths, line ranges, scores, chunk IDs, and validated citations.
-- After one widened retrieval retry, insufficient evidence produces an explicit refusal.
-- Investigations persist distinct answer, refusal, abstention, degraded, and error outcomes.
+Every answer is tied back to source evidence with citations, chunk metadata, and audit-friendly
+investigation records.
 
-IncidentWeave is a bounded local service, not a production-hardened multi-user incident platform.
+### Why this matters
+
+- Investigations start from the repository itself, not from scattered memory or guesswork.
+- Retrieval is hybrid: vector search and full-text search are fused before generation.
+- The evidence guard refuses weak or insufficient evidence instead of inventing answers.
+- Outcomes are persisted for audit, replay, and downstream review.
+
+IncidentWeave is designed as a bounded local service for repository-aware investigation work. It is
+not a multi-user production platform and should be evaluated with that scope in mind.
 
 ## Architecture
 
