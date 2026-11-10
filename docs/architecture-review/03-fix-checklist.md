@@ -60,8 +60,10 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
 | 33 | In review | pending | Gemini prices remain unpriced: target rows could not be read from https://aistudio.google.com/docs/pricing (retrieved 2026-11-07); outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
 | 34 | In review | pending | Protocol registered; deterministic checks, runner, report command, and synthetic tests implemented. |
+| 21 | Done | #155 | Issue #154; [merged PR](https://github.com/iamswayam/incidentweave/pull/155); REJECT under the registered rule. |
+| 37 | Done | #157 | Issue #156; [merged PR](https://github.com/iamswayam/incidentweave/pull/157); maintainer evaluation UI delivered. |
 
-Next: item 21.
+Next: item 22.
 
 Deferred (no dependency): Docker image from the lock (multi-stage, non-root), static analysis.
 
@@ -118,7 +120,7 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 18d-4 | ☑ | Add the query-embedding cache | Medium | M | Both |
 | 19 | ☑ | Rename API/CLI confidence output as model self-rating | Medium | S–M | Codex (Claude data) |
 | 20 | ☐ | Multi-artifact ingestion (docs, configs, logs) with metadata | Medium | L | Both |
-| 21 | ☐ | Reranker experiment | High | M | Both |
+| 21 | ☑ | Reranker experiment | High | M | Both |
 | 22 | ☐ | Incident-replay evaluation and hypothesis loop (flagship feature) | Medium | L | Claude |
 | 23 | ☐ | Security and operability layer (auth scopes, distributed limits, load test; threat model and secret scanning moved to 12a) | Medium | L | Codex |
 | 24 | ☐ | Provider adapter and model comparison, version pinning | Low | M | Codex |
@@ -147,7 +149,7 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 36f | ☐ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
-| 37 | ☐ | Maintainer evaluation web UI | Medium | M | Maintainer |
+| 37 | ☑ | Maintainer evaluation web UI | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
 
@@ -504,6 +506,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Done when:* questions over a README, a runbook and a config are answered with valid citations.
 
 **21. Reranker experiment.** Re-rank the top 20 into the top 5, development split only, using the item 32 scorecard and the item 33 latency and cost report. Keep it only if the rule registered in its own protocol is met. The held-out evaluation is part of item 3b.
+- **Status:** Done (2026-11-10; [PR #155](https://github.com/iamswayam/incidentweave/pull/155), issue #154, merge commit `222c56d9042acc1f83fa92d2dcc04263087ba844`). Decision REJECT; MRR@5 baseline 0.667677, treatment 0.781313, difference +0.113636, paired 95% interval [-0.013131, 0.241414]; GPU latency median 1,521.662 ms and p95 2,138.404 ms. The registered rule was applied without modification. Branch `bot/21-reranker-results` is intentionally kept open because more open-weight reranker candidates will be tested there later, each under a fresh protocol registration with the same gates; this REJECT decision will never be reopened.
 
 **22. Incident-replay evaluation and hypothesis loop.**
 - *Why:* this is the biggest gap versus the AI-SRE product category [market research in my report].
@@ -641,7 +644,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - *Why:* the backend is reviewed through raw HTTP calls and SQL; a small web UI lets the maintainer ask questions, browse history, and run quick batches of questions without reading code or writing requests by hand.
 - *Fix:* a static page served at `/ui` by the existing FastAPI app (no new service, no external dependency), reading the existing repository and investigation endpoints and one new read-only investigation-list endpoint. The UI never triggers ingestion or any write path other than creating an investigation via the existing POST route. Client-side pacing respects the existing 10-requests-per-60-seconds limit.
 - *Done when:* the page is reachable at `/ui` on the running app; it lists repositories with a live embedding-progress indicator, lets the maintainer pick an active repository and ask a question with the full answer (diagnosis, claims, evidence locations, confidence, outcome) rendered clearly; a batch mode runs a list of questions without exceeding the rate limit; and the new list endpoint's tests pass without a database.
-- **Status:** In progress; branch `bot/37-maintainer-eval-ui`; changed `README.md`, `app/api.py`, `app/main.py`, `app/web/index.html`, `app/web/app.css`, `app/web/app.js`, `tests/unit/api/test_api.py`, `docs/architecture-review/03-fix-checklist.md`, `docs/architecture/02-high-level-design.md`, `docs/architecture/03-low-level-design.md`, `docs/phases/09-production-api.md`, and `docs/reference/openapi.json`; `ruff check .`: All checks passed!; `ruff format --check .`: 201 files already formatted; `pytest tests/unit -q`: 456 passed in 49.53s.
+- **Status:** Done (2026-11-10; [PR #157](https://github.com/iamswayam/incidentweave/pull/157), issue #156, merge commit `32c77585ab803a8fb0cae89c206c2d182934be1f`, branch `bot/37-maintainer-eval-ui`); `ruff check .`: All checks passed!; `ruff format --check .`: 201 files already formatted; `pytest tests/unit -q`: 456 passed in 49.53s. The branch was intentionally kept because the maintainer is continuing to add features to it. Future pushes to either kept branch will open their own PRs under RepoAccord.
 
 ---
 
