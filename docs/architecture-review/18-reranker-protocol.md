@@ -203,3 +203,18 @@ separate to prevent leakage. Free notebook GPU availability is not guaranteed.
 Held-out evaluation is out of scope and remains in item 3b. Changing chunking or the
 guard threshold is out of scope. GPU notebook results do not establish production CPU
 latency; measure the target CPU separately before adoption.
+
+## Results
+
+Decision: **REJECT**.
+
+- MRR@5 baseline: 0.667677; treatment: 0.781313; difference: +0.113636; paired 95% interval: [-0.013131, 0.241414] (33 answerable development questions).
+- Added latency on the recorded GPU: median 1,521.662 ms; p95 2,138.404 ms (48 queries).
+- Cost per 1,000 queries: $0 API cost. Recorded token count: 414,750 across 48 queries.
+- Recorded run: model revision `e61197ed45024b0ed8a2d74b80b4d909f1255473`; hardware `Tesla T4`; torch `2.11.0+cu130`; transformers `5.20.2`.
+- Candidate-pool headroom: Recall@20 is 33/33; six questions have the first relevant chunk at ranks 6-20; same-pool baseline MRR@5 is 0.667677.
+- Failing conditions: MRR@5 paired 95% interval lower bound is not above zero; added median latency exceeds 500 ms; added p95 latency exceeds 1,500 ms.
+
+Guard metrics are unchanged by construction because the guard uses vector distance before reranking. Citation metrics are not measured here.
+
+**Deviations:** Three hosted-candidate runs were discarded because the free tier returned HTTP 429 for 36, 23, and 20 of 48 questions; the candidate was replaced by the open-weight model before any valid result existed; pacing and transport-retry code were added for the hosted path and kept; gates and decision rule are unchanged; GPU latency does not establish CPU latency.

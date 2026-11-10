@@ -1,0 +1,28 @@
+{
+  "model_identifier": "Qwen/Qwen3-Reranker-0.6B",
+  "api_version": "v1",
+  "model_settings": {},
+  "request_limits": {
+    "max_candidates": 20,
+    "top_k": 20,
+    "truncation": true,
+    "timeout_seconds": 30,
+    "max_attempts": 1
+  },
+  "retry_policy": {
+    "strategy": "exponential",
+    "initial_delay_seconds": 1,
+    "max_delay_seconds": 1,
+    "respect_retry_after": false
+  },
+  "pricing": {
+    "usd_per_million_tokens": 0,
+    "source_url": "https://huggingface.co/Qwen/Qwen3-Reranker-0.6B"
+  },
+  "local_inference": {
+    "model_identifier": "Qwen/Qwen3-Reranker-0.6B",
+    "instruction": "Given a question about a software repository, retrieve code chunks that answer the question",
+    "max_length": 8192,
+    "dtype": "float16"
+  }
+}
