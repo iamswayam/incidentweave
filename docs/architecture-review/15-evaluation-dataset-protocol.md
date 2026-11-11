@@ -85,7 +85,7 @@ Each new repository contributes 30 answerable and 10 unanswerable questions.
 | Source | Construction and provenance |
 |---|---|
 | Mined | Issue rewritten as a question; retain issue and fixing-PR references |
-| Drafted | Model-drafted from documentation and behavior, then human-verified; record the drafting model |
+| Drafted | Model-drafted from documentation and behavior; record the drafting model |
 | Human | Written by the maintainer |
 
 At least 8 answerable questions per repository are mined and at least 8 are drafted or human.
@@ -99,14 +99,15 @@ how-it-works. No type exceeds 40% of a repository's questions; no file receives 
 3 questions. Each repository also has 4 far, 3 near-miss, and 3 false-premise unanswerable
 questions. Verify absence by exact search at the pinned SHA and record the search.
 
-Human-review every question. Record provenance. Include no secrets or personal data.
+Human-review every question except sets covered by the items 31a/31b/31c amendment below. Record provenance. Include no secrets or personal data.
 
 ## 6. Quality control and pilot gate
 
 Pilot `rq` and `kopf` with full quotas before writing questions for any other repository.
 Blindly re-label a random 20% sample, at least 16 pilot questions, at least 7 days later.
-Use maintainer intra-rater review or a second-person inter-rater review when available.
-Measure agreement separately for gold files and answerability.
+Use maintainer intra-rater review or a second-person inter-rater review when available, except
+for items 31a/31b/31c, which use the independent second-model rater specified in the amendment
+below. Measure agreement separately for gold files and answerability.
 
 | Gate | Requirement |
 |---|---|
@@ -204,7 +205,7 @@ produced it.
 | Answerable types | Six registered types; each at most 40% per repository |
 | File concentration | At most 3 questions per file |
 | Unanswerable composition | 4 far + 3 near-miss + 3 false-premise per repository |
-| Review and privacy | 100% human-reviewed; provenance recorded; zero secrets or personal data |
+| Review and privacy | Human review except where the items 31a/31b/31c amendment applies; provenance recorded; zero secrets or personal data |
 | Pilot | `rq` and `kopf`, full quotas, before other new-repository questions |
 | Second pass | Random 20%; at least 16 pilot questions; blind; at least 7 days later |
 | Quality gate | At least 90% agreement for gold files and answerability; median effort at most 8 minutes/question |
@@ -221,3 +222,24 @@ The sample remains small. Labels may have only one maintainer annotator. Mined l
 file-level and approximate. Well-known repositories may be memorized by models; generation
 metrics need a closed-book baseline (item 34). The dataset is Python-only and uses static
 snapshots.
+
+## Amendment: LLM-only content generation with an independent second-model rater (items 31a/31b)
+
+Before any v2 question is written for items 31a/31b, the maintainer has decided to replace the
+registered 100% human-reviewed requirement with LLM generation plus an independent second-model
+rater. The second rater must be a genuinely different model from the question-generation model;
+it must not be this session's model or a repeat pass of the same model. It blindly re-derives only
+the gold-file set and answerability label for a random 20% sample of at least 16 pilot questions.
+The existing 90% agreement gate for both labels remains in force, as does the existing recovery
+rule: revise the labelling guidance and repeat once, then stop and ask the maintainer if agreement
+still falls below 90%. No maintainer reads or approves individual question content before commit.
+
+This second-model check measures labelling consistency between two models, not domain-expert
+correctness. It is stronger than a same-model self-check but weaker than genuine human review.
+The quality gate is not removed: the agreement threshold, one-repeat recovery rule, and
+stop-and-ask-maintainer condition remain unchanged. Only the human-content-review step is removed
+for the specified items.
+
+Every question record generated under this amendment must contain `review_status` with the exact
+string `llm_only_no_human_review`; `pending maintainer review` and any other value are invalid for
+these records. This amendment applies only to questions generated under items 31a, 31b, and 31c.
