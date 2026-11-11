@@ -233,7 +233,7 @@ def test_ingest_derives_retrieval_compatible_labels_from_gold_spans(
             "pr_number": index + 100,
             "issue_title": "Synthetic issue",
             "issue_body": "Synthetic issue body",
-            "files": [],
+            "files": [{"path": item["gold"][0]["path"]}],
         }
         for index, item in enumerate(drafts[:6])
     ]
@@ -274,7 +274,11 @@ def test_ingest_derives_retrieval_compatible_labels_from_gold_spans(
         {"file_path": "src/file_0.py", "line_start": 1, "line_end": 1}
     ]
     assert saved["questions"][0]["category"] == "direct"
-    assert saved["questions"][0]["source_ref"] == {"issue": 10, "pr": 100}
+    assert saved["questions"][0]["source_ref"] == {
+        "issue": 10,
+        "pr": 100,
+        "changed_source_files": ["src/file_0.py"],
+    }
 
 
 def test_second_pass_sample_is_repeatable_stratified_and_sized(tmp_path: Path) -> None:

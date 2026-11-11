@@ -20,19 +20,10 @@ from zipfile import ZipFile
 
 from app.ingestion import iter_python_files
 from evaluation.chunk_strategies import candidate_chunk_specs
+from evaluation.source_paths import is_source_python_path
 
 MAX_FIXTURE_BYTES = 1_572_864
 LICENSE_IDS = {"MIT", "BSD-2-Clause", "BSD-3-Clause", "Apache-2.0"}
-SOURCE_EXCLUDED_DIRS = {
-    "tests",
-    "test",
-    "testing",
-    "docs",
-    "doc",
-    "examples",
-    "example",
-}
-SOURCE_EXCLUDED_FILES = {"conftest.py"}
 SOURCE_EXTENSIONS = {
     ".c",
     ".cc",
@@ -163,22 +154,6 @@ def _cached_clone(cache_root: Path, repository_id: str, pinned_sha: str) -> Path
     raise CandidateQualificationError(
         f"no cached clone for {repository_id} contains pinned commit {pinned_sha}; "
         "run qualify first"
-    )
-
-
-def is_source_python_path(path: str | Path) -> bool:
-    """Apply protocol 15's source-line exclusions to one repository-relative path."""
-
-    relative = Path(path)
-    if relative.suffix.casefold() != ".py":
-        return False
-    parts = tuple(part.casefold() for part in relative.parts)
-    filename = parts[-1]
-    return not (
-        SOURCE_EXCLUDED_DIRS.intersection(parts[:-1])
-        or filename in SOURCE_EXCLUDED_FILES
-        or filename.startswith("test_")
-        or filename.endswith("_test.py")
     )
 
 

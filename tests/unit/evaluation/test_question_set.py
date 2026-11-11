@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from evaluation.question_set import (
+    LLM_ONLY_REVIEW_STATUS,
     build_question_set,
     derive_relevant_labels,
     legacy_category,
@@ -46,7 +47,11 @@ def _record(
             }
         )
         if source == "mined":
-            record["source_ref"] = {"issue": index + 1, "pr": index + 101}
+            record["source_ref"] = {
+                "issue": index + 1,
+                "pr": index + 101,
+                "changed_source_files": [relative],
+            }
         if source == "drafted":
             record["drafting_model"] = "test-drafter"
     else:
@@ -60,6 +65,7 @@ def _record(
                     "terms": [f"absent_{index}"],
                     "hits": 0,
                     "pinned_sha": PINNED_SHA,
+                    "search_command": (f'git grep -n -F -- absent_{index} {PINNED_SHA} -- "*.py"'),
                 },
             }
         )
@@ -247,6 +253,63 @@ def test_rejects_invalid_mined_source_ref_and_evidence_length(tmp_path: Path) ->
     errors = _errors(data)
     assert any("mined question needs issue and pr" in error for error in errors)
     assert any("evidence must be text of at most 300" in error for error in errors)
+
+
+def test_llm_only_review_requires_each_question_status_and_snapshot(tmp_path: Path) -> None:
+    root = tmp_path / "snapshot"
+    data = _valid_set(root)
+    for question in data["questions"]:
+        question.pop("reviewed")
+        question["review_status"] = LLM_ONLY_REVIEW_STATUS
+        if not question["answerable"]:
+            absence = question["absence_check"]
+            terms = absence["terms"]
+            absence["search_command"] = (
+                f'git grep -n -F -- {" ".join(terms)} {PINNED_SHA} -- "*.py"'
+            )
+    data["review_status"] = LLM_ONLY_REVIEW_STATUS
+    data.pop("reviewed_on")
+    assert (
+        validate_question_set(
+            data,
+            repo_id="candidate",
+            pinned_sha=PINNED_SHA,
+            snapshot_root=root,
+            required_review_status=LLM_ONLY_REVIEW_STATUS,
+        )
+        == []
+    )
+
+    data["questions"][0].pop("review_status")
+    errors = validate_question_set(
+        data,
+        repo_id="candidate",
+        pinned_sha=PINNED_SHA,
+        snapshot_root=root,
+        required_review_status=LLM_ONLY_REVIEW_STATUS,
+    )
+    assert any("review_status must be" in error for error in errors)
+
+
+def test_rejects_mined_gold_from_pr_that_changed_only_tests(tmp_path: Path) -> None:
+    data = _valid_set(tmp_path)
+    data["questions"][0]["source_ref"]["changed_source_files"] = ["tests/test_only.py"]
+
+    errors = _errors(data, tmp_path)
+
+    assert any("non-source or test file" in error for error in errors)
+    assert any("gold file was not changed by the closing PR" in error for error in errors)
+
+
+def test_drafted_question_cannot_copy_gold_chunk_text(tmp_path: Path) -> None:
+    data = _valid_set(tmp_path)
+    data["questions"][15]["question"] = (
+        "What does def operation return value when this function is called?"
+    )
+
+    errors = _errors(data, tmp_path)
+
+    assert any("drafted question copies gold-chunk text" in error for error in errors)
 
 
 def test_legacy_category_mapping_keeps_answerability(tmp_path: Path) -> None:

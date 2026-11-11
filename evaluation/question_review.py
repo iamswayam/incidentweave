@@ -566,6 +566,13 @@ def ingest_review_pack(
             question["source_ref"] = {
                 "issue": block["issue_number"],
                 "pr": block["pr_number"],
+                "changed_source_files": sorted(
+                    {
+                        item["path"]
+                        for item in mined.get("files", [])
+                        if isinstance(item, dict) and isinstance(item.get("path"), str)
+                    }
+                ),
             }
         if block["source"] == "drafted":
             question["drafting_model"] = original.get("drafting_model")
