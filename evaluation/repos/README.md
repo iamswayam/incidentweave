@@ -52,6 +52,7 @@ Backups assessed: `huey` (MIT, 4 issues; did not qualify) and `luigi` (Apache-2.
 
 The `rq` and `kopf` pilot under items 31a/31b/31c uses the LLM-only amendment in the
 dataset protocol. No maintainer reads or approves individual question content before commit.
+No human-written questions are included; all drafted records name the session model, and mined records retain their issue/PR provenance.
 A genuinely different second model blindly re-derives only the gold-file set and answerability
 for a 20% sample of at least 16 questions. This checks model-to-model labelling consistency,
 not domain-expert correctness; it is stronger than a same-model self-check but weaker than
