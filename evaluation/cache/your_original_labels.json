@@ -1,0 +1,134 @@
+{
+  "selection_seed": 31337,
+  "items": [
+    {
+      "sample_id": "rq-issue-1518",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/queue.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-2195",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/job.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-1680",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/queue.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-1236",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/decorators.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-1310",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/scheduler.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-1707",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/scheduler.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-1598",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/job.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "rq-issue-1791",
+      "repository_id": "rq",
+      "gold_files": [
+        "rq/worker/worker_classes.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-1288",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/_cogs/helpers/thirdparty.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-1238",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/_core/intents/piggybacking.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-1144",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/_cogs/clients/events.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-1008",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/_core/intents/piggybacking.py",
+        "kopf/_core/intents/registries.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-1146",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/_core/actions/loggers.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-767",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/cli.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-390",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/on.py"
+      ],
+      "answerable": true
+    },
+    {
+      "sample_id": "kopf-issue-1277",
+      "repository_id": "kopf",
+      "gold_files": [
+        "kopf/_core/intents/piggybacking.py"
+      ],
+      "answerable": true
+    }
+  ]
+}
