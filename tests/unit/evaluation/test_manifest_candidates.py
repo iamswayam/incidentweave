@@ -145,6 +145,7 @@ def _full_v2_questions() -> dict[str, Any]:
             "answerable": True,
             "source": source,
             "reviewed": True,
+            "review_status": "maintainer reviewed",
             "evidence": "operation return",
             "type": question_types[index % len(question_types)],
             "category": "direct" if index % len(question_types) == 0 else "paraphrased",
@@ -158,7 +159,11 @@ def _full_v2_questions() -> dict[str, Any]:
             ],
         }
         if source == "mined":
-            question["source_ref"] = {"issue": index + 1, "pr": index + 101}
+            question["source_ref"] = {
+                "issue": index + 1,
+                "pr": index + 101,
+                "changed_source_files": [f"src/file_{index}.py"],
+            }
         questions.append(question)
     for index, kind in enumerate(
         ["far"] * 4 + ["near-miss"] * 3 + ["false-premise"] * 3,
@@ -171,6 +176,7 @@ def _full_v2_questions() -> dict[str, Any]:
                 "answerable": False,
                 "source": "human",
                 "reviewed": True,
+                "review_status": "maintainer reviewed",
                 "evidence": "",
                 "kind": kind,
                 "category": "unanswerable_far" if kind == "far" else "unanswerable_near",

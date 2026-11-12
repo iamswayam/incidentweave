@@ -567,7 +567,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 **31b. Pilot questions for `rq` and `kopf`, second pass and pilot gate.**
 - **Fix:** Author pilot packs with mined, drafted, and unanswerable items; record the drafting model; complete maintainer review with per-item minutes; ingest and commit the questions; run the blind second pass at least seven days later; and write a pilot results note with the gate decision in protocol 15 section 6. Items 32 and 33 (code only) may proceed during the seven-day wait.
 - **Done when:** Both pilot sets pass the registered questions, review, and agreement gates, and the pilot results note records the decision.
-- **Status:** Not started.
+- **Status:** In review (bot/31-pilot-questions); pilot gate passed - gold-file 93.8%, answerable 100.0%; second rater claude-sonnet-4-6.
 
 **31c. Scale questions, development fixtures, and freeze v2.0.**
 - **Fix:** Add questions for `luigi` and `client_python` (development), and `locust`, `docker-py`, and `uvicorn` (held-out); build development fixtures with provider embeddings only for development data (do not build held-out fixtures); graduate development repositories into `repositories` with v2 splits and a generalized validator; freeze v2.0; and complete the data card.
