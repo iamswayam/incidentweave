@@ -1,0 +1,1046 @@
+{
+  "repo_id": "kopf",
+  "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+  "dataset_version": "2.0-draft",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "kopf-m01",
+      "question": "What finalizer requirement does the timer decorator set for its handler?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "TimerHandler is constructed with requires_finalizer set to true.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/on.py",
+          "line_start": 776,
+          "line_end": 780
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/on.py",
+          "substring": "selector=selector, labels=labels, annotations=annotations, when=when,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 390,
+        "pr": 548,
+        "changed_source_files": [
+          "kopf/on.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "kopf-m02",
+      "question": "Which log format is selected when the CLI receives no --log-format option?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "The CLI log-format option defaults to full.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/cli.py",
+          "line_start": 37,
+          "line_end": 37
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/cli.py",
+          "substring": "@click.option('--log-format', type=click.Choice(loggers.LogFormat, case_sensitive=False), default='full')"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 767,
+        "pr": 769,
+        "changed_source_files": [
+          "kopf/cli.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "kopf-m03",
+      "question": "If only kubernetes_asyncio is installed, which fallback authentication activity is registered?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "mined",
+      "evidence": "Async availability is checked and the registry selects login_via_async_client when sync is absent.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "line_start": 34,
+          "line_end": 52
+        },
+        {
+          "file_path": "kopf/_core/intents/registries.py",
+          "line_start": 281,
+          "line_end": 299
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "substring": "def has_client() -> bool:"
+        },
+        {
+          "file_path": "kopf/_core/intents/registries.py",
+          "substring": "if piggybacking.has_client():"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1008,
+        "pr": 1010,
+        "changed_source_files": [
+          "kopf/__init__.py",
+          "kopf/_core/intents/piggybacking.py",
+          "kopf/_core/intents/registries.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-m04",
+      "question": "What does the authenticated request wrapper do with a returned ClientResponse, and what happens to it when its context closes?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "mined",
+      "evidence": "Open responses are registered on the context and closed before the session.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "line_start": 44,
+          "line_end": 53
+        },
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "line_start": 137,
+          "line_end": 149
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "substring": "# Otherwise, attempt the execution with the vault credentials and re-authenticate on 401s."
+        },
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "substring": "def close_open_responses(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1036,
+        "pr": 1109,
+        "changed_source_files": [
+          "kopf/_cogs/clients/auth.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-m05",
+      "question": "Which legacy JSON-logger module is used if imports from the newer module layout fail?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "The fallback imports from pythonjsonlogger.jsonlogger.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/loggers.py",
+          "line_start": 13,
+          "line_end": 21
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/loggers.py",
+          "substring": "import logging"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1146,
+        "pr": 1149,
+        "changed_source_files": [
+          "kopf/_core/actions/loggers.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "kopf-m06",
+      "question": "How does event handling test whether a core Event should be skipped when reference keys may be absent?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "mined",
+      "evidence": "The guard reads apiVersion and kind with get, avoiding KeyError on missing keys.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/events.py",
+          "line_start": 35,
+          "line_end": 38
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/events.py",
+          "substring": "# Prevent \"event explosion\", when core v1 events are handled and create other core v1 events."
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1144,
+        "pr": 1151,
+        "changed_source_files": [
+          "kopf/_cogs/clients/events.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-m07",
+      "question": "What determines whether the async client API-key value is awaited?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "The result is awaited only when inspect.isawaitable returns true.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "line_start": 162,
+          "line_end": 167
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "substring": "header: str | None"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1238,
+        "pr": 1240,
+        "changed_source_files": [
+          "kopf/_core/intents/piggybacking.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "kopf-m08",
+      "question": "Why does the synchronous client connection omit proxy_url?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "mined",
+      "evidence": "The client uses proxy environment variables; trust_env is needed to honor NO_PROXY.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "line_start": 121,
+          "line_end": 124
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/intents/piggybacking.py",
+          "substring": "trust_env=settings.networking.trust_env,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1277,
+        "pr": 1278,
+        "changed_source_files": [
+          "kopf/_core/intents/piggybacking.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-m09",
+      "question": "Which future import is added before the optional-client type declarations?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "The module imports future annotations before defining optional client types.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/helpers/thirdparty.py",
+          "line_start": 1,
+          "line_end": 8
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/helpers/thirdparty.py",
+          "substring": "\"\"\""
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1288,
+        "pr": 1289,
+        "changed_source_files": [
+          "kopf/_cogs/helpers/thirdparty.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "kopf-d01",
+      "question": "How does the deletion helper determine whether an object is already being deleted?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "It checks whether metadata.deletionTimestamp is present and non-null.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "line_start": 11,
+          "line_end": 14
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "substring": "def is_deletion_ongoing("
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d02",
+      "question": "Which namespace specifications can be used as concrete names in the fallback path?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "Only plain strings without glob, negation, or comma syntax are selected.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "line_start": 22,
+          "line_end": 34
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "substring": "def select_specific_namespaces(patterns: Iterable[NamespacePattern]) -> Collection[NamespaceName]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d03",
+      "question": "What counter in HandlerState records repeated attempts of a handler?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "HandlerState stores the retry count in its retries field, initialized to zero.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/progression.py",
+          "line_start": 90,
+          "line_end": 113
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/progression.py",
+          "substring": "@dataclasses.dataclass(frozen=True)"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d04",
+      "question": "How is the Pykube object type represented when the optional import is unavailable?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "The fallback assigns the local dummy class to PykubeObject.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/helpers/thirdparty.py",
+          "line_start": 18,
+          "line_end": 31
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/helpers/thirdparty.py",
+          "substring": "'KubernetesModelSync', 'KubernetesModelAsync',"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d05",
+      "question": "What type does a progress record allow for its retry-count field?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "The persisted record declares retries as an optional integer.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/configs/progress.py",
+          "line_start": 51,
+          "line_end": 60
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/configs/progress.py",
+          "substring": "class ProgressRecord(TypedDict, total=False):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d06",
+      "question": "How does the credentials vault close cached API contexts and their open responses?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "Vault flushes cached objects by calling close; APIContext closes responses before its session.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "line_start": 498,
+          "line_end": 526
+        },
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "line_start": 137,
+          "line_end": 149
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "substring": "async def _flush_caches("
+        },
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "substring": "def close_open_responses(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d07",
+      "question": "When namespace observation is disabled, which configured patterns can still be served as direct namespaces?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "Disabled scanning falls back to specific namespaces, excluding glob, negation, or comma syntax.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "line_start": 421,
+          "line_end": 432
+        },
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "line_start": 22,
+          "line_end": 34
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "substring": "disabled: bool = False"
+        },
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "substring": "def select_specific_namespaces(patterns: Iterable[NamespacePattern]) -> Collection[NamespaceName]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d08",
+      "question": "How does the default asap lifecycle choose one handler from the pending set?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "The lifecycle orders handlers by retry count and selects the first one.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/execution.py",
+          "line_start": 85,
+          "line_end": 95
+        },
+        {
+          "file_path": "kopf/_core/actions/lifecycles.py",
+          "line_start": 43,
+          "line_end": 49
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/execution.py",
+          "substring": "\"\"\""
+        },
+        {
+          "file_path": "kopf/_core/actions/lifecycles.py",
+          "substring": "def asap(handlers: Handlers, *, state: execution.State, **_: Any) -> Handlers:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d09",
+      "question": "How is a handler retry count represented in persisted runtime state and in a progress record?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "HandlerState uses an integer retry count; ProgressRecord stores an optional integer.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/progression.py",
+          "line_start": 90,
+          "line_end": 113
+        },
+        {
+          "file_path": "kopf/_cogs/configs/progress.py",
+          "line_start": 51,
+          "line_end": 60
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/progression.py",
+          "substring": "@dataclasses.dataclass(frozen=True)"
+        },
+        {
+          "file_path": "kopf/_cogs/configs/progress.py",
+          "substring": "class ProgressRecord(TypedDict, total=False):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d10",
+      "question": "What is the default value of the scanning-disabled setting?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "Dynamic scanning is enabled by default because disabled defaults to false.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "line_start": 416,
+          "line_end": 430
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "substring": "class ScanningSettings:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d11",
+      "question": "What finalizer marker does persistence settings use by default?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The configured finalizer marker is kopf.zalando.org/KopfFinalizerMarker.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "line_start": 579,
+          "line_end": 584
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/configs/configuration.py",
+          "substring": "class PersistenceSettings:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d12",
+      "question": "What default namespace does ConnectionInfo use when no namespace is supplied?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The default_namespace field is optional and defaults to None.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "line_start": 78,
+          "line_end": 87
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/credentials.py",
+          "substring": "scheme: str | None = None  # RFC-7235/5.1: e.g. Bearer, Basic, Digest, etc."
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d13",
+      "question": "Which legacy environment variable is appended to the namespace list by the CLI?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The CLI reads KOPF_RUN_NAMESPACE and appends it for legacy single-namespace mode.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/cli.py",
+          "line_start": 88,
+          "line_end": 91
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/cli.py",
+          "substring": "if os.environ.get('KOPF_RUN_NAMESPACE'):  # legacy for single-namespace mode"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d14",
+      "question": "What value represents an unspecified interval in the timer decorator signature?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The interval parameter is optional and defaults to None.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/on.py",
+          "line_start": 740,
+          "line_end": 750
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/on.py",
+          "substring": "id: str | None = None,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d15",
+      "question": "What default delay is attached to a TemporaryError when no delay is provided?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "TemporaryError defaults its retry delay to 60 seconds.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/execution.py",
+          "line_start": 25,
+          "line_end": 38
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/execution.py",
+          "substring": "class PermanentError(Exception):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d16",
+      "question": "What exception is raised when a namespaced resource is addressed by name without a namespace?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "The selector raises ValueError when a specific namespace is required but missing.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "line_start": 218,
+          "line_end": 224
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/references.py",
+          "substring": "if subresource is not None and name is None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d17",
+      "question": "What error is raised if the authentication cycle ends without returning or raising a login failure?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "The wrapper raises RuntimeError describing the impossible end of the authentication cycle.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "line_start": 54,
+          "line_end": 61
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/clients/auth.py",
+          "substring": "await vault.invalidate(key, info, exc=e)"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d18",
+      "question": "What error occurs if both namespace forms are supplied to the operator runner?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "The runner raises TypeError when namespaces and namespace are both set.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/running.py",
+          "line_start": 168,
+          "line_end": 174
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/running.py",
+          "substring": "loop = asyncio.get_running_loop()"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d19",
+      "question": "How does allow_deletion remove a marker and clean up empty metadata?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "drafted",
+      "evidence": "It removes matching markers and deletes empty finalizers and metadata containers.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "line_start": 30,
+          "line_end": 36
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_cogs/structs/finalizers.py",
+          "substring": "def allow_deletion(body: bodies.RawBody, finalizer: str) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d20",
+      "question": "How does the all_at_once lifecycle handle the supplied handler sequence?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "drafted",
+      "evidence": "It returns the handler sequence unchanged, allowing all handlers to run in the same reaction cycle.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/actions/lifecycles.py",
+          "line_start": 23,
+          "line_end": 25
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/actions/lifecycles.py",
+          "substring": "def all_at_once(handlers: Handlers, **_: Any) -> Handlers:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-d21",
+      "question": "What namespace set is used when dynamic namespace scanning is disabled or list permission is unavailable?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "drafted",
+      "evidence": "The observer falls back to exact configured namespaces, or the cluster-wide sentinel when applicable.",
+      "relevant_spans": [
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "line_start": 39,
+          "line_end": 70
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "kopf/_core/reactor/observation.py",
+          "substring": "*,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "kopf-u01",
+      "question": "Which SQL ORM stores handler state outside the Kubernetes API?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested SQL persistence backend has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "SQLAlchemy",
+          "sqlite3",
+          "PostgreSQL"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e SQLAlchemy -e sqlite3 -e PostgreSQL edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u02",
+      "question": "Which CLI command exports all registered custom resources as CRD manifests?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested CRD export command has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "export-crd",
+          "generate-crd",
+          "crd_manifest"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e export-crd -e generate-crd -e crd_manifest edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u03",
+      "question": "Which built-in Prometheus exporter publishes handler outcomes to a metrics endpoint?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested built-in metrics exporter has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "prometheus_client",
+          "PrometheusExporter",
+          "MetricsServer"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e prometheus_client -e PrometheusExporter -e MetricsServer edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u04",
+      "question": "Which dashboard command opens a browser-based resource editor?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested browser dashboard has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "webbrowser",
+          "dashboard_ui"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e webbrowser -e dashboard_ui edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u05",
+      "question": "Which setting automatically creates RBAC rules when dynamic scanning is disabled?",
+      "answerable": false,
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Scanning and RBAC requirements exist, but this automatic grant setting does not.",
+      "absence_check": {
+        "terms": [
+          "grant_rbac",
+          "auto_rbac"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e grant_rbac -e auto_rbac edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u06",
+      "question": "Which TemporaryError option retries immediately while keeping the retry delay unchanged?",
+      "answerable": false,
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "TemporaryError has a delay field, but this immediate-retry option does not.",
+      "absence_check": {
+        "terms": [
+          "immediate_retry",
+          "ignore_delay"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e immediate_retry -e ignore_delay edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u07",
+      "question": "Which finalizer option removes the marker before delete handlers have finished?",
+      "answerable": false,
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Finalizer handling exists, but this early-removal option does not.",
+      "absence_check": {
+        "terms": [
+          "remove_finalizer_before_cleanup",
+          "early_finalizer_removal"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e remove_finalizer_before_cleanup -e early_finalizer_removal edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u08",
+      "question": "Why does setting trust_env to true make the API client ignore proxy environment variables?",
+      "answerable": false,
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The question reverses trust_env behavior, which respects proxy-related environment variables.",
+      "absence_check": {
+        "terms": [
+          "ignore_proxy_env",
+          "disable_proxy_env"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e ignore_proxy_env -e disable_proxy_env edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u09",
+      "question": "Why does PermanentError schedule another handler attempt after its retry delay?",
+      "answerable": false,
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "PermanentError is described as fatal, with retries considered useless.",
+      "absence_check": {
+        "terms": [
+          "PermanentError.retry_after",
+          "RetryPermanentError"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e PermanentError.retry_after -e RetryPermanentError edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "kopf-u10",
+      "question": "Which setting makes allow_deletion keep the requested finalizer after cleanup?",
+      "answerable": false,
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "allow_deletion removes the requested finalizer rather than preserving it.",
+      "absence_check": {
+        "terms": [
+          "preserve_finalizer_after_allow_deletion",
+          "finalizer_kept"
+        ],
+        "hits": 0,
+        "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
+        "search_command": "git grep -n -F -i -e preserve_finalizer_after_allow_deletion -e finalizer_kept edaf7c634ed66153143da467b80d212c0601479b"
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}

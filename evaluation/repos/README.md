@@ -50,6 +50,14 @@ Backups assessed: `huey` (MIT, 4 issues; did not qualify) and `luigi` (Apache-2.
 
 ## Labelling guidelines
 
+The `rq` and `kopf` pilot under items 31a/31b/31c uses the LLM-only amendment in the
+dataset protocol. No maintainer reads or approves individual question content before commit.
+No human-written questions are included; all drafted records name the session model, and mined records retain their issue/PR provenance.
+A genuinely different second model blindly re-derives only the gold-file set and answerability
+for a 20% sample of at least 16 questions. This checks model-to-model labelling consistency,
+not domain-expert correctness; it is stronger than a same-model self-check but weaker than
+human review. The 90% agreement gate and one-revision recovery rule remain unchanged.
+
 ### Gold files and spans
 
 - A **gold file** is a pinned source file that contains evidence needed to answer the question.
@@ -67,14 +75,15 @@ Answerable questions have a code-supported answer and one of the registered type
 | `near-miss` | Related code exists, but not the requested behavior or setting. | “Which `retry_count` option controls requests?” when the toy library only has `timeout_count`. |
 | `false-premise` | The question assumes behavior that the pinned code does not perform. | “Why does `parse_config` retry until success?” when the toy function does not retry. |
 
-### Leakage, pack review, and effort
+### Leakage, mining, review, and effort
 
-- Do not put a gold file path or basename in the question, in any casing. Do not include secrets in question or evidence text.
-- Work only in ignored `evaluation/cache/questions/<repo-id>/`. The `issues` command writes `mined.json`; Copilot or a human prepares `drafts.json`; `pack` renders `pack.md`.
-- Each `drafts.json` record has `candidate_id` (`M-...` for mined issues or `D-...` for a new item), `source` (`mined`, `drafted`, or `human`), `question`, and `evidence` (at most 300 characters). Answerable records add `type` and `gold: [{path, start, end}]`; unanswerable records add `kind` and `absence_check: {terms, hits}`. Drafted records also name `drafting_model`.
-- In the pack, edit the question, type/kind, gold spans or absence check, evidence, Decision, Minutes, and Notes in place. Accept or reject every item. Use whole-number minutes for time spent on that item, including review.
-- `ingest` writes only accepted questions to `evaluation/repos/<repo-id>/questions.json` after validation. The blind `second-pass.md` hides first-pass labels; a second reviewer fills it independently at least seven days after `reviewed_on`.
-- Answerability agreement requires identical yes/no labels. Gold-file agreement is a shared-file overlap for sampled answerable questions; exact set match is reported descriptively. Each agreement gate is at least 90%, and median first-pass effort must be at most eight minutes. With 16 sampled questions, the 90% gate allows at most one disagreement.
+- Do not put a gold file path or basename in the question, in any casing. Do not include secrets or personal data in question or evidence text. Drafted questions must not copy gold-chunk text.
+- For the pilot, run `python -m evaluation.mine_pilot_candidates rq` and `python -m evaluation.mine_pilot_candidates kopf`. The script clones only the registered development pins into ignored `evaluation/cache/pilot_candidates/`, queries closed issues with linked PRs, and keeps only PRs whose changed files are non-test and still present at the pinned SHA.
+- Existing human-review tooling works only in ignored `evaluation/cache/questions/<repo-id>/`: the `issues` command writes `mined.json`; `pack` renders `pack.md`; `ingest` validates and writes accepted records. It remains available for sets outside the amended pilot.
+- Each answerable mined record retains `source_ref` with its issue number, closing PR number, and changed non-test source files. Each drafted record names the drafting model. Unanswerable records include an absence-check terms list, zero hits, the pinned SHA, and the exact search command.
+- Every question in the amended pilot has `review_status: "llm_only_no_human_review"`; do not add `reviewed: true` or describe it as maintainer-reviewed. Other question sets retain their registered review mode.
+- The independent second model receives the blind sample without first-pass labels and re-derives only the gold-file set and answerability. It must differ from the drafting model; a repeat pass of the same model is not independent. Keep the original labels separate from the rater package.
+- Answerability agreement requires identical yes/no labels. Gold-file agreement is a shared-file overlap for sampled answerable questions; exact set match is reported descriptively. Each agreement gate is at least 90%. If either gate fails, revise the guidance and repeat once; if it still fails, stop and ask the maintainer. With 16 sampled questions, the 90% gate allows at most one disagreement.
 
 ### Implementation notes
 

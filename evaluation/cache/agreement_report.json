@@ -1,0 +1,26 @@
+{
+  "selection_seed": 31337,
+  "n_sampled": 16,
+  "second_rater": "claude-sonnet-4-6",
+  "first_rater": "gpt-6-luna",
+  "gold_file_agreement": 0.94,
+  "answerable_agreement": 1.0,
+  "gate_passed": true,
+  "mismatches": [
+    {
+      "sample_id": "kopf-issue-1008",
+      "axis": "gold_file",
+      "first_rater": [
+        "kopf/_core/intents/piggybacking.py",
+        "kopf/_core/intents/registries.py"
+      ],
+      "second_rater": [
+        "kopf/__init__.py",
+        "kopf/_core/intents/piggybacking.py",
+        "kopf/_core/intents/registries.py"
+      ],
+      "resolution": "No revision: both agreement gates passed on the first attempt."
+    }
+  ],
+  "generated_at": "2026-11-12T16:54:06.953+05:30"
+}

@@ -1,0 +1,1042 @@
+{
+  "repo_id": "rq",
+  "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+  "dataset_version": "2.0-draft",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "rq-m01",
+      "question": "When a caller supplies a job ID to delay() on a decorated function, how is that ID passed to the queued job?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "The decorator removes job_id from call kwargs and forwards it to enqueue_call.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/decorators.py",
+          "line_start": 94,
+          "line_end": 122
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/decorators.py",
+          "substring": "def delay(*args, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1236,
+        "pr": 1243,
+        "changed_source_files": [
+          "rq/decorators.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "rq-m02",
+      "question": "What connection details does Scheduler retain from the supplied Redis client when it builds its own connection?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "mined",
+      "evidence": "Scheduler retains the client class, pool class, and pool kwargs before reconstructing a client.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/scheduler.py",
+          "line_start": 58,
+          "line_end": 103
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/scheduler.py",
+          "substring": "def __init__("
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1310,
+        "pr": 1327,
+        "changed_source_files": [
+          "rq/scheduler.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-m03",
+      "question": "Before a fetched dependent job can be marked ready, what eligibility checks does the queue apply?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "The queue requires the dependent to exist, have its dependencies met, and not be canceled.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 1561,
+          "line_end": 1571
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/queue.py",
+          "substring": "for dependent_job in self.job_class.fetch_many("
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1518,
+        "pr": 1532,
+        "changed_source_files": [
+          "rq/queue.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "rq-m04",
+      "question": "How does Job.delete honor a request to leave the job in its queue?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "mined",
+      "evidence": "The remove_from_queue argument is forwarded unchanged to registry cleanup.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/job.py",
+          "line_start": 1415,
+          "line_end": 1429
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/job.py",
+          "substring": "def delete(self, pipeline: Pipeline | None = None, remove_from_queue: bool = True, delete_dependents: bool = False):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1598,
+        "pr": 1601,
+        "changed_source_files": [
+          "rq/job.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-m05",
+      "question": "Which success and failure callbacks does bulk enqueue carry from each job-data record into job creation?",
+      "answerable": true,
+      "type": "direct",
+      "source": "mined",
+      "evidence": "enqueue_many forwards on_success and on_failure from each record.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 889,
+          "line_end": 926
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/queue.py",
+          "substring": "def enqueue_many("
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1680,
+        "pr": 1686,
+        "changed_source_files": [
+          "rq/queue.py"
+        ]
+      },
+      "category": "direct"
+    },
+    {
+      "id": "rq-m06",
+      "question": "During a scheduler heartbeat, which queue locks are refreshed?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "mined",
+      "evidence": "Heartbeat iterates the scheduler locks it currently owns.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/scheduler.py",
+          "line_start": 291,
+          "line_end": 317
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/scheduler.py",
+          "substring": "def heartbeat(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1707,
+        "pr": 1710,
+        "changed_source_files": [
+          "rq/scheduler.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-m07",
+      "question": "What values are inserted into the diagnostic message when a job is immediately enqueued for retry?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "mined",
+      "evidence": "The retry message receives the job ID and remaining retry count.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/job.py",
+          "line_start": 1801,
+          "line_end": 1803
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/job.py",
+          "substring": "queue._enqueue_job(self, pipeline=pipeline, at_front=self.enqueue_at_front_on_retry)"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 2195,
+        "pr": 2196,
+        "changed_source_files": [
+          "rq/job.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-m08",
+      "question": "How does the worker handle a work horse that exits abnormally before the job reaches a terminal status?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "mined",
+      "evidence": "The worker records the end time, logs exit detail, and routes the job through failure handling.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "line_start": 134,
+          "line_end": 150
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "substring": "try:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "source_ref": {
+        "issue": 1791,
+        "pr": 2364,
+        "changed_source_files": [
+          "rq/worker/worker_classes.py"
+        ]
+      },
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d01",
+      "question": "Which pickle protocol does DefaultSerializer select when encoding objects?",
+      "answerable": true,
+      "type": "direct",
+      "source": "drafted",
+      "evidence": "The default serializer calls pickle.dumps with pickle.HIGHEST_PROTOCOL.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/serializers.py",
+          "line_start": 19,
+          "line_end": 24
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/serializers.py",
+          "substring": "class DefaultSerializer:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "direct"
+    },
+    {
+      "id": "rq-d02",
+      "question": "What three components does parse_connection return for rebuilding a Redis client?",
+      "answerable": true,
+      "type": "direct",
+      "source": "drafted",
+      "evidence": "The helper returns the client class, pool class, and sanitized pool kwargs.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/connections.py",
+          "line_start": 35,
+          "line_end": 39
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/connections.py",
+          "substring": "def parse_connection(connection: Redis) -> tuple[type[Redis], type[RedisConnection], dict]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "direct"
+    },
+    {
+      "id": "rq-d03",
+      "question": "How does the desc argument affect the order of IDs returned by a registry query?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "The desc value is passed to the sorted-set range operation.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/registry.py",
+          "line_start": 167,
+          "line_end": 181
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/registry.py",
+          "substring": "def get_job_ids(self, start: int = 0, end: int = -1, desc: bool = False, cleanup: bool = True) -> list[str]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d04",
+      "question": "What makes a Result instance evaluate as true in a boolean expression?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "Truthiness is based on whether the result has an ID.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/results.py",
+          "line_start": 56,
+          "line_end": 64
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/results.py",
+          "substring": "def __eq__(self, other):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d05",
+      "question": "How does JSONSerializer convert values between JSON and the byte representation?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "It encodes JSON as UTF-8 bytes and decodes bytes before parsing.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/serializers.py",
+          "line_start": 27,
+          "line_end": 34
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/serializers.py",
+          "substring": "class JSONSerializer:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d06",
+      "question": "How are unstable Redis pool settings removed before a connection is rebuilt in a child process?",
+      "answerable": true,
+      "type": "paraphrase",
+      "source": "drafted",
+      "evidence": "The helper drops runtime-only keys and object-sentinel values.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/connections.py",
+          "line_start": 24,
+          "line_end": 32
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/connections.py",
+          "substring": "def get_connection_kwargs(connection: Redis) -> dict:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d07",
+      "question": "How does the scheduler move jobs whose scheduled time is due into a queue?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "The registry finds due IDs and the scheduler fetches and enqueues eligible jobs.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/registry.py",
+          "line_start": 668,
+          "line_end": 680
+        },
+        {
+          "file_path": "rq/scheduler.py",
+          "line_start": 232,
+          "line_end": 271
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/registry.py",
+          "substring": "def get_jobs_to_schedule(self, timestamp: int | None = None, chunk_size: int = 1000) -> list[str]:"
+        },
+        {
+          "file_path": "rq/scheduler.py",
+          "substring": "def enqueue_scheduled_jobs(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d08",
+      "question": "How does the queue decide whether a dependent job can be promoted after its parent finishes?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "The queue checks fetched dependents before promoting them; the job method evaluates dependency statuses.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/queue.py",
+          "line_start": 1561,
+          "line_end": 1571
+        },
+        {
+          "file_path": "rq/job.py",
+          "line_start": 1840,
+          "line_end": 1910
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/queue.py",
+          "substring": "for dependent_job in self.job_class.fetch_many("
+        },
+        {
+          "file_path": "rq/job.py",
+          "substring": "def dependencies_are_met("
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d09",
+      "question": "How do Worker and SimpleWorker provide different execution strategies through the shared worker base?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "The default worker spawns a work horse; SimpleWorker performs the job inline and BaseWorker defines the hook.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/base.py",
+          "line_start": 605,
+          "line_end": 607
+        },
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "line_start": 168,
+          "line_end": 177
+        },
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "line_start": 286,
+          "line_end": 291
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/worker/base.py",
+          "substring": "def execute_job(self, job: Job, queue: Queue):"
+        },
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "substring": "def execute_job(self, job: Job, queue: Queue):"
+        },
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "substring": "class SimpleWorker(BaseWorker):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d10",
+      "question": "How does the CLI resolve a dotted serializer setting instead of a built-in alias?",
+      "answerable": true,
+      "type": "multi-file",
+      "source": "drafted",
+      "evidence": "The CLI accepts a dotted serializer path; resolution checks aliases then imports the attribute.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/helpers.py",
+          "line_start": 405,
+          "line_end": 412
+        },
+        {
+          "file_path": "rq/serializers.py",
+          "line_start": 43,
+          "line_end": 65
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/cli/helpers.py",
+          "substring": "),"
+        },
+        {
+          "file_path": "rq/serializers.py",
+          "substring": "def resolve_serializer(serializer: Serializer | str | None = None) -> Serializer:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d11",
+      "question": "What worker time-to-live is configured by default?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The default worker TTL is 420 seconds.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/defaults.py",
+          "line_start": 46,
+          "line_end": 49
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/defaults.py",
+          "substring": "DEFAULT_WORKER_TTL = 420"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d12",
+      "question": "How long are successful job results retained by default?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The configured default result TTL is 500 seconds.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/defaults.py",
+          "line_start": 57,
+          "line_end": 61
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/defaults.py",
+          "substring": "DEFAULT_RESULT_TTL = 500"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d13",
+      "question": "What timeout applies by default to callback functions?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "Callbacks use the 60-second default timeout.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/defaults.py",
+          "line_start": 104,
+          "line_end": 108
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/defaults.py",
+          "substring": "CALLBACK_TIMEOUT = 60"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d14",
+      "question": "If no retry interval is supplied on the CLI, what value does the repeated option default to?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The repeated retry interval option defaults to a single zero value.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/cli/cli.py",
+          "line_start": 186,
+          "line_end": 186
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/cli/cli.py",
+          "substring": "@click.option('--retry-interval', help='Interval between retries in seconds', multiple=True, type=int, default=[0])"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d15",
+      "question": "How is the Redis socket timeout chosen relative to the worker dequeue timeout?",
+      "answerable": true,
+      "type": "config-env",
+      "source": "drafted",
+      "evidence": "The connection timeout is ten seconds longer and raises a missing or shorter pool timeout.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/base.py",
+          "line_start": 428,
+          "line_end": 441
+        },
+        {
+          "file_path": "rq/worker/base.py",
+          "line_start": 470,
+          "line_end": 475
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/worker/base.py",
+          "substring": "def _set_connection(self, connection: Redis) -> Redis:"
+        },
+        {
+          "file_path": "rq/worker/base.py",
+          "substring": "def dequeue_timeout(self) -> int:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d16",
+      "question": "What message does the Unix-signal timeout path raise when a task exceeds its limit?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "It raises the configured exception with maximum-timeout text and value.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/timeouts.py",
+          "line_start": 61,
+          "line_end": 63
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/timeouts.py",
+          "substring": "class UnixSignalDeathPenalty(BaseDeathPenalty):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d17",
+      "question": "What exception and message are used when import_attribute cannot resolve a dotted name?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "Invalid attribute names are reported as ValueError.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/utils.py",
+          "line_start": 166,
+          "line_end": 216
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/utils.py",
+          "substring": "def import_attribute(name: str) -> Callable[..., Any]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d18",
+      "question": "Which exception represents a job ID that is unknown or has expired in Redis?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "NoSuchJobError represents missing, unknown, or expired jobs.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/exceptions.py",
+          "line_start": 1,
+          "line_end": 2
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/exceptions.py",
+          "substring": "class NoSuchJobError(Exception):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d19",
+      "question": "What failure log is emitted after a work horse exits unexpectedly?",
+      "answerable": true,
+      "type": "error-message",
+      "source": "drafted",
+      "evidence": "The warning includes the worker, job, waitpid return value, and optional signal detail.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "line_start": 134,
+          "line_end": 150
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/worker/worker_classes.py",
+          "substring": "try:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d20",
+      "question": "What happens when TimerDeathPenalty is configured with a nonpositive timeout?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "drafted",
+      "evidence": "A nonpositive timeout skips timer creation; positive timeouts start a timer.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/timeouts.py",
+          "line_start": 111,
+          "line_end": 123
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/timeouts.py",
+          "substring": "def setup_death_penalty(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d21",
+      "question": "How does create_failure preserve the diagnostic details for a failed result?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "drafted",
+      "evidence": "It constructs a FAILED result with exception text and saves it using the requested TTL.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/results.py",
+          "line_start": 94,
+          "line_end": 114
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/results.py",
+          "substring": "@classmethod"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-d22",
+      "question": "What state changes does the warm-shutdown path request while a worker is busy?",
+      "answerable": true,
+      "type": "how-it-works",
+      "source": "drafted",
+      "evidence": "It marks the worker to stop after the active job and records shutdown-request time.",
+      "relevant_spans": [
+        {
+          "file_path": "rq/worker/base.py",
+          "line_start": 556,
+          "line_end": 570
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "rq/worker/base.py",
+          "substring": "def _shutdown(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review",
+      "drafting_model": "gpt-6-luna",
+      "category": "paraphrased"
+    },
+    {
+      "id": "rq-u01",
+      "question": "Which ASGI web framework exposes a built-in browser interface for inspecting and managing queues?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested web interface has no matching framework implementation at the pinned snapshot.",
+      "absence_check": {
+        "terms": [
+          "Starlette",
+          "Sanic",
+          "Quart",
+          "tornado.web"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e Starlette -e Sanic -e Quart -e tornado.web 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u02",
+      "question": "Which SQL ORM stores job records in a relational database instead of Redis?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested relational persistence layer has no matching ORM implementation.",
+      "absence_check": {
+        "terms": [
+          "peewee",
+          "tortoise-orm",
+          "django.db",
+          "psycopg"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e peewee -e tortoise-orm -e django.db -e psycopg 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u03",
+      "question": "Which OpenTelemetry tracer provider does the package initialize for automatic job spans?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested automatic tracing integration has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "opentelemetry",
+          "TracerProvider"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e opentelemetry -e TracerProvider 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u04",
+      "question": "Which Kubernetes custom-resource integration registers queues as operator-managed objects?",
+      "answerable": false,
+      "kind": "far",
+      "category": "unanswerable_far",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The requested Kubernetes operator integration has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "CustomResourceDefinition",
+          "kubernetes_asyncio",
+          "kopf.Operator"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e CustomResourceDefinition -e kubernetes_asyncio -e kopf.Operator 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u05",
+      "question": "Which retry option lets a job choose an exact UTC timestamp for its next attempt?",
+      "answerable": false,
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Retry intervals exist, but the requested timestamp option has no matching implementation.",
+      "absence_check": {
+        "terms": [
+          "retry_at",
+          "retry_datetime"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e retry_at -e retry_datetime 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u06",
+      "question": "Which Queue method blocks until every enqueued job has finished and returns all of their results?",
+      "answerable": false,
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Queue operations and job results exist, but this aggregate blocking operation does not.",
+      "absence_check": {
+        "terms": [
+          "wait_until_finished",
+          "wait_for_results"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e wait_until_finished -e wait_for_results 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u07",
+      "question": "Which queue-empty option moves removed jobs into the failed registry instead of deleting them?",
+      "answerable": false,
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Queue emptying exists, but this failed-registry option does not.",
+      "absence_check": {
+        "terms": [
+          "empty_preserves_jobs",
+          "empty_moves_to_failed_registry"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e empty_preserves_jobs -e empty_moves_to_failed_registry 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u08",
+      "question": "Why does RQ retry every failed job automatically when no Retry policy is supplied?",
+      "answerable": false,
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The question assumes automatic retries without a policy; that behavior is absent.",
+      "absence_check": {
+        "terms": [
+          "retry_without_policy",
+          "automatic_retry_all"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e retry_without_policy -e automatic_retry_all 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u09",
+      "question": "Why does the scheduler renew a queue lock before it has acquired that lock?",
+      "answerable": false,
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The question assumes renewal before acquisition; that behavior is absent.",
+      "absence_check": {
+        "terms": [
+          "renew_before_acquire",
+          "acquire_after_heartbeat",
+          "pre_acquisition_renewal"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e renew_before_acquire -e acquire_after_heartbeat -e pre_acquisition_renewal 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "rq-u10",
+      "question": "Why does Queue.empty() preserve every removed job record for later re-enqueueing?",
+      "answerable": false,
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The question assumes queue emptying preserves jobs for re-enqueueing; that behavior is absent.",
+      "absence_check": {
+        "terms": [
+          "preserve_jobs_on_empty",
+          "empty_preserves_job_records",
+          "empty_to_failed_registry"
+        ],
+        "hits": 0,
+        "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
+        "search_command": "git grep -n -F -i -e preserve_jobs_on_empty -e empty_preserves_job_records -e empty_to_failed_registry 1cf2c3eab33a8eda95c6107720dc40c7e285dd2b"
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}
