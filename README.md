@@ -1,4 +1,4 @@
- <div align="center">
+<div align="center">
 
 <img src="docs/assets/social-preview2.png" alt="IncidentWeave: repository-aware incident investigation" width="100%">
 
@@ -224,4 +224,4 @@ incidentweave/
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
