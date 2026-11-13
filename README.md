@@ -1,4 +1,4 @@
-<div align="center">
+ <div align="center">
 
 <img src="docs/assets/social-preview2.png" alt="IncidentWeave: repository-aware incident investigation" width="100%">
 
@@ -6,7 +6,6 @@
 ![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
-
 
 *Evidence-grounded incident investigation for code repositories. Retrieve the relevant source, verify the facts, and investigate with citations instead of guesswork.*
 
@@ -16,21 +15,21 @@
 ## Overview
 
 IncidentWeave helps developers and engineers investigate repository incidents with grounded evidence.
-It indexes a local Python repository, retrieves evidence using hybrid search, checks whether the
-evidence is sufficient, and only then asks an LLM to explain the incident.
 
-Every answer is tied back to source evidence with citations, chunk metadata, and audit-friendly
-investigation records.
+It indexes a local Python repository, retrieves evidence using hybrid search, checks whether the evidence is sufficient, and only then asks an LLM to explain the incident.
+
+Every answer is tied back to source evidence with citations, chunk metadata, and audit-friendly investigation records.
 
 ### Why this matters
 
 - Investigations start from the repository itself, not from scattered memory or guesswork.
 - Retrieval is hybrid: vector search and full-text search are fused before generation.
-- The evidence guard refuses weak or insufficient evidence instead of inventing answers.
+- A score-based evidence guard can abstain when retrieved evidence is insufficient. Its current weakness is rejecting questions that are close to, but not covered by, the indexed evidence.
 - Outcomes are persisted for audit, replay, and downstream review.
 
-IncidentWeave is designed as a bounded local service for repository-aware investigation work. It is
-not a multi-user production platform and should be evaluated with that scope in mind.
+IncidentWeave is designed as a bounded local service for repository-aware investigation work. It is not a multi-user production platform and should be evaluated with that scope in mind.
+
+**Current focus:** improving retrieval ranking, near-miss refusal, and answer-quality evaluation before expanding the supported evidence sources.
 
 ## Architecture
 
@@ -55,15 +54,9 @@ flowchart LR
     Persist --> Store
 ```
 
-Retrieval, guard, generation, parsing, and persistence run in a bounded workflow; the model does
-not choose tools. The MCP server exposes local search tools, but the investigation graph does not
-invoke them. See the [High-Level Design](docs/architecture/02-high-level-design.md) and
-[Low-Level Design](docs/architecture/03-low-level-design.md).
+Retrieval, guard, generation, parsing, and persistence run in a bounded workflow; the model does not choose tools. The MCP server exposes local search tools, but the investigation graph does not invoke them. See the [High-Level Design](docs/architecture/02-high-level-design.md) and [Low-Level Design](docs/architecture/03-low-level-design.md).
 
-Groq is an explicitly enabled, default-off generation fallback after eligible Gemini availability
-failures; embeddings remain Gemini-only. Enabling it sends repository snippets and incident text
-to a second vendor. Review the [Groq fallback note](docs/notes/13-groq-generation-fallback.md)
-and current provider data terms first.
+Groq is an explicitly enabled, default-off generation fallback after eligible Gemini availability failures; embeddings remain Gemini-only. Enabling it sends repository snippets and incident text to a second vendor. Review the [Groq fallback note](docs/notes/13-groq-generation-fallback.md) and current provider data terms first.
 
 ## Results at a glance
 
@@ -76,6 +69,8 @@ Provisional v1 development results (not held-out); the full scorecard and defini
 | False-accept rate | 6/15 | [0.198, 0.643] | 15 |
 | Near-miss refusal rate | 0/6 | [0.000, 0.390] | 6 |
 | Guard AUROC | 0.893 | [0.790, 0.976] | 48 |
+
+These results are development measurements, not evidence of production readiness. In particular, the current near-miss refusal result shows that the guard still needs improvement.
 
 ## Quick start
 
@@ -96,13 +91,9 @@ uv sync --all-extras
 Copy-Item .env.example .env
 ```
 
-Use the activated `.venv` for project commands. Add runtime dependencies with `uv add <package>`
-and development dependencies with `uv add --dev <package>`; do not use `pip install` inside the
-project. The `local-embeddings` extra supports the registered local embedding study. CI installs
-from the committed `uv.lock` with `uv sync --locked`.
+Use the activated `.venv` for project commands. Add runtime dependencies with `uv add <package>` and development dependencies with `uv add --dev <package>`; do not use `pip install` inside the project. The `local-embeddings` extra supports the registered local embedding study. CI installs from the committed `uv.lock` with `uv sync --locked`.
 
-Set `GEMINI_API_KEY` and `API_PROTECTION_SECRET` in `.env`. Embedding and investigation commands
-also need `GEMINI_API_KEY` in the process environment:
+Set `GEMINI_API_KEY` and `API_PROTECTION_SECRET` in `.env`. Embedding and investigation commands also need `GEMINI_API_KEY` in the process environment:
 
 ```powershell
 $env:GEMINI_API_KEY = "<your-gemini-api-key>"
@@ -118,8 +109,7 @@ python -m scripts.ingest_repo <repo_path> <repository_name>
 python -m scripts.embed_chunks <repository_name>
 ```
 
-The repository name is the database identifier used by search and investigation. Re-ingestion
-replaces that repository’s chunks. Only Python files are indexed.
+The repository name is the database identifier used by search and investigation. Re-ingestion replaces that repository’s chunks. Only Python files are indexed.
 
 ### Search or investigate
 
@@ -139,10 +129,23 @@ python -m scripts.serve
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET /health` | None | Returns `{"status": "ok"}`. |
+| `GET /ui` | None | Opens the local maintainer evaluation interface. |
 | `POST /investigations` | `X-API-Secret` | Runs an investigation and persists its outcome. |
 | `GET /investigations` | `X-API-Secret` | Lists paginated, content-free investigation summaries. |
 | `GET /investigations/{id}` | `X-API-Secret` | Returns the investigation and reconstructed audit details. |
 | `GET /repositories` | `X-API-Secret` | Lists repositories with total and embedded chunk counts. |
+
+### Investigation listing filters
+
+`GET /investigations` supports these query parameters:
+
+| Parameter | Required | Purpose |
+|---|---|---|
+| `repository_name` | No | Filters investigations by repository name. |
+| `limit` | No | Maximum number of records to return; defaults to `20`, range `1–100`. |
+| `before_id` | No | Returns records older than the supplied investigation ID. |
+
+### Example request
 
 ```powershell
 $headers = @{ "X-API-Secret" = $env:API_PROTECTION_SECRET }
@@ -153,17 +156,15 @@ Invoke-RestMethod -Method Post `
   -Body '{"repository_name":"<repository_name>","query":"How are database sessions configured?","limit":5}'
 ```
 
-Detailed response, audit, and replay behavior is documented in the
-[API design](docs/architecture/03-low-level-design.md#8-api-design).
+Detailed response, audit, and replay behavior is documented in the [API design](docs/architecture/03-low-level-design.md#8-api-design).
 
 ## Evaluation
 
-Offline retrieval uses committed fixtures and cached query embeddings; answer evaluation runs the
-investigation pipeline. The reports are regression-oriented and repository-specific. See the
-[evaluation guide](evaluation/README.md), [repository data cards](evaluation/repos/README.md), and
-[dataset protocol](docs/architecture-review/15-evaluation-dataset-protocol.md) for methods, data,
-artifacts, and limits. The provisional v1 development retrieval and guard results are in the
-[metrics reference](docs/reference/metrics.md).
+Offline retrieval uses committed fixtures and cached query embeddings; answer evaluation runs the investigation pipeline. The reports are regression-oriented and repository-specific.
+
+The current v1 development dataset contains 33 answerable and 15 unanswerable questions. It is not a held-out benchmark, and its labels and answer-quality measurements have limitations.
+
+See the [evaluation guide](evaluation/README.md), [repository data cards](evaluation/repos/README.md), and [dataset protocol](docs/architecture-review/15-evaluation-dataset-protocol.md) for methods, data, artifacts, and limits. The provisional v1 development retrieval and guard results are in the [metrics reference](docs/reference/metrics.md).
 
 ## Quality checks
 
@@ -174,35 +175,37 @@ python -m scripts.test_tiers evaluation
 python -m scripts.test_tiers full
 ```
 
-Integration requires PostgreSQL and migrations; evaluation runs the deterministic harness and
-offline retrieval smoke gate. CI separates lint/build, unit, PostgreSQL integration, and evaluation
-jobs. See the [test-tier guide](docs/notes/16-test-tiers.md).
+Integration requires PostgreSQL and migrations; evaluation runs the deterministic harness and offline retrieval smoke gate. CI separates lint/build, unit, PostgreSQL integration, and evaluation jobs. See the [test-tier guide](docs/notes/16-test-tiers.md).
 
 ## Project structure
 
 ```text
 incidentweave/
-├── app/          # API, database models, investigation workflow, retrieval
-├── scripts/      # ingestion, embedding, search, investigation, and evaluation CLIs
-├── evaluation/   # manifest, questions, fixtures, baselines, and experiments
-├── migrations/   # Alembic schema history
-├── tests/        # unit, integration, and evaluation tiers
-├── docker/       # application image
-└── docs/         # architecture, reviews, phases, and notes
+├── app/
+│   ├── db/             # Database models and session management
+│   ├── investigation/  # Investigation workflow
+│   ├── providers/      # External model provider integrations
+│   ├── retrieval/      # Repository retrieval
+│   ├── web/            # Static maintainer evaluation UI
+│   ├── api.py          # HTTP API routes
+│   ├── api_security.py # API access protection
+│   ├── config.py       # Application configuration
+│   └── main.py         # FastAPI application
+├── scripts/            # Ingestion, embedding, search, investigation, and evaluation CLIs
+├── evaluation/         # Manifest, questions, fixtures, baselines, and experiments
+├── migrations/         # Alembic schema history
+├── tests/              # Unit, integration, and evaluation tiers
+├── docker/             # Application image
+└── docs/               # Architecture, reviews, phases, and notes
 ```
 
 ## Known limitations
 
-- **Source coverage:** local Python files only; no logs, traces, runbooks, other languages, or live
-  operational systems.
-- **Retrieval:** fixed line-window chunks; no AST-aware chunking, reranker, pgvector ANN index, or
-  persisted FTS/GIN index.
-- **Evidence:** citations validate that a quote exists in retrieved text, not that it entails the
-  claim. Model self-rating is not a probability of correctness.
-- **Evaluation:** results are small, repository-specific, and pending label review; they do not
-  establish general performance.
-- **Security:** one shared API secret and an in-memory per-IP limiter; no accounts, key rotation,
-  per-user quotas, or distributed limiting.
+- **Source coverage:** local Python files only; no logs, traces, runbooks, other languages, or live operational systems.
+- **Retrieval:** fixed line-window chunks; no AST-aware chunking, reranker, pgvector ANN index, or persisted FTS/GIN index.
+- **Evidence:** citations validate that a quote exists in retrieved text, not that it entails the claim. Model self-rating is not a probability of correctness. The evidence guard is score-based and does not prove semantic relevance.
+- **Evaluation:** results are small, repository-specific, and pending label review; they do not establish general performance. Current near-miss refusal performance is a known weakness.
+- **Security:** one shared API secret and an in-memory per-IP limiter; no accounts, key rotation, per-user quotas, or distributed limiting.
 
 ## Documentation
 
