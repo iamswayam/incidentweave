@@ -151,7 +151,7 @@ def test_manifest_gate_prints_per_repo_and_pooled_tables(
     assert "Seconds" in output
 
 
-def test_smoke_gate_excludes_held_out_repositories_without_fixtures(
+def test_smoke_gate_uses_only_legacy_repositories(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -162,7 +162,12 @@ def test_smoke_gate_excludes_held_out_repositories_without_fixtures(
         {"repo-a": _report(repo_id="repo-a")},
     )
     manifest = check_retrieval_gate.load_manifest()
-    manifest["repositories"].append({"id": "held-out", "role": "held_out"})
+    manifest["repositories"].extend(
+        [
+            {"id": "development-no-fixture", "role": "development"},
+            {"id": "held-out", "role": "held_out"},
+        ]
+    )
     monkeypatch.setattr(
         check_retrieval_gate,
         "load_manifest",
@@ -172,6 +177,7 @@ def test_smoke_gate_excludes_held_out_repositories_without_fixtures(
     assert asyncio.run(check_retrieval_gate._run(args)) == 0
     output = capsys.readouterr().out
     assert "repo-a" in output
+    assert "development-no-fixture" not in output
     assert "held-out" not in output
 
 
@@ -186,7 +192,12 @@ def test_smoke_gate_rejects_an_explicit_held_out_repository(
         {"repo-a": _report(repo_id="repo-a")},
     )
     manifest = check_retrieval_gate.load_manifest()
-    manifest["repositories"].append({"id": "held-out", "role": "held_out"})
+    manifest["repositories"].extend(
+        [
+            {"id": "development-no-fixture", "role": "development"},
+            {"id": "held-out", "role": "held_out"},
+        ]
+    )
     monkeypatch.setattr(
         check_retrieval_gate,
         "load_manifest",

@@ -85,7 +85,9 @@ async def _run(args: argparse.Namespace) -> int:
     try:
         manifest = load_manifest(args.manifest, root=asset_root)
         repositories = select_repositories(manifest, args.repo)
-        if args.split in {"development", "smoke"}:
+        if args.split == "smoke":
+            repositories = [entry for entry in repositories if "role" not in entry]
+        elif args.split == "development":
             repositories = [entry for entry in repositories if entry.get("role") != "held_out"]
         if not repositories:
             raise ValueError(f"No repositories available for split {args.split!r}")
