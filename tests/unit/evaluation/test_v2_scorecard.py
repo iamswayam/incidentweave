@@ -26,6 +26,7 @@ def _questions(repo_id: str) -> list[dict[str, Any]]:
             spans = [{"file_path": "src/example.py", "line_start": 1, "line_end": 2}]
         else:
             category = "unanswerable_far" if index < 34 else "unanswerable_near"
+            kind = "far" if index < 34 else ("near-miss" if index < 37 else "false-premise")
             spans = []
         questions.append(
             {
@@ -33,6 +34,7 @@ def _questions(repo_id: str) -> list[dict[str, Any]]:
                 "category": category,
                 "question": "synthetic development question",
                 "relevant_spans": spans,
+                **({"kind": kind} if index >= 30 else {}),
             }
         )
     return questions
@@ -152,6 +154,27 @@ def test_v2_question_loader_selects_the_registered_development_ids(tmp_path: Pat
     selected = load_v2_development_questions(entry, root=tmp_path)
 
     assert [question["id"] for question in selected] == question_ids
+
+
+def test_v2_guard_breakdown_keeps_near_miss_and_false_premise_distinct() -> None:
+    rows = [
+        {
+            "category": "unanswerable_near",
+            "kind": "near-miss",
+            "guard_refused": False,
+        },
+        {
+            "category": "unanswerable_near",
+            "kind": "false-premise",
+            "guard_refused": True,
+        },
+    ]
+
+    breakdown = scorecard_module._kind_breakdown(rows)
+
+    assert set(breakdown) == {"false-premise", "near-miss"}
+    assert breakdown["false-premise"]["n"] == 1
+    assert breakdown["near-miss"]["n"] == 1
 
 
 def test_v2_rankings_export_uses_only_development_records(

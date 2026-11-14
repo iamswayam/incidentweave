@@ -402,7 +402,7 @@ def _threshold_sweep(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
 def _kind_breakdown(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        kind = str(row["category"]).removeprefix("unanswerable_")
+        kind = str(row.get("kind") or row["category"]).removeprefix("unanswerable_")
         kind = "near-miss" if kind == "near" else kind
         grouped.setdefault(kind, []).append(row)
     return {
