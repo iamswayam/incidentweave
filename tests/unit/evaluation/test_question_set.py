@@ -145,7 +145,7 @@ def test_legacy_relevance_labels_are_derived_from_reviewed_span(tmp_path: Path) 
     [
         ("repo_id", "other", "repo_id does not match candidate"),
         ("pinned_sha", "b" * 40, "pinned_sha does not match candidate"),
-        ("dataset_version", "2.0", "dataset_version must be"),
+        ("dataset_version", "2.0-draft", "dataset_version must be"),
         ("review_status", "not reviewed", "review_status must be"),
         ("reviewed_on", "not-a-date", "reviewed_on must be"),
     ],
@@ -269,6 +269,14 @@ def test_llm_only_review_requires_each_question_status_and_snapshot(tmp_path: Pa
             )
     data["review_status"] = LLM_ONLY_REVIEW_STATUS
     data.pop("reviewed_on")
+    missing_snapshot_errors = validate_question_set(
+        data,
+        repo_id="candidate",
+        pinned_sha=PINNED_SHA,
+        required_review_status=LLM_ONLY_REVIEW_STATUS,
+    )
+    assert any("snapshot_root is required" in error for error in missing_snapshot_errors)
+
     assert (
         validate_question_set(
             data,

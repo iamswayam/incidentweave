@@ -3,7 +3,19 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from evaluation.mine_pilot_candidates import collect_pilot_candidates
+from evaluation.mine_pilot_candidates import PILOT_REPOSITORIES, collect_pilot_candidates
+
+
+def test_mining_registry_includes_all_v2_repositories() -> None:
+    assert PILOT_REPOSITORIES == {
+        "rq",
+        "kopf",
+        "luigi",
+        "client_python",
+        "locust",
+        "docker_py",
+        "uvicorn",
+    }
 
 
 def test_mining_keeps_only_closed_linked_prs_with_extant_non_test_files() -> None:

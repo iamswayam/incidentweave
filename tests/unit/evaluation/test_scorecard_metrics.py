@@ -113,7 +113,11 @@ def test_scorecard_assigns_metrics_to_registered_views(
     manifest_path = root / "evaluation" / "manifest.json"
     manifest = load_manifest(manifest_path, root=root)
     repositories = []
-    for entry in sorted(manifest["repositories"], key=lambda item: item["id"]):
+    v1_ids = {"batch-processing-service", "incidentweave", "lifeos"}
+    for entry in sorted(
+        (item for item in manifest["repositories"] if item["id"] in v1_ids),
+        key=lambda item: item["id"],
+    ):
         question_data = load_golden_set(root / entry["questions"]["path"])
         questions = questions_for_split(entry, question_data["questions"], "development")
         rows = []

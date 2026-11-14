@@ -1,0 +1,1057 @@
+{
+  "repo_id": "client_python",
+  "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+  "dataset_version": "2.0",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "client_python-001",
+      "question": "How does the HTTP metrics server return both the server object and its serving thread?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It starts a daemon thread running serve_forever and returns the HTTP server and thread.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/exposition.py",
+          "line_start": 240,
+          "line_end": 277
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/exposition.py",
+          "substring": "def start_wsgi_server("
+        }
+      ],
+      "source_ref": {
+        "issue": 340,
+        "pr": 356,
+        "changed_source_files": [
+          "prometheus_client/exposition.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-002",
+      "question": "How does the address-family helper choose a socket family for a metrics listener?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It resolves candidate addresses and returns the selected family with the normalized address.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/exposition.py",
+          "line_start": 181,
+          "line_end": 189
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/exposition.py",
+          "substring": "def _get_best_family(address, port):"
+        }
+      ],
+      "source_ref": {
+        "issue": 567,
+        "pr": 657,
+        "changed_source_files": [
+          "prometheus_client/exposition.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-003",
+      "question": "What state does a summary metric update when a new observation arrives?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "Each observation increments the count and adds its value to the sum.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/metrics.py",
+          "line_start": 554,
+          "line_end": 566
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/metrics.py",
+          "substring": "def observe(self, amount: float) -> None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 638,
+        "pr": 658,
+        "changed_source_files": [
+          "prometheus_client/metrics.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-004",
+      "question": "What checks does the metric labels method perform before creating or returning a child metric?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It validates label availability and arguments, converts values to strings, and creates a child under a lock when needed.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/metrics.py",
+          "line_start": 139,
+          "line_end": 211
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/metrics.py",
+          "substring": "def labels(self: T, *labelvalues: object, **labelkwargs: object) -> T:"
+        }
+      ],
+      "source_ref": {
+        "issue": 398,
+        "pr": 660,
+        "changed_source_files": [
+          "prometheus_client/metrics.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-005",
+      "question": "Which request methods does the WSGI metrics application allow?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The application handles OPTIONS and GET, and returns a method-not-allowed response for other methods.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/exposition.py",
+          "line_start": 134,
+          "line_end": 161
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/exposition.py",
+          "substring": "def prometheus_app(environ, start_response):"
+        }
+      ],
+      "source_ref": {
+        "issue": 662,
+        "pr": 715,
+        "changed_source_files": [
+          "prometheus_client/exposition.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-006",
+      "question": "How does a metric-family sample store its name, labels, and value?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "A sample records its name, label mapping, value, and optional timing or exemplar metadata.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/metrics_core.py",
+          "line_start": 35,
+          "line_end": 39
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/metrics_core.py",
+          "substring": "def add_sample(self, name: str, labels: Dict[str, str], value: float, timestamp: Optional[Union[Timestamp, float]] = Non"
+        }
+      ],
+      "source_ref": {
+        "issue": 760,
+        "pr": 771,
+        "changed_source_files": [
+          "prometheus_client/asgi.py",
+          "prometheus_client/bridge/graphite.py",
+          "prometheus_client/exposition.py",
+          "prometheus_client/gc_collector.py",
+          "prometheus_client/metrics.py",
+          "prometheus_client/metrics_core.py",
+          "prometheus_client/platform_collector.py",
+          "prometheus_client/process_collector.py",
+          "prometheus_client/registry.py",
+          "prometheus_client/samples.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-007",
+      "question": "What public functions let callers control whether created-time samples are emitted?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The package exposes functions to disable and re-enable created metrics.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/metrics.py",
+          "line_start": 52,
+          "line_end": 55
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/metrics.py",
+          "substring": "def disable_created_metrics():"
+        }
+      ],
+      "source_ref": {
+        "issue": 933,
+        "pr": 973,
+        "changed_source_files": [
+          "prometheus_client/__init__.py",
+          "prometheus_client/metrics.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-008",
+      "question": "How are dot-separated version components represented for numeric comparison?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "Each component is converted to an integer when possible and otherwise retained as a string.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/utils.py",
+          "line_start": 28,
+          "line_end": 36
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/utils.py",
+          "substring": "def parse_version(version_str: str) -> tuple[Union[int, str], ...]:"
+        }
+      ],
+      "source_ref": {
+        "issue": 1135,
+        "pr": 1136,
+        "changed_source_files": [
+          "prometheus_client/exposition.py",
+          "prometheus_client/openmetrics/exposition.py",
+          "prometheus_client/utils.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-009",
+      "question": "What does the ASGI wrapper do with the scope, receive, and send callables?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It forwards all three ASGI call arguments to the wrapped application.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/asgi.py",
+          "line_start": 22,
+          "line_end": 23
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/asgi.py",
+          "substring": "async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-010",
+      "question": "How does the ASGI metrics application select and package the response body?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It parses request headers and query parameters, bakes the output, and sends response messages.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/asgi.py",
+          "line_start": 29,
+          "line_end": 56
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/asgi.py",
+          "substring": "async def prometheus_app(scope, receive, send):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-011",
+      "question": "How does the Graphite bridge format metric labels when tag mode is enabled?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It appends sorted labels using semicolon separators and key-value pairs.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/bridge/graphite.py",
+          "line_start": 62,
+          "line_end": 89
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/bridge/graphite.py",
+          "substring": "def push(self, prefix: str = '') -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-012",
+      "question": "How does the periodic Graphite publisher start its background push loop?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It starts a regular-push thread configured with the bridge, interval, and prefix.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/bridge/graphite.py",
+          "line_start": 91,
+          "line_end": 94
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/bridge/graphite.py",
+          "substring": "def start(self, interval: float = 60.0, prefix: str = '') -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-013",
+      "question": "How does a collector registry prevent a collector from claiming an already registered time series?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It detects intersecting metric names and raises DuplicateTimeseries before registration.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/registry.py",
+          "line_start": 45,
+          "line_end": 56
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/registry.py",
+          "substring": "def register(self, collector: Collector) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-014",
+      "question": "What does a restricted registry return when asked to collect selected metric names?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It creates a RestrictedRegistry that filters collection to the requested names.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/registry.py",
+          "line_start": 109,
+          "line_end": 120
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/registry.py",
+          "substring": "def restricted_registry(self, names: Iterable[str]) -> \"RestrictedRegistry\":"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-015",
+      "question": "Which garbage-collection counters are emitted for each generation?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It reports collected objects, uncollectable objects, and collection counts labeled by generation.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/gc_collector.py",
+          "line_start": 17,
+          "line_end": 41
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/gc_collector.py",
+          "substring": "def collect(self) -> Iterable[Metric]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-016",
+      "question": "On which Python runtime conditions does the garbage-collection collector register itself?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It registers only when the runtime exposes get_stats and the implementation is CPython.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/gc_collector.py",
+          "line_start": 12,
+          "line_end": 15
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/gc_collector.py",
+          "substring": "def __init__(self, registry: CollectorRegistry = REGISTRY):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-017",
+      "question": "Which process measurements does the process collector derive from the process stat record?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It derives virtual and resident memory, process start time, and CPU time from proc stat fields.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/process_collector.py",
+          "line_start": 54,
+          "line_end": 100
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/process_collector.py",
+          "substring": "def collect(self) -> Iterable[Metric]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-018",
+      "question": "How does the process collector obtain the system boot time used for process start timestamps?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It scans the proc stat file for the btime record and parses its numeric value.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/process_collector.py",
+          "line_start": 48,
+          "line_end": 52
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/process_collector.py",
+          "substring": "def _boot_time(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-019",
+      "question": "Which Python version labels are included in the platform information metric?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It includes the complete version, implementation, and separate major, minor, and patch-level labels.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/platform_collector.py",
+          "line_start": 37,
+          "line_end": 45
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/platform_collector.py",
+          "substring": "def _info(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-020",
+      "question": "What additional platform fields are added when the runtime reports itself as Java?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It adds JVM version, release, vendor, and name labels.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/platform_collector.py",
+          "line_start": 47,
+          "line_end": 55
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/platform_collector.py",
+          "substring": "def _java(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-021",
+      "question": "How does the exception counter context manager handle an exception from its block?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It increments the counter for the configured exception type and does not suppress the exception.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "line_start": 23,
+          "line_end": 26
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "substring": "def __exit__(self, typ: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-022",
+      "question": "How does the in-progress tracker adjust its gauge around a managed block?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It increments on entry and decrements on exit, including when the block raises.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "line_start": 40,
+          "line_end": 41
+        },
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "line_start": 43,
+          "line_end": 44
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "substring": "def __enter__(self):"
+        },
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "substring": "def __exit__(self, typ, value, traceback):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-023",
+      "question": "How does a metric timer record elapsed time when a managed block exits?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It clamps elapsed time to zero or greater and calls the configured metric callback.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "line_start": 67,
+          "line_end": 71
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/context_managers.py",
+          "substring": "def __exit__(self, typ, value, traceback):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-024",
+      "question": "When does OpenMetrics escaping quote a metric name under the allow-UTF8 mode?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It quotes the escaped name when it does not satisfy the legacy metric-name character set.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/openmetrics/exposition.py",
+          "line_start": 173,
+          "line_end": 193
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/openmetrics/exposition.py",
+          "substring": "def escape_metric_name(s: str, escaping: str = UNDERSCORES) -> str:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-025",
+      "question": "How does a mutex-protected metric value update its numeric state?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It acquires its lock and adds the supplied amount to the current value.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/values.py",
+          "line_start": 27,
+          "line_end": 29
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/values.py",
+          "substring": "def inc(self, amount):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-026",
+      "question": "How do ASGI request handling and OpenMetrics encoding combine to produce a scrape response?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The ASGI application negotiates a metrics response and the selected encoder serializes collected metrics.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/asgi.py",
+          "line_start": 29,
+          "line_end": 56
+        },
+        {
+          "file_path": "prometheus_client/openmetrics/exposition.py",
+          "line_start": 58,
+          "line_end": 170
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/asgi.py",
+          "substring": "async def prometheus_app(scope, receive, send):"
+        },
+        {
+          "file_path": "prometheus_client/openmetrics/exposition.py",
+          "substring": "def generate_latest(registry, escaping=UNDERSCORES, version=\"1.0.0\"):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-027",
+      "question": "How does Graphite output format the data fields stored in a metric sample?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The bridge serializes each sample name, labels, value, and timestamp into its text protocol.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/bridge/graphite.py",
+          "line_start": 62,
+          "line_end": 89
+        },
+        {
+          "file_path": "prometheus_client/samples.py",
+          "line_start": 69,
+          "line_end": 75
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/bridge/graphite.py",
+          "substring": "def push(self, prefix: str = '') -> None:"
+        },
+        {
+          "file_path": "prometheus_client/samples.py",
+          "substring": "class Sample(NamedTuple):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-028",
+      "question": "How does multiprocess value storage read and update a metric value across processes?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The multiprocess value uses a mapped-file dictionary to read values associated with metric keys.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/values.py",
+          "line_start": 48,
+          "line_end": 149
+        },
+        {
+          "file_path": "prometheus_client/mmap_dict.py",
+          "line_start": 130,
+          "line_end": 134
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/values.py",
+          "substring": "def MultiProcessValue(process_identifier=os.getpid):"
+        },
+        {
+          "file_path": "prometheus_client/mmap_dict.py",
+          "substring": "def read_value(self, key):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-029",
+      "question": "How does an OpenMetrics encoder serialize metric families and their sample records?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The encoder iterates family samples and emits their values and labels in the selected text format.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/openmetrics/exposition.py",
+          "line_start": 58,
+          "line_end": 170
+        },
+        {
+          "file_path": "prometheus_client/samples.py",
+          "line_start": 69,
+          "line_end": 75
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/openmetrics/exposition.py",
+          "substring": "def generate_latest(registry, escaping=UNDERSCORES, version=\"1.0.0\"):"
+        },
+        {
+          "file_path": "prometheus_client/samples.py",
+          "substring": "class Sample(NamedTuple):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-030",
+      "question": "How does a metric family append a sample and represent the resulting sample fields?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The metric family creates a sample with its name, labels, value, and optional timestamp or exemplar.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "prometheus_client/metrics_core.py",
+          "line_start": 35,
+          "line_end": 39
+        },
+        {
+          "file_path": "prometheus_client/samples.py",
+          "line_start": 69,
+          "line_end": 75
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "prometheus_client/metrics_core.py",
+          "substring": "def add_sample(self, name: str, labels: Dict[str, str], value: float, timestamp: Optional[Union[Timestamp, float]] = Non"
+        },
+        {
+          "file_path": "prometheus_client/samples.py",
+          "substring": "class Sample(NamedTuple):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-031",
+      "question": "Where is the imaginary repoaccord_client_python_absent_feature_31_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_31_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_31_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-032",
+      "question": "Where is the imaginary repoaccord_client_python_absent_feature_32_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_32_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_32_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-033",
+      "question": "Where is the imaginary repoaccord_client_python_absent_feature_33_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_33_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_33_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-034",
+      "question": "Where is the imaginary repoaccord_client_python_absent_feature_34_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_34_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_34_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-035",
+      "question": "Which setting named repoaccord_client_python_absent_feature_35_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_35_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_35_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-036",
+      "question": "Which setting named repoaccord_client_python_absent_feature_36_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_36_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_36_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-037",
+      "question": "Which setting named repoaccord_client_python_absent_feature_37_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_37_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_37_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-038",
+      "question": "Why does repoaccord_client_python_absent_feature_38_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_38_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_38_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-039",
+      "question": "Why does repoaccord_client_python_absent_feature_39_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_39_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_39_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "client_python-040",
+      "question": "Why does repoaccord_client_python_absent_feature_40_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_client_python_absent_feature_40_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d",
+        "search_command": "git grep -n -F -- repoaccord_client_python_absent_feature_40_zz e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}

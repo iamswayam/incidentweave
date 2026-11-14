@@ -1,7 +1,7 @@
 {
   "repo_id": "kopf",
   "pinned_sha": "edaf7c634ed66153143da467b80d212c0601479b",
-  "dataset_version": "2.0-draft",
+  "dataset_version": "2.0",
   "review_status": "llm_only_no_human_review",
   "counts": {
     "total": 40,

@@ -76,9 +76,13 @@ def _validate_export(
     if metadata.get("manifest_sha256") != sha256_file(manifest_path):
         raise ValueError("Rankings export manifest hash does not match the current manifest")
 
-    entries = {entry["id"]: entry for entry in manifest["repositories"]}
+    entries = {
+        entry["id"]: entry
+        for entry in manifest["repositories"]
+        if entry["id"] in V1_REPOSITORIES
+    }
     if tuple(sorted(entries)) != V1_REPOSITORIES:
-        raise ValueError("V1 scorecard requires exactly the three v1 manifest repositories")
+        raise ValueError("V1 scorecard requires all three v1 manifest repositories")
     raw_repositories = export.get("repositories")
     if not isinstance(raw_repositories, list):
         raise ValueError("Rankings export repositories must be a list")

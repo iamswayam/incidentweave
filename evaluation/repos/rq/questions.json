@@ -1,7 +1,7 @@
 {
   "repo_id": "rq",
   "pinned_sha": "1cf2c3eab33a8eda95c6107720dc40c7e285dd2b",
-  "dataset_version": "2.0-draft",
+  "dataset_version": "2.0",
   "review_status": "llm_only_no_human_review",
   "counts": {
     "total": 40,

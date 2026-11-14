@@ -192,7 +192,7 @@ def _full_v2_questions() -> dict[str, Any]:
     return {
         "repo_id": "candidate",
         "pinned_sha": "a" * 40,
-        "dataset_version": "2.0-draft",
+        "dataset_version": "2.0",
         "review_status": "maintainer reviewed",
         "reviewed_on": date(2026, 11, 2).isoformat(),
         "counts": {"total": 40, "answerable": 30, "unanswerable": 10},
@@ -233,4 +233,74 @@ def test_candidate_questions_fail_v2_schema_validation(tmp_path: Path) -> None:
     assert any(
         "reviewed must be true" in error
         for error in validate_manifest(_manifest(candidate), root=tmp_path)
+    )
+
+
+def _v2_repository(question_path: Path, questions: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": "candidate",
+        "url": "https://github.com/example/candidate",
+        "pinned_sha": "a" * 40,
+        "license_note": "MIT; Copyright Example",
+        "owner": "third-party",
+        "previously_exposed": False,
+        "review_status": "maintainer reviewed",
+        "max_questions_per_file": 3,
+        "indexed_python_lines": 5_500,
+        "role": "development",
+        "license": "MIT",
+        "dataset_version": "2.0",
+        "questions": {
+            "path": question_path.name,
+            "sha256": sha256_file(question_path),
+        },
+        "splits": {
+            "development": [question["id"] for question in questions["questions"]],
+            "held_out": [],
+            "smoke": [],
+        },
+    }
+
+
+def test_v2_repository_uses_role_split_without_legacy_question_counts(tmp_path: Path) -> None:
+    questions = _full_v2_questions()
+    question_path = tmp_path / "questions.json"
+    question_path.write_text(json.dumps(questions), encoding="utf-8")
+    repository = _v2_repository(question_path, questions)
+    manifest = {"schema_version": 2, "split_seed": 1, "dataset_version": "2.0",
+                "repositories": [repository]}
+
+    assert validate_manifest(manifest, root=tmp_path) == []
+
+    repository["splits"]["development"].pop()
+    assert any(
+        "all v2 questions must be in the development split" in error
+        for error in validate_manifest(manifest, root=tmp_path)
+    )
+
+
+def test_release_fixture_can_be_external_until_published(tmp_path: Path) -> None:
+    questions = _full_v2_questions()
+    question_path = tmp_path / "questions.json"
+    question_path.write_text(json.dumps(questions), encoding="utf-8")
+    repository = _v2_repository(question_path, questions)
+    repository["fixture"] = {
+        "path": "release/fixture.json.gz",
+        "location": "release",
+        "release_tag": "dataset-v2.0",
+        "asset_name": "fixture.json.gz",
+        "max_bytes": 10_000_000,
+    }
+    manifest = {
+        "schema_version": 2,
+        "split_seed": 1,
+        "dataset_version": "2.0",
+        "repositories": [repository],
+    }
+
+    assert validate_manifest(manifest, root=tmp_path) == []
+
+    repository["fixture"]["location"] = "committed"
+    assert any(
+        "missing fixture file" in error for error in validate_manifest(manifest, root=tmp_path)
     )

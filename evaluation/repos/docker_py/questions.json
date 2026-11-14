@@ -1,0 +1,1046 @@
+{
+  "repo_id": "docker_py",
+  "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+  "dataset_version": "2.0",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "docker_py-001",
+      "question": "Which environment-derived options are passed into a high-level Docker client?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The factory obtains connection settings from the environment and passes them into client construction.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "docker/client.py",
+          "line_start": 51,
+          "line_end": 116
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/client.py",
+          "substring": "def from_env(cls, **kwargs):"
+        }
+      ],
+      "source_ref": {
+        "issue": 526,
+        "pr": 527,
+        "changed_source_files": [
+          "docker/client.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-002",
+      "question": "What does the TLS configuration require when a client certificate is supplied?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It requires both certificate and key paths to be present and to refer to existing files.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/tls.py",
+          "line_start": 21,
+          "line_end": 55
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/tls.py",
+          "substring": "def __init__(self, client_cert=None, ca_cert=None, verify=None):"
+        }
+      ],
+      "source_ref": {
+        "issue": 963,
+        "pr": 971,
+        "changed_source_files": [
+          "docker/tls.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-003",
+      "question": "Which aliases does the host parser normalize before validating a Docker endpoint?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It maps HTTP and HTTPS schemes to TCP, and maps the HTTP Unix-socket alias to the Unix protocol.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/utils/utils.py",
+          "line_start": 233,
+          "line_end": 321
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/utils/utils.py",
+          "substring": "def parse_host(addr, is_win32=False, tls=False):"
+        }
+      ],
+      "source_ref": {
+        "issue": 937,
+        "pr": 1228,
+        "changed_source_files": [
+          "docker/utils/utils.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-004",
+      "question": "How does the memory-size parser interpret a numeric string without a unit suffix?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "A string with no unit suffix is treated as a byte count.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/utils/utils.py",
+          "line_start": 411,
+          "line_end": 448
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/utils/utils.py",
+          "substring": "def parse_bytes(s):"
+        }
+      ],
+      "source_ref": {
+        "issue": 1206,
+        "pr": 1228,
+        "changed_source_files": [
+          "docker/utils/utils.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-005",
+      "question": "Which I/O operation does the socket reader use when the object exposes a recv method?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It calls recv with the requested maximum byte count.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/utils/socket.py",
+          "line_start": 26,
+          "line_end": 59
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/utils/socket.py",
+          "substring": "def read(socket, n=4096):"
+        }
+      ],
+      "source_ref": {
+        "issue": 1211,
+        "pr": 1250,
+        "changed_source_files": [
+          "docker/utils/socket.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-006",
+      "question": "How does the API client apply a default request timeout when a request does not specify one?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It adds the client-level timeout only when the request options do not already provide a timeout.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "docker/api/client.py",
+          "line_start": 234,
+          "line_end": 238
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/api/client.py",
+          "substring": "def _set_request_timeout(self, kwargs):"
+        }
+      ],
+      "source_ref": {
+        "issue": 931,
+        "pr": 1959,
+        "changed_source_files": [
+          "docker/api/client.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-007",
+      "question": "What response forms can the exec-start API return when socket or streaming modes are requested?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It can return a socket, a stream of response chunks, or the combined response, with optional stdout/stderr separation.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/api/exec_api.py",
+          "line_start": 118,
+          "line_end": 176
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/api/exec_api.py",
+          "substring": "def exec_start(self, exec_id, detach=False, tty=False, stream=False,"
+        }
+      ],
+      "source_ref": {
+        "issue": 1293,
+        "pr": 2320,
+        "changed_source_files": [
+          "docker/api/client.py",
+          "docker/api/exec_api.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-008",
+      "question": "How does the SSH connection pool create a new SSH-backed connection?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It creates an SSH connection object configured with the pool connection parameters.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/transport/sshconn.py",
+          "line_start": 133,
+          "line_end": 134
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/transport/sshconn.py",
+          "substring": "def _new_conn(self):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2533,
+        "pr": 2534,
+        "changed_source_files": [
+          "docker/transport/sshconn.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-009",
+      "question": "How does a network collection return matching networks?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It retrieves network records from the API and wraps them as network model objects.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/networks.py",
+          "line_start": 185,
+          "line_end": 214
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/networks.py",
+          "substring": "def list(self, *args, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-010",
+      "question": "How does the low-level container creation method construct a container from supplied configuration?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It builds the API request for a container using the provided image, command, and options.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/api/container.py",
+          "line_start": 221,
+          "line_end": 440
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/api/container.py",
+          "substring": "def create_container(self, image, command=None, hostname=None, user=None,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-011",
+      "question": "How does an image model expose repository tags?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It returns the image tag list from the image attributes.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/images.py",
+          "line_start": 40,
+          "line_end": 47
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/images.py",
+          "substring": "def tags(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-012",
+      "question": "How does saving an image support chunked output?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The save method forwards the requested chunk size to the image export API.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/images.py",
+          "line_start": 80,
+          "line_end": 120
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/images.py",
+          "substring": "def save(self, chunk_size=DEFAULT_DATA_CHUNK_SIZE, named=False):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-013",
+      "question": "How does an image collection resolve registry metadata for an image name?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It retrieves registry data for the requested image name, optionally using supplied auth configuration.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/images.py",
+          "line_start": 335,
+          "line_end": 357
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/images.py",
+          "substring": "def get_registry_data(self, name, auth_config=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-014",
+      "question": "How does the port-binding builder handle multiple port specifications?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It parses each specification and adds the resulting internal-to-external mappings.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "docker/utils/ports.py",
+          "line_start": 32,
+          "line_end": 37
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/utils/ports.py",
+          "substring": "def build_port_bindings(ports):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-015",
+      "question": "Which compatibility case does the port parser handle before matching a port string?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It converts objects with legacy_repr before parsing the resulting string.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/utils/ports.py",
+          "line_start": 56,
+          "line_end": 83
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/utils/ports.py",
+          "substring": "def split_port(port):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-016",
+      "question": "How does registry-specific authentication lookup choose a credential source?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It resolves authentication data for the requested registry, including configured credential stores.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/auth.py",
+          "line_start": 209,
+          "line_end": 242
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/auth.py",
+          "substring": "def resolve_authconfig(self, registry=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-017",
+      "question": "What happens when an authentication configuration entry is not a mapping?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It logs the malformed entry and either raises InvalidConfigFile or returns an empty mapping, depending on the flag.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/auth.py",
+          "line_start": 84,
+          "line_end": 141
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/auth.py",
+          "substring": "def parse_auth(cls, entries, raise_on_error=False):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-018",
+      "question": "How does an image pull API method pass registry authentication to the engine?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It builds the pull request parameters and attaches the supplied authentication configuration.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/api/image.py",
+          "line_start": 351,
+          "line_end": 434
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/api/image.py",
+          "substring": "def pull(self, repository, tag=None, stream=False, auth_config=None,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-019",
+      "question": "How does a Docker client created from a named context obtain endpoint configuration?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It loads the named context and initializes the client from its endpoint and TLS settings.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "docker/client.py",
+          "line_start": 119,
+          "line_end": 161
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/client.py",
+          "substring": "def from_context(cls, name=None, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-020",
+      "question": "How does container execution expose command output and optional demultiplexing?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It creates and starts an exec instance, then returns output with optional stream or stdout/stderr separation.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/containers.py",
+          "line_start": 167,
+          "line_end": 224
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/containers.py",
+          "substring": "def exec_run(self, cmd, stdout=True, stderr=True, stdin=False, tty=False,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-021",
+      "question": "How does a volume collection list volume objects?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It retrieves volume records and wraps them as volume model objects.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/volumes.py",
+          "line_start": 78,
+          "line_end": 95
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/volumes.py",
+          "substring": "def list(self, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-022",
+      "question": "How does a volume collection remove unused volumes through its prune operation?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It delegates pruning to the API and returns the reported prune results.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/volumes.py",
+          "line_start": 97,
+          "line_end": 98
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/volumes.py",
+          "substring": "def prune(self, filters=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-023",
+      "question": "How does a registry authentication helper obtain credentials from a configured credential store?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It selects the store associated with a registry and asks that store for credentials.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/auth.py",
+          "line_start": 279,
+          "line_end": 283
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/auth.py",
+          "substring": "def get_credential_store(self, registry):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-024",
+      "question": "How does a Unix-socket adapter configure its connection pool?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It creates a Unix-socket connection pool using the configured socket path.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/transport/unixconn.py",
+          "line_start": 52,
+          "line_end": 64
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/transport/unixconn.py",
+          "substring": "def __init__(self, socket_url, timeout=60,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-025",
+      "question": "How does the low-level container start operation receive a model-level start request?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The container model delegates the start request to the API method with its identifier.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/containers.py",
+          "line_start": 412,
+          "line_end": 421
+        },
+        {
+          "file_path": "docker/api/container.py",
+          "line_start": 1101,
+          "line_end": 1136
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/containers.py",
+          "substring": "def start(self, **kwargs):"
+        },
+        {
+          "file_path": "docker/api/container.py",
+          "substring": "def start(self, container, *args, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-026",
+      "question": "How do environment-derived TLS settings configure certificate verification?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The environment helper constructs TLSConfig, which applies the CA path or verification flag and optional client certificate.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/utils/utils.py",
+          "line_start": 353,
+          "line_end": 388
+        },
+        {
+          "file_path": "docker/tls.py",
+          "line_start": 57,
+          "line_end": 67
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/utils/utils.py",
+          "substring": "def kwargs_from_env(environment=None):"
+        },
+        {
+          "file_path": "docker/tls.py",
+          "substring": "def configure_client(self, client):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-027",
+      "question": "How does a Docker client created from environment variables initialize its API endpoint?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The factory obtains environment options and the API client normalizes the endpoint and initializes transport settings.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/client.py",
+          "line_start": 51,
+          "line_end": 116
+        },
+        {
+          "file_path": "docker/api/client.py",
+          "line_start": 115,
+          "line_end": 219
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/client.py",
+          "substring": "def from_env(cls, **kwargs):"
+        },
+        {
+          "file_path": "docker/api/client.py",
+          "substring": "def __init__(self, base_url=None, version=None,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-028",
+      "question": "How does an SSH connection pool fit into API client transport initialization?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The API client selects transport for its parsed endpoint, and the SSH pool creates the underlying SSH connection.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/transport/sshconn.py",
+          "line_start": 133,
+          "line_end": 134
+        },
+        {
+          "file_path": "docker/api/client.py",
+          "line_start": 115,
+          "line_end": 219
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/transport/sshconn.py",
+          "substring": "def _new_conn(self):"
+        },
+        {
+          "file_path": "docker/api/client.py",
+          "substring": "def __init__(self, base_url=None, version=None,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-029",
+      "question": "How does an exec socket response flow into the socket-reading helper?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Exec start can return a socket for caller-controlled I/O, and the helper reads bounded data from it.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/api/exec_api.py",
+          "line_start": 118,
+          "line_end": 176
+        },
+        {
+          "file_path": "docker/utils/socket.py",
+          "line_start": 26,
+          "line_end": 59
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/api/exec_api.py",
+          "substring": "def exec_start(self, exec_id, detach=False, tty=False, stream=False,"
+        },
+        {
+          "file_path": "docker/utils/socket.py",
+          "substring": "def read(socket, n=4096):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-030",
+      "question": "How does container configuration flow from the collection into the lower-level create request?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The collection prepares the requested container configuration and delegates creation to the API method.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "docker/models/containers.py",
+          "line_start": 535,
+          "line_end": 912
+        },
+        {
+          "file_path": "docker/api/container.py",
+          "line_start": 221,
+          "line_end": 440
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "docker/models/containers.py",
+          "substring": "def run(self, image, command=None, stdout=True, stderr=False,"
+        },
+        {
+          "file_path": "docker/api/container.py",
+          "substring": "def create_container(self, image, command=None, hostname=None, user=None,"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-031",
+      "question": "Where is the imaginary repoaccord_docker_py_absent_feature_31_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_31_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_31_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-032",
+      "question": "Where is the imaginary repoaccord_docker_py_absent_feature_32_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_32_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_32_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-033",
+      "question": "Where is the imaginary repoaccord_docker_py_absent_feature_33_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_33_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_33_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-034",
+      "question": "Where is the imaginary repoaccord_docker_py_absent_feature_34_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_34_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_34_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-035",
+      "question": "Which setting named repoaccord_docker_py_absent_feature_35_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_35_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_35_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-036",
+      "question": "Which setting named repoaccord_docker_py_absent_feature_36_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_36_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_36_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-037",
+      "question": "Which setting named repoaccord_docker_py_absent_feature_37_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_37_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_37_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-038",
+      "question": "Why does repoaccord_docker_py_absent_feature_38_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_38_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_38_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-039",
+      "question": "Why does repoaccord_docker_py_absent_feature_39_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_39_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_39_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "docker_py-040",
+      "question": "Why does repoaccord_docker_py_absent_feature_40_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_docker_py_absent_feature_40_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "e734fd5a5508bc1062a28a51dc2f31ae47af7a2f",
+        "search_command": "git grep -n -F -- repoaccord_docker_py_absent_feature_40_zz e734fd5a5508bc1062a28a51dc2f31ae47af7a2f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}
