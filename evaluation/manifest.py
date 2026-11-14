@@ -33,6 +33,7 @@ DEFAULT_COUNTS = {
     "smoke_answerable": 5,
     "smoke_unanswerable": 3,
 }
+V2_DEVELOPMENT_REPOSITORIES = ("rq", "kopf", "luigi", "client_python")
 HASHED_PATH_FIELDS = (
     "questions",
     "fixture",
@@ -682,6 +683,84 @@ def load_manifest(
     return data
 
 
+def load_v2_development_entries(
+    path: Path = MANIFEST_PATH,
+    *,
+    root: Path | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Load only the v2 development entries and assets, without opening candidate sets."""
+
+    manifest_path = Path(path)
+    base = manifest_root(manifest_path) if root is None else Path(root)
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot load evaluation manifest {manifest_path}: {exc}") from exc
+    if not isinstance(data, dict) or data.get("schema_version") != 2:
+        raise ValueError("V2 development evaluation requires manifest schema version 2")
+    repositories = data.get("repositories")
+    if not isinstance(repositories, list):
+        raise ValueError("Evaluation manifest repositories must be a list")
+
+    entries: dict[str, dict[str, Any]] = {}
+    for entry in repositories:
+        if not isinstance(entry, dict):
+            continue
+        repo_id = entry.get("id")
+        if repo_id not in V2_DEVELOPMENT_REPOSITORIES:
+            continue
+        if repo_id in entries:
+            raise ValueError(f"Duplicate v2 development repository {repo_id!r}")
+        entries[repo_id] = entry
+
+    if tuple(repo_id for repo_id in V2_DEVELOPMENT_REPOSITORIES if repo_id in entries) != (
+        V2_DEVELOPMENT_REPOSITORIES
+    ):
+        raise ValueError("Manifest must contain all four v2 development repositories")
+
+    root_resolved = base.resolve()
+    for repo_id in V2_DEVELOPMENT_REPOSITORIES:
+        entry = entries[repo_id]
+        if entry.get("role") != "development" or entry.get("dataset_version") != "2.0":
+            raise ValueError(f"{repo_id}: expected a v2 development repository entry")
+        splits = entry.get("splits")
+        development_ids = splits.get("development") if isinstance(splits, dict) else None
+        if (
+            not isinstance(development_ids, list)
+            or len(development_ids) != 40
+            or any(
+                not isinstance(question_id, str) or not question_id
+                for question_id in development_ids
+            )
+            or len(development_ids) != len(set(development_ids))
+            or splits.get("held_out") != []
+            or splits.get("smoke") != []
+        ):
+            raise ValueError(f"{repo_id}: expected 40 development ids and empty other splits")
+
+        for field in ("questions", "fixture"):
+            resource = entry.get(field)
+            if not isinstance(resource, dict):
+                raise ValueError(f"{repo_id}: {field} must be an object")
+            relative_path = resource.get("path")
+            digest = resource.get("sha256")
+            if not isinstance(relative_path, str) or not relative_path:
+                raise ValueError(f"{repo_id}: {field}.path is required")
+            candidate = Path(relative_path)
+            if candidate.is_absolute() or ".." in candidate.parts:
+                raise ValueError(f"{repo_id}: unsafe {field}.path {relative_path!r}")
+            resolved = (base / candidate).resolve()
+            if not resolved.is_relative_to(root_resolved):
+                raise ValueError(f"{repo_id}: unsafe {field}.path {relative_path!r}")
+            if not resolved.is_file():
+                raise ValueError(f"{repo_id}: missing {field} file {relative_path!r}")
+            if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+                raise ValueError(f"{repo_id}: {field}.sha256 must be a SHA-256 digest")
+            if sha256_file(resolved) != digest:
+                raise ValueError(f"{repo_id}: {field} SHA-256 mismatch")
+    return entries
+
+
 def repository_entry(manifest: dict[str, Any], repo_id: str) -> dict[str, Any]:
     """Return one repository entry or raise rather than silently skipping it."""
 
@@ -712,3 +791,43 @@ def questions_for_split(
         return list(questions)
     selected_ids = set(entry["splits"][split])
     return [question for question in questions if question["id"] in selected_ids]
+
+
+def load_v2_development_questions(
+    entry: dict[str, Any],
+    *,
+    root: Path = ROOT,
+) -> list[dict[str, Any]]:
+    """Load one registered v2 question set and return only its development split."""
+
+    repo_id = entry["id"]
+    root_resolved = root.resolve()
+    question_path = (root / entry["questions"]["path"]).resolve()
+    if not question_path.is_relative_to(root_resolved):
+        raise ValueError(f"{repo_id}: unsafe questions path")
+    try:
+        data = json.loads(question_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{repo_id}: cannot load development questions: {exc}") from exc
+    if (
+        not isinstance(data, dict)
+        or data.get("repo_id") != repo_id
+        or data.get("pinned_sha") != entry.get("pinned_sha")
+        or data.get("dataset_version") != "2.0"
+    ):
+        raise ValueError(f"{repo_id}: question set does not match the v2 manifest entry")
+    questions = data.get("questions")
+    if not isinstance(questions, list) or any(not isinstance(row, dict) for row in questions):
+        raise ValueError(f"{repo_id}: question set must contain a list of question objects")
+    question_ids = [row.get("id") for row in questions]
+    development_ids = entry["splits"]["development"]
+    if (
+        any(not isinstance(question_id, str) or not question_id for question_id in question_ids)
+        or len(question_ids) != len(set(question_ids))
+        or set(question_ids) != set(development_ids)
+    ):
+        raise ValueError(f"{repo_id}: question ids do not match the development split")
+    selected = questions_for_split(entry, questions, "development")
+    if len(selected) != len(development_ids):
+        raise ValueError(f"{repo_id}: development split is incomplete")
+    return selected

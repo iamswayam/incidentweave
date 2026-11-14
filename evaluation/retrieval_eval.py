@@ -27,7 +27,10 @@ from evaluation.build_fixture import load_fixture
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
     MANIFEST_PATH,
+    V2_DEVELOPMENT_REPOSITORIES,
     load_manifest,
+    load_v2_development_entries,
+    load_v2_development_questions,
     questions_for_split,
     repository_entry,
     sha256_file,
@@ -178,6 +181,115 @@ async def export_development_rankings(
         "metadata": {
             "dataset_version": "v1",
             "repository_ids": expected_ids,
+            "split": "development",
+            "retrieval_limits": {"production": 5, "deep": 20},
+            "guard_view": "production",
+            "guard_threshold": 0.5,
+            "git_commit": commit,
+            "manifest_sha256": sha256_file(manifest_path),
+            "exported_at": datetime.now(UTC).isoformat(),
+        },
+        "repositories": exported_repositories,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(export, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return export
+
+
+async def export_v2_development_rankings(
+    output_path: Path,
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    """Export production limit-5 and deep limit-20 rankings for v2 development."""
+
+    entries = load_v2_development_entries(manifest_path, root=root)
+    exported_repositories = []
+    for repo_id in V2_DEVELOPMENT_REPOSITORIES:
+        entry = entries[repo_id]
+        questions = load_v2_development_questions(entry, root=root)
+        reports = {}
+        for limit in (5, 20):
+            reports[limit] = await run_offline_retrieval(
+                limit=limit,
+                repo_id=repo_id,
+                split="development",
+                entry=entry,
+                root=root,
+                record_details=True,
+                development_records=questions,
+                golden_pinned_sha=entry["pinned_sha"],
+            )
+        questions_by_limit = {
+            limit: {row["id"]: row for row in report["questions"]}
+            for limit, report in reports.items()
+        }
+        exported_questions = []
+        for record in reports[5]["questions"]:
+            question_id = record["id"]
+
+            def ranked_chunks(limit: int) -> list[dict[str, Any]]:
+                detail = questions_by_limit[limit][question_id]
+                return [
+                    {
+                        "chunk_id": (
+                            f"{chunk['file_path']}:{chunk['line_start']}-{chunk['line_end']}"
+                        ),
+                        "file_path": chunk["file_path"],
+                        "line_start": chunk["line_start"],
+                        "line_end": chunk["line_end"],
+                        "vector_distance": chunk["vector_score"],
+                    }
+                    for chunk in detail.get("retrieved", [])
+                ]
+
+            production_chunks = ranked_chunks(5)
+            deep_chunks = ranked_chunks(20)
+            production_distances = [
+                float(chunk["vector_distance"])
+                for chunk in production_chunks
+                if chunk["vector_distance"] is not None
+            ]
+            deep_distances = [
+                float(chunk["vector_distance"])
+                for chunk in deep_chunks
+                if chunk["vector_distance"] is not None
+            ]
+            production_best = min(production_distances) if production_distances else None
+            deep_best = min(deep_distances) if deep_distances else None
+            if production_best != deep_best:
+                raise ValueError(
+                    f"{repo_id}:{question_id}: best vector distance differs "
+                    "between production and deep views"
+                )
+            exported_questions.append(
+                {
+                    "id": question_id,
+                    "repository": repo_id,
+                    "category": record["category"],
+                    "ranked_chunks_limit5": production_chunks,
+                    "ranked_chunks_limit20": deep_chunks,
+                    "best_vector_distance": production_best,
+                    "guard_refused": production_best is None or production_best > 0.5,
+                }
+            )
+        exported_repositories.append({"id": repo_id, "questions": exported_questions})
+
+    commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    export = {
+        "metadata": {
+            "dataset_version": "v2",
+            "repository_ids": list(V2_DEVELOPMENT_REPOSITORIES),
             "split": "development",
             "retrieval_limits": {"production": 5, "deep": 20},
             "guard_view": "production",
