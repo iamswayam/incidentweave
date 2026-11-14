@@ -236,6 +236,7 @@ def test_v2_rankings_export_uses_only_development_records(
         for limit in (5, 20)
     }
     assert all(question_count == 40 for _, _, question_count in calls)
+    assert b"\r\n" not in output_path.read_bytes()
     assert json.loads(output_path.read_text(encoding="utf-8")) == export
 
 
@@ -330,6 +331,7 @@ def test_v2_scorecard_writer_scores_development_only_without_v1_crosscheck(
     assert scorecard["pooled"]["answerable_n"] == 120
     assert scorecard["pooled"]["unanswerable_n"] == 40
     assert set(scorecard["per_repository"]) == set(V2_DEVELOPMENT_REPOSITORIES)
+    assert b"\r\n" not in output_path.read_bytes()
     assert json.loads(output_path.read_text(encoding="utf-8")) == scorecard
 
 

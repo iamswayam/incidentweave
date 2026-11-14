@@ -301,9 +301,8 @@ async def export_v2_development_rankings(
         "repositories": exported_repositories,
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(export, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    output_path.write_bytes(
+        (json.dumps(export, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     )
     return export
 
