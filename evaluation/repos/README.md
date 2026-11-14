@@ -8,18 +8,18 @@ The seven repository question sets and splits are versioned as v2.0, with 40 que
 answerable and 10 unanswerable). `rq`, `kopf`, `luigi`, and `client_python` are development
 repositories; all 40 questions are in each repository's development split. `locust`, `docker_py`,
 and `uvicorn` are held-out question candidates. Question sets and splits are frozen as v2.0.
-Provider-embedding fixtures are built for `luigi` and `client_python`; the 3,846,769-byte Luigi
-fixture is in the local release-assets cache, with release upload deferred until after this branch
-merges. Held-out fixtures are intentionally deferred to a later checklist item. The LLM-only
+Provider-embedding fixtures are built for all four development repositories. The `rq`, `kopf`,
+and `luigi` fixtures are uploaded to the `dataset-v2.0` release; the `client_python` fixture is
+committed. Held-out fixtures are intentionally deferred to a later checklist item. The LLM-only
 question sets are not human-reviewed.
 
-Fixture measurements for `luigi` and `client_python` are exact; other fixture figures remain
-estimates.
+Fixture measurements for `rq`, `kopf`, `luigi`, and `client_python` are exact; held-out fixture
+figures remain estimates.
 
 | ID | Role | Pinned SHA / date | SPDX | Copyright holder | Python lines (source / all / indexed) | Issues (count / method) | Questions (answerable / unanswerable) | Fixture (chunks / compressed bytes / location) |
 |---|---|---|---|---|---:|---|---:|---|
-| `rq` | development | `1cf2c3eab33a8eda95c6107720dc40c7e285dd2b` / 2026-10-28 | BSD-2-Clause | Copyright 2012 Vincent Driessen. All rights reserved. | 13,300 / 29,625 / 29,625 | 109 / gh | 30 / 10 | ~625 / ~2,816,220 / release |
-| `kopf` | development | `edaf7c634ed66153143da467b80d212c0601479b` / 2026-10-30 | MIT | Copyright (c) 2020-2025 Sergey Vasilyev <nolar@nolar.info> | 18,044 / 48,357 / 48,357 | 59 / gh | 30 / 10 | ~1,065 / ~4,798,838 / release |
+| `rq` | development | `1cf2c3eab33a8eda95c6107720dc40c7e285dd2b` / 2026-10-28 | BSD-2-Clause | Copyright 2012 Vincent Driessen. All rights reserved. | 13,300 / 29,625 / 29,625 | 109 / gh | 30 / 10 | 625 / 1,868,572 / release |
+| `kopf` | development | `edaf7c634ed66153143da467b80d212c0601479b` / 2026-10-30 | MIT | Copyright (c) 2020-2025 Sergey Vasilyev <nolar@nolar.info> | 18,044 / 48,357 / 48,357 | 59 / gh | 30 / 10 | 1,065 / 3,028,205 / release |
 | `luigi` | development (replaces `apscheduler`) | `f5feb7a4655ad73ef56f0ab04d7903ab43b63e12` / 2026-10-07 | Apache-2.0 | Copyright 2012-2021 Spotify AB | 29,592 / 62,936 / 62,936 | 43 / gh | 30 / 10 | 1,332 / 3,846,769 / release |
 | `client_python` | development | `e2f2bf9dcb49b8e8c0bc7fc089ff550edd9d286d` / 2026-10-30 | Apache-2.0 | Not stated in LICENSE | 5,429 / 11,558 / 11,558 | 45 / gh | 30 / 10 | 246 / 782,550 / committed |
 | `locust` | held_out | `d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90` / 2026-11-01 | MIT | Copyright (c) 2009-2026, Carl Byström, Jonatan Heyman, Lars Holmberg | 12,663 / 35,905 / 35,905 | 119 / gh | 30 / 10 | ~770 / ~3,469,583 / release |
@@ -56,7 +56,7 @@ Backups assessed: `huey` (MIT, 4 issues; did not qualify) and `luigi` (Apache-2.
 - Indexed lines and chunks use `scripts.ingest_repo.iter_python_files` and the registered S0 60/10 chunker; no embeddings are computed.
 - Issue counts use distinct GitHub `closingIssuesReferences` from merged PRs that touch non-test source Python files by the pinned commit date.
 - The GitHub CLI query is capped at the 1,000 most recent merged PRs; its issue counts are conservative lower bounds.
-- Fixture bytes = candidate chunk count × median compressed bytes per chunk from the three v1 fixtures × 1.2 for query vectors. The median rate was 3,754.96 bytes/chunk; estimates at or below 1,572,864 bytes are `committed`, otherwise `release`. Item 31c built the `luigi` and `client_python` development fixtures; held-out fixtures remain intentionally unbuilt.
+- Fixture bytes = candidate chunk count × median compressed bytes per chunk from the three v1 fixtures × 1.2 for query vectors. The median rate was 3,754.96 bytes/chunk; estimates at or below 1,572,864 bytes are `committed`, otherwise `release`. Exact development fixture measurements are shown above; held-out fixtures remain intentionally unbuilt.
 
 ## Labelling guidelines
 
