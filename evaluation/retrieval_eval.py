@@ -95,9 +95,7 @@ async def export_development_rankings(
     if manifest.get("schema_version") != 2:
         raise ValueError("Rankings export requires manifest schema version 2")
     expected_ids = ["batch-processing-service", "incidentweave", "lifeos"]
-    v1_entries = [
-        entry for entry in manifest["repositories"] if entry["id"] in expected_ids
-    ]
+    v1_entries = [entry for entry in manifest["repositories"] if entry["id"] in expected_ids]
     repository_ids = sorted(entry["id"] for entry in v1_entries)
     if repository_ids != expected_ids:
         raise ValueError("Rankings export requires all three v1 repositories")

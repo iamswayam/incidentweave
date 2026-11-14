@@ -416,8 +416,7 @@ def validate_manifest(
                 errors.append(f"{repo_id or '<unknown>'}: role must be development or held_out")
             if entry.get("license") not in SUPPORTED_CANDIDATE_LICENSES:
                 errors.append(
-                    f"{repo_id or '<unknown>'}: "
-                    "license must be an allowed SPDX identifier"
+                    f"{repo_id or '<unknown>'}: license must be an allowed SPDX identifier"
                 )
             if entry.get("dataset_version") != "2.0":
                 errors.append(f"{repo_id or '<unknown>'}: dataset_version must be '2.0'")

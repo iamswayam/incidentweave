@@ -77,9 +77,7 @@ def _validate_export(
         raise ValueError("Rankings export manifest hash does not match the current manifest")
 
     entries = {
-        entry["id"]: entry
-        for entry in manifest["repositories"]
-        if entry["id"] in V1_REPOSITORIES
+        entry["id"]: entry for entry in manifest["repositories"] if entry["id"] in V1_REPOSITORIES
     }
     if tuple(sorted(entries)) != V1_REPOSITORIES:
         raise ValueError("V1 scorecard requires all three v1 manifest repositories")

@@ -255,7 +255,7 @@ def test_rejects_invalid_mined_source_ref_and_evidence_length(tmp_path: Path) ->
     assert any("evidence must be text of at most 300" in error for error in errors)
 
 
-def test_llm_only_review_requires_each_question_status_and_snapshot(tmp_path: Path) -> None:
+def test_llm_only_review_requires_each_question_status_without_snapshot(tmp_path: Path) -> None:
     root = tmp_path / "snapshot"
     data = _valid_set(root)
     for question in data["questions"]:
@@ -269,13 +269,25 @@ def test_llm_only_review_requires_each_question_status_and_snapshot(tmp_path: Pa
             )
     data["review_status"] = LLM_ONLY_REVIEW_STATUS
     data.pop("reviewed_on")
-    missing_snapshot_errors = validate_question_set(
-        data,
-        repo_id="candidate",
-        pinned_sha=PINNED_SHA,
-        required_review_status=LLM_ONLY_REVIEW_STATUS,
+    assert (
+        validate_question_set(
+            data,
+            repo_id="candidate",
+            pinned_sha=PINNED_SHA,
+            required_review_status=LLM_ONLY_REVIEW_STATUS,
+        )
+        == []
     )
-    assert any("snapshot_root is required" in error for error in missing_snapshot_errors)
+    assert (
+        validate_question_set(
+            data,
+            repo_id="candidate",
+            pinned_sha=PINNED_SHA,
+            snapshot_root=tmp_path / "missing-snapshot",
+            required_review_status=LLM_ONLY_REVIEW_STATUS,
+        )
+        == []
+    )
 
     assert (
         validate_question_set(

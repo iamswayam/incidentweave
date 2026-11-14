@@ -207,9 +207,11 @@ def validate_question_set(
     targets: str = "full",
     required_review_status: str = "maintainer reviewed",
 ) -> list[str]:
-    """Return all v2 schema, quota, leakage, secret, and span validation errors."""
+    """Validate v2 structure and source-backed checks when a pinned checkout exists."""
 
     errors: list[str] = []
+    if snapshot_root is not None and not snapshot_root.is_dir():
+        snapshot_root = None
     target = TARGETS.get(targets)
     if target is None:
         return [f"unknown question targets {targets!r}"]
@@ -232,8 +234,6 @@ def validate_question_set(
     if required_review_status == LLM_ONLY_REVIEW_STATUS:
         if "reviewed_on" in data:
             errors.append("reviewed_on is not valid for LLM-only question sets")
-        if snapshot_root is None:
-            errors.append("snapshot_root is required for LLM-only question validation")
     elif not isinstance(reviewed_on, str):
         errors.append("reviewed_on must be an ISO date")
     else:

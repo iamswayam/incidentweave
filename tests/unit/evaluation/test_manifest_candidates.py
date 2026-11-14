@@ -267,8 +267,12 @@ def test_v2_repository_uses_role_split_without_legacy_question_counts(tmp_path: 
     question_path = tmp_path / "questions.json"
     question_path.write_text(json.dumps(questions), encoding="utf-8")
     repository = _v2_repository(question_path, questions)
-    manifest = {"schema_version": 2, "split_seed": 1, "dataset_version": "2.0",
-                "repositories": [repository]}
+    manifest = {
+        "schema_version": 2,
+        "split_seed": 1,
+        "dataset_version": "2.0",
+        "repositories": [repository],
+    }
 
     assert validate_manifest(manifest, root=tmp_path) == []
 

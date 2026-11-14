@@ -93,9 +93,7 @@ async def build_fixture(
     fixture_path = path or root / entry["fixture"]["path"]
     question_data = json.loads(golden_path.read_text(encoding="utf-8"))
     if isinstance(question_data, dict) and question_data.get("dataset_version") == DATASET_VERSION:
-        snapshot_root = (
-            root / "evaluation" / "cache" / "pilot_candidates" / repo_id / "repo"
-        )
+        snapshot_root = root / "evaluation" / "cache" / "pilot_candidates" / repo_id / "repo"
         question_errors = validate_question_set(
             question_data,
             repo_id=repo_id,
