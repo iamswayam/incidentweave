@@ -310,6 +310,15 @@
         ],
         "held_out": [],
         "smoke": []
+      },
+      "database_repository": "evaluation-v2-rq-1cf2c3ea",
+      "fixture": {
+        "path": "evaluation/cache/release-assets/dataset-v2.0/rq-retrieval-fixture.json.gz",
+        "sha256": "2e5ecc05647c3ea817ed676df62a561c588f7b0eb12b7730f4348b577ae15856",
+        "max_bytes": 20000000,
+        "location": "release",
+        "release_tag": "dataset-v2.0",
+        "asset_name": "rq-retrieval-fixture.json.gz"
       }
     },
     {
@@ -374,6 +383,15 @@
         ],
         "held_out": [],
         "smoke": []
+      },
+      "database_repository": "evaluation-v2-kopf-edaf7c63",
+      "fixture": {
+        "path": "evaluation/cache/release-assets/dataset-v2.0/kopf-retrieval-fixture.json.gz",
+        "sha256": "79bf6a50afcec6da917cef5faf258ea2e901a0cbd2e82675fc83b12b10940cf7",
+        "max_bytes": 20000000,
+        "location": "release",
+        "release_tag": "dataset-v2.0",
+        "asset_name": "kopf-retrieval-fixture.json.gz"
       }
     },
     {
