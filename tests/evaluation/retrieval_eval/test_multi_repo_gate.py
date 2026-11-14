@@ -151,6 +151,53 @@ def test_manifest_gate_prints_per_repo_and_pooled_tables(
     assert "Seconds" in output
 
 
+def test_smoke_gate_excludes_held_out_repositories_without_fixtures(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    args = _setup_gate(
+        monkeypatch,
+        tmp_path,
+        {"repo-a": _report(repo_id="repo-a")},
+    )
+    manifest = check_retrieval_gate.load_manifest()
+    manifest["repositories"].append({"id": "held-out", "role": "held_out"})
+    monkeypatch.setattr(
+        check_retrieval_gate,
+        "load_manifest",
+        lambda *_args, **_kwargs: manifest,
+    )
+
+    assert asyncio.run(check_retrieval_gate._run(args)) == 0
+    output = capsys.readouterr().out
+    assert "repo-a" in output
+    assert "held-out" not in output
+
+
+def test_smoke_gate_rejects_an_explicit_held_out_repository(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    args = _setup_gate(
+        monkeypatch,
+        tmp_path,
+        {"repo-a": _report(repo_id="repo-a")},
+    )
+    manifest = check_retrieval_gate.load_manifest()
+    manifest["repositories"].append({"id": "held-out", "role": "held_out"})
+    monkeypatch.setattr(
+        check_retrieval_gate,
+        "load_manifest",
+        lambda *_args, **_kwargs: manifest,
+    )
+    args.repo = "held-out"
+
+    assert asyncio.run(check_retrieval_gate._run(args)) == 1
+    assert "No repositories available for split 'smoke'" in capsys.readouterr().err
+
+
 def test_manifest_gate_fails_when_one_repository_fails(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
