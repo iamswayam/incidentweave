@@ -86,6 +86,9 @@ def _resolve_file(
         errors.append(f"{entry.get('id', '<unknown>')}: unsafe {field}.path {relative_path!r}")
         return None
     if not path.is_file():
+        if field == "fixture" and isinstance(resource.get("location"), str):
+            if resource["location"] == "release":
+                return None
         errors.append(f"{entry.get('id', '<unknown>')}: missing {field} file {relative_path!r}")
         return None
     if not isinstance(digest, str) or not digest:
@@ -130,6 +133,19 @@ def _validate_splits(
     development = set(split_ids["development"])
     held_out = set(split_ids["held_out"])
     smoke = set(split_ids["smoke"])
+    role = entry.get("role")
+    if role in {"development", "held_out"}:
+        expected_split = "development" if role == "development" else "held_out"
+        other_split = "held_out" if role == "development" else "development"
+        if development & held_out:
+            errors.append(f"{repo_id}: held_out overlaps development")
+        if set(split_ids[expected_split]) != all_ids:
+            errors.append(f"{repo_id}: all v2 questions must be in the {role} split")
+        if split_ids[other_split]:
+            errors.append(f"{repo_id}: v2 {role} repository cannot populate {other_split}")
+        if smoke:
+            errors.append(f"{repo_id}: v2 repository smoke split must be empty")
+        return
     if development & held_out:
         errors.append(f"{repo_id}: held_out overlaps development")
     if held_out & smoke:
@@ -310,11 +326,23 @@ def _validate_candidates(
                             f"{candidate_id or '<unknown>'}: v2 questions must be an object"
                         )
                     else:
+                        snapshot_root = (
+                            root
+                            / "evaluation"
+                            / "cache"
+                            / "pilot_candidates"
+                            / str(candidate_id)
+                            / "repo"
+                        )
                         question_errors = validate_question_set(
                             question_data,
                             repo_id=candidate_id if isinstance(candidate_id, str) else None,
                             pinned_sha=pinned_sha if isinstance(pinned_sha, str) else None,
+                            snapshot_root=snapshot_root if snapshot_root.is_dir() else None,
                             targets="full",
+                            required_review_status=question_data.get(
+                                "review_status", "maintainer reviewed"
+                            ),
                         )
                         errors.extend(
                             f"{candidate_id or '<unknown>'}: {message}"
@@ -345,6 +373,9 @@ def validate_manifest(
         errors.append(f"unknown schema_version {data.get('schema_version')!r}")
     if not isinstance(data.get("split_seed"), int) or isinstance(data.get("split_seed"), bool):
         errors.append("split_seed must be an integer")
+    dataset_version = data.get("dataset_version")
+    if dataset_version is not None and dataset_version != "2.0":
+        errors.append("dataset_version must be '2.0' when specified")
     repositories = data.get("repositories")
     if not isinstance(repositories, list):
         return errors + ["repositories must be a list"]
@@ -370,6 +401,7 @@ def validate_manifest(
             errors.append("every repository entry must be an object")
             continue
         repo_id = entry.get("id")
+        is_v2_repository = "role" in entry
         if not isinstance(repo_id, str) or not repo_id:
             errors.append("every repository must have a non-empty id")
         for required in ("url", "pinned_sha", "license_note", "owner"):
@@ -379,6 +411,15 @@ def validate_manifest(
             errors.append(
                 f"{repo_id or '<unknown>'}: owner must be maintainer-owned or third-party"
             )
+        if is_v2_repository:
+            if entry.get("role") not in {"development", "held_out"}:
+                errors.append(f"{repo_id or '<unknown>'}: role must be development or held_out")
+            if entry.get("license") not in SUPPORTED_CANDIDATE_LICENSES:
+                errors.append(
+                    f"{repo_id or '<unknown>'}: license must be an allowed SPDX identifier"
+                )
+            if entry.get("dataset_version") != "2.0":
+                errors.append(f"{repo_id or '<unknown>'}: dataset_version must be '2.0'")
         if not isinstance(entry.get("previously_exposed"), bool):
             errors.append(f"{repo_id or '<unknown>'}: previously_exposed must be boolean")
         review_status = entry.get("review_status", "pending maintainer review")
@@ -401,12 +442,30 @@ def validate_manifest(
             errors.append(f"{repo_id or '<unknown>'}: indexed_python_lines must be non-negative")
 
         resolved: dict[str, Path] = {}
-        for field in HASHED_PATH_FIELDS:
+        resource_fields = ("questions", "fixture") if is_v2_repository else HASHED_PATH_FIELDS
+        for field in resource_fields:
+            if is_v2_repository and field == "fixture" and "fixture" not in entry:
+                continue
             path = _resolve_file(entry, field, root, errors)
             if path is not None:
                 resolved[field] = path
         fixture = entry.get("fixture")
         if isinstance(fixture, dict):
+            if is_v2_repository and fixture.get("location") not in {"committed", "release"}:
+                errors.append(f"{repo_id or '<unknown>'}: fixture.location is invalid")
+            if (
+                is_v2_repository
+                and fixture.get("location") == "release"
+                and (
+                    not isinstance(fixture.get("release_tag"), str)
+                    or not fixture["release_tag"]
+                    or not isinstance(fixture.get("asset_name"), str)
+                    or not fixture["asset_name"]
+                )
+            ):
+                errors.append(
+                    f"{repo_id or '<unknown>'}: release fixture needs release_tag and asset_name"
+                )
             max_bytes = fixture.get("max_bytes")
             if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes <= 0:
                 errors.append(f"{repo_id or '<unknown>'}: fixture.max_bytes must be positive")
@@ -433,7 +492,7 @@ def validate_manifest(
                             f"{repo_id or '<unknown>'}: questions pinned_sha "
                             "does not match manifest"
                         )
-                    if len(questions) != counts["questions"]:
+                    if not is_v2_repository and len(questions) != counts["questions"]:
                         errors.append(
                             f"{repo_id or '<unknown>'}: questions has {len(questions)} entries; "
                             f"expected {counts['questions']}"
@@ -445,6 +504,31 @@ def validate_manifest(
                     elif len(question_ids) != len(set(question_ids)):
                         errors.append(f"{repo_id or '<unknown>'}: question ids must be unique")
                     else:
+                        if is_v2_repository:
+                            from evaluation.question_set import validate_question_set
+
+                            snapshot_root = (
+                                root
+                                / "evaluation"
+                                / "cache"
+                                / "pilot_candidates"
+                                / str(repo_id)
+                                / "repo"
+                            )
+                            question_errors = validate_question_set(
+                                question_data,
+                                repo_id=repo_id,
+                                pinned_sha=entry.get("pinned_sha"),
+                                snapshot_root=snapshot_root if snapshot_root.is_dir() else None,
+                                targets="full",
+                                required_review_status=entry.get(
+                                    "review_status", "maintainer reviewed"
+                                ),
+                            )
+                            errors.extend(
+                                f"{repo_id or '<unknown>'}: {message}"
+                                for message in question_errors
+                            )
                         _validate_splits(entry, questions, counts, errors)
                         question_ids_set = set(question_ids)
 

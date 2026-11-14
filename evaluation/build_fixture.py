@@ -29,6 +29,7 @@ from evaluation.manifest import (
     manifest_root,
     repository_entry,
 )
+from evaluation.question_set import DATASET_VERSION, validate_question_set
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evaluation" / "repos" / "incidentweave" / "questions.json"
@@ -90,7 +91,21 @@ async def build_fixture(
     entry = repository_entry(manifest, repo_id)
     golden_path = root / entry["questions"]["path"]
     fixture_path = path or root / entry["fixture"]["path"]
-    golden = load_golden_set(golden_path)
+    question_data = json.loads(golden_path.read_text(encoding="utf-8"))
+    if isinstance(question_data, dict) and question_data.get("dataset_version") == DATASET_VERSION:
+        snapshot_root = root / "evaluation" / "cache" / "pilot_candidates" / repo_id / "repo"
+        question_errors = validate_question_set(
+            question_data,
+            repo_id=repo_id,
+            pinned_sha=entry["pinned_sha"],
+            snapshot_root=snapshot_root if snapshot_root.is_dir() else None,
+            required_review_status=entry.get("review_status", "maintainer reviewed"),
+        )
+        if question_errors:
+            raise ValueError("Invalid v2 question set: " + "; ".join(question_errors))
+        golden = question_data
+    else:
+        golden = load_golden_set(golden_path)
     strategy = get_strategy(DEFAULT_STRATEGY)
     database_repository = entry.get("database_repository", strategy.evaluation_repository)
     cache_root = root / "evaluation" / "cache"

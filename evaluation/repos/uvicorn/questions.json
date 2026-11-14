@@ -1,0 +1,1042 @@
+{
+  "repo_id": "uvicorn",
+  "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+  "dataset_version": "2.0",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "uvicorn-001",
+      "question": "Which Gunicorn worker settings are forwarded when its Uvicorn configuration is created?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The worker forwards keep-alive and health-check timing, request limits, callback, forwarding policy, and configured TLS and backlog values.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/workers.py",
+          "line_start": 32,
+          "line_end": 72
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/workers.py",
+          "substring": "def __init__(self, *args: Any, **kwargs: Any) -> None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 342,
+        "pr": 456,
+        "changed_source_files": [
+          "uvicorn/__main__.py",
+          "uvicorn/config.py",
+          "uvicorn/main.py",
+          "uvicorn/workers.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-002",
+      "question": "How does lifespan startup determine whether the server should exit after an application error?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It marks the server for exit when startup failed or an error occurred while lifespan handling is required.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/lifespan/on.py",
+          "line_start": 47,
+          "line_end": 62
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/lifespan/on.py",
+          "substring": "async def startup(self) -> None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 450,
+        "pr": 458,
+        "changed_source_files": [
+          "uvicorn/__main__.py",
+          "uvicorn/lifespan/on.py",
+          "uvicorn/workers.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-003",
+      "question": "How does the programmatic run function construct and start a server?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It constructs a Config from the supplied options and runs a Server with that configuration.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/main.py",
+          "line_start": 514,
+          "line_end": 651
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/main.py",
+          "substring": "def run("
+        }
+      ],
+      "source_ref": {
+        "issue": 431,
+        "pr": 459,
+        "changed_source_files": [
+          "uvicorn/main.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-004",
+      "question": "How does the command callback pass its parsed values into the server startup function?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The callback forwards its parsed options to the run function.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/main.py",
+          "line_start": 406,
+          "line_end": 511
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/main.py",
+          "substring": "def main("
+        }
+      ],
+      "source_ref": {
+        "issue": 435,
+        "pr": 460,
+        "changed_source_files": [
+          "uvicorn/config.py",
+          "uvicorn/main.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-005",
+      "question": "How does the CLI callback decide whether to create and run a server from the supplied application?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It forwards the parsed application and server options to run.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/main.py",
+          "line_start": 406,
+          "line_end": 511
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/main.py",
+          "substring": "def main("
+        }
+      ],
+      "source_ref": {
+        "issue": 478,
+        "pr": 481,
+        "changed_source_files": [
+          "uvicorn/main.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-006",
+      "question": "What happens if reading a remote peer address raises an operating-system error?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The helper returns None for that socket peer lookup failure.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/utils.py",
+          "line_start": 12,
+          "line_end": 26
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/utils.py",
+          "substring": "def get_remote_addr(transport: asyncio.Transport) -> tuple[str, int] | None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 494,
+        "pr": 495,
+        "changed_source_files": [
+          "uvicorn/protocols/utils.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-007",
+      "question": "How does the configuration object retain an environment-file option for application loading?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The constructor stores the configured environment-file path among its settings.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/config.py",
+          "line_start": 195,
+          "line_end": 367
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/config.py",
+          "substring": "def __init__("
+        }
+      ],
+      "source_ref": {
+        "issue": 505,
+        "pr": 507,
+        "changed_source_files": [
+          "uvicorn/config.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-008",
+      "question": "How does the logging configuration select JSON, YAML, or standard file configuration?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It dispatches JSON and YAML files to their loaders and uses fileConfig for other path formats.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/config.py",
+          "line_start": 386,
+          "line_end": 428
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/config.py",
+          "substring": "def configure_logging(self) -> None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 511,
+        "pr": 512,
+        "changed_source_files": [
+          "uvicorn/config.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-009",
+      "question": "How does the WebSocket protocol handle a server shutdown?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It closes the WebSocket connection and updates its shutdown state.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/websockets/websockets_impl.py",
+          "line_start": 152,
+          "line_end": 158
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/websockets/websockets_impl.py",
+          "substring": "def shutdown(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-010",
+      "question": "How does the Gunicorn worker reset signal handling for its server process?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It replaces inherited signal handlers with the worker-specific behavior.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/workers.py",
+          "line_start": 74,
+          "line_end": 83
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/workers.py",
+          "substring": "def init_signals(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-011",
+      "question": "How is a configured ASGI 2 application callable invoked by the compatibility middleware?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The middleware invokes the wrapped application using the ASGI 2 callable interface.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/middleware/asgi2.py",
+          "line_start": 13,
+          "line_end": 15
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/middleware/asgi2.py",
+          "substring": "async def __call__(self, scope: \"Scope\", receive: \"ASGIReceiveCallable\", send: \"ASGISendCallable\") -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-012",
+      "question": "How does the local-address helper represent a Unix-domain socket address?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It returns the socket path paired with None instead of a numeric port.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/utils.py",
+          "line_start": 29,
+          "line_end": 43
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/utils.py",
+          "substring": "def get_local_addr(transport: asyncio.Transport) -> tuple[str, int | None] | None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-013",
+      "question": "How does the proxy-header middleware decide whether forwarded client information is trusted?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It checks the peer address against the configured trusted-host set before applying forwarded headers.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/middleware/proxy_headers.py",
+          "line_start": 28,
+          "line_end": 63
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/middleware/proxy_headers.py",
+          "substring": "async def __call__(self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-014",
+      "question": "How does the trusted-host object resolve the client address from a forwarded-for chain?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It walks forwarded addresses according to the trusted-host policy and returns the first untrusted client address.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/middleware/proxy_headers.py",
+          "line_start": 169,
+          "line_end": 187
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/middleware/proxy_headers.py",
+          "substring": "def get_trusted_client_address(self, x_forwarded_for: str) -> tuple[str, int]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-015",
+      "question": "How does an import string identify the target object to load?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It splits the string at a colon, imports the module, and follows dotted attributes.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/importer.py",
+          "line_start": 9,
+          "line_end": 34
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/importer.py",
+          "substring": "def import_from_string(import_str: Any) -> Any:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-016",
+      "question": "How does the access formatter turn an HTTP status into a display value?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It maps the numeric status to a display color or representation using the formatter status mapping.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/logging.py",
+          "line_start": 82,
+          "line_end": 95
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/logging.py",
+          "substring": "def get_status_code(self, status_code: int) -> str:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-017",
+      "question": "When does the default formatter enable colored log output?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It enables colors when standard error is attached to a terminal.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/logging.py",
+          "line_start": 69,
+          "line_end": 70
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/logging.py",
+          "substring": "def should_use_colors(self) -> bool:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-018",
+      "question": "How does lifespan shutdown report an application shutdown failure?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It marks the server to exit if shutdown failed or a required lifespan error occurred.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/lifespan/on.py",
+          "line_start": 64,
+          "line_end": 76
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/lifespan/on.py",
+          "substring": "async def shutdown(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-019",
+      "question": "How does the HTTP flow-control helper pause a transport when writes cannot proceed?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It marks the transport as paused so writers wait until capacity resumes.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/http/flow_control.py",
+          "line_start": 31,
+          "line_end": 34
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/http/flow_control.py",
+          "substring": "def pause_writing(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-020",
+      "question": "How does the HTTP protocol process events from a client connection?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It processes protocol events and dispatches request events to the ASGI application.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/http/h11_impl.py",
+          "line_start": 177,
+          "line_end": 274
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/http/h11_impl.py",
+          "substring": "def handle_events(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-021",
+      "question": "How does the HTTP flow-control helper resume a transport after writes become available?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It clears the paused state and wakes any task waiting for write capacity.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/http/flow_control.py",
+          "line_start": 36,
+          "line_end": 39
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/http/flow_control.py",
+          "substring": "def resume_writing(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-022",
+      "question": "How does message logging wrap an ASGI application call?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It logs inbound and outbound ASGI messages while forwarding them to the wrapped app.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/middleware/message_logger.py",
+          "line_start": 47,
+          "line_end": 87
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/middleware/message_logger.py",
+          "substring": "async def __call__("
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-023",
+      "question": "How does the WebSocket protocol send an ASGI message to the client?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It handles the ASGI message according to connection state and emits protocol data.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/websockets/websockets_impl.py",
+          "line_start": 277,
+          "line_end": 363
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/websockets/websockets_impl.py",
+          "substring": "async def asgi_send(self, message: ASGISendEvent) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-024",
+      "question": "How does the flow-control object initialize its read and write state?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It stores the transport and initializes the paused and waiter state used by its flow-control methods.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/http/flow_control.py",
+          "line_start": 11,
+          "line_end": 16
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/http/flow_control.py",
+          "substring": "def __init__(self, transport: asyncio.Transport) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-025",
+      "question": "How does the colorized formatter avoid mutating the original log record while adding a level prefix?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It copies the record, formats a padded level prefix, and applies color settings to that copy.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/logging.py",
+          "line_start": 55,
+          "line_end": 65
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/logging.py",
+          "substring": "def formatMessage(self, record: logging.LogRecord) -> str:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-026",
+      "question": "How do configuration loading and server startup combine before application requests are served?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Configuration resolves the application and protocol settings, then server startup initializes lifespan before serving.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/config.py",
+          "line_start": 438,
+          "line_end": 545
+        },
+        {
+          "file_path": "uvicorn/server.py",
+          "line_start": 115,
+          "line_end": 205
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/config.py",
+          "substring": "def load(self) -> None:"
+        },
+        {
+          "file_path": "uvicorn/server.py",
+          "substring": "async def startup(self, sockets: list[socket.socket] | None = None) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-027",
+      "question": "How does a Gunicorn worker hand its Uvicorn configuration to the server loop?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The worker runs a Server constructed with its configuration, and the server enters its serving coroutine.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/workers.py",
+          "line_start": 95,
+          "line_end": 101
+        },
+        {
+          "file_path": "uvicorn/server.py",
+          "line_start": 85,
+          "line_end": 86
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/workers.py",
+          "substring": "async def _serve(self) -> None:"
+        },
+        {
+          "file_path": "uvicorn/server.py",
+          "substring": "def run(self, sockets: list[socket.socket] | None = None) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-028",
+      "question": "How do lifespan startup and the server startup path coordinate a startup failure?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Lifespan records failure and the server exits before accepting connections when startup fails.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/lifespan/on.py",
+          "line_start": 47,
+          "line_end": 62
+        },
+        {
+          "file_path": "uvicorn/server.py",
+          "line_start": 115,
+          "line_end": 205
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/lifespan/on.py",
+          "substring": "async def startup(self) -> None:"
+        },
+        {
+          "file_path": "uvicorn/server.py",
+          "substring": "async def startup(self, sockets: list[socket.socket] | None = None) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-029",
+      "question": "How do remote peer discovery and HTTP event processing use connection information?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The peer helper safely obtains the remote address, while the protocol processes incoming connection events.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/protocols/utils.py",
+          "line_start": 12,
+          "line_end": 26
+        },
+        {
+          "file_path": "uvicorn/protocols/http/h11_impl.py",
+          "line_start": 177,
+          "line_end": 274
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/protocols/utils.py",
+          "substring": "def get_remote_addr(transport: asyncio.Transport) -> tuple[str, int] | None:"
+        },
+        {
+          "file_path": "uvicorn/protocols/http/h11_impl.py",
+          "substring": "def handle_events(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-030",
+      "question": "How does trusted proxy middleware prepare the request scope before HTTP dispatch?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The middleware applies trusted forwarded headers to the scope before the HTTP protocol dispatches the request.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "uvicorn/middleware/proxy_headers.py",
+          "line_start": 28,
+          "line_end": 63
+        },
+        {
+          "file_path": "uvicorn/protocols/http/h11_impl.py",
+          "line_start": 177,
+          "line_end": 274
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "uvicorn/middleware/proxy_headers.py",
+          "substring": "async def __call__(self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable) -> None:"
+        },
+        {
+          "file_path": "uvicorn/protocols/http/h11_impl.py",
+          "substring": "def handle_events(self) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-031",
+      "question": "Where is the imaginary repoaccord_uvicorn_absent_feature_31_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_31_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_31_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-032",
+      "question": "Where is the imaginary repoaccord_uvicorn_absent_feature_32_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_32_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_32_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-033",
+      "question": "Where is the imaginary repoaccord_uvicorn_absent_feature_33_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_33_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_33_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-034",
+      "question": "Where is the imaginary repoaccord_uvicorn_absent_feature_34_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_34_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_34_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-035",
+      "question": "Which setting named repoaccord_uvicorn_absent_feature_35_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_35_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_35_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-036",
+      "question": "Which setting named repoaccord_uvicorn_absent_feature_36_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_36_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_36_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-037",
+      "question": "Which setting named repoaccord_uvicorn_absent_feature_37_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_37_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_37_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-038",
+      "question": "Why does repoaccord_uvicorn_absent_feature_38_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_38_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_38_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-039",
+      "question": "Why does repoaccord_uvicorn_absent_feature_39_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_39_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_39_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "uvicorn-040",
+      "question": "Why does repoaccord_uvicorn_absent_feature_40_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_uvicorn_absent_feature_40_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "a99c1b76ee9caea67ff98e2ccc457bd372db193f",
+        "search_command": "git grep -n -F -- repoaccord_uvicorn_absent_feature_40_zz a99c1b76ee9caea67ff98e2ccc457bd372db193f -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}

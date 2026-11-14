@@ -1,0 +1,1036 @@
+{
+  "repo_id": "locust",
+  "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+  "dataset_version": "2.0",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "locust-001",
+      "question": "How does headless automatic startup behave when a custom load shape is present?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "With a shape it starts and joins the shape runner; without one it starts a fixed user-count run.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "locust/main.py",
+          "line_start": 535,
+          "line_end": 584
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/main.py",
+          "substring": "def start_automatic_run():"
+        }
+      ],
+      "source_ref": {
+        "issue": 1368,
+        "pr": 1375,
+        "changed_source_files": [
+          "locust/main.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-002",
+      "question": "How does the fast HTTP request wrapper represent a caught connection or status exception?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It returns an attached response when available or constructs an ErrorResponse for the exception.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/contrib/fasthttp.py",
+          "line_start": 174,
+          "line_end": 196
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/contrib/fasthttp.py",
+          "substring": "def _send_request_safe_mode(self, method: str, url: str, **kwargs) -> FastResponse:"
+        }
+      ],
+      "source_ref": {
+        "issue": 1457,
+        "pr": 1464,
+        "changed_source_files": [
+          "locust/contrib/fasthttp.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-003",
+      "question": "What does the stop helper do when the automatic run is ready to end?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It stops the runner and conditionally quits according to the supplied reason and run mode.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/main.py",
+          "line_start": 506,
+          "line_end": 521
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/main.py",
+          "substring": "def stop_and_optionally_quit(reason=\"--run-time limit reached\"):"
+        }
+      ],
+      "source_ref": {
+        "issue": 1572,
+        "pr": 1573,
+        "changed_source_files": [
+          "locust/main.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-004",
+      "question": "What state change does the runner update method perform?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It assigns the requested state to the runner.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/runners.py",
+          "line_start": 198,
+          "line_end": 205
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/runners.py",
+          "substring": "def update_state(self, new_state: str) -> None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 1577,
+        "pr": 1580,
+        "changed_source_files": [
+          "locust/runners.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-005",
+      "question": "How does the Windows keyboard poller retrieve buffered key presses?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It peeks at console input events, stores key-down characters, and returns them from a deque.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/input_events.py",
+          "line_start": 67,
+          "line_end": 88
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/input_events.py",
+          "substring": "def poll(self):"
+        }
+      ],
+      "source_ref": {
+        "issue": 1654,
+        "pr": 1657,
+        "changed_source_files": [
+          "locust/input_events.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-006",
+      "question": "How does the web interface choose its WSGI server configuration when TLS files are available?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It supplies the certificate and key only when both are configured.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "locust/web.py",
+          "line_start": 646,
+          "line_end": 663
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/web.py",
+          "substring": "def start_server(self):"
+        }
+      ],
+      "source_ref": {
+        "issue": 1670,
+        "pr": 1671,
+        "changed_source_files": [
+          "locust/web.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-007",
+      "question": "How does the distributed master route a message received from a worker?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It dispatches the message according to its registered message type and worker identity.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/runners.py",
+          "line_start": 1018,
+          "line_end": 1193
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/runners.py",
+          "substring": "def handle_message(self, client_id: str, msg: Message) -> None:"
+        }
+      ],
+      "source_ref": {
+        "issue": 1718,
+        "pr": 1738,
+        "changed_source_files": [
+          "locust/runners.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-008",
+      "question": "How does a fast HTTP session turn a relative request path into a full URL?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It leaves absolute HTTP URLs unchanged and prefixes relative paths with the configured base URL.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/contrib/fasthttp.py",
+          "line_start": 156,
+          "line_end": 161
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/contrib/fasthttp.py",
+          "substring": "def _build_url(self, path: str) -> str:"
+        }
+      ],
+      "source_ref": {
+        "issue": 1810,
+        "pr": 1812,
+        "changed_source_files": [
+          "locust/contrib/fasthttp.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-009",
+      "question": "How does the web interface stop its running WSGI server?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It calls stop on the server instance.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "locust/web.py",
+          "line_start": 665,
+          "line_end": 669
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/web.py",
+          "substring": "def stop(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-010",
+      "question": "Why does creating a worker runner disable the response-time cache?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Worker nodes do not need the response-time cache, so it is disabled to save memory and CPU.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/env.py",
+          "line_start": 152,
+          "line_end": 166
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/env.py",
+          "substring": "def create_worker_runner(self, master_host: str, master_port: int) -> WorkerRunner:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-011",
+      "question": "Which parameters let an environment configure its web interface and optional TLS?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The method accepts host, port, base path, login, certificate, and key settings, among other UI options.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/env.py",
+          "line_start": 168,
+          "line_end": 209
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/env.py",
+          "substring": "def create_web_ui("
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-012",
+      "question": "How does the task decorator assign a weight when used without an explicit number?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The decorator uses a default weight of one when called without a numeric weight.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/user/task.py",
+          "line_start": 46,
+          "line_end": 46
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/user/task.py",
+          "substring": "def task(weight: TaskT) -> TaskT: ..."
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-013",
+      "question": "How does a dispatcher prepare a new distribution of users across workers?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It starts a dispatch iteration using the requested user classes, target counts, and spawn rate.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/dispatch.py",
+          "line_start": 185,
+          "line_end": 224
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/dispatch.py",
+          "substring": "def new_dispatch("
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-014",
+      "question": "How does a user wait between tasks?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The user applies its configured wait-time behavior between task executions.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "locust/user/users.py",
+          "line_start": 179,
+          "line_end": 189
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/user/users.py",
+          "substring": "def wait(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-015",
+      "question": "How does a task set select its next task?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It selects a task from the task set?s weighted task collection.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/user/task.py",
+          "line_start": 422,
+          "line_end": 431
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/user/task.py",
+          "substring": "def get_next_task(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-016",
+      "question": "How does a load-shape instance measure elapsed run time?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It subtracts the recorded start time from the current performance-counter time.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/shape.py",
+          "line_start": 45,
+          "line_end": 49
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/shape.py",
+          "substring": "def get_run_time(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-017",
+      "question": "What does a custom load shape return to control a test, and what does a None result mean?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "A tick returns user count and spawn rate, optionally selected user classes; None stops the run.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/shape.py",
+          "line_start": 58,
+          "line_end": 69
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/shape.py",
+          "substring": "def tick(self) -> tuple[int, float] | tuple[int, float, list[type[User]] | None] | None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-018",
+      "question": "What values are updated when a request is logged in the aggregate request statistics?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The request count, response-time distribution, response-time sum, and content length are updated.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/stats.py",
+          "line_start": 246,
+          "line_end": 248
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/stats.py",
+          "substring": "def log_request(self, method: str, name: str, response_time: int, content_length: int) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-019",
+      "question": "How does the statistics entry calculate a response-time percentile?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It computes a rank from the requested percentile and selects the corresponding response-time bucket.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "locust/stats.py",
+          "line_start": 603,
+          "line_end": 614
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/stats.py",
+          "substring": "def get_response_time_percentile(self, percent: float) -> int:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-020",
+      "question": "How does the custom argument parser report an invalid command-line value?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It raises the parser?s argument error rather than silently accepting invalid input.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/argument_parser.py",
+          "line_start": 54,
+          "line_end": 61
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/argument_parser.py",
+          "substring": "def error(self, message):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-021",
+      "question": "How does the duration parser convert a human-readable timespan into seconds?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It parses supported duration components and returns their total in seconds.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/argument_parser.py",
+          "line_start": 411,
+          "line_end": 415
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/argument_parser.py",
+          "substring": "def timespan(time_str) -> int:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-022",
+      "question": "How does the event hook invoke listeners registered for an event?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It invokes registered handlers with the event arguments and applies the hook?s dispatch behavior.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/event.py",
+          "line_start": 40,
+          "line_end": 52
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/event.py",
+          "substring": "def fire(self, *, reverse=False, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-023",
+      "question": "Which settings can the logging setup helper use to configure output?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It configures the logging level, optional log file, and logging format.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/log.py",
+          "line_start": 24,
+          "line_end": 79
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/log.py",
+          "substring": "def setup_logging(loglevel, logfile=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-024",
+      "question": "What base exception type do Locust-specific errors use?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "LocustError derives from Exception and is the base for Locust-specific failures.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/exception.py",
+          "line_start": 1,
+          "line_end": 2
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/exception.py",
+          "substring": "class LocustError(Exception):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-025",
+      "question": "How does an HTTP user initialize its client and host configuration?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It constructs the HTTP client for the environment and uses the user host and client configuration.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/user/users.py",
+          "line_start": 351,
+          "line_end": 368
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/user/users.py",
+          "substring": "def __init__(self, *args, **kwargs):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-026",
+      "question": "How does environment runner creation make a runner available to scheduling components?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The environment creates one runner, whose event hooks register listeners for runner activity.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/env.py",
+          "line_start": 116,
+          "line_end": 130
+        },
+        {
+          "file_path": "locust/event.py",
+          "line_start": 33,
+          "line_end": 35
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/env.py",
+          "substring": "def _create_runner("
+        },
+        {
+          "file_path": "locust/event.py",
+          "substring": "def add_listener(self, handler):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-027",
+      "question": "How does automatic startup connect a custom shape to the test runner?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Automatic startup uses the shape runner when a shape is present and the shape tick supplies its target load.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/shape.py",
+          "line_start": 58,
+          "line_end": 69
+        },
+        {
+          "file_path": "locust/main.py",
+          "line_start": 535,
+          "line_end": 584
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/shape.py",
+          "substring": "def tick(self) -> tuple[int, float] | tuple[int, float, list[type[User]] | None] | None:"
+        },
+        {
+          "file_path": "locust/main.py",
+          "substring": "def start_automatic_run():"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-028",
+      "question": "How do task weights and user initialization combine to select user tasks?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The decorator records a task weight and user initialization builds the task selection structure.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/user/task.py",
+          "line_start": 46,
+          "line_end": 46
+        },
+        {
+          "file_path": "locust/user/users.py",
+          "line_start": 136,
+          "line_end": 145
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/user/task.py",
+          "substring": "def task(weight: TaskT) -> TaskT: ..."
+        },
+        {
+          "file_path": "locust/user/users.py",
+          "substring": "def __init__(self, environment) -> None:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-029",
+      "question": "How do request logging and event measurement interact with reported request statistics?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Request events carry measurements that the statistics object records as request counts and response-time data.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/stats.py",
+          "line_start": 246,
+          "line_end": 248
+        },
+        {
+          "file_path": "locust/event.py",
+          "line_start": 55,
+          "line_end": 87
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/stats.py",
+          "substring": "def log_request(self, method: str, name: str, response_time: int, content_length: int) -> None:"
+        },
+        {
+          "file_path": "locust/event.py",
+          "substring": "def measure("
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-030",
+      "question": "How does the web UI server apply command-line options exposed for its configuration?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The UI starts with its host, port, and TLS settings, while parser helpers expose supported extra options to the UI.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "locust/web.py",
+          "line_start": 646,
+          "line_end": 663
+        },
+        {
+          "file_path": "locust/argument_parser.py",
+          "line_start": 938,
+          "line_end": 958
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "locust/web.py",
+          "substring": "def start_server(self):"
+        },
+        {
+          "file_path": "locust/argument_parser.py",
+          "substring": "def ui_extra_args_dict(args=None) -> dict[str, dict[str, Any]]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-031",
+      "question": "Where is the imaginary repoaccord_locust_absent_feature_31_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_31_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_31_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-032",
+      "question": "Where is the imaginary repoaccord_locust_absent_feature_32_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_32_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_32_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-033",
+      "question": "Where is the imaginary repoaccord_locust_absent_feature_33_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_33_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_33_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-034",
+      "question": "Where is the imaginary repoaccord_locust_absent_feature_34_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_34_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_34_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-035",
+      "question": "Which setting named repoaccord_locust_absent_feature_35_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_35_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_35_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-036",
+      "question": "Which setting named repoaccord_locust_absent_feature_36_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_36_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_36_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-037",
+      "question": "Which setting named repoaccord_locust_absent_feature_37_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_37_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_37_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-038",
+      "question": "Why does repoaccord_locust_absent_feature_38_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_38_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_38_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-039",
+      "question": "Why does repoaccord_locust_absent_feature_39_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_39_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_39_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "locust-040",
+      "question": "Why does repoaccord_locust_absent_feature_40_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_locust_absent_feature_40_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90",
+        "search_command": "git grep -n -F -- repoaccord_locust_absent_feature_40_zz d67bfacd96e83e70a95c23ac7b5da4ec7c61ae90 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}

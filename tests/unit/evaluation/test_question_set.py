@@ -145,7 +145,7 @@ def test_legacy_relevance_labels_are_derived_from_reviewed_span(tmp_path: Path) 
     [
         ("repo_id", "other", "repo_id does not match candidate"),
         ("pinned_sha", "b" * 40, "pinned_sha does not match candidate"),
-        ("dataset_version", "2.0", "dataset_version must be"),
+        ("dataset_version", "2.0-draft", "dataset_version must be"),
         ("review_status", "not reviewed", "review_status must be"),
         ("reviewed_on", "not-a-date", "reviewed_on must be"),
     ],
@@ -255,7 +255,7 @@ def test_rejects_invalid_mined_source_ref_and_evidence_length(tmp_path: Path) ->
     assert any("evidence must be text of at most 300" in error for error in errors)
 
 
-def test_llm_only_review_requires_each_question_status_and_snapshot(tmp_path: Path) -> None:
+def test_llm_only_review_requires_each_question_status_without_snapshot(tmp_path: Path) -> None:
     root = tmp_path / "snapshot"
     data = _valid_set(root)
     for question in data["questions"]:
@@ -269,6 +269,26 @@ def test_llm_only_review_requires_each_question_status_and_snapshot(tmp_path: Pa
             )
     data["review_status"] = LLM_ONLY_REVIEW_STATUS
     data.pop("reviewed_on")
+    assert (
+        validate_question_set(
+            data,
+            repo_id="candidate",
+            pinned_sha=PINNED_SHA,
+            required_review_status=LLM_ONLY_REVIEW_STATUS,
+        )
+        == []
+    )
+    assert (
+        validate_question_set(
+            data,
+            repo_id="candidate",
+            pinned_sha=PINNED_SHA,
+            snapshot_root=tmp_path / "missing-snapshot",
+            required_review_status=LLM_ONLY_REVIEW_STATUS,
+        )
+        == []
+    )
+
     assert (
         validate_question_set(
             data,

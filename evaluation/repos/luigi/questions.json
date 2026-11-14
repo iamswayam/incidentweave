@@ -1,0 +1,1037 @@
+{
+  "repo_id": "luigi",
+  "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+  "dataset_version": "2.0",
+  "review_status": "llm_only_no_human_review",
+  "counts": {
+    "total": 40,
+    "answerable": 30,
+    "unanswerable": 10
+  },
+  "questions": [
+    {
+      "id": "luigi-001",
+      "question": "How does the server command pass a requested Unix-domain socket to the foreground scheduler server?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The foreground path calls the server with the configured Unix socket, address, and port.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/cmdline.py",
+          "line_start": 12,
+          "line_end": 38
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/cmdline.py",
+          "substring": "def luigid(argv=sys.argv[1:]):"
+        }
+      ],
+      "source_ref": {
+        "issue": 1437,
+        "pr": 1447,
+        "changed_source_files": [
+          "luigi/cmdline.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-002",
+      "question": "How does the S3 configuration helper remove values inherited unchanged from defaults?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It returns section values that are absent from defaults or differ from the default value.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/contrib/s3.py",
+          "line_start": 467,
+          "line_end": 483
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/contrib/s3.py",
+          "substring": "def _get_s3_config(key=None):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2180,
+        "pr": 2182,
+        "changed_source_files": [
+          "luigi/contrib/s3.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-003",
+      "question": "What SQLAlchemy type stores each tracked task parameter value?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The parameter value is stored in a Text column.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/db_task_history.py",
+          "line_start": 201,
+          "line_end": 212
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/db_task_history.py",
+          "substring": "class TaskParameter(Base):  # type: ignore"
+        }
+      ],
+      "source_ref": {
+        "issue": 2240,
+        "pr": 2404,
+        "changed_source_files": [
+          "luigi/db_task_history.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-004",
+      "question": "How does scheduler initialization choose between an injected history object and configured task history?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "An injected implementation takes precedence; otherwise configured history selects the database implementation, with a no-op fallback.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/scheduler.py",
+          "line_start": 682,
+          "line_end": 708
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/scheduler.py",
+          "substring": "def __init__(self, config=None, resources=None, task_history_impl=None, **kwargs):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2507,
+        "pr": 2509,
+        "changed_source_files": [
+          "luigi/scheduler.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-005",
+      "question": "What transaction behavior does the database-history session context manager use when it creates its own session?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It rolls back and re-raises on an exception, and commits after a successful block.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/db_task_history.py",
+          "line_start": 66,
+          "line_end": 77
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/db_task_history.py",
+          "substring": "def _session(self, session=None):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2563,
+        "pr": 2564,
+        "changed_source_files": [
+          "luigi/db_task_history.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-006",
+      "question": "Which two fields are written to the Redis marker when an update is marked complete?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The marker stores the update identifier and the current ISO-formatted date, then applies expiry when configured.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/contrib/redis_store.py",
+          "line_start": 81,
+          "line_end": 92
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/contrib/redis_store.py",
+          "substring": "def touch(self):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2721,
+        "pr": 2722,
+        "changed_source_files": [
+          "luigi/contrib/redis_store.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-007",
+      "question": "Which Kubernetes authentication modes are accepted when initializing a job task?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "The initializer accepts kubeconfig and service-account modes and raises ValueError for any other value.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/contrib/kubernetes.py",
+          "line_start": 65,
+          "line_end": 76
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/contrib/kubernetes.py",
+          "substring": "def _init_kubernetes(self):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2570,
+        "pr": 2813,
+        "changed_source_files": [
+          "luigi/contrib/kubernetes.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-008",
+      "question": "How does configuration interpolation look up an environment placeholder and report a missing value?",
+      "answerable": true,
+      "source": "mined",
+      "evidence": "It reads the named variable and raises a specialized interpolation error when it is absent.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/configuration/cfg_parser.py",
+          "line_start": 61,
+          "line_end": 78
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/configuration/cfg_parser.py",
+          "substring": "def _interpolate_env(self, option, section, value):"
+        }
+      ],
+      "source_ref": {
+        "issue": 2756,
+        "pr": 2823,
+        "changed_source_files": [
+          "luigi/__init__.py",
+          "luigi/configuration/cfg_parser.py"
+        ]
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-009",
+      "question": "What does the base task return from its output method when a subclass has not provided outputs?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The base implementation returns an empty list; subclasses provide their output targets.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/task.py",
+          "line_start": 624,
+          "line_end": 640
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/task.py",
+          "substring": "def output(self) -> FlattenableItems[\"Target\"]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-010",
+      "question": "How does a wrapper task decide whether all of its requirements are complete?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It delegates to a custom completion callback when supplied, otherwise checks every flattened requirement.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/task.py",
+          "line_start": 939,
+          "line_end": 940
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/task.py",
+          "substring": "def complete(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-011",
+      "question": "In what order does a parameter search command-line, configuration, legacy configuration, and default values?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The value iterator checks command-line input, task configuration, a deprecated config path, and finally the declared default.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/parameter.py",
+          "line_start": 306,
+          "line_end": 325
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/parameter.py",
+          "substring": "def _value_iterator(self, task_name, param_name):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-012",
+      "question": "What does the significant flag control for a task parameter?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The flag determines whether parameter values distinguish otherwise equal task identifiers.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/parameter.py",
+          "line_start": 205,
+          "line_end": 265
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/parameter.py",
+          "substring": "def __init__("
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-013",
+      "question": "What is the default dependency value returned by the base task requires method?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The default requires implementation reports no dependencies.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/task.py",
+          "line_start": 642,
+          "line_end": 654
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/task.py",
+          "substring": "def requires(self) -> FlattenableItems[\"Task\"]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-014",
+      "question": "How does a task subprocess communicate dynamically discovered dependencies to its worker?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It evaluates task requirements and sends dependency information through the worker communication queue.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/worker.py",
+          "line_start": 144,
+          "line_end": 170
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/worker.py",
+          "substring": "def _run_get_new_deps(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-015",
+      "question": "How does the gzip writer translate an optional compression level into command arguments?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It starts with the gzip command and appends a dash-prefixed integer level only when configured.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/format.py",
+          "line_start": 467,
+          "line_end": 471
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/format.py",
+          "substring": "def pipe_writer(self, output_pipe):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-016",
+      "question": "Which format object is selected as the default for targets?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The default format is the module-level Text format object.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/format.py",
+          "line_start": 494,
+          "line_end": 495
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/format.py",
+          "substring": "def get_default_format() -> Format:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-017",
+      "question": "How does command execution choose between a local scheduler and a remote scheduler?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It creates a local scheduler when local mode is enabled; otherwise it uses the configured remote URL or host and port.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/interface.py",
+          "line_start": 96,
+          "line_end": 143
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/interface.py",
+          "substring": "def _schedule_and_run(tasks, worker_scheduler_factory=None, override_defaults=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-018",
+      "question": "How does the API server bind its listener when a Unix socket path is supplied?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "A supplied Unix socket path is bound directly; otherwise TCP sockets are bound from the port and address.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/server.py",
+          "line_start": 318,
+          "line_end": 328
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/server.py",
+          "substring": "def _init_api(scheduler, api_port=None, address=None, unix_socket=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-019",
+      "question": "What periodic maintenance does the server schedule after loading scheduler state?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It starts a periodic callback that prunes the work DAG every 60 seconds.",
+      "type": "direct",
+      "category": "direct",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/server.py",
+          "line_start": 331,
+          "line_end": 371
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/server.py",
+          "substring": "def run(api_port=8082, address=None, unix_socket=None, scheduler=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-020",
+      "question": "How does the run-result string representation expose its summary?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The string form presents the run result summary text.",
+      "type": "paraphrase",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/execution_summary.py",
+          "line_start": 87,
+          "line_end": 88
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/execution_summary.py",
+          "substring": "def __str__(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-021",
+      "question": "Under what condition does the email subsystem report that notifications are disabled?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It checks configured notification options and returns the reason when no supported delivery method is enabled.",
+      "type": "config-env",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/notifications.py",
+          "line_start": 250,
+          "line_end": 258
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/notifications.py",
+          "substring": "def _email_disabled_reason():"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-022",
+      "question": "How does the notification dispatcher select an email delivery backend?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It dispatches to the configured email service implementation using the configured sender and recipients.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/notifications.py",
+          "line_start": 289,
+          "line_end": 324
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/notifications.py",
+          "substring": "def send_email(subject, message, sender, recipients, images_png=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-023",
+      "question": "What happens to a temporary target path when the context exits without an exception?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The context creates a temporary path and renames it to the final target after a successful block.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/target.py",
+          "line_start": 269,
+          "line_end": 304
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/target.py",
+          "substring": "def temporary_path(self) -> Generator[str, None, None]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-024",
+      "question": "How does a local target ensure its parent directory exists before writing?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It normalizes the path, creates its parent directory, and tolerates an OSError from directory creation.",
+      "type": "error-message",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/local_target.py",
+          "line_start": 146,
+          "line_end": 156
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/local_target.py",
+          "substring": "def makedirs(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-025",
+      "question": "How does a Redis target determine whether its completion marker exists?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "It queries the marker and checks whether the stored update identifier matches.",
+      "type": "how-it-works",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/contrib/redis_store.py",
+          "line_start": 94,
+          "line_end": 98
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/contrib/redis_store.py",
+          "substring": "def exists(self):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-026",
+      "question": "How do parameter lookup and environment interpolation combine when a config value references a process variable?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Parameter lookup reads its configured value, and interpolation substitutes referenced variables or raises when one is missing.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/parameter.py",
+          "line_start": 306,
+          "line_end": 325
+        },
+        {
+          "file_path": "luigi/configuration/cfg_parser.py",
+          "line_start": 61,
+          "line_end": 78
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/parameter.py",
+          "substring": "def _value_iterator(self, task_name, param_name):"
+        },
+        {
+          "file_path": "luigi/configuration/cfg_parser.py",
+          "substring": "def _interpolate_env(self, option, section, value):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-027",
+      "question": "How does a local target expose readable content through the filesystem-target abstraction?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The base target checks resource existence through its filesystem, and a local target opens the resource using its format wrapper.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/target.py",
+          "line_start": 249,
+          "line_end": 258
+        },
+        {
+          "file_path": "luigi/local_target.py",
+          "line_start": 158,
+          "line_end": 169
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/target.py",
+          "substring": "def exists(self) -> bool:"
+        },
+        {
+          "file_path": "luigi/local_target.py",
+          "substring": "def open(self, mode=\"r\"):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-028",
+      "question": "How do scheduler setup and database history sessions handle recorded task history?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Scheduler setup selects the history implementation, whose session commits successful work and rolls back failures.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/scheduler.py",
+          "line_start": 682,
+          "line_end": 708
+        },
+        {
+          "file_path": "luigi/db_task_history.py",
+          "line_start": 66,
+          "line_end": 77
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/scheduler.py",
+          "substring": "def __init__(self, config=None, resources=None, task_history_impl=None, **kwargs):"
+        },
+        {
+          "file_path": "luigi/db_task_history.py",
+          "substring": "def _session(self, session=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-029",
+      "question": "How does the command-line server connect its Unix-socket option to the API listener?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "The command forwards the socket path, and the server binds a Unix socket instead of TCP listeners.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/cmdline.py",
+          "line_start": 12,
+          "line_end": 38
+        },
+        {
+          "file_path": "luigi/server.py",
+          "line_start": 318,
+          "line_end": 328
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/cmdline.py",
+          "substring": "def luigid(argv=sys.argv[1:]):"
+        },
+        {
+          "file_path": "luigi/server.py",
+          "substring": "def _init_api(scheduler, api_port=None, address=None, unix_socket=None):"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-030",
+      "question": "How does a local target combine write mode with temporary-file publication?",
+      "answerable": true,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "Local writes use the target format and atomic handling, while the temporary-path context publishes by renaming after success.",
+      "type": "multi-file",
+      "category": "paraphrased",
+      "relevant_spans": [
+        {
+          "file_path": "luigi/local_target.py",
+          "line_start": 158,
+          "line_end": 169
+        },
+        {
+          "file_path": "luigi/target.py",
+          "line_start": 269,
+          "line_end": 304
+        }
+      ],
+      "relevant": [
+        {
+          "file_path": "luigi/local_target.py",
+          "substring": "def open(self, mode=\"r\"):"
+        },
+        {
+          "file_path": "luigi/target.py",
+          "substring": "def temporary_path(self) -> Generator[str, None, None]:"
+        }
+      ],
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-031",
+      "question": "Where is the imaginary repoaccord_luigi_absent_feature_31_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_31_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_31_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-032",
+      "question": "Where is the imaginary repoaccord_luigi_absent_feature_32_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_32_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_32_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-033",
+      "question": "Where is the imaginary repoaccord_luigi_absent_feature_33_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_33_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_33_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-034",
+      "question": "Where is the imaginary repoaccord_luigi_absent_feature_34_zz capability implemented?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "far",
+      "category": "unanswerable_far",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_34_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_34_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-035",
+      "question": "Which setting named repoaccord_luigi_absent_feature_35_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_35_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_35_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-036",
+      "question": "Which setting named repoaccord_luigi_absent_feature_36_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_36_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_36_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-037",
+      "question": "Which setting named repoaccord_luigi_absent_feature_37_zz configures the existing runtime behavior?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "near-miss",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_37_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_37_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-038",
+      "question": "Why does repoaccord_luigi_absent_feature_38_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_38_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_38_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-039",
+      "question": "Why does repoaccord_luigi_absent_feature_39_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_39_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_39_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    },
+    {
+      "id": "luigi-040",
+      "question": "Why does repoaccord_luigi_absent_feature_40_zz automatically retry the operation indefinitely?",
+      "answerable": false,
+      "source": "drafted",
+      "drafting_model": "gpt-6-luna",
+      "evidence": "",
+      "kind": "false-premise",
+      "category": "unanswerable_near",
+      "relevant": [],
+      "relevant_spans": [],
+      "absence_check": {
+        "terms": [
+          "repoaccord_luigi_absent_feature_40_zz"
+        ],
+        "hits": 0,
+        "pinned_sha": "f5feb7a4655ad73ef56f0ab04d7903ab43b63e12",
+        "search_command": "git grep -n -F -- repoaccord_luigi_absent_feature_40_zz f5feb7a4655ad73ef56f0ab04d7903ab43b63e12 -- \"*.py\""
+      },
+      "review_status": "llm_only_no_human_review"
+    }
+  ]
+}

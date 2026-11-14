@@ -22,6 +22,7 @@ ANSWERABLE_TYPES = {
 UNANSWERABLE_KINDS = {"far", "near-miss", "false-premise"}
 SOURCES = {"mined", "drafted", "human"}
 LLM_ONLY_REVIEW_STATUS = "llm_only_no_human_review"
+DATASET_VERSION = "2.0"
 TARGETS = {
     "full": {
         "answerable": 30,
@@ -105,7 +106,7 @@ def build_question_set(
     result: dict[str, Any] = {
         "repo_id": repo_id,
         "pinned_sha": pinned_sha,
-        "dataset_version": "2.0-draft",
+        "dataset_version": DATASET_VERSION,
         "review_status": review_status,
         "counts": question_counts(records),
         "questions": records,
@@ -206,9 +207,11 @@ def validate_question_set(
     targets: str = "full",
     required_review_status: str = "maintainer reviewed",
 ) -> list[str]:
-    """Return all v2 schema, quota, leakage, secret, and span validation errors."""
+    """Validate v2 structure and source-backed checks when a pinned checkout exists."""
 
     errors: list[str] = []
+    if snapshot_root is not None and not snapshot_root.is_dir():
+        snapshot_root = None
     target = TARGETS.get(targets)
     if target is None:
         return [f"unknown question targets {targets!r}"]
@@ -223,16 +226,14 @@ def validate_question_set(
         errors.append("pinned_sha must be a non-empty string")
     elif pinned_sha is not None and set_sha != pinned_sha:
         errors.append("pinned_sha does not match candidate")
-    if data.get("dataset_version") != "2.0-draft":
-        errors.append("dataset_version must be '2.0-draft'")
+    if data.get("dataset_version") != DATASET_VERSION:
+        errors.append(f"dataset_version must be {DATASET_VERSION!r}")
     if data.get("review_status") != required_review_status:
         errors.append(f"review_status must be {required_review_status!r}")
     reviewed_on = data.get("reviewed_on")
     if required_review_status == LLM_ONLY_REVIEW_STATUS:
         if "reviewed_on" in data:
             errors.append("reviewed_on is not valid for LLM-only question sets")
-        if snapshot_root is None:
-            errors.append("snapshot_root is required for LLM-only question validation")
     elif not isinstance(reviewed_on, str):
         errors.append("reviewed_on must be an ISO date")
     else:

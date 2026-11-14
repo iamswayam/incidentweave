@@ -1,4 +1,4 @@
-"""Mine issue-linked source changes for the rq and kopf pilot sets."""
+"""Mine issue-linked source changes for registered v2 repositories."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from evaluation.source_paths import is_source_python_path, is_test_path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "evaluation" / "manifest.json"
 CACHE_ROOT = ROOT / "evaluation" / "cache" / "pilot_candidates"
-PILOT_REPOSITORIES = {"rq", "kopf"}
+PILOT_REPOSITORIES = {"rq", "kopf", "luigi", "client_python", "locust", "docker_py", "uvicorn"}
 EMAIL_PATTERN = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
 
 
