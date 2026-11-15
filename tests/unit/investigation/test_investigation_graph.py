@@ -65,6 +65,36 @@ def sufficient_result() -> dict[str, object]:
     }
 
 
+@pytest.mark.anyio
+async def test_graph_forwards_debug_to_hybrid_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    debug_values: list[bool] = []
+
+    async def fake_hybrid_search(
+        session: object,
+        repository_id: int,
+        query_text: str,
+        query_embedding: list[float],
+        limit: int,
+        debug: bool = False,
+    ) -> list[dict[str, object]]:
+        debug_values.append(debug)
+        return []
+
+    async def unexpected_generation(prompt: str) -> tuple[Mapping[str, object], int]:
+        raise AssertionError("Generation must not run after insufficient evidence")
+
+    monkeypatch.setattr(graph_module, "AsyncSessionLocal", FakeSessionContext)
+    monkeypatch.setattr(graph_module, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(graph_module, "generate_investigation", unexpected_generation)
+
+    state = initial_state()
+    state["debug"] = True
+    result = await create_investigation_graph(calibrate_confidence).ainvoke(state)
+
+    assert result["diagnosis"] == "INSUFFICIENT_EVIDENCE"
+    assert debug_values == [True, True]
+
+
 def response_payload() -> dict[str, object]:
     return {
         "candidates": [

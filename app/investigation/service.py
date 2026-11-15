@@ -6,6 +6,7 @@ import asyncio
 import logging
 import sys
 from time import perf_counter
+from typing import Literal
 from uuid import uuid4
 
 from sqlalchemy import select  # noqa: E402
@@ -77,9 +78,13 @@ _logger = logging.getLogger(__name__)
 
 def _content_free_evidence(
     retrieval_results: list[dict[str, object]],
+    *,
+    debug: bool = False,
+    source_fallback: Literal["vector", "fulltext", "both"] | None = None,
 ) -> list[dict[str, object]]:
-    return [
-        {
+    evidence: list[dict[str, object]] = []
+    for rank, item in enumerate(retrieval_results, start=1):
+        evidence_item: dict[str, object] = {
             "chunk_id": str(item.get("id") or ""),
             "file_path": str(item.get("file_path") or ""),
             "start_line": item.get("line_start"),
@@ -88,8 +93,14 @@ def _content_free_evidence(
             "rrf_score": item.get("rrf_score"),
             "vector_score": item.get("vector_score"),
         }
-        for rank, item in enumerate(retrieval_results, start=1)
-    ]
+        if debug:
+            source = item.get("source", source_fallback)
+            if not isinstance(source, str) or source not in ("vector", "fulltext", "both"):
+                raise ValueError("Debug retrieval results must identify their source.")
+            evidence_item["fts_score"] = item.get("fts_score")
+            evidence_item["source"] = source
+        evidence.append(evidence_item)
+    return evidence
 
 
 def _query_embedding_failure_trace(
@@ -189,6 +200,7 @@ async def investigate_repository(
     persist: bool = True,
     *,
     temperature: float | None = None,
+    debug: bool = False,
 ) -> dict[str, object]:
     """Run an investigation with a stable provider-usage correlation ID."""
 
@@ -201,6 +213,7 @@ async def investigate_repository(
             limit,
             persist,
             temperature=temperature,
+            debug=debug,
             correlation_id=correlation_id,
         )
     finally:
@@ -214,6 +227,7 @@ async def _investigate_repository(
     persist: bool = True,
     *,
     temperature: float | None = None,
+    debug: bool = False,
     correlation_id: str,
 ) -> dict[str, object]:
     """Perform the end-to-end grounded investigation flow for one query."""
@@ -347,6 +361,7 @@ async def _investigate_repository(
                         "calibration_note": "",
                         "confidence_calibrated": False,
                         "evidence_source": "hybrid",
+                        "debug": debug,
                         "tool_calls": [],
                         "temperature": temperature,
                     }
@@ -420,6 +435,15 @@ async def _investigate_repository(
     if result.get("outcome") == OUTCOME_EMBEDDING_UNAVAILABLE:
         retrieval_results = result["retrieval_results"]
         evidence = _content_free_evidence(retrieval_results)
+        response_evidence = (
+            _content_free_evidence(
+                retrieval_results,
+                debug=True,
+                source_fallback="fulltext",
+            )
+            if debug
+            else evidence
+        )
         failure_trace = result["generation_trace"]
         tool_call_trace = content_free_tool_call_trace(result["tool_calls"])
         replay = ReplayRecord(
@@ -460,7 +484,7 @@ async def _investigate_repository(
             "unavailable_answer": True,
             "degraded": True,
             "degraded_reason": "embedding_unavailable",
-            "evidence": evidence,
+            "evidence": response_evidence,
             "cited_chunk_ids": [],
             "retrieval_results": retrieval_results,
             "evidence_check": result["evidence_check"],
@@ -485,6 +509,9 @@ async def _investigate_repository(
             item.get("id") for item in result["retrieval_results"] if item.get("id") is not None
         ]
         evidence = _content_free_evidence(retrieval_results)
+        response_evidence = (
+            _content_free_evidence(retrieval_results, debug=True) if debug else evidence
+        )
         generation_trace = {
             **result["generation_trace"],
             "cache": cache_trace,
@@ -530,7 +557,7 @@ async def _investigate_repository(
             "unavailable_answer": True,
             "degraded": True,
             "degraded_reason": "generation_unavailable",
-            "evidence": evidence,
+            "evidence": response_evidence,
             "cited_chunk_ids": [],
             "retrieval_results": retrieval_results,
             "evidence_check": result["evidence_check"],
@@ -575,7 +602,7 @@ async def _investigate_repository(
                     replay=replay,
                 )
             investigation_id = investigation.id
-        return {
+        response = {
             "repository": repo_name,
             "investigation_id": investigation_id,
             "query": query_text,
@@ -598,6 +625,13 @@ async def _investigate_repository(
                 result.get("prompt"), result.get("response_payload")
             ),
         }
+        if debug:
+            retrieval_results = result.get(
+                "retrieved_before_budget",
+                result["retrieval_results"],
+            )
+            response["evidence"] = _content_free_evidence(retrieval_results, debug=True)
+        return response
 
     investigation_response = result["diagnosis"]
     investigation_confidence = result["confidence"]
@@ -658,7 +692,7 @@ async def _investigate_repository(
         investigation_confidence = investigation.confidence
         investigation_id = investigation.id
 
-    return {
+    response = {
         "repository": repo_name,
         "investigation_id": investigation_id,
         "query": query_text,
@@ -685,6 +719,13 @@ async def _investigate_repository(
             result.get("prompt"), result.get("response_payload")
         ),
     }
+    if debug:
+        retrieval_results = result.get(
+            "retrieved_before_budget",
+            result["retrieval_results"],
+        )
+        response["evidence"] = _content_free_evidence(retrieval_results, debug=True)
+    return response
 
 
 def _current_thresholds() -> dict[str, object]:

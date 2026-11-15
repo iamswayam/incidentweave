@@ -352,15 +352,16 @@ def test_post_investigation_success_response_shape(
     api_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[tuple[str, str, int, bool]] = []
+    calls: list[tuple[str, str, int, bool, bool]] = []
 
     async def fake_investigate(
         repository_name: str,
         query: str,
         limit: int,
         persist: bool,
+        debug: bool = False,
     ) -> dict[str, object]:
-        calls.append((repository_name, query, limit, persist))
+        calls.append((repository_name, query, limit, persist, debug))
         return sufficient_pipeline_result()
 
     monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
@@ -393,7 +394,89 @@ def test_post_investigation_success_response_shape(
     assert body["degraded"] is False
     assert body["degraded_reason"] is None
     assert body["evidence"] == []
-    assert calls == [("incidentweave-eval", "What chunk size is configured?", 5, True)]
+    assert calls == [("incidentweave-eval", "What chunk size is configured?", 5, True, False)]
+
+
+def test_post_investigation_debug_mode_populates_evidence(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evidence = [
+        {
+            "chunk_id": "7",
+            "file_path": "app/ingestion.py",
+            "start_line": 20,
+            "end_line": 35,
+            "rank": 1,
+            "rrf_score": 0.04,
+            "vector_score": 0.2,
+            "fts_score": 0.7,
+            "source": "both",
+        }
+    ]
+    debug_values: list[bool] = []
+
+    async def fake_investigate(
+        repository_name: str,
+        query: str,
+        limit: int,
+        persist: bool,
+        debug: bool = False,
+    ) -> dict[str, object]:
+        debug_values.append(debug)
+        return {**sufficient_pipeline_result(), "evidence": evidence if debug else []}
+
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={
+            "repository_name": "incidentweave-eval",
+            "query": "What does the ingestion pipeline do?",
+            "debug": True,
+        },
+    )
+
+    assert response.status_code == 200
+    response_evidence = response.json()["evidence"]
+    assert response_evidence == evidence
+    assert response_evidence
+    assert all("fts_score" in item and "source" in item for item in response_evidence)
+    assert debug_values == [True]
+
+
+def test_post_investigation_debug_false_does_not_change_evidence(
+    api_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    debug_values: list[bool] = []
+
+    async def fake_investigate(
+        repository_name: str,
+        query: str,
+        limit: int,
+        persist: bool,
+        debug: bool = False,
+    ) -> dict[str, object]:
+        debug_values.append(debug)
+        return sufficient_pipeline_result()
+
+    monkeypatch.setattr(api_module, "investigate_repository", fake_investigate)
+
+    response = api_client.post(
+        "/investigations",
+        headers=HEADERS,
+        json={
+            "repository_name": "incidentweave-eval",
+            "query": "What does the ingestion pipeline do?",
+            "debug": False,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["evidence"] == []
+    assert debug_values == [False]
 
 
 def test_post_response_omits_legacy_confidence_fields(
@@ -562,7 +645,9 @@ def test_post_maximum_limit_and_query_length_pass_validation(
         query: str,
         limit: int,
         persist: bool,
+        debug: bool = False,
     ) -> dict[str, object]:
+        del limit, persist, debug
         result = sufficient_pipeline_result()
         result["repository"] = repository_name
         result["query"] = query

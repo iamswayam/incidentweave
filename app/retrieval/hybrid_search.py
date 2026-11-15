@@ -15,6 +15,7 @@ async def hybrid_search(
     *,
     fulltext_query_text: str | None = None,
     searchable_text_version: str | None = None,
+    debug: bool = False,
 ) -> list[dict[str, object]]:
     """Fuse vector and FTS results using reciprocal rank fusion (RRF)."""
 
@@ -56,31 +57,37 @@ async def hybrid_search(
         if fts_rank is not None:
             rrf_score += 1 / (60 + fts_rank)
 
-        fused.append(
-            {
-                "id": chunk_id,
-                "repository_id": repository_id,
-                "file_path": (
-                    vector_result_by_id.get(chunk_id, {}).get("file_path")
-                    or fts_result_by_id.get(chunk_id, {}).get("file_path")
-                ),
-                "line_start": (
-                    vector_result_by_id.get(chunk_id, {}).get("line_start")
-                    or fts_result_by_id.get(chunk_id, {}).get("line_start")
-                ),
-                "line_end": (
-                    vector_result_by_id.get(chunk_id, {}).get("line_end")
-                    or fts_result_by_id.get(chunk_id, {}).get("line_end")
-                ),
-                "content": (
-                    vector_result_by_id.get(chunk_id, {}).get("content")
-                    or fts_result_by_id.get(chunk_id, {}).get("content")
-                ),
-                "vector_score": vector_result_by_id.get(chunk_id, {}).get("distance"),
-                "fts_score": fts_result_by_id.get(chunk_id, {}).get("score"),
-                "rrf_score": rrf_score,
-            }
-        )
+        fused_result: dict[str, object] = {
+            "id": chunk_id,
+            "repository_id": repository_id,
+            "file_path": (
+                vector_result_by_id.get(chunk_id, {}).get("file_path")
+                or fts_result_by_id.get(chunk_id, {}).get("file_path")
+            ),
+            "line_start": (
+                vector_result_by_id.get(chunk_id, {}).get("line_start")
+                or fts_result_by_id.get(chunk_id, {}).get("line_start")
+            ),
+            "line_end": (
+                vector_result_by_id.get(chunk_id, {}).get("line_end")
+                or fts_result_by_id.get(chunk_id, {}).get("line_end")
+            ),
+            "content": (
+                vector_result_by_id.get(chunk_id, {}).get("content")
+                or fts_result_by_id.get(chunk_id, {}).get("content")
+            ),
+            "vector_score": vector_result_by_id.get(chunk_id, {}).get("distance"),
+            "fts_score": fts_result_by_id.get(chunk_id, {}).get("score"),
+            "rrf_score": rrf_score,
+        }
+        if debug:
+            if vector_rank is not None and fts_rank is not None:
+                fused_result["source"] = "both"
+            elif vector_rank is not None:
+                fused_result["source"] = "vector"
+            else:
+                fused_result["source"] = "fulltext"
+        fused.append(fused_result)
 
     fused.sort(
         key=lambda item: (

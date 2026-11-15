@@ -41,6 +41,7 @@ class InvestigationState(TypedDict):
     evidence_source: str
     tool_calls: list[dict[str, object]]
     temperature: NotRequired[float | None]
+    debug: NotRequired[bool]
     prompt: NotRequired[str]
     raw_response: NotRequired[str]
     response_payload: NotRequired[Mapping[str, object]]
@@ -67,13 +68,23 @@ def create_investigation_graph(calibrate_confidence: ConfidenceCalibrator):
 
     async def retrieve(state: InvestigationState) -> dict[str, object]:
         async with AsyncSessionLocal() as session:
-            results = await hybrid_search(
-                session,
-                state["repository_id"],
-                state["query"],
-                state["query_embedding"],
-                limit=state["search_limit"],
-            )
+            if state.get("debug", False):
+                results = await hybrid_search(
+                    session,
+                    state["repository_id"],
+                    state["query"],
+                    state["query_embedding"],
+                    limit=state["search_limit"],
+                    debug=True,
+                )
+            else:
+                results = await hybrid_search(
+                    session,
+                    state["repository_id"],
+                    state["query"],
+                    state["query_embedding"],
+                    limit=state["search_limit"],
+                )
         return {
             "retrieval_results": results,
             "retrieved_before_budget": results,

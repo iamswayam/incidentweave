@@ -115,6 +115,121 @@ async def test_investigate_repository_accepts_limit_bounds_without_external_serv
 
 
 @pytest.mark.anyio
+async def test_debug_investigation_exposes_raw_retrieval_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    candidates = [
+        {
+            "id": 9,
+            "file_path": "app/ingestion.py",
+            "line_start": 3,
+            "line_end": 8,
+            "rrf_score": 0.04,
+            "vector_score": 0.3,
+            "fts_score": 0.5,
+            "source": "both",
+            "content": "private source text",
+        },
+        {
+            "id": 10,
+            "file_path": "app/api.py",
+            "line_start": 12,
+            "line_end": 16,
+            "rrf_score": 0.02,
+            "vector_score": 0.4,
+            "fts_score": None,
+            "source": "vector",
+            "content": "another private chunk",
+        },
+    ]
+
+    class DebugGraph:
+        state: dict[str, Any] | None = None
+
+        async def ainvoke(self, state: dict[str, Any]) -> dict[str, Any]:
+            self.state = state
+            return {
+                "evidence_check": {"is_sufficient": True},
+                "response_payload": {"candidates": []},
+                "diagnosis": "The pipeline ingests repository files.",
+                "confidence": "medium",
+                "cited_chunk_ids": ["9"],
+                "retrieval_results": [candidates[0]],
+                "retrieved_before_budget": candidates,
+                "model": "test-model",
+                "latency_ms": 1,
+                "retry_used": False,
+                "confidence_calibrated": False,
+                "calibration_note": "",
+                "tool_calls": [],
+                "prompt": "test prompt",
+                "claims": [],
+                "uncertainty_note": "",
+                "submitted_citation_count": 0,
+                "valid_citation_count": 0,
+                "citation_validity_rate": None,
+            }
+
+    fake_graph = DebugGraph()
+    monkeypatch.setattr(investigate_module, "AsyncSessionLocal", FakeSessionContext)
+
+    async def fake_embed_text(query: str) -> list[float]:
+        return [0.1, 0.2]
+
+    monkeypatch.setattr(investigate_module, "embed_text", fake_embed_text)
+    monkeypatch.setattr(
+        investigate_module,
+        "_lookup_query_embedding_cache",
+        async_none_cache_miss,
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "_store_query_embedding_cache",
+        async_noop_cache_write,
+    )
+    monkeypatch.setattr(
+        investigate_module,
+        "create_investigation_graph",
+        lambda _calibrator: fake_graph,
+    )
+
+    result = await investigate_module.investigate_repository(
+        "test-repo",
+        "question",
+        persist=False,
+        debug=True,
+    )
+
+    assert fake_graph.state is not None
+    assert fake_graph.state["debug"] is True
+    assert result["evidence"] == [
+        {
+            "chunk_id": "9",
+            "file_path": "app/ingestion.py",
+            "start_line": 3,
+            "end_line": 8,
+            "rank": 1,
+            "rrf_score": 0.04,
+            "vector_score": 0.3,
+            "fts_score": 0.5,
+            "source": "both",
+        },
+        {
+            "chunk_id": "10",
+            "file_path": "app/api.py",
+            "start_line": 12,
+            "end_line": 16,
+            "rank": 2,
+            "rrf_score": 0.02,
+            "vector_score": 0.4,
+            "fts_score": None,
+            "source": "vector",
+        },
+    ]
+    assert "private source text" not in repr(result["evidence"])
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("persist", [True, False])
 async def test_investigate_repository_persists_guard_refusal_when_requested(
     monkeypatch: pytest.MonkeyPatch,

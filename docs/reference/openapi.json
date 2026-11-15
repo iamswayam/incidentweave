@@ -36,6 +36,17 @@
             "title": "File Path",
             "type": "string"
           },
+          "fts_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fts Score"
+          },
           "rank": {
             "title": "Rank",
             "type": "integer"
@@ -50,6 +61,22 @@
               }
             ],
             "title": "Rrf Score"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "vector",
+                  "fulltext",
+                  "both"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
           },
           "start_line": {
             "anyOf": [
@@ -89,6 +116,11 @@
       "InvestigationRequest": {
         "description": "Input for one synchronous grounded investigation.",
         "properties": {
+          "debug": {
+            "default": false,
+            "title": "Debug",
+            "type": "boolean"
+          },
           "limit": {
             "default": 5,
             "maximum": 20.0,
