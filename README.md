@@ -60,7 +60,9 @@ Groq is an explicitly enabled, default-off generation fallback after eligible Ge
 
 ## Results at a glance
 
-Provisional v1 development results (not held-out); the full scorecard and definitions are in the [metrics reference](docs/reference/metrics.md).
+These are development results, not held-out measurements. The full scorecards and definitions are in the [metrics reference](docs/reference/metrics.md).
+
+### V1 provisional baseline
 
 | Measure | Result | 95% interval | n |
 |---|---:|---|---:|
@@ -70,7 +72,20 @@ Provisional v1 development results (not held-out); the full scorecard and defini
 | Near-miss refusal rate | 0/6 | [0.000, 0.390] | 6 |
 | Guard AUROC | 0.893 | [0.790, 0.976] | 48 |
 
-These results are development measurements, not evidence of production readiness. In particular, the current near-miss refusal result shows that the guard still needs improvement.
+### V2 frozen development baseline
+
+The v2 baseline covers 120 answerable and 40 unanswerable questions across `rq`, `kopf`, `luigi`, and `client_python`.
+
+| Measure | Result | 95% interval | n |
+|---|---:|---|---:|
+| Hit@1 | 47/120 (0.392) | [0.309, 0.481] | 120 |
+| Hit@5 | 91/120 (0.758) | [0.674, 0.826] | 120 |
+| MRR@5 | 0.525 | [0.452, 0.600] | 120 |
+| False-accept rate | 40/40 (1.000) | [0.912, 1.000] | 40 |
+| Correct-refusal rate | 0/40 (0.000) | [0.000, 0.088] | 40 |
+| Guard AUROC | 0.792 | [0.709, 0.873] | 160 |
+
+The v2 guard accepted all unanswerable questions at the registered threshold of `0.5`; threshold re-validation is deferred to the held-out evaluation. These development results do not establish production readiness.
 
 ## Quick start
 
@@ -162,9 +177,9 @@ Detailed response, audit, and replay behavior is documented in the [API design](
 
 Offline retrieval uses committed fixtures and cached query embeddings; answer evaluation runs the investigation pipeline. The reports are regression-oriented and repository-specific.
 
-The current v1 development dataset contains 33 answerable and 15 unanswerable questions. It is not a held-out benchmark, and its labels and answer-quality measurements have limitations.
+The provisional v1 development dataset contains 33 answerable and 15 unanswerable questions. The frozen v2 development baseline contains 160 questions across four repositories; neither is a held-out benchmark, and both have limitations. The v2 guard accepted all 40 unanswerable questions at threshold `0.5`.
 
-See the [evaluation guide](evaluation/README.md), [repository data cards](evaluation/repos/README.md), and [dataset protocol](docs/architecture-review/15-evaluation-dataset-protocol.md) for methods, data, artifacts, and limits. The provisional v1 development retrieval and guard results are in the [metrics reference](docs/reference/metrics.md).
+See the [evaluation guide](evaluation/README.md), [repository data cards](evaluation/repos/README.md), and [dataset protocol](docs/architecture-review/15-evaluation-dataset-protocol.md) for methods, data, artifacts, and limits. Detailed v1 and v2 development retrieval and guard results are in the [metrics reference](docs/reference/metrics.md).
 
 ## Quality checks
 

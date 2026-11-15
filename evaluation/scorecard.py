@@ -14,7 +14,10 @@ from evaluation.build_fixture import load_fixture
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
     MANIFEST_PATH,
+    V2_DEVELOPMENT_REPOSITORIES,
     load_manifest,
+    load_v2_development_entries,
+    load_v2_development_questions,
     questions_for_split,
     sha256_file,
 )
@@ -123,6 +126,121 @@ def _validate_export(
                         or not isinstance(chunk.get("file_path"), str)
                         or not isinstance(chunk.get("line_start"), int)
                         or not isinstance(chunk.get("line_end"), int)
+                        or (
+                            chunk.get("vector_distance") is not None
+                            and not isinstance(chunk.get("vector_distance"), (int, float))
+                        )
+                    ):
+                        raise ValueError(f"{repo_id}:{question_id}: malformed {view} ranked chunk")
+            best_distance = row.get("best_vector_distance")
+            if best_distance is not None and not isinstance(best_distance, (int, float)):
+                raise ValueError(f"{repo_id}:{question_id}: invalid best vector distance")
+            observed_by_view = {}
+            for view, ranked in ranked_by_view.items():
+                distances = [
+                    float(chunk["vector_distance"])
+                    for chunk in ranked
+                    if chunk["vector_distance"] is not None
+                ]
+                observed_by_view[view] = min(distances) if distances else None
+            production_best = observed_by_view["production"]
+            deep_best = observed_by_view["deep"]
+            if (
+                (best_distance is None) != (production_best is None)
+                or (
+                    best_distance is not None
+                    and production_best is not None
+                    and not math.isclose(float(best_distance), production_best)
+                )
+                or (production_best is None) != (deep_best is None)
+                or (
+                    production_best is not None
+                    and deep_best is not None
+                    and not math.isclose(production_best, deep_best)
+                )
+            ):
+                raise ValueError(
+                    f"{repo_id}:{question_id}: best vector distance differs between views"
+                )
+            refused = row.get("guard_refused")
+            if not isinstance(refused, bool):
+                raise ValueError(f"{repo_id}:{question_id}: missing guard decision")
+            expected_refusal = best_distance is None or best_distance > GUARD_THRESHOLD
+            if refused != expected_refusal:
+                raise ValueError(f"{repo_id}:{question_id}: guard decision is inconsistent")
+            selected.append({**question, **row})
+        selected_by_repo[repo_id] = selected
+    return selected_by_repo
+
+
+def _validate_v2_export(
+    export: Mapping[str, Any],
+    entries: Mapping[str, Mapping[str, Any]],
+    manifest_path: Path,
+    root: Path,
+) -> dict[str, list[dict[str, Any]]]:
+    metadata = export.get("metadata")
+    if not isinstance(metadata, Mapping):
+        raise ValueError("Rankings export metadata must be an object")
+    if metadata.get("split") != "development":
+        raise ValueError("Scorecard refuses any split other than development")
+    if metadata.get("dataset_version") != "v2":
+        raise ValueError("V2 scorecard requires dataset_version 'v2'")
+    if metadata.get("repository_ids") != list(V2_DEVELOPMENT_REPOSITORIES):
+        raise ValueError("Rankings export must contain exactly the v2 development repositories")
+    if metadata.get("retrieval_limits") != {"production": 5, "deep": 20}:
+        raise ValueError("Rankings export must declare production limit 5 and deep limit 20")
+    if metadata.get("guard_view") != "production":
+        raise ValueError("Rankings export must declare the production guard view")
+    if metadata.get("guard_threshold") != GUARD_THRESHOLD:
+        raise ValueError("Rankings export must declare guard threshold 0.5")
+    if not isinstance(metadata.get("git_commit"), str) or not metadata["git_commit"]:
+        raise ValueError("Rankings export must record the retrieval code commit")
+    if metadata.get("manifest_sha256") != sha256_file(manifest_path):
+        raise ValueError("Rankings export manifest hash does not match the current manifest")
+
+    raw_repositories = export.get("repositories")
+    if not isinstance(raw_repositories, list):
+        raise ValueError("Rankings export repositories must be a list")
+    exported = {row.get("id"): row for row in raw_repositories if isinstance(row, Mapping)}
+    if set(exported) != set(V2_DEVELOPMENT_REPOSITORIES) or len(exported) != len(raw_repositories):
+        raise ValueError("Rankings export repository rows do not match the v2 repositories")
+
+    selected_by_repo: dict[str, list[dict[str, Any]]] = {}
+    for repo_id in V2_DEVELOPMENT_REPOSITORIES:
+        entry = entries[repo_id]
+        questions = load_v2_development_questions(entry, root=root)
+        expected_by_id = {question["id"]: question for question in questions}
+        rows = exported[repo_id].get("questions")
+        if not isinstance(rows, list):
+            raise ValueError(f"{repo_id}: exported questions must be a list")
+        by_id = {
+            row.get("id"): row
+            for row in rows
+            if isinstance(row, Mapping) and isinstance(row.get("id"), str)
+        }
+        if len(by_id) != len(rows) or set(by_id) != set(expected_by_id):
+            raise ValueError(f"{repo_id}: export must contain exactly the development questions")
+        selected = []
+        for question_id, question in expected_by_id.items():
+            row = by_id[question_id]
+            if row.get("repository") != repo_id or row.get("category") != question["category"]:
+                raise ValueError(f"{repo_id}:{question_id}: exported labels do not match")
+            ranked_by_view = {
+                view: ranked_chunks_for_view(row, view) for view in ("production", "deep")
+            }
+            for view, ranked in ranked_by_view.items():
+                maximum = 5 if view == "production" else 20
+                if len(ranked) > maximum:
+                    raise ValueError(f"{repo_id}:{question_id}: invalid {view} ranked chunks")
+                for chunk in ranked:
+                    if (
+                        not isinstance(chunk, Mapping)
+                        or not isinstance(chunk.get("chunk_id"), str)
+                        or not isinstance(chunk.get("file_path"), str)
+                        or not isinstance(chunk.get("line_start"), int)
+                        or not isinstance(chunk.get("line_end"), int)
+                        or "vector_distance" not in chunk
                         or (
                             chunk.get("vector_distance") is not None
                             and not isinstance(chunk.get("vector_distance"), (int, float))
@@ -279,7 +397,7 @@ def _threshold_sweep(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
 def _kind_breakdown(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
-        kind = str(row["category"]).removeprefix("unanswerable_")
+        kind = str(row.get("kind") or row["category"]).removeprefix("unanswerable_")
         kind = "near-miss" if kind == "near" else kind
         grouped.setdefault(kind, []).append(row)
     return {
@@ -462,6 +580,82 @@ def build_scorecard(
     }
 
 
+def build_v2_scorecard(
+    export: Mapping[str, Any],
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    """Validate a v2 development export and calculate the registered scorecard."""
+
+    entries = load_v2_development_entries(manifest_path, root=root)
+    raw_by_repo = _validate_v2_export(export, entries, manifest_path, root)
+    scored_by_repo: dict[str, list[dict[str, Any]]] = {}
+    per_repository: dict[str, Any] = {}
+    for repo_id in V2_DEVELOPMENT_REPOSITORIES:
+        fixture = load_fixture(root / entries[repo_id]["fixture"]["path"])
+        fixture_chunks = fixture["chunks"]
+        scored = []
+        for row in raw_by_repo[repo_id]:
+            if str(row["category"]).startswith("unanswerable"):
+                scored.append(row)
+                continue
+            spans = row["relevant_spans"]
+            production = ranked_chunks_for_view(row, "production")
+            deep = ranked_chunks_for_view(row, "deep")
+            for k in (1, 3, 5):
+                row[f"hit_at_{k}_production"] = int(span_hit_at_k([production], [spans], k))
+            for k in (10, 20):
+                row[f"hit_at_{k}_deep"] = int(span_hit_at_k([deep], [spans], k))
+            row["mrr_at_5"] = (
+                1 / rank
+                if (rank := first_relevant_span_rank(production[:5], spans)) is not None
+                else 0.0
+            )
+            row["ndcg_at_5"] = ndcg_at_k(production, spans, fixture_chunks, 5)
+            row["context_precision_at_5"] = context_precision_at_k(production, spans, 5)
+            row["ndcg_at_10"] = ndcg_at_k(deep, spans, fixture_chunks, 10)
+            row["recall_at_20"] = recall_at_k(deep, spans, 20)
+            scored.append(row)
+        scored_by_repo[repo_id] = scored
+        per_repository[repo_id] = _score_scope(
+            scored,
+            {repo_id: scored},
+            [repo_id],
+        )
+
+    pooled_rows = [
+        row for repo_id in V2_DEVELOPMENT_REPOSITORIES for row in scored_by_repo[repo_id]
+    ]
+    pooled = _score_scope(pooled_rows, scored_by_repo, V2_DEVELOPMENT_REPOSITORIES)
+    export_metadata = export["metadata"]
+    code_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return {
+        "metadata": {
+            "dataset_version": "v2",
+            "repository_ids": list(V2_DEVELOPMENT_REPOSITORIES),
+            "retrieval_views": {"production": 5, "deep": 20},
+            "n": len(pooled_rows),
+            "seed": BOOTSTRAP_SEED,
+            "resamples": BOOTSTRAP_RESAMPLES,
+            "git_commit": export_metadata["git_commit"],
+            "scorecard_git_commit": code_commit,
+            "protocol": PROTOCOL_PATH,
+            "split": export_metadata["split"],
+            "manifest_sha256": export_metadata["manifest_sha256"],
+            "run_date": datetime.now(UTC).date().isoformat(),
+        },
+        "per_repository": per_repository,
+        "pooled": pooled,
+    }
+
+
 def verify_registered_crosscheck(
     scorecard: Mapping[str, Any],
     *,
@@ -563,5 +757,26 @@ def write_scorecard(
     output_path.write_text(
         json.dumps(scorecard, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
+    )
+    return scorecard
+
+
+def write_v2_scorecard(
+    input_path: Path,
+    output_path: Path,
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    """Read a v2 export, compute the scorecard, and persist the JSON."""
+
+    export = json.loads(input_path.read_text(encoding="utf-8"))
+    if not isinstance(export, Mapping):
+        raise ValueError("Rankings export must contain a JSON object")
+    scorecard = build_v2_scorecard(export, manifest_path=manifest_path, root=root)
+    scorecard["metadata"]["rankings_export"] = str(input_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(
+        (json.dumps(scorecard, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     )
     return scorecard

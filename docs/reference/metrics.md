@@ -1,23 +1,24 @@
 # Evaluation metrics reference
 
-**As of 2026-11-04.**
+**As of 2026-11-14.**
 
 ## 1. How to read this scorecard
 
-These are provisional v1 development results, not held-out results. The scorecard uses
-48 questions across `batch-processing-service`, `incidentweave`, and `lifeos`: 33
-answerable questions for retrieval metrics and 15 unanswerable questions for guard
-metrics. Wilson intervals are used for proportions; percentile-bootstrap intervals are
-used for means and AUROC. Bootstrap resampling uses seed `20261031`, 10,000 resamples,
-and repository strata. Each row reports its applicable sample size, retrieval view,
-dataset version, scoring commit, run date, and source JSON.
+This reference records v1 and v2 development results, not held-out results. The
+provisional v1 scorecard uses 48 questions across `batch-processing-service`,
+`incidentweave`, and `lifeos`. The frozen v2 development baseline uses 160 questions
+across `rq`, `kopf`, `luigi`, and `client_python`: 120 answerable questions for retrieval
+metrics and 40 unanswerable questions for guard metrics. Wilson intervals are used for
+proportions; percentile-bootstrap intervals are used for means and AUROC. Bootstrap
+resampling uses seed `20261031`, 10,000 resamples, and repository strata. Each row
+reports its applicable sample size and retrieval view.
 
 The **production view** uses retrieval limit 5 and is the only view compared with the
-published control. The **deep view** uses limit 20 for diagnostic-depth metrics; its
+published v1 control. The **deep view** uses limit 20 for diagnostic-depth metrics; its
 values are not compared with published control values. The exported best vector distance
-and guard decision are shared across both views. The scorecard refuses held-out data.
+and guard decision are shared across both views. Both scorecards refuse held-out data.
 
-## 2. Current results
+## 2. V1 provisional results
 
 Values and intervals below are rounded to three decimals from the scorecard JSON. For proportions, the value includes successes/denominator; `n` is the denominator (or the number of questions for AUROC). The AUROC positive class is unanswerable.
 
@@ -118,7 +119,140 @@ Values and intervals below are rounded to three decimals from the scorecard JSON
 | Far refusal rate | 3/3 (1.000) | [0.438, 1.000] | 3 | production |
 | Near-miss refusal rate | 0/2 (0.000) | [0.000, 0.658] | 2 | production |
 
-## 3. Metric definitions
+## 3. Frozen v2 development baseline
+
+This is the frozen v2 development baseline before item 3b. It contains 40 development
+questions per repository (30 answerable and 10 unanswerable); no held-out split or
+repository was evaluated. Guard results use the registered vector-distance threshold
+of `0.5`. The guard accepted all 40 unanswerable questions in this run; threshold
+re-validation remains part of item 3b.
+
+- **Dataset version:** v2
+- **Scoring code commit:** `4f82d47ce945602840a77c31aa328325c21b7e0c`
+- **Retrieval export commit:** `86e512e1db885f817377252c38081273726a9625`
+- **Run date:** 2026-11-14
+- **Source file:** [v2-development.json](../../evaluation/experiments/scorecard/v2-development.json)
+
+### Pooled
+
+#### Retrieval
+
+| Metric | Value | 95% interval | n | View |
+|---|---:|---|---:|---|
+| Hit@1 | 47/120 (0.392) | [0.309, 0.481] | 120 | production |
+| Hit@3 | 76/120 (0.633) | [0.544, 0.714] | 120 | production |
+| Hit@5 | 91/120 (0.758) | [0.674, 0.826] | 120 | production |
+| MRR@5 | 0.525 | [0.452, 0.600] | 120 | production |
+| nDCG@5 | 0.508 | [0.441, 0.576] | 120 | production |
+| Context precision@5 | 0.190 | [0.165, 0.215] | 120 | production |
+| Hit@10 | 103/120 (0.858) | [0.785, 0.910] | 120 | deep |
+| Hit@20 | 109/120 (0.908) | [0.843, 0.948] | 120 | deep |
+| nDCG@10 | 0.555 | [0.493, 0.618] | 120 | deep |
+| Recall@20 | 0.868 | [0.810, 0.921] | 120 | deep |
+
+#### Guard
+
+| Metric | Value | 95% interval | n | View |
+|---|---:|---|---:|---|
+| False-accept rate | 40/40 (1.000) | [0.912, 1.000] | 40 | production |
+| Correct-refusal rate | 0/40 (0.000) | [0.000, 0.088] | 40 | production |
+| False-refusal rate | 0/120 (0.000) | [0.000, 0.031] | 120 | production |
+| Refusal precision | n/a (0 predicted refusals) | n/a | 0 | production |
+| Refusal recall | 0/40 (0.000) | [0.000, 0.088] | 40 | production |
+| AUROC | 0.792 | [0.709, 0.873] | 160 | production |
+| Far refusal rate | 0/16 (0.000) | [0.000, 0.194] | 16 | production |
+| Near-miss refusal rate | 0/12 (0.000) | [0.000, 0.243] | 12 | production |
+| False-premise refusal rate | 0/12 (0.000) | [0.000, 0.243] | 12 | production |
+
+### Per repository: rq
+
+| Metric | Value | 95% interval | n | View |
+|---|---:|---|---:|---|
+| Hit@1 | 11/30 (0.367) | [0.219, 0.545] | 30 | production |
+| Hit@3 | 19/30 (0.633) | [0.455, 0.781] | 30 | production |
+| Hit@5 | 23/30 (0.767) | [0.591, 0.882] | 30 | production |
+| MRR@5 | 0.506 | [0.362, 0.651] | 30 | production |
+| nDCG@5 | 0.510 | [0.374, 0.644] | 30 | production |
+| Context precision@5 | 0.207 | [0.147, 0.267] | 30 | production |
+| Hit@10 | 26/30 (0.867) | [0.703, 0.947] | 30 | deep |
+| Hit@20 | 29/30 (0.967) | [0.833, 0.994] | 30 | deep |
+| nDCG@10 | 0.542 | [0.415, 0.667] | 30 | deep |
+| Recall@20 | 0.906 | [0.817, 0.978] | 30 | deep |
+| False-accept rate | 10/10 (1.000) | [0.722, 1.000] | 10 | production |
+| Correct-refusal rate | 0/10 (0.000) | [0.000, 0.278] | 10 | production |
+| False-refusal rate | 0/30 (0.000) | [0.000, 0.114] | 30 | production |
+| AUROC | 0.587 | [0.330, 0.820] | 40 | production |
+| Far refusal rate | 0/4 (0.000) | [0.000, 0.490] | 4 | production |
+| Near-miss refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+| False-premise refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+
+### Per repository: kopf
+
+| Metric | Value | 95% interval | n | View |
+|---|---:|---|---:|---|
+| Hit@1 | 15/30 (0.500) | [0.332, 0.668] | 30 | production |
+| Hit@3 | 19/30 (0.633) | [0.455, 0.781] | 30 | production |
+| Hit@5 | 20/30 (0.667) | [0.488, 0.808] | 30 | production |
+| MRR@5 | 0.569 | [0.406, 0.731] | 30 | production |
+| nDCG@5 | 0.538 | [0.388, 0.690] | 30 | production |
+| Context precision@5 | 0.167 | [0.120, 0.213] | 30 | production |
+| Hit@10 | 23/30 (0.767) | [0.591, 0.882] | 30 | deep |
+| Hit@20 | 25/30 (0.833) | [0.664, 0.927] | 30 | deep |
+| nDCG@10 | 0.593 | [0.449, 0.734] | 30 | deep |
+| Recall@20 | 0.800 | [0.650, 0.933] | 30 | deep |
+| False-accept rate | 10/10 (1.000) | [0.722, 1.000] | 10 | production |
+| Correct-refusal rate | 0/10 (0.000) | [0.000, 0.278] | 10 | production |
+| False-refusal rate | 0/30 (0.000) | [0.000, 0.114] | 30 | production |
+| AUROC | 0.603 | [0.350, 0.840] | 40 | production |
+| Far refusal rate | 0/4 (0.000) | [0.000, 0.490] | 4 | production |
+| Near-miss refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+| False-premise refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+
+### Per repository: luigi
+
+| Metric | Value | 95% interval | n | View |
+|---|---:|---|---:|---|
+| Hit@1 | 9/30 (0.300) | [0.167, 0.479] | 30 | production |
+| Hit@3 | 16/30 (0.533) | [0.361, 0.698] | 30 | production |
+| Hit@5 | 21/30 (0.700) | [0.521, 0.833] | 30 | production |
+| MRR@5 | 0.446 | [0.304, 0.592] | 30 | production |
+| nDCG@5 | 0.407 | [0.276, 0.542] | 30 | production |
+| Context precision@5 | 0.147 | [0.107, 0.180] | 30 | production |
+| Hit@10 | 26/30 (0.867) | [0.703, 0.947] | 30 | deep |
+| Hit@20 | 27/30 (0.900) | [0.744, 0.965] | 30 | deep |
+| nDCG@10 | 0.494 | [0.377, 0.615] | 30 | deep |
+| Recall@20 | 0.883 | [0.767, 0.983] | 30 | deep |
+| False-accept rate | 10/10 (1.000) | [0.722, 1.000] | 10 | production |
+| Correct-refusal rate | 0/10 (0.000) | [0.000, 0.278] | 10 | production |
+| False-refusal rate | 0/30 (0.000) | [0.000, 0.114] | 30 | production |
+| AUROC | 0.960 | [0.887, 1.000] | 40 | production |
+| Far refusal rate | 0/4 (0.000) | [0.000, 0.490] | 4 | production |
+| Near-miss refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+| False-premise refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+
+### Per repository: client_python
+
+| Metric | Value | 95% interval | n | View |
+|---|---:|---|---:|---|
+| Hit@1 | 12/30 (0.400) | [0.246, 0.577] | 30 | production |
+| Hit@3 | 22/30 (0.733) | [0.556, 0.858] | 30 | production |
+| Hit@5 | 27/30 (0.900) | [0.744, 0.965] | 30 | production |
+| MRR@5 | 0.579 | [0.449, 0.713] | 30 | production |
+| nDCG@5 | 0.576 | [0.466, 0.688] | 30 | production |
+| Context precision@5 | 0.240 | [0.193, 0.293] | 30 | production |
+| Hit@10 | 28/30 (0.933) | [0.787, 0.982] | 30 | deep |
+| Hit@20 | 28/30 (0.933) | [0.787, 0.982] | 30 | deep |
+| nDCG@10 | 0.593 | [0.487, 0.700] | 30 | deep |
+| Recall@20 | 0.883 | [0.767, 0.967] | 30 | deep |
+| False-accept rate | 10/10 (1.000) | [0.722, 1.000] | 10 | production |
+| Correct-refusal rate | 0/10 (0.000) | [0.000, 0.278] | 10 | production |
+| False-refusal rate | 0/30 (0.000) | [0.000, 0.114] | 30 | production |
+| AUROC | 1.000 | [1.000, 1.000] | 40 | production |
+| Far refusal rate | 0/4 (0.000) | [0.000, 0.490] | 4 | production |
+| Near-miss refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+| False-premise refusal rate | 0/3 (0.000) | [0.000, 0.562] | 3 | production |
+
+## 4. Metric definitions
 
 - **Hit@k:** share of answerable questions with a span-overlapping chunk in the first k results.
 - **MRR@5:** mean reciprocal rank of the first relevant chunk, with misses scored zero.
@@ -132,7 +266,7 @@ Values and intervals below are rounded to three decimals from the scorecard JSON
 See the [registered scorecard protocol](../architecture-review/16-scorecard-protocol.md)
 for formulas, cutoffs, tie handling, view assignment, threshold sweep, and interval methods.
 
-## 4. Not measured and why
+## 5. Not measured and why
 
 - **Throughput:** a load test would primarily measure the provider's rate limit rather than
   the offline scorecard.
@@ -141,16 +275,16 @@ for formulas, cutoffs, tie handling, view assignment, threshold sweep, and inter
 - Cost, operational errors, citation validity and stability, faithfulness, and answer
   correctness are outside this scorecard's scope.
 
-## 5. Planned
+## 6. Planned
 
 - Item 33: operational latency, usage, cost, error, degradation, and cache metrics.
 - Item 34: citation validity and end-to-end stability.
 - Item 17: answer faithfulness and correctness.
 - Item 3b: one registered v2 held-out evaluation and guard-threshold re-validation.
-- Item 32b: final v2 development baseline after item 31c and frozen before item 3b.
 
-## 6. History
+## 7. History
 
 | Date | Change | Commit |
 |---|---|---|
 | 2026-11-04 | Added dual-view scoring and generated the provisional v1 development scorecard. | `7d235785a6af453d0adbc4b0a168c1e74ad015c3` |
+| 2026-11-14 | Recorded the frozen v2 development baseline across four repositories; held-out evaluation remains deferred to item 3b. | `4f82d47ce945602840a77c31aa328325c21b7e0c` |
