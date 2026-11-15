@@ -150,6 +150,11 @@ python -m scripts.serve
 | `GET /investigations/{id}` | `X-API-Secret` | Returns the investigation and reconstructed audit details. |
 | `GET /repositories` | `X-API-Secret` | Lists repositories with total and embedded chunk counts. |
 
+`POST /investigations` accepts an optional `debug` boolean (default `false`). Set it to `true` to
+include content-free metadata for every retrieved chunk in `evidence`, including `fts_score` and
+whether vector search, full-text search, or both returned it. Omitting `debug` or setting it to
+`false` preserves the existing evidence response.
+
 ### Investigation listing filters
 
 `GET /investigations` supports these query parameters:

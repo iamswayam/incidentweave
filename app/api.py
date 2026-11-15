@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -36,6 +36,7 @@ class InvestigationRequest(BaseModel):
     repository_name: str = Field(min_length=1, max_length=255)
     query: str = Field(min_length=1, max_length=MAX_QUERY_CHARS)
     limit: int = Field(default=5, ge=1, le=MAX_LIMIT)
+    debug: bool = False
 
 
 class InvestigationEvidence(BaseModel):
@@ -48,6 +49,8 @@ class InvestigationEvidence(BaseModel):
     rank: int
     rrf_score: float | None
     vector_score: float | None
+    fts_score: float | None = None
+    source: Literal["vector", "fulltext", "both"] | None = None
 
 
 class InvestigationResponse(BaseModel):
@@ -164,6 +167,7 @@ async def list_investigations(
 @router.post(
     "/investigations",
     response_model=InvestigationResponse,
+    response_model_exclude_unset=True,
     dependencies=[Depends(require_api_access)],
 )
 async def create_investigation(payload: InvestigationRequest) -> InvestigationResponse:
@@ -175,6 +179,7 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
             payload.query,
             limit=payload.limit,
             persist=True,
+            debug=payload.debug,
         )
     except ValueError as exc:
         if str(exc).startswith("Repository not found:"):
@@ -256,6 +261,7 @@ async def create_investigation(payload: InvestigationRequest) -> InvestigationRe
 @router.get(
     "/investigations/{investigation_id}",
     response_model=InvestigationResponse,
+    response_model_exclude_unset=True,
     dependencies=[Depends(require_api_access)],
 )
 async def get_investigation(investigation_id: int) -> InvestigationResponse:
