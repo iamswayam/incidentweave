@@ -48,15 +48,15 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 29 | Done | #112 | Evaluation dataset v2 protocol |
 | 30 | Done | #114 | Dataset repositories and ingestion |
 | 31 | Not started | pending | Dataset questions v2 |
-| 31a | In review | pending | Dataset question tooling and labelling guidelines |
-| 31b | Not started | pending | Pilot questions for rq and kopf, second pass and pilot gate |
-| 31c | Not started | pending | Scale to remaining repositories, development fixtures, freeze v2.0 |
+| 31a | Done | #161 | Dataset question tooling and labelling guidelines |
+| 31b | Done | #161 | Pilot questions for rq and kopf, second pass and pilot gate |
+| 31c | Done | #168 | Scale to remaining repositories, development fixtures, freeze v2.0 |
 | 32a | Done | #119 | Provisional v1 development scorecard and registered production/deep views; results in docs/reference/metrics.md. |
-| 32b | Not started | pending | Final v2 development baseline after item 31c; frozen before item 3b. |
+| 32b | Done | #171 | Final v2 development baseline after item 31c; frozen before item 3b. |
 | 35a | Done | #121 | Move ingestion, embedding, and investigation logic under app/; retain the documented script commands. |
 | 35b | Done | #123 | Move test-file helpers and fulltext, BM25, and test-file experiments under evaluation/studies/. |
 | 35c | Done | #125 | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
-| 35d | Not started | pending | Split question_review.py into focused modules. |
+| 35d | Done | #173 | Split question_review.py into focused modules. |
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
 | 33 | In review | pending | Gemini prices remain unpriced: target rows could not be read from https://aistudio.google.com/docs/pricing (retrieved 2026-11-07); outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
 | 34 | In review | pending | Protocol registered; deterministic checks, runner, report command, and synthetic tests implemented. |
@@ -132,21 +132,21 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 29 | ☑ | Evaluation dataset v2 protocol | High | M | Maintainer |
 | 30 | ☑ | Dataset repositories and ingestion | High | L | Maintainer |
 | 31 | ☐ | Dataset questions v2 | High | L | Maintainer |
-| 31a | ☐ | Dataset question tooling and labelling guidelines | High | M | Maintainer |
-| 31b | ☐ | Pilot questions for rq and kopf, second pass and pilot gate | High | M | Maintainer |
-| 31c | ☐ | Scale to remaining repositories, development fixtures, freeze v2.0 | High | L | Maintainer |
-| 32a | ☐ | Provisional v1 retrieval and guard scorecard | High | M | Maintainer |
-| 32b | ☐ | Final v2 development scorecard before item 3b | High | M | Maintainer |
-| 35a | ☐ | Move ingestion, embedding, and investigation logic into app packages; keep script commands | High | M | Maintainer |
-| 35b | ☐ | Move test-file helpers and fulltext, BM25, and test-file studies | Medium | M | Maintainer |
-| 35c | ☐ | Move chunking, embedding task-type, and local-embedding studies | Medium | M | Maintainer |
-| 35d | ☐ | Split question_review.py into focused modules | Medium | M | Maintainer |
-| 36a | ☐ | Adopt uv and a committed lock file | High | M | Maintainer |
+| 31a | ☑ | Dataset question tooling and labelling guidelines | High | M | Maintainer |
+| 31b | ☑ | Pilot questions for rq and kopf, second pass and pilot gate | High | M | Maintainer |
+| 31c | ☑ | Scale to remaining repositories, development fixtures, freeze v2.0 | High | L | Maintainer |
+| 32a | ☑ | Provisional v1 retrieval and guard scorecard | High | M | Maintainer |
+| 32b | ☑ | Final v2 development scorecard before item 3b | High | M | Maintainer |
+| 35a | ☑ | Move ingestion, embedding, and investigation logic into app packages; keep script commands | High | M | Maintainer |
+| 35b | ☑ | Move test-file helpers and fulltext, BM25, and test-file studies | Medium | M | Maintainer |
+| 35c | ☑ | Move chunking, embedding task-type, and local-embedding studies | Medium | M | Maintainer |
+| 35d | ☑ | Split question_review.py into focused modules | Medium | M | Maintainer |
+| 36a | ☑ | Adopt uv and a committed lock file | High | M | Maintainer |
 | 36b | ☐ | Build Docker image from uv.lock | Medium | M | Maintainer |
-| 36c | ☐ | Repository hygiene | Medium | M | Maintainer |
+| 36c | ☑ | Repository hygiene | Medium | M | Maintainer |
 | 36d | ☐ | Static analysis | Medium | M | Maintainer |
-| 36e | ☐ | Security basics | Medium | M | Maintainer |
-| 36f | ☐ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
+| 36e | ☑ | Security basics | Medium | M | Maintainer |
+| 36f | ☑ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
 | 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
 | 37 | ☑ | Maintainer evaluation web UI | Medium | M | Maintainer |
@@ -562,17 +562,17 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 **31a. Dataset question tooling and labelling guidelines.**
 - **Fix:** Add the v2 question schema and validator, issue mining, review-pack and ingest workflow, blind second-pass sampling and agreement reporting, manifest support, tests, and labelling guidelines. Do not write questions in this sub-item.
 - **Done when:** Tools, tests, guidelines, and validator exist and CI passes.
-- **Status:** In review (PR pending).
+- **Status:** Done (PR #161; merge commit `93e5ecf`, 2026-11-12).
 
 **31b. Pilot questions for `rq` and `kopf`, second pass and pilot gate.**
 - **Fix:** Author pilot packs with mined, drafted, and unanswerable items; record the drafting model; complete maintainer review with per-item minutes; ingest and commit the questions; run the blind second pass at least seven days later; and write a pilot results note with the gate decision in protocol 15 section 6. Items 32 and 33 (code only) may proceed during the seven-day wait.
 - **Done when:** Both pilot sets pass the registered questions, review, and agreement gates, and the pilot results note records the decision.
-- **Status:** In review (bot/31-pilot-questions); pilot gate passed - gold-file 93.8%, answerable 100.0%; second rater claude-sonnet-4-6.
+- **Status:** Done (PR #161; merge commit `93e5ecf`, 2026-11-12). Pilot gate passed: gold-file 93.8%, answerable 100.0%; second rater claude-sonnet-4-6.
 
 **31c. Scale questions, development fixtures, and freeze v2.0.**
 - **Fix:** Add questions for `luigi` and `client_python` (development), and `locust`, `docker-py`, and `uvicorn` (held-out); build development fixtures with provider embeddings only for development data (do not build held-out fixtures); graduate development repositories into `repositories` with v2 splits and a generalized validator; freeze v2.0; and complete the data card.
 - **Done when:** The registered repositories, questions, splits, development fixtures, validator, freeze, and data card meet protocol 15.
-- **Status:** Not started.
+- **Status:** Done (PR #168; merge commit `6674b65`, 2026-11-15). Questions added for luigi, client_python, locust, docker_py, uvicorn (40 each: 30 answerable, 10 unanswerable). Development fixtures built for luigi and client_python. Dataset frozen at v2.0.
 
 **32a. Provisional v1 retrieval and guard scorecard.**
 - **Why:** The v2 comparison needs a fixed retrieval and guard measurement contract before held-out validation.
@@ -584,7 +584,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Why:** Item 3b needs a frozen development baseline and a stable measurement contract after the v2 dataset is complete.
 - **Fix:** Add the v2 development repositories from item 31c and produce the final scorecard under the registered protocol. Do not use held-out data.
 - **Done when:** The v2 development baseline is recorded and frozen before item 3b.
-- **Status:** Not started.
+- **Status:** Done (PR #171; merge commit `e1824ae`, 2026-11-15). Pooled v2 development baseline: Hit@1 0.392, Hit@5 0.758, MRR@5 0.525; guard false-accept rate 1.000 (40/40) at threshold 0.5 — deferred to 3b. See `evaluation/experiments/scorecard/v2-development.json` and `docs/reference/metrics.md`.
 
 **35. App/evaluation layering and study organization.**
 
@@ -605,10 +605,10 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Progress:** Chunking, embedding task-type, and local-embedding implementations are under `evaluation/studies/`; documented script commands remain thin wrappers, and the chunking comparison runs with `python -m evaluation.studies.chunking.compare_chunking_runs`. No result artifacts or datasets were moved.
 - **Status:** In review.
 
-**35d. Split question review (Not started).**
+**35d. Split question review.**
 - **Fix:** Split `evaluation/question_review.py` into focused modules for pack rendering/parsing and question ingestion/review workflows.
 - **Done when:** Existing question-review behavior and tests are preserved without a large monolithic module.
-- **Status:** Not started.
+- **Status:** Done (PR #173; merge commit `7386fcd`, 2026-11-16). `evaluation/review/pack.py` and `evaluation/review/workflow.py` created; `question_review.py` reduced to a 49-line backward-compatible re-export shim. All 488 unit tests pass.
 
 **36. Tooling, hygiene, and security (In progress).**
 - [x] uv and lock file.

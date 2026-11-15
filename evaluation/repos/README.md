@@ -1,6 +1,18 @@
 # Repository evaluation data
 
+**Total across all repositories: 352 questions** (3 v1 repositories × 24 + 7 v2 repositories × 40).
+
 Back to the [evaluation guide](../README.md).
+
+## v1 repositories (personal projects — original benchmark)
+
+These three repositories were the original evaluation benchmark, registered before the v2 dataset protocol. Each has 24 questions (human-reviewed).
+
+| Repository | Role | Questions | Fixture |
+|---|---|---|---|
+| `batch-processing-service` | v1 development | 24 (answerable + unanswerable) | `evaluation/repos/batch-processing-service/retrieval_fixture.json.gz` (committed) |
+| `incidentweave` | v1 development | 24 (answerable + unanswerable) | `evaluation/repos/incidentweave/retrieval_fixture.json.gz` (committed) |
+| `lifeos` | v1 development | 24 (answerable + unanswerable) | `evaluation/repos/lifeos/retrieval_fixture.json.gz` (committed) |
 
 ## Repository composition and v2.0 freeze
 

@@ -374,7 +374,7 @@ items contain only the fields listed here; they never contain source text:
   "evidence": [
     {
       "chunk_id": "42",
-      "file_path": "app/security.py",
+      "file_path": "app/api_security.py",
       "start_line": 20,
       "end_line": 38,
       "rank": 1,
