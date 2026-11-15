@@ -243,3 +243,32 @@ for the specified items.
 Every question record generated under this amendment must contain `review_status` with the exact
 string `llm_only_no_human_review`; `pending maintainer review` and any other value are invalid for
 these records. This amendment applies only to questions generated under items 31a, 31b, and 31c.
+
+---
+
+## Post-freeze note (2026-11-15)
+
+The dataset was frozen at v2.0 in PR #168 (merge commit `6674b65`).
+
+**Actual final roster:**
+
+| Repository | Role | Questions |
+|---|---|---|
+| `batch-processing-service` | v1 development | 24 |
+| `incidentweave` | v1 development | 24 |
+| `lifeos` | v1 development | 24 |
+| `rq` | v2 development | 40 (30 answerable, 10 unanswerable) |
+| `kopf` | v2 development | 40 (30 answerable, 10 unanswerable) |
+| `luigi` | v2 development | 40 (30 answerable, 10 unanswerable) |
+| `client_python` | v2 development | 40 (30 answerable, 10 unanswerable) |
+| `locust` | v2 held-out | 40 (30 answerable, 10 unanswerable) |
+| `docker_py` | v2 held-out | 40 (30 answerable, 10 unanswerable) |
+| `uvicorn` | v2 held-out | 40 (30 answerable, 10 unanswerable) |
+
+**Total: 352 questions** (258 answerable, 94 unanswerable).
+
+`apscheduler` was considered but not selected; `luigi` was selected from the backup list.
+
+v2 development baseline (item 32b, PR #171): Hit@1 0.392, Hit@5 0.758, MRR@5 0.525 across 120 answerable questions. Guard false-accept rate 1.000 (40/40) at threshold 0.5 — deferred to item 3b.
+
+Manifest v2 validation and release-asset fixture storage (>1.5 MiB) are implemented. Held-out fixtures are not built until item 3b.
