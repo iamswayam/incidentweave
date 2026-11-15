@@ -182,9 +182,7 @@ def test_v2_rankings_export_uses_only_development_records(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     entries = _entries()
-    questions_by_repo = {
-        repo_id: _questions(repo_id) for repo_id in V2_DEVELOPMENT_REPOSITORIES
-    }
+    questions_by_repo = {repo_id: _questions(repo_id) for repo_id in V2_DEVELOPMENT_REPOSITORIES}
     calls: list[tuple[str, int, int]] = []
 
     async def fake_run_offline_retrieval(**kwargs: Any) -> dict[str, Any]:
@@ -193,8 +191,7 @@ def test_v2_rankings_export_uses_only_development_records(
         calls.append((repo_id, kwargs["limit"], len(records)))
         return {
             "questions": [
-                {"id": row["id"], "category": row["category"], "retrieved": []}
-                for row in records
+                {"id": row["id"], "category": row["category"], "retrieved": []} for row in records
             ],
         }
 
@@ -231,9 +228,7 @@ def test_v2_rankings_export_uses_only_development_records(
     assert [row["id"] for row in export["repositories"]] == list(V2_DEVELOPMENT_REPOSITORIES)
     assert len(calls) == 8
     assert {(repo_id, limit) for repo_id, limit, _ in calls} == {
-        (repo_id, limit)
-        for repo_id in V2_DEVELOPMENT_REPOSITORIES
-        for limit in (5, 20)
+        (repo_id, limit) for repo_id in V2_DEVELOPMENT_REPOSITORIES for limit in (5, 20)
     }
     assert all(question_count == 40 for _, _, question_count in calls)
     assert b"\r\n" not in output_path.read_bytes()
@@ -245,9 +240,7 @@ def test_v2_scorecard_writer_scores_development_only_without_v1_crosscheck(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     entries = _entries()
-    questions_by_repo = {
-        repo_id: _questions(repo_id) for repo_id in V2_DEVELOPMENT_REPOSITORIES
-    }
+    questions_by_repo = {repo_id: _questions(repo_id) for repo_id in V2_DEVELOPMENT_REPOSITORIES}
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text("{}", encoding="utf-8")
     input_path = tmp_path / "rankings.json"
@@ -311,9 +304,7 @@ def test_v2_scorecard_writer_scores_development_only_without_v1_crosscheck(
     monkeypatch.setattr(
         scorecard_module,
         "verify_registered_crosscheck",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            AssertionError("v1 cross-check called")
-        ),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("v1 cross-check called")),
     )
 
     output_path = tmp_path / "scorecard.json"

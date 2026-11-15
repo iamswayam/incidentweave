@@ -202,13 +202,8 @@ def _validate_v2_export(
     raw_repositories = export.get("repositories")
     if not isinstance(raw_repositories, list):
         raise ValueError("Rankings export repositories must be a list")
-    exported = {
-        row.get("id"): row for row in raw_repositories if isinstance(row, Mapping)
-    }
-    if (
-        set(exported) != set(V2_DEVELOPMENT_REPOSITORIES)
-        or len(exported) != len(raw_repositories)
-    ):
+    exported = {row.get("id"): row for row in raw_repositories if isinstance(row, Mapping)}
+    if set(exported) != set(V2_DEVELOPMENT_REPOSITORIES) or len(exported) != len(raw_repositories):
         raise ValueError("Rankings export repository rows do not match the v2 repositories")
 
     selected_by_repo: dict[str, list[dict[str, Any]]] = {}
