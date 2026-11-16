@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-cited: var(--cited);
+  --color-cited-foreground: var(--cited-foreground);
+}
+
+:root {
+  color-scheme: dark;
+  --background: #0c0c0b;
+  --foreground: #ecece8;
+  --card: #141412;
+  --card-foreground: #ecece8;
+  --muted: #1c1c19;
+  --muted-foreground: #9a9a92;
+  --border: #2a2a26;
+  --input: #2a2a26;
+  --ring: #2dd4bf;
+  --primary: #2dd4bf;
+  --primary-foreground: #042f2e;
+  --accent: #1c1c19;
+  --accent-foreground: #ecece8;
+  --destructive: #f87171;
+  --warning: #fbbf24;
+  --warning-foreground: #fef3c7;
+  --success: #34d399;
+  --success-foreground: #022c22;
+  --sidebar: #10100e;
+  --sidebar-foreground: #ecece8;
+  --cited: #042f2e;
+  --cited-foreground: #5eead4;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f7f7f5;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --muted: #efefec;
+  --muted-foreground: #6b6b66;
+  --border: #e2e2dc;
+  --input: #e2e2dc;
+  --ring: #0f766e;
+  --primary: #0f766e;
+  --primary-foreground: #f4fffd;
+  --accent: #ecece8;
+  --accent-foreground: #171717;
+  --destructive: #b42318;
+  --warning: #b45309;
+  --warning-foreground: #7c2d12;
+  --success: #047857;
+  --success-foreground: #ecfdf5;
+  --sidebar: #f0f0ec;
+  --sidebar-foreground: #171717;
+  --cited: #ecfdf5;
+  --cited-foreground: #065f46;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 220ms ease-out both;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--muted) 80%, transparent),
+    color-mix(in oklab, var(--muted) 40%, transparent),
+    color-mix(in oklab, var(--muted) 80%, transparent)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
