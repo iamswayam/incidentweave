@@ -58,7 +58,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35c | Done | #125 | Move chunking, embedding task-type, and local-embedding experiments under evaluation/studies/. |
 | 35d | Done | #173 | Split question_review.py into focused modules. |
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
-| 33 | In review | pending | Gemini prices remain unpriced: target rows could not be read from https://aistudio.google.com/docs/pricing (retrieved 2026-11-07); outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
+| 33 | Done | pending | Gemini prices remain unpriced: target rows could not be read from https://aistudio.google.com/docs/pricing (retrieved 2026-11-07); outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
 | 34 | In review | pending | Protocol registered; deterministic checks, runner, report command, and synthetic tests implemented. |
 | 21 | Done | #155 | Issue #154; [merged PR](https://github.com/iamswayam/incidentweave/pull/155); REJECT under the registered rule. |
 | 37 | Done | #157 | Issue #156; [merged PR](https://github.com/iamswayam/incidentweave/pull/157); maintainer evaluation UI delivered. |
@@ -147,7 +147,7 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 36d | ☐ | Static analysis | Medium | M | Maintainer |
 | 36e | ☑ | Security basics | Medium | M | Maintainer |
 | 36f | ☑ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
-| 33 | ☐ | Operational metrics report | Medium | M | Maintainer |
+| 33 | ☑ | Operational metrics report | Medium | M | Maintainer |
 | 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
 | 37 | ☑ | Maintainer evaluation web UI | Medium | M | Maintainer |
 
@@ -626,12 +626,12 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
   - Dependabot alerts.
   - Branch protection requiring the secrets, audit, and evaluation checks.
 
-**33. Operational metrics report (In review).**
+**33. Operational metrics report (Done).**
 - **Why:** Quality results need latency, usage, cost, failure, degradation, and cache context.
 - **Fix:** Extend the usage report with per-operation p50/p95/p99 latency, tokens, estimated per-query list-price cost with dated official pricing sources, separately reported free-tier actual cost, errors, degraded outcomes, and cache-hit rates.
 - **Done when:** The report is reproducible and separates estimates from observed free-tier cost.
 - **Progress:** Added deterministic provider, outcome, cache, and cost aggregation with synthetic unit coverage; the database integration test is marked for CI and was not run locally. The configured Gemini models have no published prices on the official pricing page retrieved 2026-11-07.
-- **Status:** In review.
+- **Status:** Done (2026-11-23): 14 targeted unit tests passed; `ruff check .` and `ruff format --check .` passed.
 
 **34. Citation validity and end-to-end checks.**
 - **Why:** Retrieval scores alone do not measure citation validity or answer/refusal stability.
