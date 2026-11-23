@@ -21,6 +21,8 @@ evaluation/results/run-*.json
 evaluation/results/runs/*
 !evaluation/results/runs/.gitkeep
 evaluation/results/evaluation_report.json
+evaluation/results/ragas_report_*.json
+evaluation/results/deepeval_report_*.json
 
 # Tool worktrees
 .kilo/

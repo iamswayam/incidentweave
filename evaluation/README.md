@@ -52,6 +52,8 @@ recorded runs used the provider default and are not directly comparable.
 | `.\.venv\Scripts\python.exe -m scripts.run_reranker_experiment analyze` | Computes paired development metrics, stratified bootstrap intervals, latency, list-price cost, guard metrics, and the registered KEEP/REJECT decision from saved candidate and treatment data. | No | No | Yes | [Reranker protocol 18](../docs/architecture-review/18-reranker-protocol.md), [CLI](../scripts/run_reranker_experiment.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_end_to_end run --repository <id> --questions evaluation/repos/<repo>/questions.json [--limit N]` | Runs three temperature-0 investigations for manifest-assigned development questions and saves every run set under `evaluation/experiments/end-to-end/`. Requires an ingested repository, PostgreSQL, and a Gemini API key. | Yes | Yes | Yes | [End-to-end protocol 17](../docs/architecture-review/17-end-to-end-protocol.md), [CLI](../scripts/run_end_to_end.py) |
 | `.\.venv\Scripts\python.exe -m scripts.run_end_to_end report evaluation/experiments/end-to-end/ --out-md <report.md> --out-json <summary.json>` | Generates deterministic Markdown and JSON reports from saved run sets; no database or provider calls. | No | No | Selected outputs | [End-to-end protocol 17](../docs/architecture-review/17-end-to-end-protocol.md), [CLI](../scripts/run_end_to_end.py) |
+| `uv run --extra eval-frameworks python -m evaluation.ragas_report` | Exploration-grade faithfulness and answer-relevancy report over the four saved development run sets. Uses Gemini as the judge and writes an ignored report under `evaluation/results/`. | No | Yes | No | [Adapter](offline_eval_adapter.py), [report](ragas_report.py) |
+| `uv run --extra eval-frameworks python -m evaluation.deepeval_report` | Exploration-grade DeepEval faithfulness and answer-relevancy report over the four saved development run sets. Uses Gemini as the judge and writes an ignored report under `evaluation/results/`. | No | Yes | No | [Adapter](offline_eval_adapter.py), [report](deepeval_report.py) |
 | `.\.venv\Scripts\python.exe -m scripts.check_retrieval_gate --split smoke` | Runs each manifest repository's deterministic smoke gate. It exits 0 when every repository meets its baseline minimums. CI starts PostgreSQL, but this gate reads only committed inputs. | No | No | No | [Root README](../README.md), [CI workflow](../.github/workflows/ci.yml), [offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m evaluation.build_fixture` | Builds an offline retrieval fixture from evaluation-database chunks and cached question embeddings; the default IncidentWeave output is the manifest-pinned `evaluation/repos/incidentweave/retrieval_fixture.json.gz`. | Yes | No | Yes | [Offline retrieval note](../docs/notes/04-offline-retrieval-evaluation.md) |
 | `.\.venv\Scripts\python.exe -m scripts.inspect_retrieval` | Writes per-question retrieval cards and repository summaries under ignored `evaluation/inspection/`; defaults to development. | No | No | No | [Retrieval inspection note](../docs/notes/07-retrieval-inspection-report.md) |
@@ -77,6 +79,8 @@ contains separate production-limit-5 and deep-limit-20 views; the scorecard refu
 data.
 
 For item 18c, install the `local-embeddings` extra with `uv sync --locked --extra local-embeddings` only when intentionally running `embed`. This optional extra is separate from the `dev` dependency group and is not installed by CI.
+
+For the exploration-grade RAGAS and DeepEval reports, install the optional framework dependencies with `uv sync --extra eval-frameworks`. Each report makes live Gemini judge calls, requires the configured Gemini API key, and is not part of CI; neither report is run by unit-test commands.
 
 Commands with Writes tracked files = Yes change registered artifacts when rerun.
 
@@ -145,6 +149,9 @@ The descriptions below are taken from each module's docstring.
 
 - [`end_to_end_checks.py`](end_to_end_checks.py) — Pure citation, refusal-correctness, and stability checks for recorded runs.
 - [`end_to_end_runner.py`](end_to_end_runner.py) — Dependency-injected development runner and deterministic report loading.
+- [`offline_eval_adapter.py`](offline_eval_adapter.py) — Framework-neutral conversion of successful saved development answers and evidence to offline evaluation samples.
+- [`ragas_report.py`](ragas_report.py) — Exploration-grade RAGAS faithfulness and answer-relevancy report using Gemini as judge.
+- [`deepeval_report.py`](deepeval_report.py) — Exploration-grade DeepEval faithfulness and answer-relevancy report using Gemini as judge.
 
 ### Experiments
 
@@ -215,6 +222,7 @@ These safeguards are described in the [multi-repository plan](../docs/architectu
 | `inspection/` | Generated per-question cards and repository summaries. | Generated and ignored |
 | `results/runs/` | Timestamped run reports and related artifacts; `.gitkeep` is the only tracked file under this directory. | Generated and ignored, except tracked `.gitkeep` |
 | `results/run-*.json` and `results/evaluation_report.json` | Legacy flat run outputs; ignored to prevent accidental tracking. Current evaluation runs use `results/runs/`. | Generated and ignored |
+| `results/ragas_report_*.json` and `results/deepeval_report_*.json` | Exploration-grade offline evaluation reports; ignored to avoid committing generated judge output. | Generated and ignored |
 | `results/baseline.json` | Legacy Phase 8 answer-evaluation baseline; not selected by the manifest. | Committed |
 | `repos/<name>/offline-baseline.json` and `repos/<name>/smoke-baseline.json` | Manifest-selected retrieval baseline reports. | Committed |
 | `experiments/`, `repos/`, `manifest.json`, question files, gates, and Python modules | Registered experiment artifacts, evaluation inputs, baselines/gates, and implementation. | Committed |
