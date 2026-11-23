@@ -59,7 +59,7 @@ One row per item, updated when an item starts, finishes or is blocked. Status va
 | 35d | Done | #173 | Split question_review.py into focused modules. |
 | 36 | Done | #127, #129, #133, #137 | Tooling done: uv, hygiene, security, formatting; Docker image and static analysis deferred. |
 | 33 | Done | pending | Gemini prices remain unpriced: target rows could not be read from https://aistudio.google.com/docs/pricing (retrieved 2026-11-07); outcomes are deduplicated and latest audit traces drive cache metrics. CI integration test pending. |
-| 34 | In review | pending | Protocol registered; deterministic checks, runner, report command, and synthetic tests implemented. |
+| 34 | Done | pending | Protocol registered; deterministic checks, runner, report command, and synthetic tests implemented; all four v2 development run sets saved. |
 | 21 | Done | #155 | Issue #154; [merged PR](https://github.com/iamswayam/incidentweave/pull/155); REJECT under the registered rule. |
 | 37 | Done | #157 | Issue #156; [merged PR](https://github.com/iamswayam/incidentweave/pull/157); maintainer evaluation UI delivered. |
 
@@ -148,7 +148,7 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 36e | ☑ | Security basics | Medium | M | Maintainer |
 | 36f | ☑ | Apply Ruff formatting and enforce it in CI | Medium | M | Maintainer |
 | 33 | ☑ | Operational metrics report | Medium | M | Maintainer |
-| 34 | ☐ | Citation validity and end-to-end checks | High | M | Maintainer |
+| 34 | ☑ | Citation validity and end-to-end checks | High | M | Maintainer |
 | 37 | ☑ | Maintainer evaluation web UI | Medium | M | Maintainer |
 
 **Recommended order (after the Codex review)**
@@ -633,12 +633,12 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Progress:** Added deterministic provider, outcome, cache, and cost aggregation with synthetic unit coverage; the database integration test is marked for CI and was not run locally. The configured Gemini models have no published prices on the official pricing page retrieved 2026-11-07.
 - **Status:** Done (2026-11-23): 14 targeted unit tests passed; `ruff check .` and `ruff format --check .` passed.
 
-**34. Citation validity and end-to-end checks.**
+**34. Citation validity and end-to-end checks (Done).**
 - **Why:** Retrieval scores alone do not measure citation validity or answer/refusal stability.
 - **Fix:** Add deterministic quote-in-cited-chunk and chunk-in-retrieved-set checks, end-to-end refusal correctness, and three temperature-0 runs for stability.
 - **Done when:** Checks and reporting are registered before evaluation and run reproducibly on the approved data.
-- **Progress:** Protocol registered; pure checks and a fake-tested runner/report are implemented. No live development run has been done.
-- **Status:** In review.
+- **Progress:** Live three-repeat v2 development runs completed for rq, kopf, luigi, and client_python: 160 questions and 480 records. Across 502 submitted citations, 498 quotes were valid and all 502 citations referenced retrieved chunks; 147/160 questions had stable outcomes. The run recorded 93 generation-unavailable outcomes and two errors, retained in the raw files under `evaluation/results/runs/`.
+- **Status:** Done (2026-11-23): `uv run --no-sync pytest tests/unit -q` — 493 passed; `uv run --no-sync ruff check .` and `uv run --no-sync ruff format --check .` passed; all 480 development run records saved.
 
 **37. Maintainer evaluation web UI.**
 - *Why:* the backend is reviewed through raw HTTP calls and SQL; a small web UI lets the maintainer ask questions, browse history, and run quick batches of questions without reading code or writing requests by hand.
