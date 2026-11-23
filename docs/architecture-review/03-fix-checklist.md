@@ -641,6 +641,7 @@ terminal trace; per-stage telemetry and provider usage visibility move to 18a-2 
 - **Fix:** Add deterministic quote-in-cited-chunk and chunk-in-retrieved-set checks, end-to-end refusal correctness, and three temperature-0 runs for stability.
 - **Done when:** Checks and reporting are registered before evaluation and run reproducibly on the approved data.
 - **Progress:** Live three-repeat v2 development runs completed for rq, kopf, luigi, and client_python: 160 questions and 480 records. Across 502 submitted citations, 498 quotes were valid and all 502 citations referenced retrieved chunks; 147/160 questions had stable outcomes. The run recorded 93 generation-unavailable outcomes and two errors, retained in the raw files under `evaluation/results/runs/`.
+- **Progress:** Added optional exploration-grade RAGAS and DeepEval scripts to evaluate saved development run records; both require a Gemini key and have not been run.
 - **Status:** Done (2026-11-23): `uv run --no-sync pytest tests/unit -q` — 493 passed; `uv run --no-sync ruff check .` and `uv run --no-sync ruff format --check .` passed; all 480 development run records saved.
 
 **37. Maintainer evaluation web UI.**
