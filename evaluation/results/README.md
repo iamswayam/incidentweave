@@ -12,7 +12,12 @@ Repository-specific baselines for `batch-processing-service` and `lifeos` are un
 
 ## Generated output
 
-- `runs/` contains timestamped run artifacts and is ignored; `.gitkeep` is retained.
+- `runs/` contains ignored timestamped run artifacts; `.gitkeep` is retained. The four registered item 34 development run sets below are intentional committed exceptions:
+  - [`end_to_end_dev_run_rq_2026-11-23.json`](runs/end_to_end_dev_run_rq_2026-11-23.json)
+  - [`end_to_end_dev_run_kopf_2026-11-23.json`](runs/end_to_end_dev_run_kopf_2026-11-23.json)
+  - [`end_to_end_dev_run_luigi_2026-11-23.json`](runs/end_to_end_dev_run_luigi_2026-11-23.json)
+  - [`end_to_end_dev_run_client_python_2026-11-23.json`](runs/end_to_end_dev_run_client_python_2026-11-23.json)
+- These raw records contain three temperature-0 runs for each of the 40 manifest-assigned development questions in each v2 repository (480 records total). Provider-unavailable outcomes and errors are retained rather than omitted.
 - `run-*.json` and `evaluation_report.json` are generated run output and ignored.
 
 Check [`../manifest.json`](../manifest.json) to distinguish registered baselines from other files. The ignore rules are in [`.gitignore`](../../.gitignore).
