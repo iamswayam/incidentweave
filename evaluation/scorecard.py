@@ -14,7 +14,6 @@ from evaluation.build_fixture import load_fixture
 from evaluation.golden import load_golden_set
 from evaluation.manifest import (
     MANIFEST_PATH,
-    V2_DEVELOPMENT_REPOSITORIES,
     load_manifest,
     load_v2_development_entries,
     load_v2_development_questions,
@@ -173,6 +172,65 @@ def _validate_export(
     return selected_by_repo
 
 
+def _load_v2_scorecard_entries(
+    split: str,
+    manifest_path: Path,
+    root: Path,
+) -> dict[str, dict[str, Any]]:
+    if split == "development":
+        return load_v2_development_entries(manifest_path, root=root)
+    if split != "held_out":
+        raise ValueError(f"V2 scorecard requires split 'development' or 'held_out'; got {split!r}")
+    manifest = load_manifest(manifest_path, root=root)
+    return {
+        entry["id"]: entry
+        for entry in manifest["repositories"]
+        if entry.get("role") == "held_out" and entry.get("dataset_version") == "2.0"
+    }
+
+
+def _load_v2_questions_for_split(
+    entry: Mapping[str, Any],
+    split: str,
+    root: Path,
+) -> list[dict[str, Any]]:
+    if split == "development":
+        return load_v2_development_questions(entry, root=root)
+
+    repo_id = entry["id"]
+    root_resolved = root.resolve()
+    question_path = (root / entry["questions"]["path"]).resolve()
+    if not question_path.is_relative_to(root_resolved):
+        raise ValueError(f"{repo_id}: unsafe questions path")
+    try:
+        data = json.loads(question_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"{repo_id}: cannot load held_out questions: {exc}") from exc
+    if (
+        not isinstance(data, dict)
+        or data.get("repo_id") != repo_id
+        or data.get("pinned_sha") != entry.get("pinned_sha")
+        or data.get("dataset_version") != "2.0"
+    ):
+        raise ValueError(f"{repo_id}: question set does not match the v2 manifest entry")
+    questions = data.get("questions")
+    if not isinstance(questions, list) or any(not isinstance(row, dict) for row in questions):
+        raise ValueError(f"{repo_id}: question set must contain a list of question objects")
+    question_ids = [row.get("id") for row in questions]
+    splits = entry["splits"]
+    assigned_ids = {question_id for split_ids in splits.values() for question_id in split_ids}
+    if (
+        any(not isinstance(question_id, str) or not question_id for question_id in question_ids)
+        or len(question_ids) != len(set(question_ids))
+        or set(question_ids) != assigned_ids
+    ):
+        raise ValueError(f"{repo_id}: question ids do not match the manifest splits")
+    selected = questions_for_split(entry, questions, split)
+    if len(selected) != len(splits[split]):
+        raise ValueError(f"{repo_id}: {split} split is incomplete")
+    return selected
+
+
 def _validate_v2_export(
     export: Mapping[str, Any],
     entries: Mapping[str, Mapping[str, Any]],
@@ -182,12 +240,27 @@ def _validate_v2_export(
     metadata = export.get("metadata")
     if not isinstance(metadata, Mapping):
         raise ValueError("Rankings export metadata must be an object")
-    if metadata.get("split") != "development":
-        raise ValueError("Scorecard refuses any split other than development")
+    split = metadata.get("split")
+    allowed_splits = {"development", "held_out"}
+    if not isinstance(split, str) or split not in allowed_splits:
+        raise ValueError(f"V2 scorecard requires split 'development' or 'held_out'; got {split!r}")
     if metadata.get("dataset_version") != "v2":
         raise ValueError("V2 scorecard requires dataset_version 'v2'")
-    if metadata.get("repository_ids") != list(V2_DEVELOPMENT_REPOSITORIES):
-        raise ValueError("Rankings export must contain exactly the v2 development repositories")
+    split_entries = {
+        repo_id: entry
+        for repo_id, entry in entries.items()
+        if entry.get("role") == split and entry.get("dataset_version") == "2.0"
+    }
+    if not split_entries:
+        raise ValueError(f"V2 scorecard has no {split} repositories in the manifest")
+    repository_ids = metadata.get("repository_ids")
+    if (
+        not isinstance(repository_ids, list)
+        or any(not isinstance(repo_id, str) or not repo_id for repo_id in repository_ids)
+        or len(repository_ids) != len(set(repository_ids))
+        or set(repository_ids) != set(split_entries)
+    ):
+        raise ValueError(f"Rankings export repository_ids do not match the v2 {split} repositories")
     if metadata.get("retrieval_limits") != {"production": 5, "deep": 20}:
         raise ValueError("Rankings export must declare production limit 5 and deep limit 20")
     if metadata.get("guard_view") != "production":
@@ -203,13 +276,15 @@ def _validate_v2_export(
     if not isinstance(raw_repositories, list):
         raise ValueError("Rankings export repositories must be a list")
     exported = {row.get("id"): row for row in raw_repositories if isinstance(row, Mapping)}
-    if set(exported) != set(V2_DEVELOPMENT_REPOSITORIES) or len(exported) != len(raw_repositories):
-        raise ValueError("Rankings export repository rows do not match the v2 repositories")
+    if set(exported) != set(repository_ids) or len(exported) != len(raw_repositories):
+        raise ValueError(
+            f"Rankings export repository rows do not match the v2 {split} repositories"
+        )
 
     selected_by_repo: dict[str, list[dict[str, Any]]] = {}
-    for repo_id in V2_DEVELOPMENT_REPOSITORIES:
-        entry = entries[repo_id]
-        questions = load_v2_development_questions(entry, root=root)
+    for repo_id in repository_ids:
+        entry = split_entries[repo_id]
+        questions = _load_v2_questions_for_split(entry, split, root)
         expected_by_id = {question["id"]: question for question in questions}
         rows = exported[repo_id].get("questions")
         if not isinstance(rows, list):
@@ -220,7 +295,7 @@ def _validate_v2_export(
             if isinstance(row, Mapping) and isinstance(row.get("id"), str)
         }
         if len(by_id) != len(rows) or set(by_id) != set(expected_by_id):
-            raise ValueError(f"{repo_id}: export must contain exactly the development questions")
+            raise ValueError(f"{repo_id}: export must contain exactly the {split} questions")
         selected = []
         for question_id, question in expected_by_id.items():
             row = by_id[question_id]
@@ -583,16 +658,18 @@ def build_scorecard(
 def build_v2_scorecard(
     export: Mapping[str, Any],
     *,
+    split: str = "development",
     manifest_path: Path = MANIFEST_PATH,
     root: Path = ROOT,
 ) -> dict[str, Any]:
-    """Validate a v2 development export and calculate the registered scorecard."""
+    """Validate a v2 split export and calculate the registered scorecard."""
 
-    entries = load_v2_development_entries(manifest_path, root=root)
+    entries = _load_v2_scorecard_entries(split, manifest_path, root)
     raw_by_repo = _validate_v2_export(export, entries, manifest_path, root)
+    repository_ids = export["metadata"]["repository_ids"]
     scored_by_repo: dict[str, list[dict[str, Any]]] = {}
     per_repository: dict[str, Any] = {}
-    for repo_id in V2_DEVELOPMENT_REPOSITORIES:
+    for repo_id in repository_ids:
         fixture = load_fixture(root / entries[repo_id]["fixture"]["path"])
         fixture_chunks = fixture["chunks"]
         scored = []
@@ -624,10 +701,8 @@ def build_v2_scorecard(
             [repo_id],
         )
 
-    pooled_rows = [
-        row for repo_id in V2_DEVELOPMENT_REPOSITORIES for row in scored_by_repo[repo_id]
-    ]
-    pooled = _score_scope(pooled_rows, scored_by_repo, V2_DEVELOPMENT_REPOSITORIES)
+    pooled_rows = [row for repo_id in repository_ids for row in scored_by_repo[repo_id]]
+    pooled = _score_scope(pooled_rows, scored_by_repo, repository_ids)
     export_metadata = export["metadata"]
     code_commit = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -639,7 +714,7 @@ def build_v2_scorecard(
     return {
         "metadata": {
             "dataset_version": "v2",
-            "repository_ids": list(V2_DEVELOPMENT_REPOSITORIES),
+            "repository_ids": list(repository_ids),
             "retrieval_views": {"production": 5, "deep": 20},
             "n": len(pooled_rows),
             "seed": BOOTSTRAP_SEED,
