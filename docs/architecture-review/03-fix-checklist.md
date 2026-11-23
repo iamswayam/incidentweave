@@ -167,7 +167,10 @@ Deferred (no dependency): Docker image from the lock (multi-stage, non-root), st
 | 10 | **21** (development only) | Evaluate reranking before the held-out run |
 | 11 | **34** | Freeze deterministic citation and end-to-end checks |
 | 12 | **3b** (including **14b-3**) | Run one registered v2 held-out evaluation with the frozen scorecard and threshold validation |
+
 | 13 | **17**, **15c**, **5b**, **20**, **12b**, **22–26** | Continue answer quality, retrieval context, hardening, breadth and architecture |
+
+Status: The v2 scorecard now accepts `split: held_out`; held-out repositories are not yet registered.
 
 Remaining implementation sequence: dataset (**29**, **30**, **31a**, **31b**, **31c**) → provisional scorecard **32a** → final v2 development scorecard **32b** →
 layering and studies (**35a–35d**) → tooling and security (**36a–36f**) → operational report **33** → reranker **21** (development only) → citation validity **34** →

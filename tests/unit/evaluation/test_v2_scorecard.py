@@ -326,19 +326,96 @@ def test_v2_scorecard_writer_scores_development_only_without_v1_crosscheck(
     assert json.loads(output_path.read_text(encoding="utf-8")) == scorecard
 
 
-def test_v2_scorecard_refuses_non_development_export(
+def _minimal_export(split: str, repository_ids: list[str]) -> dict[str, Any]:
+    return {
+        "metadata": {
+            "dataset_version": "v2",
+            "repository_ids": repository_ids,
+            "split": split,
+            "retrieval_limits": {"production": 5, "deep": 20},
+            "guard_view": "production",
+            "guard_threshold": 0.5,
+            "git_commit": "test-commit",
+            "manifest_sha256": "manifest-sha",
+        },
+        "repositories": [
+            {
+                "id": repo_id,
+                "questions": [
+                    {
+                        "id": "question-1",
+                        "repository": repo_id,
+                        "category": "direct",
+                        "ranked_chunks_limit5": [],
+                        "ranked_chunks_limit20": [],
+                        "best_vector_distance": None,
+                        "guard_refused": True,
+                    }
+                ],
+            }
+            for repo_id in repository_ids
+        ],
+    }
+
+
+def test_v2_scorecard_rejects_held_out_without_manifest_entries(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    manifest_entries = list(_entries().values())
     monkeypatch.setattr(
         scorecard_module,
-        "load_v2_development_entries",
-        lambda *_args, **_kwargs: {},
+        "load_manifest",
+        lambda *_args, **_kwargs: {"repositories": manifest_entries},
     )
 
-    with pytest.raises(ValueError, match="refuses any split other than development"):
+    with pytest.raises(ValueError, match="no held_out repositories in the manifest"):
         scorecard_module.build_v2_scorecard(
-            {"metadata": {"split": "held_out"}},
+            _minimal_export("held_out", []),
+            split="held_out",
             manifest_path=tmp_path / "manifest.json",
             root=tmp_path,
         )
+
+
+def test_v2_scorecard_rejects_invalid_split(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="requires split 'development' or 'held_out'"):
+        scorecard_module._validate_v2_export(
+            _minimal_export("invalid", []),
+            {},
+            tmp_path / "manifest.json",
+            tmp_path,
+        )
+
+
+def test_v2_scorecard_accepts_development_split(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    question = {
+        "id": "question-1",
+        "category": "direct",
+        "question": "synthetic development question",
+        "relevant_spans": [],
+    }
+    entry = {
+        "id": "synthetic-repo",
+        "role": "development",
+        "dataset_version": "2.0",
+    }
+    monkeypatch.setattr(scorecard_module, "sha256_file", lambda _path: "manifest-sha")
+    monkeypatch.setattr(
+        scorecard_module,
+        "load_v2_development_questions",
+        lambda *_args, **_kwargs: [question],
+    )
+
+    export = _minimal_export("development", ["synthetic-repo"])
+    selected = scorecard_module._validate_v2_export(
+        export,
+        {"synthetic-repo": entry},
+        tmp_path / "manifest.json",
+        tmp_path,
+    )
+
+    assert [row["id"] for row in selected["synthetic-repo"]] == ["question-1"]
